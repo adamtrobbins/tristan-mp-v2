@@ -5,15 +5,15 @@ module m_domain
 
   implicit none
 
-  ! type :: box
-  !   integer*8       :: x0, y0, z0
-  !   integer*8       :: sx, sy, sz
-  !   integer         :: nghost
-  ! end type box
-  !
-  ! type(box)               :: local_grid
-  ! type(box)               :: global_grid
-  ! type(box), allocatable  :: all_local_grids(:)
+  type :: box
+    integer         :: x0, y0, z0
+    integer         :: sx, sy, sz
+    integer         :: nghost
+  end type box
+
+  type(box), pointer      :: this_meshblock
+  type(box)               :: global_mesh
+  type(box), allocatable  :: meshblocks(:)
 contains
   subroutine initializeDomain()
     implicit none

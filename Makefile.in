@@ -51,12 +51,11 @@ $(EXECUTABLE):$(OBJ_FILES)
 $(OBJ_FILES):$(PREC_SRC_FILES)
 
 $(OBJ_DIR)%.o:$(PREC_SRC_DIR)%.F90
-	$(FC) $(FFLAGS) $(PFLAGS) -c $< -o $@
+	$(FC) $(FFLAGS) $(PFLAGS) -J $(OBJ_DIR) -c $< -o $@
 
 clean:
 	rm -f $(OBJS)
 	rm -f $(OBJ_DIR)*.mod
-	rm -f m_*.mod
 	rm -rf $(PREC_SRC_DIR)
 	find . -name "*.o" -delete
 	rm -f $(EXE_DIR)*

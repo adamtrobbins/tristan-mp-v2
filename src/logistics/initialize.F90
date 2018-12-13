@@ -3,6 +3,7 @@
 module m_initialize
   use m_globalnamespace
   use m_readinput
+  use m_communications
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -13,6 +14,7 @@ contains
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
+    call initializeCommunications()
     call firstRankInitialize()
   end subroutine initializeAll
 

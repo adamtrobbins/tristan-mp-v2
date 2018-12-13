@@ -1,5 +1,7 @@
-*.mod
 *.o
 exec/
 src_/
+obj/
+output/
+restart/
 Makefile

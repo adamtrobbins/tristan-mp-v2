@@ -8,11 +8,8 @@ program tristan
   use m_mainloop
   implicit none
   !----- main code --------------------------
-  real(mprec) :: myvar
 
   call initializeAll()
-  call getInput('particles', 'delgam2', myvar, toMPREC(123))
-  print *, myvar, kind(myvar)
 
   !..... main code ..........................
 
