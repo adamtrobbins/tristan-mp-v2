@@ -1,0 +1,4 @@
+#define STR_MAX 280
+#define END_LINE char(10)
+
+#define M_PI 3.141592653589793

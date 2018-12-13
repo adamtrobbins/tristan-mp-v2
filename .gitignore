@@ -1,0 +1,5 @@
+*.mod
+*.o
+exec/
+src_/
+Makefile
