@@ -20,10 +20,12 @@ EXE_FILE := @EXE_NAME@
 EXECUTABLE := $(EXE_DIR)$(EXE_FILE)
 
 SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
-						 $(SRC_DIR)logistics/read_input.F90 \
 						 $(SRC_DIR)objects/domain.F90 \
 						 $(SRC_DIR)logistics/communications.F90 \
 						 $(SRC_DIR)objects/particles.F90 \
+						 $(SRC_DIR)logistics/finalize.F90 \
+						 $(SRC_DIR)logistics/error_handling.F90 \
+						 $(SRC_DIR)logistics/read_input.F90 \
 						 $(SRC_DIR)logistics/initialize.F90 \
 						 $(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						 $(SRC_DIR)tristanmainloop.F90 \

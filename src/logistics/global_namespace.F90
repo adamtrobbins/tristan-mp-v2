@@ -60,10 +60,4 @@ contains
       dprecToMprec = REAL(inp)
     end if
   end function dprecToMprec
-
-  subroutine throwError(msg)
-    character(len=*), intent(in)  :: msg
-    print *, msg
-    stop 'TERMINATING EXECUTION'
-  end subroutine
 end module m_globalnamespace

@@ -2,6 +2,7 @@
 
 module m_readinput
   use m_globalnamespace
+  use m_errors
   implicit none
 
   interface strToNum
@@ -19,9 +20,9 @@ module m_readinput
   end interface getInput
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: strToInt4, strToInt8, strToReal4, strToReal8
-  private :: getInt4Input, getInt8Input, getReal4Input, getReal8Input
-  private :: parseInput
+  private :: strToInt4, strToInt8, strToReal4, strToReal8,&
+           & getInt4Input, getInt8Input, getReal4Input,&
+           & getReal8Input, parseInput
   !...............................................................!
 contains
   ! read input/output filename/directory
@@ -48,10 +49,11 @@ contains
   character(len=STR_MAX) function parseInput(blockname, varname, found)
     implicit none
     character(len=*), intent(in)  :: blockname, varname
-    integer                       :: iostatus, k1 = 0, k2 = 0
+    integer                       :: iostatus, k1, k2
     logical, intent(out)          :: found
     character(len=STR_MAX)        :: istream, value_str
 
+    k1 = 0; k2 = 0
     ! opening the input file
     open(unit = UNIT_input, file = trim(input_file_name),&
           & action = 'read', IOSTAT = iostatus)
@@ -126,7 +128,9 @@ contains
     character(len=*), intent(in) :: val_str
     integer*4, intent(out)       :: val
     integer, intent(out)         :: stat
-    read(val_str, *, iostat = stat) val
+    real*8                       :: val_
+    call strToReal8(val_str, val_, stat)
+    val = INT(val_)
   end subroutine strToInt4
 
   subroutine getInt8Input(blockname, varname, val, def_val)
@@ -165,7 +169,9 @@ contains
     character(len=*), intent(in) :: val_str
     integer*8, intent(out)       :: val
     integer, intent(out)         :: stat
-    read(val_str, *, iostat = stat) val
+    real*8                       :: val_
+    call strToReal8(val_str, val_, stat)
+    val = DBLE(val_)
   end subroutine strToInt8
 
   subroutine getReal4Input(blockname, varname, val, def_val)
@@ -204,7 +210,9 @@ contains
     character(len=*), intent(in) :: val_str
     real*4, intent(out)          :: val
     integer, intent(out)         :: stat
-    read(val_str, *, iostat = stat) val
+    real*8                       :: val_
+    call strToReal8(val_str, val_, stat)
+    val = REAL(val_)
   end subroutine strToReal4
 
   subroutine getReal8Input(blockname, varname, val, def_val)

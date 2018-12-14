@@ -6,8 +6,8 @@
 
 <node_configuration>
 
-sizex	= 1                    # number of cpus in x direction
-sizey 	= 1			# number of cpus in the y direction
+sizex	= 2                    # number of cpus in x direction
+sizey 	= 2			# number of cpus in the y direction
 
 <time>
 
@@ -81,6 +81,10 @@ sigma	= 0.00		# magnetization number (omega_ce/omega_pe)^2, including gamma0 for
 maxptl0 = 1e8		# max number of particles in the simulation
 ppc0 	= 16		# number of particles per cell
 
+
+nspec  = 3
+maxptl1 = 1e4
+maxptl2 = 1e4
 
 delgam 	= 2.e-5	         # delta gamma for ions (delgam = k T_i / m_i c^2, T_i is ion temperature)
 me	= 1.			# electron mass
