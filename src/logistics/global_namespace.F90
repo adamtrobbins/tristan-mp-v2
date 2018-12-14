@@ -7,6 +7,7 @@
 
 module m_globalnamespace
   implicit none
+  logical            :: mpi_initialized = .false.
   integer, parameter :: dprec = kind(1.0d0)
   integer, parameter :: sprec = kind(1.0e0)
   ! main precision: `mprec`
@@ -29,7 +30,6 @@ module m_globalnamespace
   end interface toMPREC
 
   private :: intToMprec, sprecToMprec, dprecToMprec
-
 contains
   real(mprec) function intToMprec(inp)
     implicit none

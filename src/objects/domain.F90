@@ -1,16 +1,33 @@
 #include "../defs.F90"
 
+!--- DOMAIN ----------------------------------------------------!
+! To store all domain related variables and constructions
+!   - all grid meshblocks are stored as `mesh` type
+!...............................................................!
+
 module m_domain
   use m_globalnamespace
   implicit none
 
-  type :: box
-    integer    :: x0, y0, z0
-    integer    :: sx, sy, sz
-    integer    :: nghost
-  end type box
+  type :: meshptr
+    type(mesh), pointer :: ptr
+  end type meshptr
 
-  type(box), pointer                :: this_meshblock
-  type(box)                         :: global_mesh
-  type(box), allocatable, target    :: meshblocks(:)
+  type :: mesh
+    integer             :: rnk          ! rank of the cpu that takes care of the current meshblock
+    integer             :: x0, y0, z0   ! global coordinates (in cells) of the corner
+    integer             :: sx, sy, sz   ! # of cells in each dimensions
+    integer             :: nghost       ! # of ghost cells (FIX)
+    ! pointers to the neighboring meshblocks
+    type(meshptr), dimension(-1:1,-1:1,-1:1) :: neighbor
+  end type mesh
+
+  type(meshptr)                      :: this_meshblock  ! pointer to current (rank) meshblock
+  type(mesh)                         :: global_mesh     ! global mesh parameters
+  type(mesh), allocatable, target    :: meshblocks(:)   ! meshblocks for all cpus
+  ! boundary conditions for all dimensions
+  !   - boundary = 0: unmodelled
+  !   - boundary = 1: periodic
+  !   - boundary = 2: outflow
+  integer                            :: boundary_x, boundary_y, boundary_z
 end module m_domain

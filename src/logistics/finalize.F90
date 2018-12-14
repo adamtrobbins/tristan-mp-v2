@@ -21,7 +21,7 @@ contains
   subroutine deallocateArrays()
     implicit none
     if (allocated(meshblocks)) deallocate(meshblocks)
-    this_meshblock => null()
+    this_meshblock%ptr => null()
     if (allocated(sp_)) deallocate(sp_)
     if (allocated(spp_)) deallocate(spp_)
   end subroutine deallocateArrays
@@ -29,6 +29,6 @@ contains
   subroutine finalizeCommunications()
     implicit none
     integer :: ierr
-    call MPI_Finalize(ierr)
+    if (mpi_initialized) call MPI_Finalize(ierr)
   end subroutine finalizeCommunications
 end module m_finalize

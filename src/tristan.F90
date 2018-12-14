@@ -11,8 +11,12 @@ program tristan
 
   call initializeAll()
 
-  print *, 'RNK', my_rank, this_meshblock%sx, this_meshblock%sy, this_meshblock%sz,&
-         & this_meshblock%x0, this_meshblock%y0, this_meshblock%z0
+  if (my_rank .eq. 2) then
+    print *, this_meshblock%ptr%neighbor(-1, 0, 0)%ptr%rnk
+    print *, this_meshblock%ptr%neighbor(+1, 0, 0)%ptr%rnk
+    print *, this_meshblock%ptr%neighbor(0, -1, 0)%ptr%rnk
+    print *, this_meshblock%ptr%neighbor(0, +1, 0)%ptr%rnk
+  end if
 
   call finalizeAll()
 
