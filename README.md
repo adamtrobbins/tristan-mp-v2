@@ -21,6 +21,10 @@ Executable is generated in `exec` directory named either `tristan-mp2d` or `tris
 ```bash
 $ exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
 ```
+or if compiled with `h5pfc` one can run in MPI
+```bash
+$ mpiexec -n [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
+```
 
 #### Code structure
 _TO BE ADDED_
