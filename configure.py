@@ -43,12 +43,12 @@ makefile_output = 'Makefile'
 # Step 1. Prepare parser, add each of the arguments
 parser = argparse.ArgumentParser()
 
-pgen_directory = 'user/'
-pgen_choices = glob.glob(pgen_directory + '*.F90')
-pgen_choices = [choice[len(pgen_directory):-4] for choice in pgen_choices]
+user_directory = 'user/'
+user_choices = glob.glob(user_directory + '*.F90')
+user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 parser.add_argument('--user',
     default='user_weibel',
-    choices=pgen_choices,
+    choices=user_choices,
     help='select user file')
 
 parser.add_argument('-hdf5',
