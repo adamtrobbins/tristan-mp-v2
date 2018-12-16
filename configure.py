@@ -79,7 +79,7 @@ makefile_options = {}
 makefile_options['USER_FILE'] = args['user']
 
 makefile_options['COMPILER_COMMAND'] = 'gfortran ' if (not args['hdf5']) else 'h5pfc '
-makefile_options['COMPILER_FLAGS'] = '-O3 -qopt-report=5 '
+makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
 
 if args['debug']:
