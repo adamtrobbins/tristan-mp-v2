@@ -24,40 +24,51 @@ module m_globalnamespace
   integer, parameter :: UNIT_input = 10
 
   interface toMPREC
-    module procedure intToMprec
-    module procedure sprecToMprec
-    module procedure dprecToMprec
+    module procedure int4ToMprec
+    module procedure int8ToMprec
+    module procedure real4ToMprec
+    module procedure real8ToMprec
   end interface toMPREC
 
-  private :: intToMprec, sprecToMprec, dprecToMprec
+  private :: int4ToMprec, int8ToMprec, real4ToMprec, real8ToMprec
 contains
-  real(mprec) function intToMprec(inp)
+  real(mprec) function int4ToMprec(inp)
     implicit none
     integer, intent(in) :: inp
     if (mprec .eq. dprec) then
-      intToMprec = DBLE(inp)
+      int4ToMprec = DBLE(inp)
     else
-      intToMprec = REAL(inp)
+      int4ToMprec = REAL(inp)
     end if
-  end function intToMprec
+  end function int4ToMprec
 
-  real(mprec) function sprecToMprec(inp)
+  real(mprec) function int8ToMprec(inp)
+    implicit none
+    integer*8, intent(in) :: inp
+    if (mprec .eq. dprec) then
+      int8ToMprec = DBLE(inp)
+    else
+      int8ToMprec = REAL(inp)
+    end if
+  end function int8ToMprec
+
+  real(mprec) function real4ToMprec(inp)
     implicit none
     real(sprec), intent(in) :: inp
     if (mprec .eq. dprec) then
-      sprecToMprec = DBLE(inp)
+      real4ToMprec = DBLE(inp)
     else
-      sprecToMprec = REAL(inp)
+      real4ToMprec = REAL(inp)
     end if
-  end function sprecToMprec
+  end function real4ToMprec
 
-  real(mprec) function dprecToMprec(inp)
+  real(mprec) function real8ToMprec(inp)
     implicit none
     real(dprec), intent(in) :: inp
     if (mprec .eq. dprec) then
-      dprecToMprec = DBLE(inp)
+      real8ToMprec = DBLE(inp)
     else
-      dprecToMprec = REAL(inp)
+      real8ToMprec = REAL(inp)
     end if
-  end function dprecToMprec
+  end function real8ToMprec
 end module m_globalnamespace

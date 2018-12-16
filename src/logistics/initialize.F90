@@ -2,10 +2,12 @@
 
 module m_initialize
   use m_globalnamespace
+  use m_aux
   use m_readinput
   use m_communications
   use m_domain
   use m_particles
+  use m_userfile
   implicit none
   include "mpif.h"
 
@@ -26,7 +28,12 @@ contains
     ! ADD possibility to define meshblock distribution in userfile
     call distributeMeshblocks()
     call initializeParticles()
+
+    call initializeRandomSeed(my_rank)
+
     if (my_rank .eq. 0) call firstRankInitialize()
+
+    call userInitialize()
   end subroutine initializeAll
 
   subroutine initializeParticles()
@@ -47,14 +54,14 @@ contains
       write (var_name, "(A2,I1)") "ch", i
       call getInput('particles', var_name, spp_(i)%ch_sp)
       call allocateParticles(sp_(i), spp_(i)%maxptl_sp)
-      spp_(i)%npart_sp = 0d0
+      spp_(i)%npart_sp = 0
     end do
   end subroutine initializeParticles
 
   subroutine allocateParticles(prt, sz)
     implicit none
     type(species), intent(inout)    :: prt
-    integer*8, intent(in)           :: sz
+    integer, intent(in)             :: sz
     if (allocated(prt%x)) deallocate(prt%x)
     if (allocated(prt%y)) deallocate(prt%y)
     if (allocated(prt%z)) deallocate(prt%z)
@@ -63,6 +70,7 @@ contains
     if (allocated(prt%w)) deallocate(prt%w)
     allocate(prt%x(sz)); allocate(prt%y(sz)); allocate(prt%z(sz))
     allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
+    allocate(prt%ind(sz)); allocate(prt%proc(sz))
   end subroutine allocateParticles
 
   subroutine initializeCommunications()

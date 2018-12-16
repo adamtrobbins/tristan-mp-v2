@@ -23,6 +23,7 @@ contains
     if (allocated(meshblocks)) deallocate(meshblocks)
     this_meshblock%ptr => null()
     if (allocated(sp_)) deallocate(sp_)
+    ! FIX should I dealloc each array?
     if (allocated(spp_)) deallocate(spp_)
   end subroutine deallocateArrays
 
