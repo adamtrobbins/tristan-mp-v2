@@ -7,21 +7,22 @@
 
 module m_globalnamespace
   implicit none
-  logical            :: mpi_initialized = .false.
-  integer, parameter :: dprec = kind(1.0d0)
-  integer, parameter :: sprec = kind(1.0e0)
+  logical                :: mpi_initialized = .false.
+  integer, parameter     :: dprec = kind(1.0d0)
+  integer, parameter     :: sprec = kind(1.0e0)
   ! main precision: `mprec`
   #ifdef DPREC
-    integer, parameter :: mprec = dprec
+    integer, parameter   :: mprec = dprec
   #else
-    integer, parameter :: mprec = sprec
+    integer, parameter   :: mprec = sprec
   #endif
+  integer, parameter     :: UNIT_input = 10
 
+  ! simulation parameters
+  integer                :: final_timestep
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart'
-
-  integer, parameter :: UNIT_input = 10
 
   interface toMPREC
     module procedure int4ToMprec

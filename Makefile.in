@@ -26,6 +26,7 @@ SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
 						 $(SRC_DIR)logistics/communications.F90 \
 						 $(SRC_DIR)logistics/finalize.F90 \
 						 $(SRC_DIR)logistics/error_handling.F90 \
+						 $(SRC_DIR)logistics/write_output.F90 \
 						 $(SRC_DIR)logistics/read_input.F90 \
 						 $(SRC_DIR)algorithms/particle_mover.F90 \
 						 $(addprefix $(USR_DIR), $(USER_FILE).F90) \
@@ -55,7 +56,7 @@ $(EXECUTABLE):$(OBJ_FILES)
 $(OBJ_FILES):$(PREC_SRC_FILES)
 
 $(OBJ_DIR)%.o:$(PREC_SRC_DIR)%.F90
-	$(FC) $(FFLAGS) $(PFLAGS) -J $(OBJ_DIR) -c $< -o $@
+	$(FC) $(FFLAGS) $(PFLAGS) @MODULE@ $(OBJ_DIR) -c $< -o $@
 
 clean:
 	rm -f $(OBJS)

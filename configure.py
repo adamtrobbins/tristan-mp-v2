@@ -54,7 +54,17 @@ parser.add_argument('--user',
 parser.add_argument('-hdf5',
     action='store_true',
     default=False,
-    help='enable HDF5 & user h5pfc compiler')
+    help='enable HDF5 & use h5pfc compiler')
+
+parser.add_argument('-mpi',
+    action='store_true',
+    default=False,
+    help='enable mpi & use mpif90 compiler')
+
+parser.add_argument('-intel',
+    action='store_true',
+    default=False,
+    help='enable intel compiler')
 
 parser.add_argument('-debug',
     action='store_true',
@@ -78,15 +88,29 @@ args = vars(parser.parse_args())
 makefile_options = {}
 makefile_options['USER_FILE'] = args['user']
 
-makefile_options['COMPILER_COMMAND'] = 'gfortran ' if (not args['hdf5']) else 'h5pfc '
+makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
 
-if args['debug']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
+if args['hdf5']:
+    makefile_options['COMPILER_COMMAND'] += 'h5pfc '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
+elif args['mpi']:
+    makefile_options['COMPILER_COMMAND'] += 'mpif90 '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
+else:
+    makefile_options['COMPILER_COMMAND'] += 'gfortran '
 
 if args['debug']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
+
+if args['debug'] and args['intel']:
+    makefile_options['COMPILER_FLAGS'] += '-O3 -qopenmp-simd -qopt-report=5 '
+
+if args['intel']:
+    makefile_options['MODULE'] = '-module '
+else:
+    makefile_options['MODULE'] = '-J '
 
 if args['dprec']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDPREC '
@@ -109,6 +133,7 @@ with open(makefile_output, 'w') as current_file:
 print('Your TRISTAN distribution has now been configured with the following options:')
 print('  Userfile:                ' + args['user'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
+print('  Precision:               ' + ('double' if args['dprec'] else 'single'))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \

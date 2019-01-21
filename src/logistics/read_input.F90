@@ -3,6 +3,7 @@
 module m_readinput
   use m_globalnamespace
   use m_errors
+  use m_writeoutput
   implicit none
 
   interface strToNum
@@ -107,8 +108,9 @@ contains
         val = def_val
       else
         call throwError("ERROR variable `"//trim(varname)&
-                      & //"` not found in <"//trim(blockname)//">"//END_LINE//&
-                      & "-- no default value provided")
+                      & //"` not found in <"//trim(blockname)//">"//&
+                      & END_LINE &
+                      & //"-- no default value provided")
       end if
     else
       call strToInt4(val_str, val, iostatus)
@@ -117,8 +119,9 @@ contains
           val = def_val
         else
           call throwError("ERROR variable `"//trim(varname)//"`="//trim(val_str)&
-                        & //" from <"//trim(blockname)//"> not converted"//END_LINE//&
-                        & "-- no default value provided")
+                        & //" from <"//trim(blockname)//"> not converted"//&
+                        & END_LINE &
+                        & //"-- no default value provided")
         end if
       end if
     end if
@@ -148,8 +151,9 @@ contains
         val = def_val
       else
         call throwError("ERROR variable `"//trim(varname)&
-                      & //"` not found in <"//trim(blockname)//">"//END_LINE//&
-                      & "-- no default value provided")
+                      & //"` not found in <"//trim(blockname)//">"//&
+                      & END_LINE &
+                      & // "-- no default value provided")
       end if
     else
       call strToInt8(val_str, val, iostatus)
@@ -158,8 +162,9 @@ contains
           val = def_val
         else
           call throwError("ERROR variable `"//trim(varname)//"`="//trim(val_str)&
-                        & //" from <"//trim(blockname)//"> not converted"//END_LINE//&
-                        & "-- no default value provided")
+                        & //" from <"//trim(blockname)//"> not converted"//&
+                        & END_LINE &
+                        & // "-- no default value provided")
         end if
       end if
     end if
@@ -189,8 +194,9 @@ contains
         val = def_val
       else
         call throwError("ERROR variable `"//trim(varname)&
-                      & //"` not found in <"//trim(blockname)//">"//END_LINE//&
-                      & "-- no default value provided")
+                      & //"` not found in <"//trim(blockname)//">"//&
+                      & END_LINE &
+                      & //"-- no default value provided")
       end if
     else
       call strToReal4(val_str, val, iostatus)
@@ -199,8 +205,9 @@ contains
           val = def_val
         else
           call throwError("ERROR variable `"//trim(varname)//"`="//trim(val_str)&
-                        & //" from <"//trim(blockname)//"> not converted"//END_LINE//&
-                        & "-- no default value provided")
+                        & //" from <"//trim(blockname)//"> not converted"//&
+                        & END_LINE &
+                        & //"-- no default value provided")
         end if
       end if
     end if
@@ -230,8 +237,9 @@ contains
         val = def_val
       else
         call throwError("ERROR variable `"//trim(varname)&
-                      & //"` not found in <"//trim(blockname)//">"//END_LINE//&
-                      & "-- no default value provided")
+                      & //"` not found in <"//trim(blockname)//">"//&
+                      & END_LINE &
+                      & // "-- no default value provided")
       end if
     else
       call strToReal8(val_str, val, iostatus)
@@ -240,8 +248,9 @@ contains
           val = def_val
         else
           call throwError("ERROR variable `"//trim(varname)//"`="//trim(val_str)&
-                        & //" from <"//trim(blockname)//"> not converted"//END_LINE//&
-                        & "-- no default value provided")
+                        & //" from <"//trim(blockname)//"> not converted"//&
+                        & END_LINE &
+                        & // "-- no default value provided")
         end if
       end if
     end if

@@ -9,32 +9,46 @@ module m_initialize
   use m_particles
   use m_userfile
   implicit none
-  include "mpif.h"
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: initializeCommunications,&
+  private :: initializeCommunications, initializeOutput, &
            & firstRankInitialize, initializeParticles,&
            & distributeMeshblocks, initializeDomain,&
            & rnkToInd, indToRnk, assignNeighbor,&
-           & allocateParticles
+           & allocateParticles, initializeSimulation
   !...............................................................!
 contains
   ! initialize all the necessary functions
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
+    call initializeOutput()
+    ! ADD possibility to define output function in userfile
+    ! ADD hst file?
     call initializeDomain()
     call initializeCommunications()
     ! ADD possibility to define meshblock distribution in userfile
     call distributeMeshblocks()
     call initializeParticles()
+    call initializeSimulation()
 
-    call initializeRandomSeed(my_rank)
+    call initializeRandomSeed(mpi_rank)
 
-    if (my_rank .eq. 0) call firstRankInitialize()
+    if (mpi_rank .eq. 0) call firstRankInitialize()
 
     call userInitialize()
   end subroutine initializeAll
+
+  subroutine initializeOutput()
+    implicit none
+    call getInput('output', 'stride', output_stride, 10)
+    call getInput('output', 'interval', output_interval, 10)
+  end subroutine initializeOutput
+
+  subroutine initializeSimulation()
+    implicit none
+    call getInput('time', 'last', final_timestep, 1000)
+  end subroutine initializeSimulation
 
   subroutine initializeParticles()
     implicit none
@@ -79,10 +93,10 @@ contains
     call MPI_Init(ierr)
     ! ADD if statement here
     mpi_initialized = .true.
-    call MPI_Comm_rank(MPI_Comm_world, my_rank, ierr)
-    call MPI_Comm_size(MPI_Comm_world, size0, ierr)
-    statsize = MPI_STATUS_SIZE
-    if (size0 .ne. sizex * sizey * sizez) then
+    call MPI_Comm_rank(MPI_Comm_world, mpi_rank, ierr)
+    call MPI_Comm_size(MPI_Comm_world, mpi_size, ierr)
+    mpi_statsize = MPI_STATUS_SIZE
+    if (mpi_size .ne. sizex * sizey * sizez) then
       call throwError('ERROR: # of processors is not equal to the number of processors from input')
     end if
   end subroutine initializeCommunications
@@ -122,9 +136,9 @@ contains
     m(1) = global_mesh%sx / sizex
     m(2) = global_mesh%sy / sizey
     m(3) = global_mesh%sz / sizez
-    allocate(meshblocks(size0))
-    this_meshblock%ptr => meshblocks(my_rank + 1)
-    do rnk = 0, size0 - 1
+    allocate(meshblocks(mpi_size))
+    this_meshblock%ptr => meshblocks(mpi_rank + 1)
+    do rnk = 0, mpi_size - 1
       ind = rnkToInd(rnk)
       meshblocks(rnk + 1)%rnk = rnk
       ! find sizes and corner coords
@@ -183,7 +197,7 @@ contains
     implicit none
     integer, intent(in)   :: rnk
     integer, dimension(3) :: rnkToInd
-    if ((rnk .lt. 0) .or. (rnk .ge. size0)) then
+    if ((rnk .lt. 0) .or. (rnk .ge. mpi_size)) then
       rnkToInd = (/-1, -1, -1/)
     else
       rnkToInd(3) = rnk / (sizex * sizey)

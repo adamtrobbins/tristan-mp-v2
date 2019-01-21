@@ -4,17 +4,17 @@
 
 <node_configuration>
 
-sizex	       = 2                # number of cpus in x direction
-sizey 	     = 2			           # number of cpus in the y direction
+sizex	       = 2               # number of cpus in x direction
+sizey 	     = 2			         # number of cpus in the y direction
 
 <time>
 
-last 	       = 6000000		       # last timestep
+last 	       = 1000		         # last timestep
 
 <grid>
 
 mx0 	       = 128 		         # number of actual grid points in the x direction
-my0 	       = 128			         # number of actual grid points in the y direction
+my0 	       = 128		         # number of actual grid points in the y direction
 mz0 	       = 1 		           # ... (ignored for 2D simulations)
 
 boundary_x   = 1
@@ -27,7 +27,8 @@ boundary_z   = 1
 <restart>
 
 <output>
-
+stride       = 100
+interval     = 100
 
 <boundaries>
 
@@ -35,15 +36,19 @@ boundary_z   = 1
 <particles>
 
 nspec         = 3
+
 maxptl1       = 1e6
 m1            = 1
 ch1           = 1
+
 maxptl2       = 1e6
 m2            = 10
 ch2           = -1
+
 maxptl3       = 1e6
 m3            = 0
 ch3           = 0
+
 ppc0          = 10
 
 <problem>
