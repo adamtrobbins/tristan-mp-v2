@@ -40,6 +40,6 @@ contains
       pt_x => null(); pt_y => null(); pt_z => null()
       pt_u => null(); pt_v => null(); pt_w => null()
     end do
-    
+
   end subroutine moveParticles
 end module m_mover

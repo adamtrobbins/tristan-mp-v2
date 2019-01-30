@@ -19,4 +19,6 @@ module m_particles
   type(species), target, allocatable :: sp_(:)
   type(species_param), allocatable   :: spp_(:)
   integer                            :: nspec
+
+  type(sometype), allocatable        :: part_send_(:), part_recv_(:)
 end module m_particles

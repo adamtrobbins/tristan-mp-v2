@@ -15,7 +15,8 @@ module m_initialize
            & firstRankInitialize, initializeParticles,&
            & distributeMeshblocks, initializeDomain,&
            & rnkToInd, indToRnk, assignNeighbor,&
-           & allocateParticles, initializeSimulation
+           & allocateParticles, initializeSimulation,&
+           & initializePrtlExchange
   !...............................................................!
 contains
   ! initialize all the necessary functions
@@ -31,6 +32,7 @@ contains
     call distributeMeshblocks()
     call initializeParticles()
     call initializeSimulation()
+    call initializePrtlExchange()
 
     call initializeRandomSeed(mpi_rank)
 
@@ -44,6 +46,15 @@ contains
     call getInput('output', 'stride', output_stride, 10)
     call getInput('output', 'interval', output_interval, 10)
   end subroutine initializeOutput
+
+  subroutine initializePrtlExchange()
+    implicit none
+    integer            :: buffsize, ppc0
+    call getInput('particles', 'ppc0', ppc0)
+    buffsize = 1000 * max(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * ppc0
+    allocate(part_send_(buffsize))
+    allocate(part_recv_(buffsize))
+  end subroutine initializePrtlExchange
 
   subroutine initializeSimulation()
     implicit none
