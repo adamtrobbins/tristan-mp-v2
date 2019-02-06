@@ -23,16 +23,15 @@ contains
     do timestep = 1, final_timestep
       call print_diag((mpi_rank .eq. 0), TAB // "time: " // STR(timestep))
       call print_diag((mpi_rank .eq. 0), TAB // "------------------------------------")
-      call print_diag(.true., STR(mpi_rank) // " : " // STR(spp_(1)%npart_sp))
 
       call moveParticles()
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
       call exchangeParticles()
       call clearGhostParticles()
-      if (mod(timestep, output_interval) .eq. 0) then
+      if (mod(timestep - 1, output_interval) .eq. 0) then
         call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-        call writeOutput(INT(timestep / output_interval))
+        call writeOutput(INT(timestep / output_interval) + 1)
       end if
       call print_diag((mpi_rank .eq. 0), "")
     end do

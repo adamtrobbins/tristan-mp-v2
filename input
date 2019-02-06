@@ -49,6 +49,6 @@ maxptl3       = 1e6
 m3            = 0
 ch3           = 0
 
-ppc0          = 1
+ppc0          = .1
 
 <problem>

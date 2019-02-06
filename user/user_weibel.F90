@@ -16,9 +16,9 @@ contains
   subroutine userInitialize()
     implicit none
     integer        :: npart
-    integer        :: ppc0
+    real           :: ppc0
     call getInput('particles', 'ppc0', ppc0)
-    npart = this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc0
+    npart = INT(this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc0)
     call userInitParticles(npart)
   end subroutine userInitialize
 

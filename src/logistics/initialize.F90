@@ -60,7 +60,7 @@ contains
     integer                 :: extent_int2, extent_real
 
     call getInput('particles', 'ppc0', multiplier)
-    multiplier = multiplier * 1000
+    multiplier = max(multiplier, 1) * 1000
     ! FIX this might change over time (due to load balancing)
     buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
     buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
