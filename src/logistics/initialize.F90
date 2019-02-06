@@ -37,8 +37,9 @@ contains
     call initializeRandomSeed(mpi_rank)
 
     if (mpi_rank .eq. 0) call firstRankInitialize()
-
     call userInitialize()
+
+    call print_diag((mpi_rank .eq. 0), "initializeAll()" // TAB // TAB // TAB // "[OK]")
   end subroutine initializeAll
 
   subroutine initializeOutput()
@@ -49,11 +50,79 @@ contains
 
   subroutine initializePrtlExchange()
     implicit none
-    integer            :: buffsize, ppc0
-    call getInput('particles', 'ppc0', ppc0)
-    buffsize = 1000 * max(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * ppc0
-    allocate(part_send_(buffsize))
-    allocate(part_recv_(buffsize))
+    integer            :: buffsize, buffsize_x, buffsize_y
+    integer            :: buffsize_xy
+    integer            :: buffsize_z, buffsize_xz, buffsize_yz
+    integer            :: buffsize_xyz
+    integer            :: multiplier, ierr, ind1, ind2, ind3
+
+    integer, dimension(0:2) :: oldtypes, blockcounts, offsets
+    integer                 :: extent_int2, extent_real
+
+    call getInput('particles', 'ppc0', multiplier)
+    multiplier = multiplier * 1000
+    ! FIX this might change over time (due to load balancing)
+    buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
+    buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
+    buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
+    buffsize_xy = this_meshblock%ptr%sz * multiplier
+    #ifdef threeD
+      buffsize_z = this_meshblock%ptr%sx * this_meshblock%ptr%sy * multiplier
+      buffsize_xz = this_meshblock%ptr%sz * multiplier
+      buffsize_yz = this_meshblock%ptr%sx * multiplier
+      buffsize_xyz = multiplier
+    #else
+      buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #endif
+
+    allocate(recv_enroute(buffsize))
+
+    do ind1 = -1, 1
+      do ind2 = -1, 1
+        do ind3 = -1, 1
+          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+          #ifndef threeD
+            if (ind3 .ne. 0) cycle
+          #endif
+          if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
+            buffsize = buffsize_x
+          else if ((ind1 .eq. 0) .and. (ind3 .eq. 0)) then
+            buffsize = buffsize_y
+          else if ((ind1 .eq. 0) .and. (ind2 .eq. 0)) then
+            buffsize = buffsize_z
+          else if (ind3 .eq. 0) then
+            buffsize = buffsize_xy
+          else if (ind2 .eq. 0) then
+            buffsize = buffsize_xz
+          else if (ind1 .eq. 0) then
+            buffsize = buffsize_yz
+          else
+            buffsize = buffsize_xyz
+          end if
+          allocate(enroute_bot%get(ind1, ind2, ind3)%send_enroute(buffsize))
+        end do
+      end do
+    end do
+
+    ! new type for myMPI_ENROUTE
+    !   BY DEFAULT:
+    !     # of blockcounts = 3:
+    !       3 x integer2  [xi, yi, zi]
+    !       6 x real      [dx, dy, dz, u, v, w]
+    !       2 x integer   [ind, proc]
+    call MPI_TYPE_EXTENT(MPI_INTEGER2, extent_int2, ierr)
+    call MPI_TYPE_EXTENT(MPI_REAL, extent_real, ierr)
+    blockcounts(0) = 3
+    oldtypes(0) = MPI_INTEGER2
+    blockcounts(1) = 6
+    oldtypes(1) = MPI_REAL
+    blockcounts(2) = 2
+    oldtypes(2) = MPI_INTEGER
+    offsets(0) = 0
+    offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
+    offsets(2) = blockcounts(1) * extent_real + offsets(1)
+  	call MPI_TYPE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
+  	call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
   end subroutine initializePrtlExchange
 
   subroutine initializeSimulation()
@@ -80,6 +149,7 @@ contains
       call getInput('particles', var_name, spp_(i)%ch_sp)
       call allocateParticles(sp_(i), spp_(i)%maxptl_sp)
       spp_(i)%npart_sp = 0
+      spp_(i)%cntr_sp = 0
     end do
   end subroutine initializeParticles
 
@@ -87,25 +157,29 @@ contains
     implicit none
     type(species), intent(inout)    :: prt
     integer, intent(in)             :: sz
-    if (allocated(prt%x)) deallocate(prt%x)
-    if (allocated(prt%y)) deallocate(prt%y)
-    if (allocated(prt%z)) deallocate(prt%z)
+    if (allocated(prt%xi)) deallocate(prt%xi)
+    if (allocated(prt%yi)) deallocate(prt%yi)
+    if (allocated(prt%zi)) deallocate(prt%zi)
+    if (allocated(prt%dx)) deallocate(prt%dx)
+    if (allocated(prt%dy)) deallocate(prt%dy)
+    if (allocated(prt%dz)) deallocate(prt%dz)
     if (allocated(prt%u)) deallocate(prt%u)
     if (allocated(prt%v)) deallocate(prt%v)
     if (allocated(prt%w)) deallocate(prt%w)
-    allocate(prt%x(sz)); allocate(prt%y(sz)); allocate(prt%z(sz))
+    allocate(prt%xi(sz)); allocate(prt%yi(sz)); allocate(prt%zi(sz))
+    allocate(prt%dx(sz)); allocate(prt%dy(sz)); allocate(prt%dz(sz))
     allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
     allocate(prt%ind(sz)); allocate(prt%proc(sz))
   end subroutine allocateParticles
 
   subroutine initializeCommunications()
     implicit none
-    integer ierr
+    integer :: ierr
     call MPI_Init(ierr)
     ! ADD if statement here
     mpi_initialized = .true.
-    call MPI_Comm_rank(MPI_Comm_world, mpi_rank, ierr)
-    call MPI_Comm_size(MPI_Comm_world, mpi_size, ierr)
+    call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
     mpi_statsize = MPI_STATUS_SIZE
     if (mpi_size .ne. sizex * sizey * sizez) then
       call throwError('ERROR: # of processors is not equal to the number of processors from input')
@@ -143,12 +217,11 @@ contains
   subroutine distributeMeshblocks()
     implicit none
     integer, dimension(3) :: ind, m
-    integer               :: rnk, rnk2
+    integer               :: rnk, ind1, ind2, ind3
     m(1) = global_mesh%sx / sizex
     m(2) = global_mesh%sy / sizey
     m(3) = global_mesh%sz / sizez
     allocate(meshblocks(mpi_size))
-    this_meshblock%ptr => meshblocks(mpi_rank + 1)
     do rnk = 0, mpi_size - 1
       ind = rnkToInd(rnk)
       meshblocks(rnk + 1)%rnk = rnk
@@ -161,34 +234,15 @@ contains
       meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
 
       ! assign neighbors
-      call assignNeighbor(rnk, (/ 0, 0, 0/))
-      call assignNeighbor(rnk, (/ 0, 0,-1/))
-      call assignNeighbor(rnk, (/ 0,-1, 0/))
-      call assignNeighbor(rnk, (/-1, 0, 0/))
-      call assignNeighbor(rnk, (/ 0, 0,+1/))
-      call assignNeighbor(rnk, (/ 0,+1, 0/))
-      call assignNeighbor(rnk, (/+1, 0, 0/))
-      call assignNeighbor(rnk, (/ 0,-1,-1/))
-      call assignNeighbor(rnk, (/ 0,-1,+1/))
-      call assignNeighbor(rnk, (/ 0,+1,-1/))
-      call assignNeighbor(rnk, (/ 0,+1,+1/))
-      call assignNeighbor(rnk, (/-1, 0,-1/))
-      call assignNeighbor(rnk, (/-1, 0,+1/))
-      call assignNeighbor(rnk, (/+1, 0,-1/))
-      call assignNeighbor(rnk, (/+1, 0,+1/))
-      call assignNeighbor(rnk, (/-1,-1, 0/))
-      call assignNeighbor(rnk, (/-1,+1, 0/))
-      call assignNeighbor(rnk, (/+1,-1, 0/))
-      call assignNeighbor(rnk, (/+1,+1, 0/))
-      call assignNeighbor(rnk, (/-1,-1,-1/))
-      call assignNeighbor(rnk, (/-1,-1,+1/))
-      call assignNeighbor(rnk, (/-1,+1,-1/))
-      call assignNeighbor(rnk, (/-1,+1,+1/))
-      call assignNeighbor(rnk, (/+1,-1,-1/))
-      call assignNeighbor(rnk, (/+1,-1,+1/))
-      call assignNeighbor(rnk, (/+1,+1,-1/))
-      call assignNeighbor(rnk, (/+1,+1,+1/))
+      do ind1 = -1, 1
+        do ind2 = -1, 1
+          do ind3 = -1, 1
+            call assignNeighbor(rnk, (/ ind1, ind2, ind3/))
+          end do
+        end do
+      end do
     end do
+    this_meshblock%ptr => meshblocks(mpi_rank + 1)
   end subroutine distributeMeshblocks
 
   subroutine assignNeighbor(rnk, inds1)
@@ -237,7 +291,7 @@ contains
   subroutine firstRankInitialize()
     ! create output/restart directories
     !   if does not already exist
-    call system('mkdir -p '//trim(output_dir_name))
-    call system('mkdir -p '//trim(restart_dir_name))
+    call system('mkdir -p ' // trim(output_dir_name))
+    call system('mkdir -p ' // trim(restart_dir_name))
   end subroutine firstRankInitialize
 end module m_initialize

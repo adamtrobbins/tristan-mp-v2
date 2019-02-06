@@ -96,8 +96,8 @@ contains
   subroutine getInt4Input(blockname, varname, val, def_val)
     implicit none
     character(len=*), intent(in)  :: blockname, varname
-    integer*4, optional           :: def_val
-    integer*4, intent(out)        :: val
+    integer(kind=4), optional     :: def_val
+    integer(kind=4), intent(out)  :: val
     character(len=STR_MAX)        :: val_str
     logical                       :: found
     integer                       :: iostatus
@@ -129,9 +129,9 @@ contains
   subroutine strToInt4(val_str, val, stat)
     implicit none
     character(len=*), intent(in) :: val_str
-    integer*4, intent(out)       :: val
+    integer(kind=4), intent(out) :: val
     integer, intent(out)         :: stat
-    real*8                       :: val_
+    real(kind=8)                 :: val_
     call strToReal8(val_str, val_, stat)
     val = INT(val_)
   end subroutine strToInt4
@@ -139,8 +139,8 @@ contains
   subroutine getInt8Input(blockname, varname, val, def_val)
     implicit none
     character(len=*), intent(in)  :: blockname, varname
-    integer*8, optional           :: def_val
-    integer*8, intent(out)        :: val
+    integer(kind=8), optional     :: def_val
+    integer(kind=8), intent(out)  :: val
     character(len=STR_MAX)        :: val_str
     logical                       :: found
     integer                       :: iostatus
@@ -172,18 +172,18 @@ contains
   subroutine strToInt8(val_str, val, stat)
     implicit none
     character(len=*), intent(in) :: val_str
-    integer*8, intent(out)       :: val
+    integer(kind=8), intent(out) :: val
     integer, intent(out)         :: stat
-    real*8                       :: val_
+    real(kind=8)                 :: val_
     call strToReal8(val_str, val_, stat)
-    val = DBLE(val_)
+    val = INT(val_, KIND(8))
   end subroutine strToInt8
 
   subroutine getReal4Input(blockname, varname, val, def_val)
     implicit none
     character(len=*), intent(in)  :: blockname, varname
-    real*4, optional              :: def_val
-    real*4, intent(out)           :: val
+    real(kind=4), optional        :: def_val
+    real(kind=4), intent(out)     :: val
     character(len=STR_MAX)        :: val_str
     logical                       :: found
     integer                       :: iostatus
@@ -215,9 +215,9 @@ contains
   subroutine strToReal4(val_str, val, stat)
     implicit none
     character(len=*), intent(in) :: val_str
-    real*4, intent(out)          :: val
+    real(kind=4), intent(out)    :: val
     integer, intent(out)         :: stat
-    real*8                       :: val_
+    real(kind=8)                 :: val_
     call strToReal8(val_str, val_, stat)
     val = REAL(val_)
   end subroutine strToReal4
@@ -225,8 +225,8 @@ contains
   subroutine getReal8Input(blockname, varname, val, def_val)
     implicit none
     character(len=*), intent(in)  :: blockname, varname
-    real*8, optional              :: def_val
-    real*8, intent(out)           :: val
+    real(kind=8), optional        :: def_val
+    real(kind=8), intent(out)     :: val
     character(len=STR_MAX)        :: val_str
     logical                       :: found
     integer                       :: iostatus
@@ -258,7 +258,7 @@ contains
   subroutine strToReal8(val_str, val, stat)
     implicit none
     character(len=*), intent(in) :: val_str
-    real*8, intent(out)          :: val
+    real(kind=8), intent(out)    :: val
     integer, intent(out)         :: stat
     read(val_str, *, iostat = stat) val
   end subroutine strToReal8

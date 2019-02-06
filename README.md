@@ -10,7 +10,6 @@ Supported `[-FLAGS]` will be constantly updated. List of flags available now:
 - `-3d`: enable 3D
 - `-intel`: compile with intel compatibility
 - `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag and `qopt` reports for intel compiler)
-- `-dprec`: use double precision (i.e., `real*8`)
 - `-hdf5`: enable `hdf5` and compile with `h5fpc` (otherwise compiles with `gfortran`)
 - `--user=[USER_FILE]`: name of the user file from `user/` directory (without the extension)
 - _... more to come_

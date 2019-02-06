@@ -10,7 +10,7 @@ program tristan
   use m_mainloop
   implicit none
   !----- main code --------------------------
-  integer :: i
+  integer :: ierr
 
   call initializeAll()
   call mainloop()

@@ -8,6 +8,20 @@ module m_aux
   integer                         :: rand_ind
 
 contains
+  subroutine print_diag(bool, msg)
+    character(len=*), intent(in)  :: msg
+    logical, intent(in)           :: bool
+    if (bool) print *, msg
+  end subroutine print_diag
+
+  function STR(my_int) result(string)
+    integer, intent(in)       :: my_int
+    character(:), allocatable :: string
+    character(len=STR_MAX)    :: temp
+    write(temp, '(i0)') my_int
+    string = trim(temp)
+  end function STR
+
   real function random(dseed)
     ! FIX look at precision here
   	implicit none

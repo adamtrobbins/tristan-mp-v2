@@ -2,6 +2,7 @@
 
 module m_writeoutput
   use m_globalnamespace
+  use m_aux
   use m_errors
   use m_communications
   use m_domain
@@ -20,6 +21,7 @@ contains
   subroutine writeOutput(step)
     implicit none
     integer, intent(in)        :: step
+    integer                    :: ierr
     call writeParticles(step)
   end subroutine writeOutput
 
@@ -55,7 +57,7 @@ contains
     implicit none
     integer, intent(in)                 :: step
     character(len=STR_MAX)              :: stepchar, filename
-    integer                             :: prtl_out_file, ierr, i, p, s, rnk, nvars, j
+    integer                             :: prtl_out_file, ierr, i, p, s, rnk, nvars, j, temp
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_header
     character(len=STR_MAX)              :: vars(100), var_types(100)
     integer                             :: npart_stride(nspec), npart_stride_global(nspec, mpi_size)
@@ -114,7 +116,7 @@ contains
 
     ! create/open file
     write(stepchar, "(i5.5)") step
-    filename = 'prtl.tot.' // trim(stepchar)
+    filename = trim(output_dir_name) // '/prtl.tot.' // trim(stepchar)
 
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename,&
                     & MPI_MODE_WRONLY + MPI_MODE_CREATE,&
@@ -197,15 +199,18 @@ contains
           select case (trim(vars(i))) ! select integer variable
             case('x')
               do j = 1, npart_stride(s)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%x0 - 1 + sp_(s)%x(stride_indices_arr(j)), 4)
+                temp = stride_indices_arr(j)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%x0 - 1 + sp_(s)%xi(temp)) + sp_(s)%dx(temp)
               end do
             case('y')
               do j = 1, npart_stride(s)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%y0 - 1 + sp_(s)%y(stride_indices_arr(j)), 4)
+                temp = stride_indices_arr(j)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%y0 - 1 + sp_(s)%yi(temp)) + sp_(s)%dy(temp)
               end do
             case('z')
               do j = 1, npart_stride(s)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%z0 - 1 + sp_(s)%z(stride_indices_arr(j)), 4)
+                temp = stride_indices_arr(j)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%z0 - 1 + sp_(s)%zi(temp)) + sp_(s)%dz(temp)
               end do
             case('u')
               do j = 1, npart_stride(s)
