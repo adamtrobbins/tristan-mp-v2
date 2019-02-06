@@ -5,7 +5,8 @@
 <node_configuration>
 
 sizex	       = 2               # number of cpus in x direction
-sizey 	     = 2			         # number of cpus in the y direction
+sizey 	     = 2			         # number of cpus in y direction
+sizez        = 1               # number of cpus in z direction
 
 <time>
 
@@ -13,9 +14,9 @@ last 	       = 200		         # last timestep
 
 <grid>
 
-mx0 	       = 128 		         # number of actual grid points in the x direction
-my0 	       = 128		         # number of actual grid points in the y direction
-mz0 	       = 1 		           # ... (ignored for 2D simulations)
+mx0 	       = 32 		         # number of actual grid points in the x direction
+my0 	       = 32		           # number of actual grid points in the y direction
+mz0 	       = 32 	           # ... (ignored for 2D simulations)
 
 boundary_x   = 1
 boundary_y   = 1

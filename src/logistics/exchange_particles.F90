@@ -66,7 +66,6 @@ contains
             enroute_bot%get(send_x, send_y, send_z)%send_enroute(temp_cntr)%zi = new_xyz
           #endif
           ! make ghost particle
-          ! FIX1 check that the index in enroute is not changed
           pt_proc(p) = -pt_proc(p) - 1
         end if
       end do

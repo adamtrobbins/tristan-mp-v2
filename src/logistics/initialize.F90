@@ -191,7 +191,7 @@ contains
     call getInput('node_configuration', 'sizex', sizex, 1)
     call getInput('node_configuration', 'sizey', sizey, 1)
     #ifdef threeD
-      sizez = getInput('node_configuration', 'sizez', sizez, 1)
+      call getInput('node_configuration', 'sizez', sizez, 1)
     #else
       sizez = 1
     #endif
