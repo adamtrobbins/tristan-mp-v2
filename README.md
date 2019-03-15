@@ -9,7 +9,7 @@ Supported `[-FLAGS]` will be constantly updated. List of flags available now:
 
 - `-3d`: enable 3D
 - `-intel`: compile with intel compatibility
-- `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag and `qopt` reports for intel compiler)
+- `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag, `traceback`, `qopt` reports for intel compilers etc)
 - `-hdf5`: enable `hdf5` and compile with `h5fpc` (otherwise compiles with `gfortran`)
 - `--user=[USER_FILE]`: name of the user file from `user/` directory (without the extension)
 - _... more to come_
@@ -21,10 +21,30 @@ Executable is generated in `exec` directory named either `tristan-mp2d` or `tris
 ```bash
 $ exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
 ```
-or if compiled with `h5pfc` one can run in MPI
+or if compiled with `h5pfc` or `mpi` one can run in MPI
 ```bash
-$ mpiexec -n [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
+$ mpiexec -np [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
 ```
+
+#### Done so far
+- Logistics: `configure.py`, read input, initialize everything, etc;
+- CPU & "meshblocks" handling;
+- species + particles: array of structures (species) of arrays (`x`, `y`, `z`, etc);
+- mover(s) (vectorized & aligned) & particle exchange;
+- fields & field exchange (ghost zones);
+- MPI-IO output of particles & fields + `python` library to read and create a readable dictionary (and convert to `hdf5` if necessary).
+
+#### ToDo
+- Implement real meshblocks;
+- tree-based meshblock distribution (space filling curve);
+- restart files;
+- Maxwell's equations;
+- absorbing (radiation) boundaries;
+- filtering;
+- expanding boundaries;
+- dynamic load balancing;
+- pair-production/annihilation/IC routine;
+- _tasklist_.
 
 #### Code structure
 _TO BE ADDED_
