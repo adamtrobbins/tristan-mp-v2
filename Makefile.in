@@ -20,15 +20,18 @@ EXE_FILE := @EXE_NAME@
 EXECUTABLE := $(EXE_DIR)$(EXE_FILE)
 
 SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
-						 $(SRC_DIR)logistics/auxiliary.F90 \
+						 $(SRC_DIR)tools/auxiliary.F90 \
 						 $(SRC_DIR)objects/domain.F90 \
 						 $(SRC_DIR)objects/particles.F90 \
+						 $(SRC_DIR)objects/fields.F90 \
 						 $(SRC_DIR)logistics/communications.F90 \
+						 $(SRC_DIR)tools/helpers.F90 \
 						 $(SRC_DIR)logistics/finalize.F90 \
-						 $(SRC_DIR)logistics/error_handling.F90 \
+						 $(SRC_DIR)tools/error_handling.F90 \
 						 $(SRC_DIR)logistics/write_output.F90 \
 						 $(SRC_DIR)logistics/read_input.F90 \
 						 $(SRC_DIR)algorithms/particle_mover.F90 \
+						 $(SRC_DIR)algorithms/field_solver.F90 \
 						 $(SRC_DIR)logistics/exchange_particles.F90 \
 						 $(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						 $(SRC_DIR)logistics/initialize.F90 \

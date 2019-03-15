@@ -85,6 +85,6 @@ contains
       pt_dx => null(); pt_dy => null(); pt_dz => null()
       pt_u => null(); pt_v => null(); pt_w => null()
     end do
-    call print_diag((mpi_rank .eq. 0), TAB // "moveParticles()" // TAB // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), TAB // "moveParticles()" // TAB // TAB // TAB // "[OK]")
   end subroutine moveParticles
 end module m_mover

@@ -15,10 +15,10 @@ last 	       = 200		         # last timestep
 <grid>
 
 mx0 	       = 32 		         # number of actual grid points in the x direction
-my0 	       = 32		           # number of actual grid points in the y direction
-mz0 	       = 32 	           # ... (ignored for 2D simulations)
+my0 	       = 32 	           # number of actual grid points in the y direction
+mz0 	       = 1  	           # ... (ignored for 2D simulations)
 
-boundary_x   = 1
+boundary_x   = 2
 boundary_y   = 1
 boundary_z   = 1
 
@@ -28,8 +28,9 @@ boundary_z   = 1
 <restart>
 
 <output>
-stride       = 100
+stride       = 1
 interval     = 10
+istep        = 4
 
 <boundaries>
 

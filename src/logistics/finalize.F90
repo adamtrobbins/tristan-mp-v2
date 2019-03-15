@@ -6,19 +6,19 @@ module m_finalize
   use m_communications
   use m_domain
   use m_particles
+  use m_fields
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
   private :: finalizeCommunications, deallocateArrays
   !...............................................................!
 contains
-  ! initialize all the necessary functions
   subroutine finalizeAll()
     implicit none
     integer :: ierr
     call deallocateArrays()
     call finalizeCommunications()
-    call print_diag((mpi_rank .eq. 0), "finalizeAll()" // TAB // TAB // TAB // TAB // "[OK]")
+    call printReport((mpi_rank .eq. 0), "finalizeAll()" // TAB // TAB // TAB // TAB // "[OK]")
   end subroutine finalizeAll
 
   subroutine deallocateArrays()
@@ -31,7 +31,6 @@ contains
 
     ! dealloc particle arrays
     if (allocated(sp_)) deallocate(sp_)
-    ! FIX should I dealloc each array?
     if (allocated(spp_)) deallocate(spp_)
 
     ! dealloc exchange arrays
@@ -44,6 +43,14 @@ contains
     end do
     if (allocated(recv_enroute)) deallocate(recv_enroute)
     call MPI_TYPE_FREE(myMPI_ENROUTE, ierr)
+
+    ! dealloc field arrays
+    if (allocated(ex)) deallocate(ex)
+    if (allocated(ey)) deallocate(ey)
+    if (allocated(ez)) deallocate(ez)
+    if (allocated(bx)) deallocate(bx)
+    if (allocated(by)) deallocate(by)
+    if (allocated(bz)) deallocate(bz)
   end subroutine deallocateArrays
 
   subroutine finalizeCommunications()

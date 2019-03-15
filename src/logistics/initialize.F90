@@ -1,5 +1,11 @@
 #include "../defs.F90"
 
+#ifdef threeD
+#define fldBoundZ (-NGHOST) : ((this_meshblock%ptr%sz) - 1 + (NGHOST))
+#else
+#define fldBoundZ (0) : (0)
+#endif
+
 module m_initialize
   use m_globalnamespace
   use m_aux
@@ -7,19 +13,21 @@ module m_initialize
   use m_communications
   use m_domain
   use m_particles
+  use m_fields
   use m_userfile
+  use m_helpers
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput, &
            & firstRankInitialize, initializeParticles,&
            & distributeMeshblocks, initializeDomain,&
-           & rnkToInd, indToRnk, assignNeighbor,&
-           & allocateParticles, initializeSimulation,&
-           & initializePrtlExchange
+           & initializePrtlExchange, initializeFields,&
+           & assignNeighbor, allocateParticles,&
+           & initializeSimulation
   !...............................................................!
 contains
-  ! initialize all the necessary functions
+  ! initialize all the necessary arrays and variables
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
@@ -30,6 +38,8 @@ contains
     call initializeCommunications()
     ! ADD possibility to define meshblock distribution in userfile
     call distributeMeshblocks()
+
+    call initializeFields()
     call initializeParticles()
     call initializeSimulation()
     call initializePrtlExchange()
@@ -39,14 +49,62 @@ contains
     if (mpi_rank .eq. 0) call firstRankInitialize()
     call userInitialize()
 
-    call print_diag((mpi_rank .eq. 0), "initializeAll()" // TAB // TAB // TAB // "[OK]")
+    call printReport((mpi_rank .eq. 0), "initializeAll()" // TAB // TAB // TAB // "[OK]")
   end subroutine initializeAll
 
   subroutine initializeOutput()
     implicit none
     call getInput('output', 'stride', output_stride, 10)
     call getInput('output', 'interval', output_interval, 10)
+    call getInput('output', 'istep', output_istep, 4)
   end subroutine initializeOutput
+
+  subroutine initializeSimulation()
+    implicit none
+    call getInput('time', 'last', final_timestep, 1000)
+  end subroutine initializeSimulation
+
+  subroutine initializeParticles()
+    implicit none
+    integer                 :: i
+    character(len=STR_MAX)  :: var_name
+
+    call getInput('particles', 'nspec', nspec, 2)
+
+    allocate(spp_(nspec))
+    allocate(sp_(nspec))
+
+    do i = 1, nspec
+      write (var_name, "(A6,I1)") "maxptl", i
+      call getInput('particles', var_name, spp_(i)%maxptl_sp)
+      write (var_name, "(A1,I1)") "m", i
+      call getInput('particles', var_name, spp_(i)%m_sp)
+      write (var_name, "(A2,I1)") "ch", i
+      call getInput('particles', var_name, spp_(i)%ch_sp)
+      call allocateParticles(sp_(i), spp_(i)%maxptl_sp)
+      spp_(i)%npart_sp = 0
+      spp_(i)%cntr_sp = 0
+    end do
+  end subroutine initializeParticles
+
+  subroutine allocateParticles(prt, sz)
+    implicit none
+    type(species), intent(inout)    :: prt
+    integer, intent(in)             :: sz
+    if (allocated(prt%xi)) deallocate(prt%xi)
+    if (allocated(prt%yi)) deallocate(prt%yi)
+    if (allocated(prt%zi)) deallocate(prt%zi)
+    if (allocated(prt%dx)) deallocate(prt%dx)
+    if (allocated(prt%dy)) deallocate(prt%dy)
+    if (allocated(prt%dz)) deallocate(prt%dz)
+    if (allocated(prt%u)) deallocate(prt%u)
+    if (allocated(prt%v)) deallocate(prt%v)
+    if (allocated(prt%w)) deallocate(prt%w)
+    allocate(prt%xi(sz)); allocate(prt%yi(sz)); allocate(prt%zi(sz))
+    allocate(prt%dx(sz)); allocate(prt%dy(sz)); allocate(prt%dz(sz))
+    allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
+    allocate(prt%ind(sz)); allocate(prt%proc(sz))
+  end subroutine allocateParticles
 
   subroutine initializePrtlExchange()
     implicit none
@@ -125,52 +183,41 @@ contains
   	call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
   end subroutine initializePrtlExchange
 
-  subroutine initializeSimulation()
+  subroutine initializeFields()
     implicit none
-    call getInput('time', 'last', final_timestep, 1000)
-  end subroutine initializeSimulation
+    integer :: buffsize
+    if (allocated(ex)) deallocate(ex)
+    if (allocated(ey)) deallocate(ey)
+    if (allocated(ez)) deallocate(ez)
+    if (allocated(bx)) deallocate(bx)
+    if (allocated(by)) deallocate(by)
+    if (allocated(bz)) deallocate(bz)
+    allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
 
-  subroutine initializeParticles()
-    implicit none
-    integer                 :: i
-    character(len=STR_MAX)  :: var_name
-
-    call getInput('particles', 'nspec', nspec, 2)
-
-    allocate(spp_(nspec))
-    allocate(sp_(nspec))
-
-    do i = 1, nspec
-      write (var_name, "(A6,I1)") "maxptl", i
-      call getInput('particles', var_name, spp_(i)%maxptl_sp)
-      write (var_name, "(A1,I1)") "m", i
-      call getInput('particles', var_name, spp_(i)%m_sp)
-      write (var_name, "(A2,I1)") "ch", i
-      call getInput('particles', var_name, spp_(i)%ch_sp)
-      call allocateParticles(sp_(i), spp_(i)%maxptl_sp)
-      spp_(i)%npart_sp = 0
-      spp_(i)%cntr_sp = 0
-    end do
-  end subroutine initializeParticles
-
-  subroutine allocateParticles(prt, sz)
-    implicit none
-    type(species), intent(inout)    :: prt
-    integer, intent(in)             :: sz
-    if (allocated(prt%xi)) deallocate(prt%xi)
-    if (allocated(prt%yi)) deallocate(prt%yi)
-    if (allocated(prt%zi)) deallocate(prt%zi)
-    if (allocated(prt%dx)) deallocate(prt%dx)
-    if (allocated(prt%dy)) deallocate(prt%dy)
-    if (allocated(prt%dz)) deallocate(prt%dz)
-    if (allocated(prt%u)) deallocate(prt%u)
-    if (allocated(prt%v)) deallocate(prt%v)
-    if (allocated(prt%w)) deallocate(prt%w)
-    allocate(prt%xi(sz)); allocate(prt%yi(sz)); allocate(prt%zi(sz))
-    allocate(prt%dx(sz)); allocate(prt%dy(sz)); allocate(prt%dz(sz))
-    allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
-    allocate(prt%ind(sz)); allocate(prt%proc(sz))
-  end subroutine allocateParticles
+    ! exchange fields
+    buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 10
+    if (allocated(send_fld)) deallocate(send_fld)
+    allocate(send_fld(buffsize))
+    if (allocated(recv_fld)) deallocate(recv_fld)
+    allocate(recv_fld(buffsize))
+  end subroutine initializeFields
 
   subroutine initializeCommunications()
     implicit none
@@ -195,9 +242,9 @@ contains
     #else
       sizez = 1
     #endif
-    global_mesh%x0 = 1
-    global_mesh%y0 = 1
-    global_mesh%z0 = 1
+    global_mesh%x0 = 0
+    global_mesh%y0 = 0
+    global_mesh%z0 = 0
     call getInput('grid', 'mx0', global_mesh%sx, 1)
     call getInput('grid', 'my0', global_mesh%sy, 1)
     #ifdef threeD
@@ -257,36 +304,6 @@ contains
       meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
     end if
   end subroutine
-
-  function rnkToInd(rnk)
-    implicit none
-    integer, intent(in)   :: rnk
-    integer, dimension(3) :: rnkToInd
-    if ((rnk .lt. 0) .or. (rnk .ge. mpi_size)) then
-      rnkToInd = (/-1, -1, -1/)
-    else
-      rnkToInd(3) = rnk / (sizex * sizey)
-      rnkToInd(2) = (rnk - sizex * sizey * rnkToInd(3)) / sizex
-      rnkToInd(1) = rnk - sizex * sizey * rnkToInd(3) - sizex * rnkToInd(2)
-    end if
-  end function rnkToInd
-
-  function indToRnk(ind)
-    implicit none
-    integer, intent(in)                 :: ind(3)
-    integer                             :: ind_(3), indToRnk
-    ind_ = ind
-    if (boundary_x .eq. 1) ind_(1) = modulo(ind_(1), sizex)
-    if (boundary_y .eq. 1) ind_(2) = modulo(ind_(2), sizey)
-    if (boundary_z .eq. 1) ind_(3) = modulo(ind_(3), sizez)
-    if ((ind_(1) .lt. 0) .or. (ind_(1) .ge. sizex) .or.&
-      & (ind_(2) .lt. 0) .or. (ind_(2) .ge. sizey) .or.&
-      & (ind_(3) .lt. 0) .or. (ind_(3) .ge. sizez)) then
-      indToRnk = -1
-    else
-      indToRnk = ind_(3) * sizex * sizey + ind_(2) * sizex + ind_(1)
-    end if
-  end function indToRnk
 
   subroutine firstRankInitialize()
     ! create output/restart directories

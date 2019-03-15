@@ -44,9 +44,16 @@ contains
         #endif
         ! FIX1 check for null() boundaries
         if ((send_x .ne. 0) .or. (send_y .ne. 0) .or. (send_z .ne. 0)) then
+          if (.not. associated(this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr)) then
+            ! make ghost particle
+            pt_proc(p) = -pt_proc(p) - 1
+            cycle
+          end if
           enroute_bot%get(send_x, send_y, send_z)%cnt_send = enroute_bot%get(send_x, send_y, send_z)%cnt_send + 1
           temp_cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
           call copyToEnroute(s, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(temp_cntr))
+          ! make ghost particle
+          pt_proc(p) = -pt_proc(p) - 1
 
           ! change coordinates
           new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(temp_cntr)%xi
@@ -65,15 +72,12 @@ contains
             new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
             enroute_bot%get(send_x, send_y, send_z)%send_enroute(temp_cntr)%zi = new_xyz
           #endif
-          ! make ghost particle
-          pt_proc(p) = -pt_proc(p) - 1
         end if
       end do
       pt_xi => null(); pt_yi => null(); pt_zi => null()
       pt_dx => null(); pt_dy => null(); pt_dz => null()
       pt_proc => null()
 
-      ! FIX1 check for null() boundaries
       do ind1 = -1, 1
         do ind2 = -1, 1
           do ind3 = -1, 1
@@ -81,24 +85,25 @@ contains
             #ifndef threeD
               if (ind3 .ne. 0) cycle
             #endif
-            ! send the # of particles going to one direction & get # incoming from opposite direction
+            if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+            ! send the # of particles going to one direction & get # incoming
             call MPI_SENDRECV(enroute_bot%get(ind1,ind2,ind3)%cnt_send, 1, MPI_INTEGER,&
                             & this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk, 100,&
                             & cnt_recv_enroute, 1, MPI_INTEGER,&
-                            & this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk, 100,&
+                            & this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk, 100,&
                             & MPI_COMM_WORLD, status, ierr)
-            ! send the particles going to one direction & get those incoming from the opposite direction
+            ! send the particles going to one direction & get those incoming
             call MPI_SENDRECV(enroute_bot%get(ind1,ind2,ind3)%send_enroute, enroute_bot%get(ind1,ind2,ind3)%cnt_send,&
-                            & myMPI_ENROUTE, this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk, 100,&
+                            & myMPI_ENROUTE, this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk, 200,&
                             & recv_enroute, cnt_recv_enroute,&
-                            & myMPI_ENROUTE, this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk, 100,&
+                            & myMPI_ENROUTE, this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk, 200,&
                             & MPI_COMM_WORLD, status, ierr)
             call extractParticlesFromEnroute(cnt_recv_enroute, s)
           end do
         end do
       end do
     end do
-    call print_diag((mpi_rank .eq. 0), TAB // "exchangeParticles()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), TAB // "exchangeParticles()" // TAB // TAB // "[OK]")
   end subroutine exchangeParticles
 
   subroutine clearGhostParticles()
@@ -115,7 +120,7 @@ contains
       end do
       pt_proc => null()
     end do
-    call print_diag((mpi_rank .eq. 0), TAB // "clearGhostParticles()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), TAB // "clearGhostParticles()" // TAB // TAB // "[OK]")
   end subroutine clearGhostParticles
 
 end module m_exchangeparts

@@ -7,20 +7,48 @@ module m_aux
   integer, dimension(0:15)        :: state
   integer                         :: rand_ind
 
+  interface STR
+    module procedure intToStr
+    module procedure realToStr
+  end interface STR
+
+  !--- PRIVATE functions -----------------------------------------!
+  private :: intToStr, realToStr
+  !...............................................................!
 contains
-  subroutine print_diag(bool, msg)
+  subroutine printDiag(bool, msg)
+    implicit none
+    character(len=*), intent(in)  :: msg
+    logical, intent(in)           :: bool
+    #ifdef DEBUG
+      if (bool) print *, msg
+    #endif
+  end subroutine printDiag
+
+  subroutine printReport(bool, msg)
+    implicit none
     character(len=*), intent(in)  :: msg
     logical, intent(in)           :: bool
     if (bool) print *, msg
-  end subroutine print_diag
+  end subroutine printReport
 
-  function STR(my_int) result(string)
+  function intToStr(my_int) result(string)
+    implicit none
     integer, intent(in)       :: my_int
     character(:), allocatable :: string
     character(len=STR_MAX)    :: temp
     write(temp, '(i0)') my_int
     string = trim(temp)
-  end function STR
+  end function intToStr
+
+  function realToStr(my_real) result(string)
+    implicit none
+    real, intent(in)          :: my_real
+    character(:), allocatable :: string
+    character(len=STR_MAX)    :: temp
+    write(temp, '(G0.2)') my_real
+    string = trim(temp)
+  end function realToStr
 
   real function random(dseed)
     ! FIX look at precision here

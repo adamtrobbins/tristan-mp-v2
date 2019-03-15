@@ -7,30 +7,35 @@ module m_writeoutput
   use m_communications
   use m_domain
   use m_particles
+  use m_fields
+  use m_helpers
   #ifdef HDF5
     use HDF5
   #endif
   implicit none
 
-  integer :: output_stride, output_interval
+  integer :: output_stride, output_interval, output_istep
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: writeParticles
+  private :: writeParticles, writeFields
   !...............................................................!
 contains
-  subroutine writeOutput(step)
+  subroutine writeOutput(step, time)
     implicit none
-    integer, intent(in)        :: step
+    integer, intent(in)        :: step, time
     integer                    :: ierr
-    call writeParticles(step)
+    call writeParticles(step, time)
+    call writeFields(step, time)
+    call printDiag((mpi_rank .eq. 0), TAB // "output()" // TAB // TAB // TAB // "[OK]")
   end subroutine writeOutput
 
   !--- PRTL.TOT.***** structure ----------------------------------!
   ! HEADER:                                                      _
+  !   timestep......................[4 bytes]                     |
   !   # of cpus.....................[4 bytes]                     |
   !   # of species..................[4 bytes]                     |
-  !   # of variables................[4 bytes]                     |
-  !   variable names................[#var * 5 bytes]              |- disp_header
+  !   # of variables................[4 bytes]                     |- disp_header
+  !   variable names................[#var * 5 bytes]              |
   !   variable types................[#var * 5 bytes]              |
   !   # of particles per species....                              |
   !   ....summed over all ranks.....[#spec * 4 bytes]            _|
@@ -53,9 +58,9 @@ contains
   !   species = S...............[#of parts of species=S * # of variables * 4 bytes]
   !   ..........................
   !...............................................................!
-  subroutine writeParticles(step)
+  subroutine writeParticles(step, time)
     implicit none
-    integer, intent(in)                 :: step
+    integer, intent(in)                 :: step, time
     character(len=STR_MAX)              :: stepchar, filename
     integer                             :: prtl_out_file, ierr, i, p, s, rnk, nvars, j, temp
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_header
@@ -75,7 +80,7 @@ contains
                          & 'real ', 'real ', 'real ', &
                          & 'int  ', 'int  '/)
 
-    disp_header = 4 * 3 + 5 * nvars + 5 * nvars + 4 * nspec
+    disp_header = 4 * 4 + 5 * nvars + 5 * nvars + 4 * nspec
 
     ! preparation
     ! number of strided particles per each species
@@ -129,6 +134,8 @@ contains
 
     ! create header
     if (mpi_rank .eq. 0) then
+      call MPI_FILE_WRITE(prtl_out_file, time, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
       call MPI_FILE_WRITE(prtl_out_file, mpi_size, 1, MPI_INTEGER,&
                     & MPI_STATUS_IGNORE, ierr)
       call MPI_FILE_WRITE(prtl_out_file, nspec, 1, MPI_INTEGER,&
@@ -200,17 +207,17 @@ contains
             case('x')
               do j = 1, npart_stride(s)
                 temp = stride_indices_arr(j)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%x0 - 1 + sp_(s)%xi(temp)) + sp_(s)%dx(temp)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%x0 + sp_(s)%xi(temp)) + sp_(s)%dx(temp)
               end do
             case('y')
               do j = 1, npart_stride(s)
                 temp = stride_indices_arr(j)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%y0 - 1 + sp_(s)%yi(temp)) + sp_(s)%dy(temp)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%y0 + sp_(s)%yi(temp)) + sp_(s)%dy(temp)
               end do
             case('z')
               do j = 1, npart_stride(s)
                 temp = stride_indices_arr(j)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%z0 - 1 + sp_(s)%zi(temp)) + sp_(s)%dz(temp)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%z0 + sp_(s)%zi(temp)) + sp_(s)%dz(temp)
               end do
             case('u')
               do j = 1, npart_stride(s)
@@ -240,5 +247,201 @@ contains
 
     call MPI_FILE_CLOSE(prtl_out_file, ierr)
   end subroutine writeParticles
+
+  !--- FLDS.TOT.***** structure ----------------------------------!
+  ! HEADER:                                                      _
+  !   timestep......................[4 bytes]                     |
+  !   # of cpus.....................[4 bytes]                     |
+  !   # of fields...................[4 bytes]                     |
+  !   dimensions..[fx,fy,fz]........[3 * 4 bytes]                 |- disp_header
+  !   field names...................[#flds * 5 bytes]             |
+  !   meshblock dimensions..........[# of cpus * 6 * 4 bytes]    _|
+  ! BODY:
+  !   field = 1.................[fx * fy * fz * 4 bytes]
+  !     rank = 1................[fx * fy * fz (for rank = 1) * 4 bytes]
+  !       XXX...................[4 bytes]
+  !       XXX...................[4 bytes]
+  !       ......................
+  !       XXX...................[4 bytes]
+  !     rank = 2................[fx * fy * fz (for rank = 2) * 4 bytes]
+  !     ........................
+  !     rank = N................[fx * fy * fz (for rank = N) * 4 bytes]
+  !   field = 1.................[fx * fy * fz * 4 bytes]
+  !   ..........................
+  !   field = F.................[fx * fy * fz * 4 bytes]
+  !   ..........................
+  !...............................................................!
+  subroutine writeFields(step, time)
+    implicit none
+    integer, intent(in)                 :: step, time
+    character(len=STR_MAX)              :: stepchar, filename
+    integer                             :: flds_out_file, ierr, f_xyz, f, i, j, k, rnk, nflds, temp
+    integer(kind=MPI_OFFSET_KIND)       :: disp, disp_grid, disp_header
+    character(len=STR_MAX)              :: flds(100)
+    integer                             :: nfld_cum, nfld_all
+    real, allocatable, dimension(:)     :: temp_real_arr
+
+    ! FIX implement `output_istep` downsampling
+
+    ! body
+    nflds = 7
+    flds(1:nflds) = (/'dens ',&
+                    & 'ex   ', 'ey   ', 'ez   ', &
+                    & 'bx   ', 'by   ', 'bz   '/)
+
+    ! create/open file
+    write(stepchar, "(i5.5)") step
+    filename = trim(output_dir_name) // '/flds.tot.' // trim(stepchar)
+
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, filename,&
+                    & MPI_MODE_WRONLY + MPI_MODE_CREATE,&
+                    & MPI_INFO_NULL, flds_out_file, ierr)
+
+    disp = 0
+    call MPI_FILE_SET_VIEW(flds_out_file, disp, MPI_INTEGER,&
+                        & MPI_INTEGER, "native",&
+                        & MPI_INFO_NULL, ierr)
+
+    ! create header
+    if (mpi_rank .eq. 0) then
+      call MPI_FILE_WRITE(flds_out_file, time, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
+      call MPI_FILE_WRITE(flds_out_file, mpi_size, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
+      call MPI_FILE_WRITE(flds_out_file, nflds, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
+      call MPI_FILE_WRITE(flds_out_file, global_mesh%sx, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
+      call MPI_FILE_WRITE(flds_out_file, global_mesh%sy, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
+      call MPI_FILE_WRITE(flds_out_file, global_mesh%sz, 1, MPI_INTEGER,&
+                    & MPI_STATUS_IGNORE, ierr)
+      ! variables
+      do f = 1, nflds
+        call MPI_FILE_WRITE(flds_out_file, flds(f), 5, MPI_CHARACTER,&
+                      & MPI_STATUS_IGNORE, ierr)
+      end do
+      ! writing grid data
+      do rnk = 0, mpi_size - 1
+        call MPI_FILE_WRITE(flds_out_file, meshblocks(rnk + 1)%x0, 1, MPI_INTEGER,&
+                          & MPI_STATUS_IGNORE, ierr)
+        call MPI_FILE_WRITE(flds_out_file, meshblocks(rnk + 1)%y0, 1, MPI_INTEGER,&
+                          & MPI_STATUS_IGNORE, ierr)
+        call MPI_FILE_WRITE(flds_out_file, meshblocks(rnk + 1)%z0, 1, MPI_INTEGER,&
+                          & MPI_STATUS_IGNORE, ierr)
+        call MPI_FILE_WRITE(flds_out_file, meshblocks(rnk + 1)%sx, 1, MPI_INTEGER,&
+                          & MPI_STATUS_IGNORE, ierr)
+        call MPI_FILE_WRITE(flds_out_file, meshblocks(rnk + 1)%sy, 1, MPI_INTEGER,&
+                          & MPI_STATUS_IGNORE, ierr)
+        call MPI_FILE_WRITE(flds_out_file, meshblocks(rnk + 1)%sz, 1, MPI_INTEGER,&
+                          & MPI_STATUS_IGNORE, ierr)
+      end do
+    end if
+
+    disp_header = 4 * 3 + 4 * 3 + 5 * nflds + 6 * 4 * mpi_size
+
+    ! writing field data
+    !   nfld_cum              : cumulative # of grid points before `mpi_rank` (for all `rnk < mpi_rank`)
+    !   nfld_all              : overall # of grid points for all ranks
+    f_xyz = this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz
+    allocate(temp_real_arr(f_xyz))
+    ! computing displacements
+    nfld_all = 0; nfld_cum = 0;
+    do rnk = 0, mpi_size - 1
+      nfld_all = nfld_all + meshblocks(rnk + 1)%sx * meshblocks(rnk + 1)%sy * meshblocks(rnk + 1)%sz
+      if (rnk < mpi_rank) then
+        nfld_cum = nfld_cum + meshblocks(rnk + 1)%sx * meshblocks(rnk + 1)%sy * meshblocks(rnk + 1)%sz
+      end if
+    end do
+
+    do f = 1, nflds
+      disp = disp_header +&
+              & (f - 1) * nfld_all * 4 +&
+              & nfld_cum * 4
+      call MPI_FILE_SET_VIEW(flds_out_file, disp, MPI_INTEGER,&
+                              & MPI_INTEGER, "native",&
+                              & MPI_INFO_NULL, ierr)
+
+      select case (trim(flds(f)))
+        case('dens')
+          ! FIX0 count density
+          ! temp = 1
+          ! do i = 0, this_meshblock%ptr%sx - 1
+          !   do j = 0, this_meshblock%ptr%sy - 1
+          !     do k = 0, this_meshblock%ptr%sz - 1
+          !       temp_real_arr(temp) = ex(i, j, k)
+          !       temp = temp + 1
+          !     end do
+          !   end do
+          ! end do
+        case('ex')
+          temp = 1
+          do i = 0, this_meshblock%ptr%sx - 1
+            do j = 0, this_meshblock%ptr%sy - 1
+              do k = 0, this_meshblock%ptr%sz - 1
+                temp_real_arr(temp) = ex(i, j, k)
+                temp = temp + 1
+              end do
+            end do
+          end do
+        case('ey')
+          temp = 1
+          do i = 0, this_meshblock%ptr%sx - 1
+            do j = 0, this_meshblock%ptr%sy - 1
+              do k = 0, this_meshblock%ptr%sz - 1
+                temp_real_arr(temp) = ey(i, j, k)
+                temp = temp + 1
+              end do
+            end do
+          end do
+        case('ez')
+          temp = 1
+          do i = 0, this_meshblock%ptr%sx - 1
+            do j = 0, this_meshblock%ptr%sy - 1
+              do k = 0, this_meshblock%ptr%sz - 1
+                temp_real_arr(temp) = ez(i, j, k)
+                temp = temp + 1
+              end do
+            end do
+          end do
+        case('bx')
+          temp = 1
+          do i = 0, this_meshblock%ptr%sx - 1
+            do j = 0, this_meshblock%ptr%sy - 1
+              do k = 0, this_meshblock%ptr%sz - 1
+                temp_real_arr(temp) = bx(i, j, k)
+                temp = temp + 1
+              end do
+            end do
+          end do
+        case('by')
+          temp = 1
+          do i = 0, this_meshblock%ptr%sx - 1
+            do j = 0, this_meshblock%ptr%sy - 1
+              do k = 0, this_meshblock%ptr%sz - 1
+                temp_real_arr(temp) = by(i, j, k)
+                temp = temp + 1
+              end do
+            end do
+          end do
+        case('bz')
+          temp = 1
+          do i = 0, this_meshblock%ptr%sx - 1
+            do j = 0, this_meshblock%ptr%sy - 1
+              do k = 0, this_meshblock%ptr%sz - 1
+                temp_real_arr(temp) = bz(i, j, k)
+                temp = temp + 1
+              end do
+            end do
+          end do
+      end select
+
+      call MPI_FILE_WRITE(flds_out_file, temp_real_arr, f_xyz, MPI_REAL,&
+                        & MPI_STATUS_IGNORE, ierr)
+    end do
+
+    deallocate(temp_real_arr)
+    call MPI_FILE_CLOSE(flds_out_file, ierr)
+  end subroutine writeFields
 
 end module m_writeoutput

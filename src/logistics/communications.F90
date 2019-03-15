@@ -3,7 +3,9 @@
 module m_communications
   use m_globalnamespace
   implicit none
-  include "mpif.h"
+  #ifdef MPI
+    include "mpif.h"
+  #endif
 
   ! mpi variables
   integer           :: mpi_rank, mpi_size, mpi_statsize

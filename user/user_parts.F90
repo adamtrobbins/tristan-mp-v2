@@ -7,10 +7,11 @@ module m_userfile
   use m_communications
   use m_domain
   use m_particles
+  use m_fields
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userInitParticles
+  private :: userInitParticles, userInitFields
   !...............................................................!
 contains
   subroutine userInitialize()
@@ -20,6 +21,7 @@ contains
     call getInput('particles', 'ppc0', ppc0)
     npart = INT(this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc0)
     call userInitParticles(npart)
+    call userInitFields()
   end subroutine userInitialize
 
   subroutine userInitParticles(npart)
@@ -40,7 +42,17 @@ contains
       sp_(1)%xi(p) = 10; sp_(1)%dx(p) = 0.2
       sp_(1)%yi(p) = 10; sp_(1)%dy(p) = 0.2
       sp_(1)%zi(p) = zi_; sp_(1)%dz(p) = dz_
-      sp_(1)%u = 1.5; sp_(1)%v = 1.5; sp_(1)%w = 0
+      sp_(1)%u(p) = 1.5; sp_(1)%v(p) = 1.5; sp_(1)%w(p) = 0
+
+      sp_(1)%ind(p) = spp_(1)%cntr_sp; sp_(1)%proc(p) = mpi_rank
+
+      spp_(1)%npart_sp = spp_(1)%npart_sp + 1; spp_(1)%cntr_sp = spp_(1)%cntr_sp + 1
+
+      p = 2
+      sp_(1)%xi(p) = 5; sp_(1)%dx(p) = 0.2
+      sp_(1)%yi(p) = 5; sp_(1)%dy(p) = 0.2
+      sp_(1)%zi(p) = zi_; sp_(1)%dz(p) = dz_
+      sp_(1)%u(p) = 1.5; sp_(1)%v(p) = 2.5; sp_(1)%w(p) = 0
 
       sp_(1)%ind(p) = spp_(1)%cntr_sp; sp_(1)%proc(p) = mpi_rank
 
@@ -84,4 +96,17 @@ contains
     !   spp_(1)%cntr_sp = spp_(1)%cntr_sp + 1; spp_(2)%cntr_sp = spp_(2)%cntr_sp + 1
     ! end do
   end subroutine userInitParticles
+
+  subroutine userInitFields()
+    implicit none
+    integer :: ind1, ind2, ind3
+    integer :: i_glob, j_glob, k_glob
+    do ind1 = 0, this_meshblock%ptr%sx - 1
+      do ind2 = 0, this_meshblock%ptr%sy - 1
+        do ind3 = 0, this_meshblock%ptr%sz - 1
+          ex(ind1, ind2, ind3) = mpi_rank
+        end do
+      end do
+    end do
+  end subroutine userInitFields
 end module m_userfile

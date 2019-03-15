@@ -15,9 +15,14 @@ user_directory = 'user/'
 user_choices = glob.glob(user_directory + '*.F90')
 user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 parser.add_argument('--user',
-    default='user_weibel',
+    default='user_emfield',
     choices=user_choices,
     help='select user file')
+
+parser.add_argument('--nghosts',
+    action='store',
+    default=2,
+    help='specify the # of ghost cells')
 
 parser.add_argument('-hdf5',
     action='store_true',
@@ -81,6 +86,8 @@ if args['3d']:
 else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
 
+makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
+
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
   makefile_template = current_file.read()
@@ -93,6 +100,7 @@ with open(makefile_output, 'w') as current_file:
 print('Your TRISTAN distribution has now been configured with the following options:')
 print('  Userfile:                ' + args['user'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
+print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
