@@ -43,6 +43,6 @@ contains
     integer, intent(in) :: i, j, k
     real, intent(in) :: dx, dy, dz
     real, intent(out) :: ex0, ey0, ez0, bx0, by0, bz0
-    
+
   end subroutine
 end module m_helpers

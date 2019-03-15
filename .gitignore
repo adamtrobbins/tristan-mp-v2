@@ -6,3 +6,4 @@ output/
 restart/
 *.ipynb
 Makefile
+__pycache__
