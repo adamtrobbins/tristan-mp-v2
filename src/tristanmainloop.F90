@@ -26,7 +26,7 @@ module m_mainloop
 contains
   subroutine mainloop()
     implicit none
-    integer       :: ierr, allparts
+    integer       :: ierr, i
 
     ! ADD needs to be changed for restart
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -40,25 +40,11 @@ contains
       end if
 
       call moveParticles()
-
       call exchangeParticles()
-      ! if (mpi_rank .eq. 1) then
-      !   print *, "before >>", spp_(1)%npart_sp
-      !   call showParticles()
-      ! end if
       call clearGhostParticles()
-      ! if (mpi_rank .eq. 1) then
-      !   print *, "after >>", spp_(1)%npart_sp
-      !   call showParticles()
-      ! end if
 
-      call MPI_REDUCE(spp_(1)%npart_sp, allparts, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-      if (mpi_rank .eq. 0) then
-        print *, ">>>>>", allparts
-      end if
-
-      ! call fillGhostZones()
-
+      call fillGhostZones()
+      
       t_fullstep_2 = MPI_WTIME()
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -68,18 +54,29 @@ contains
     end do
   end subroutine mainloop
 
-  subroutine showParticles()
-    implicit none
-    integer :: s, p
-    print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
-    do s = 1, nspec
-      print *, trim(TAB) // "PRINTING SPECIES:", s
-      do p = 1, spp_(s)%npart_sp
-        print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
-               & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
+  #ifdef DEBUG
+    subroutine showParticles()
+      implicit none
+      integer :: s, p
+      print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
+      do s = 1, nspec
+        print *, trim(TAB) // "PRINTING SPECIES:", s
+        do p = 1, spp_(s)%npart_sp
+          print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
+                 & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
+        end do
       end do
-    end do
-  end subroutine showParticles
+    end subroutine showParticles
+
+    subroutine showField()
+      implicit none
+      integer :: j
+      print *, "PRINTING BX FIELD:", mpi_rank
+      do j = this_meshblock%ptr%sy - 1 + NGHOST, -NGHOST, -1
+        print *, bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, j, 0)
+      end do
+    end subroutine showField
+  #endif
 
   subroutine makeReport(tstep)
     implicit none
@@ -99,6 +96,9 @@ contains
       call printTime(dt_fullstep, "Full_step: ")
       call printReport(.true., "")
     end if
+
+    ! full # of particles ...
+    ! call MPI_REDUCE(spp_(1)%npart_sp, allparts, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
 
     deallocate(dt_fullstep)
   end subroutine makeReport

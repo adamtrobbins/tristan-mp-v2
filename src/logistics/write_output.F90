@@ -369,6 +369,9 @@ contains
         do j = 0, this_meshblock%ptr%sy - 1
           do k = 0, this_meshblock%ptr%sz - 1
             call interpFlds(0.0, 0.0, 0.0, i, j, k, ex0, ey0, ez0, bx0, by0, bz0)
+            ! ey0 = ex(i, j, k)
+            ! ex0 = ex(i, j, k); ey0 = ey(i, j, k); ez0 = ex(i, j, k)
+            ! bx0 = bx(i, j, k); by0 = by(i, j, k); bz0 = bz(i, j, k)
             select case (trim(flds(f)))
             case('dens')
               ! FIX0 count density

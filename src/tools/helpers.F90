@@ -49,10 +49,11 @@ contains
 
   subroutine interpFlds(dx, dy, dz, i, j, k, ex0, ey0, ez0, bx0, by0, bz0)
     implicit none
-    integer, intent(in) :: i, j, k
-    real, intent(in) :: dx, dy, dz
-    real, intent(out) :: ex0, ey0, ez0, bx0, by0, bz0
-    real :: c000, c100, c001, c101, c010, c110, c011, c111, c00, c01, c10, c11, c0, c1
+    integer, intent(in)   :: i, j, k
+    real, intent(in)      :: dx, dy, dz
+    real, intent(out)     :: ex0, ey0, ez0, bx0, by0, bz0
+    real                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
+                           & c00, c01, c10, c11, c0, c1
 
     ! e_x
     c000 = 0.5 * (ex(     i,      j,      k) + ex(  i - 1,      j,      k))

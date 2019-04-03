@@ -66,26 +66,25 @@ contains
 
           ! write send/recv arrays in/from a given direction
           !     in 3D: 26 directions, in 2D: 8, in 1D: 2
+          mpi_offset = (cntr - 1) * sendrecv_offsetsz
           send_cnt = 1
           do i = imin, imax
             do j = jmin, jmax
               do k = kmin, kmax
-                send_fld(send_cnt + 0) = ex(i, j, k)
-                send_fld(send_cnt + 1) = ey(i, j, k)
-                send_fld(send_cnt + 2) = ez(i, j, k)
-                send_fld(send_cnt + 3) = bx(i, j, k)
-                send_fld(send_cnt + 4) = by(i, j, k)
-                send_fld(send_cnt + 5) = bz(i, j, k)
+                send_fld(mpi_offset + send_cnt + 0) = ex(i, j, k)
+                send_fld(mpi_offset + send_cnt + 1) = ey(i, j, k)
+                send_fld(mpi_offset + send_cnt + 2) = ez(i, j, k)
+                send_fld(mpi_offset + send_cnt + 3) = bx(i, j, k)
+                send_fld(mpi_offset + send_cnt + 4) = by(i, j, k)
+                send_fld(mpi_offset + send_cnt + 5) = bz(i, j, k)
                 send_cnt = send_cnt + 6
               end do
             end do
           end do
           send_cnt = send_cnt - 1
 
-          mpi_offset = (cntr - 1) * sendrecv_offsetsz
-
           ! post non-blocking send requests
-          call MPI_ISEND(send_fld(mpi_offset : mpi_offset + send_cnt - 1), send_cnt, MPI_REAL,&
+          call MPI_ISEND(send_fld(mpi_offset + 1 : mpi_offset + send_cnt), send_cnt, MPI_REAL,&
                        & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
         end do
       end do

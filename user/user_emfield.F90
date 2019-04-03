@@ -32,7 +32,7 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    bx(:,:,:) = -1
+    ex(:,:,:) = -1
     do i = 0, this_meshblock%ptr%sx - 1
       do j = 0, this_meshblock%ptr%sy - 1
         do k = 0, this_meshblock%ptr%sz - 1
