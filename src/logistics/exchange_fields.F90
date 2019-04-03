@@ -13,6 +13,7 @@ contains
     integer           :: ind1, ind2, ind3, cntr, n_cntr
     integer           :: send_cnt, recv_cnt, ierr
     integer           :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
+    integer           :: mpi_offset
     type(MPI_STATUS)  :: istat
     logical           :: quit_loop
 
@@ -81,8 +82,10 @@ contains
           end do
           send_cnt = send_cnt - 1
 
+          mpi_offset = (cntr - 1) * sendrecv_offsetsz
+
           ! post non-blocking send requests
-          call MPI_ISEND(send_fld(1:send_cnt), send_cnt, MPI_REAL,&
+          call MPI_ISEND(send_fld(mpi_offset : mpi_offset + send_cnt - 1), send_cnt, MPI_REAL,&
                        & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
         end do
       end do

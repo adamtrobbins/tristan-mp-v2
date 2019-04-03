@@ -189,7 +189,6 @@ contains
 
   subroutine initializeFields()
     implicit none
-    integer :: sendrecv_buffsz
     if (allocated(ex)) deallocate(ex)
     if (allocated(ey)) deallocate(ey)
     if (allocated(ez)) deallocate(ez)
@@ -218,15 +217,19 @@ contains
     ! exchange fields
     ! 20 = max # of fields sent in each direction
     #ifndef threeD
-      sendrecv_buffsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
+      sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
+      sendrecv_buffsz = sendrecv_offsetsz * 10
+      ! 8 (~10) directions to send/recv in 2D
     #else
-      sendrecv_buffsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 20
+      sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 20
+      sendrecv_buffsz = sendrecv_offsetsz * 30
+      ! 26 (~30) directions to send/recv in 3D
     #endif
 
     if (allocated(send_fld)) deallocate(send_fld)
     allocate(send_fld(sendrecv_buffsz))
     if (allocated(recv_fld)) deallocate(recv_fld)
-    allocate(recv_fld(sendrecv_buffsz))
+    allocate(recv_fld(sendrecv_offsetsz))
   end subroutine initializeFields
 
   subroutine initializeCommunications()
