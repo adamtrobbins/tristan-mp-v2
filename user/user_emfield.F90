@@ -32,13 +32,14 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
+    bx(:,:,:) = -1
     do i = 0, this_meshblock%ptr%sx - 1
       do j = 0, this_meshblock%ptr%sy - 1
         do k = 0, this_meshblock%ptr%sz - 1
           ex(i, j, k) = i + this_meshblock%ptr%x0
           ey(i, j, k) = j + this_meshblock%ptr%y0
-          ez(i, j, k) = k + this_meshblock%ptr%z0
-          bx(i, j, k) = mpi_rank
+          ez(i, j, k) = -(this_meshblock%ptr%y0 + j)**2
+          bx(i, j, k) = mpi_rank * 100 + 10 * i + j
           by(i, j, k) = -mpi_rank
           bz(i, j, k) = mpi_rank + 123.5
         end do

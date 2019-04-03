@@ -41,62 +41,38 @@ module m_particles
 
   type(prtl_enroute), allocatable, dimension(:)    :: recv_enroute
   type(enroute_handler)                            :: enroute_bot
-  integer                                          :: myMPI_ENROUTE
+  type(MPI_DATATYPE)                               :: myMPI_ENROUTE
 contains
+  subroutine copyParticleFromTo(s, p_from, p_to)
+    implicit none
+    integer, intent(in)   :: s, p_from, p_to
+    sp_(s)%xi(p_to) = sp_(s)%xi(p_from); sp_(s)%yi(p_to) = sp_(s)%yi(p_from); sp_(s)%zi(p_to) = sp_(s)%zi(p_from)
+    sp_(s)%dx(p_to) = sp_(s)%dx(p_from); sp_(s)%dy(p_to) = sp_(s)%dy(p_from); sp_(s)%dz(p_to) = sp_(s)%dz(p_from)
+    sp_(s)%u(p_to) = sp_(s)%u(p_from); sp_(s)%v(p_to) = sp_(s)%v(p_from); sp_(s)%w(p_to) = sp_(s)%w(p_from)
+    sp_(s)%ind(p_to) = sp_(s)%ind(p_from); sp_(s)%proc(p_to) = sp_(s)%proc(p_from)
+  end subroutine copyParticleFromTo
+
   subroutine removeParticle(s, p)
     implicit none
     integer, intent(in)   :: s, p
-    integer               :: nprt
-    nprt = spp_(s)%npart_sp
-    sp_(s)%xi(p) = sp_(s)%xi(nprt); sp_(s)%yi(p) = sp_(s)%yi(nprt); sp_(s)%zi(p) = sp_(s)%zi(nprt)
-    sp_(s)%dx(p) = sp_(s)%dx(nprt); sp_(s)%dy(p) = sp_(s)%dy(nprt); sp_(s)%dz(p) = sp_(s)%dz(nprt)
-    sp_(s)%u(p) = sp_(s)%u(nprt); sp_(s)%v(p) = sp_(s)%v(nprt); sp_(s)%w(p) = sp_(s)%w(nprt)
-    sp_(s)%ind(p) = sp_(s)%ind(nprt); sp_(s)%proc(p) = sp_(s)%proc(nprt)
+    if (p .ne. spp_(s)%npart_sp) call copyParticleFromTo(s, spp_(s)%npart_sp, p)
     spp_(s)%npart_sp = spp_(s)%npart_sp - 1
-  end subroutine
+  end subroutine removeParticle
 
-  subroutine copyToEnroute(spec_id, prtl_id, enroute)
+  subroutine createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w)
     implicit none
-    integer, intent(in)               :: spec_id, prtl_id
-    type(prtl_enroute), intent(inout) :: enroute
-    enroute%xi = sp_(spec_id)%xi(prtl_id)
-    enroute%yi = sp_(spec_id)%yi(prtl_id)
-    enroute%zi = sp_(spec_id)%zi(prtl_id)
-    enroute%dx = sp_(spec_id)%dx(prtl_id)
-    enroute%dy = sp_(spec_id)%dy(prtl_id)
-    enroute%dz = sp_(spec_id)%dz(prtl_id)
-    enroute%u = sp_(spec_id)%u(prtl_id)
-    enroute%v = sp_(spec_id)%v(prtl_id)
-    enroute%w = sp_(spec_id)%w(prtl_id)
-    enroute%ind = sp_(spec_id)%ind(prtl_id)
-    enroute%proc = sp_(spec_id)%proc(prtl_id)
-  end subroutine
-
-  subroutine copyFromEnroute(enroute, spec_id, prtl_id)
-    implicit none
-    type(prtl_enroute), intent(inout) :: enroute
-    integer, intent(in)               :: spec_id, prtl_id
-    sp_(spec_id)%xi(prtl_id) = enroute%xi
-    sp_(spec_id)%yi(prtl_id) = enroute%yi
-    sp_(spec_id)%zi(prtl_id) = enroute%zi
-    sp_(spec_id)%dx(prtl_id) = enroute%dx
-    sp_(spec_id)%dy(prtl_id) = enroute%dy
-    sp_(spec_id)%dz(prtl_id) = enroute%dz
-    sp_(spec_id)%u(prtl_id) = enroute%u
-    sp_(spec_id)%v(prtl_id) = enroute%v
-    sp_(spec_id)%w(prtl_id) = enroute%w
-    sp_(spec_id)%ind(prtl_id) = enroute%ind
-    sp_(spec_id)%proc(prtl_id) = enroute%proc
-  end subroutine
-
-  subroutine extractParticlesFromEnroute(cnt, spec_id)
-    implicit none
-    integer, intent(in)            :: cnt, spec_id
-    integer                        :: p
-    do p = 1, cnt
-      spp_(spec_id)%npart_sp = spp_(spec_id)%npart_sp + 1
-      call copyFromEnroute(recv_enroute(p), spec_id, spp_(spec_id)%npart_sp)
-    end do
-  end subroutine
+    integer, intent(in)           :: s
+    integer(kind=2), intent(in)   :: xi, yi, zi
+    real, intent(in)              :: dx, dy, dz, u, v, w
+    integer                       :: p
+    spp_(s)%npart_sp = spp_(s)%npart_sp + 1
+    p = spp_(s)%npart_sp
+    sp_(s)%xi(p) = xi; sp_(s)%dx(p) = dx
+    sp_(s)%yi(p) = yi; sp_(s)%dy(p) = dy
+    sp_(s)%zi(p) = zi; sp_(s)%dz(p) = dz
+    sp_(s)%u(p) = u; sp_(s)%v(p) = v; sp_(s)%w(p) = w
+    sp_(s)%ind(p) = spp_(s)%cntr_sp; sp_(s)%proc(p) = mpi_rank
+    spp_(s)%cntr_sp = spp_(s)%cntr_sp + 1
+  end subroutine createParticle
 
 end module m_particles

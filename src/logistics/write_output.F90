@@ -62,7 +62,8 @@ contains
     implicit none
     integer, intent(in)                 :: step, time
     character(len=STR_MAX)              :: stepchar, filename
-    integer                             :: prtl_out_file, ierr, i, p, s, rnk, nvars, j, temp
+    type(MPI_FILE)                      :: prtl_out_file
+    integer                             :: ierr, i, p, s, rnk, nvars, j, temp
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_header
     character(len=STR_MAX)              :: vars(100), var_types(100)
     integer                             :: npart_stride(nspec), npart_stride_global(nspec, mpi_size)
@@ -275,10 +276,12 @@ contains
     implicit none
     integer, intent(in)                 :: step, time
     character(len=STR_MAX)              :: stepchar, filename
-    integer                             :: flds_out_file, ierr, f_xyz, f, i, j, k, rnk, nflds, temp
+    type(MPI_FILE)                      :: flds_out_file
+    integer                             :: ierr, f_xyz, f, i, j, k, rnk, nflds, temp
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_grid, disp_header
     character(len=STR_MAX)              :: flds(100)
     integer                             :: nfld_cum, nfld_all
+    real                                :: ex0, ey0, ez0, bx0, by0, bz0
     real, allocatable, dimension(:)     :: temp_real_arr
 
     ! FIX implement `output_istep` downsampling
@@ -361,80 +364,32 @@ contains
       call MPI_FILE_SET_VIEW(flds_out_file, disp, MPI_INTEGER,&
                               & MPI_INTEGER, "native",&
                               & MPI_INFO_NULL, ierr)
-
-      select case (trim(flds(f)))
-        case('dens')
-          ! FIX0 count density
-          ! temp = 1
-          ! do i = 0, this_meshblock%ptr%sx - 1
-          !   do j = 0, this_meshblock%ptr%sy - 1
-          !     do k = 0, this_meshblock%ptr%sz - 1
-          !       temp_real_arr(temp) = ex(i, j, k)
-          !       temp = temp + 1
-          !     end do
-          !   end do
-          ! end do
-        case('ex')
-          temp = 1
-          do i = 0, this_meshblock%ptr%sx - 1
-            do j = 0, this_meshblock%ptr%sy - 1
-              do k = 0, this_meshblock%ptr%sz - 1
-                temp_real_arr(temp) = ex(i, j, k)
-                temp = temp + 1
-              end do
-            end do
+      temp = 1
+      do i = 0, this_meshblock%ptr%sx - 1
+        do j = 0, this_meshblock%ptr%sy - 1
+          do k = 0, this_meshblock%ptr%sz - 1
+            call interpFlds(0.0, 0.0, 0.0, i, j, k, ex0, ey0, ez0, bx0, by0, bz0)
+            select case (trim(flds(f)))
+            case('dens')
+              ! FIX0 count density
+              temp_real_arr(temp) = 1.
+            case('ex')
+              temp_real_arr(temp) = ex0
+            case('ey')
+              temp_real_arr(temp) = ey0
+            case('ez')
+              temp_real_arr(temp) = ez0
+            case('bx')
+              temp_real_arr(temp) = bx0
+            case('by')
+              temp_real_arr(temp) = by0
+            case('bz')
+              temp_real_arr(temp) = bz0
+            end select
+            temp = temp + 1
           end do
-        case('ey')
-          temp = 1
-          do i = 0, this_meshblock%ptr%sx - 1
-            do j = 0, this_meshblock%ptr%sy - 1
-              do k = 0, this_meshblock%ptr%sz - 1
-                temp_real_arr(temp) = ey(i, j, k)
-                temp = temp + 1
-              end do
-            end do
-          end do
-        case('ez')
-          temp = 1
-          do i = 0, this_meshblock%ptr%sx - 1
-            do j = 0, this_meshblock%ptr%sy - 1
-              do k = 0, this_meshblock%ptr%sz - 1
-                temp_real_arr(temp) = ez(i, j, k)
-                temp = temp + 1
-              end do
-            end do
-          end do
-        case('bx')
-          temp = 1
-          do i = 0, this_meshblock%ptr%sx - 1
-            do j = 0, this_meshblock%ptr%sy - 1
-              do k = 0, this_meshblock%ptr%sz - 1
-                temp_real_arr(temp) = bx(i, j, k)
-                temp = temp + 1
-              end do
-            end do
-          end do
-        case('by')
-          temp = 1
-          do i = 0, this_meshblock%ptr%sx - 1
-            do j = 0, this_meshblock%ptr%sy - 1
-              do k = 0, this_meshblock%ptr%sz - 1
-                temp_real_arr(temp) = by(i, j, k)
-                temp = temp + 1
-              end do
-            end do
-          end do
-        case('bz')
-          temp = 1
-          do i = 0, this_meshblock%ptr%sx - 1
-            do j = 0, this_meshblock%ptr%sy - 1
-              do k = 0, this_meshblock%ptr%sz - 1
-                temp_real_arr(temp) = bz(i, j, k)
-                temp = temp + 1
-              end do
-            end do
-          end do
-      end select
+        end do
+      end do
 
       call MPI_FILE_WRITE(flds_out_file, temp_real_arr, f_xyz, MPI_REAL,&
                         & MPI_STATUS_IGNORE, ierr)

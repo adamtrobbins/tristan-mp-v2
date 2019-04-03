@@ -13,15 +13,12 @@ program tristan
   use m_fields
   implicit none
   !----- main code --------------------------
-  integer :: ierr
+  integer :: status, ierr, ind1, ind2, ind3, s, p
+  integer :: mpi_sendto, mpi_recvfrom
 
   call initializeAll()
-  ! call fillGhosts()
-  ! if (mpi_rank .eq. 3) print *, ex(-1, 0, 0)
   call mainloop()
   call finalizeAll()
 
   !..... main code ..........................
-
-  ! stop
 end program tristan

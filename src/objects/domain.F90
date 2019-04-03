@@ -30,4 +30,5 @@ module m_domain
   !   - boundary = 1: periodic
   !   - boundary = 2: outflow
   integer                            :: boundary_x, boundary_y, boundary_z
+  integer                            :: sendrecv_neighbors
 end module m_domain

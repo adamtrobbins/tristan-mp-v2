@@ -6,11 +6,17 @@
 !...............................................................!
 
 module m_globalnamespace
+  #ifdef MPI
+    use mpi_f08
+  #endif
   implicit none
-  logical                :: mpi_initialized = .false.
   integer, parameter     :: dprec = kind(1.0d0)
   integer, parameter     :: sprec = kind(1.0e0)
   integer, parameter     :: UNIT_input = 10
+
+  ! mpi variables
+  integer                :: mpi_rank, mpi_size, mpi_statsize
+  integer                :: sizex, sizey, sizez
 
   ! simulation parameters
   integer                :: final_timestep

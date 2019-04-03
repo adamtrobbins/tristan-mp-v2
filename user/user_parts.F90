@@ -28,8 +28,9 @@ contains
     implicit none
     integer, intent(in) :: npart
     integer(kind=2)     :: xi_, yi_, zi_
-    integer             :: p
-    real                :: dx_, dy_, dz_
+    integer(kind=2)     :: i, j
+    integer             :: p, s
+    real                :: dx_, dy_, dz_, u_, v_
 
     #ifndef threeD
       dz_ = 0.5; zi_ = 0
@@ -37,64 +38,19 @@ contains
       dz_ = 10; zi_ = 0.43
     #endif
 
-    if (mpi_rank .eq. 0) then
-      p = 1
-      sp_(1)%xi(p) = 10; sp_(1)%dx(p) = 0.2
-      sp_(1)%yi(p) = 10; sp_(1)%dy(p) = 0.2
-      sp_(1)%zi(p) = zi_; sp_(1)%dz(p) = dz_
-      sp_(1)%u(p) = 1.5; sp_(1)%v(p) = 1.5; sp_(1)%w(p) = 0
-
-      sp_(1)%ind(p) = spp_(1)%cntr_sp; sp_(1)%proc(p) = mpi_rank
-
-      spp_(1)%npart_sp = spp_(1)%npart_sp + 1; spp_(1)%cntr_sp = spp_(1)%cntr_sp + 1
-
-      p = 2
-      sp_(1)%xi(p) = 5; sp_(1)%dx(p) = 0.2
-      sp_(1)%yi(p) = 5; sp_(1)%dy(p) = 0.2
-      sp_(1)%zi(p) = zi_; sp_(1)%dz(p) = dz_
-      sp_(1)%u(p) = 1.5; sp_(1)%v(p) = 2.5; sp_(1)%w(p) = 0
-
-      sp_(1)%ind(p) = spp_(1)%cntr_sp; sp_(1)%proc(p) = mpi_rank
-
-      spp_(1)%npart_sp = spp_(1)%npart_sp + 1; spp_(1)%cntr_sp = spp_(1)%cntr_sp + 1
-    endif
-
-    ! if (mpi_rank .eq. 3) then
-    !   p = 1
-    !   sp_(1)%xi(p) = 40; sp_(1)%dx(p) = 0.356
-    !   sp_(1)%yi(p) = 60; sp_(1)%dy(p) = 0.23
-    !   sp_(1)%zi(p) = zi_; sp_(1)%dz(p) = dz_
-    !   sp_(1)%u = 0; sp_(1)%v = 2.6; sp_(1)%w = 0
-    !
-    !   sp_(1)%ind(p) = spp_(1)%cntr_sp; sp_(1)%proc(p) = mpi_rank
-    !
-    !   spp_(1)%npart_sp = spp_(1)%npart_sp + 1; spp_(1)%cntr_sp = spp_(1)%cntr_sp + 1
+    ! if (mpi_rank .eq. 1) then
+    u_ = 2 * (random(dseed) - 0.5);
+    v_ = 2 * (random(dseed) - 0.5)
+      do i = 0, this_meshblock%ptr%sx - 1
+        do j = 0, this_meshblock%ptr%sy - 1
+          if (((i - this_meshblock%ptr%sx / 2.0) / (this_meshblock%ptr%sx / 3.0))**2 +&
+            & ((j - this_meshblock%ptr%sy / 2.0) / (this_meshblock%ptr%sy / 3.0))**2 < 1) then
+            call createParticle(1, i, j, zi_, 0.5, 0.5, dz_, u_, v_, 0.0)
+          end if
+        end do
+      end do
     ! endif
 
-    ! do p = 1, npart
-    !   dx_ = random(dseed); dy_ = random(dseed);
-    !   xi_ = INT(random(dseed) * this_meshblock%ptr%sx, kind(2))
-    !   yi_ = INT(random(dseed) * this_meshblock%ptr%sy, kind(2))
-    !   #ifdef threeD
-    !     dz_ = random(dseed); zi_ = INT(random(dseed) * this_meshblock%ptr%sz)
-    !   #endif
-    !   sp_(1)%xi(p) = xi_; sp_(1)%dx(p) = dx_
-    !   sp_(1)%yi(p) = yi_; sp_(1)%dy(p) = dy_
-    !   sp_(1)%zi(p) = zi_; sp_(1)%dz(p) = dz_
-    !   sp_(2)%xi(p) = xi_; sp_(2)%dx(p) = dx_
-    !   sp_(2)%yi(p) = yi_; sp_(2)%dy(p) = dy_
-    !   sp_(2)%zi(p) = zi_; sp_(2)%dz(p) = dz_
-    !
-    !   sp_(1)%u(p) = random(dseed); sp_(2)%u(p) = random(dseed)
-    !   sp_(1)%v(p) = random(dseed); sp_(2)%v(p) = random(dseed)
-    !   sp_(1)%w(p) = random(dseed); sp_(2)%w(p) = random(dseed)
-    !
-    !   sp_(1)%ind(p) = spp_(1)%cntr_sp; sp_(2)%ind(p) = spp_(2)%cntr_sp
-    !   sp_(1)%proc(p) = mpi_rank; sp_(2)%proc(p) = mpi_rank
-    !
-    !   spp_(1)%npart_sp = spp_(1)%npart_sp + 1; spp_(2)%npart_sp = spp_(2)%npart_sp + 1
-    !   spp_(1)%cntr_sp = spp_(1)%cntr_sp + 1; spp_(2)%cntr_sp = spp_(2)%cntr_sp + 1
-    ! end do
   end subroutine userInitParticles
 
   subroutine userInitFields()

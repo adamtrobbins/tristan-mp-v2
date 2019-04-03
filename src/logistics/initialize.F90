@@ -114,8 +114,10 @@ contains
     integer            :: buffsize_xyz
     integer            :: multiplier, ierr, ind1, ind2, ind3
 
-    integer, dimension(0:2) :: oldtypes, blockcounts, offsets
-    integer                 :: extent_int2, extent_real
+    type(MPI_DATATYPE), dimension(0:2)              :: oldtypes
+    integer, dimension(0:2)                         :: blockcounts
+    integer(kind=MPI_ADDRESS_KIND), dimension(0:2)  :: offsets
+    integer(kind=MPI_COUNT_KIND)                    :: extent_int2, extent_real, lb
 
     call getInput('particles', 'ppc0', multiplier)
     multiplier = max(multiplier, 1) * 1000
@@ -168,8 +170,10 @@ contains
     !       3 x integer2  [xi, yi, zi]
     !       6 x real      [dx, dy, dz, u, v, w]
     !       2 x integer   [ind, proc]
-    call MPI_TYPE_EXTENT(MPI_INTEGER2, extent_int2, ierr)
-    call MPI_TYPE_EXTENT(MPI_REAL, extent_real, ierr)
+    ! call MPI_TYPE_EXTENT(MPI_INTEGER2, extent_int2, ierr)
+    ! call MPI_TYPE_EXTENT(MPI_REAL, extent_real, ierr)
+    call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
+    call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
     blockcounts(0) = 3
     oldtypes(0) = MPI_INTEGER2
     blockcounts(1) = 6
@@ -179,13 +183,13 @@ contains
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
-  	call MPI_TYPE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
+  	call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
   	call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
   end subroutine initializePrtlExchange
 
   subroutine initializeFields()
     implicit none
-    integer :: buffsize
+    integer :: sendrecv_buffsz
     if (allocated(ex)) deallocate(ex)
     if (allocated(ey)) deallocate(ey)
     if (allocated(ez)) deallocate(ez)
@@ -212,11 +216,17 @@ contains
               & fldBoundZ))
 
     ! exchange fields
-    buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 10
+    ! 20 = max # of fields sent in each direction
+    #ifndef threeD
+      sendrecv_buffsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
+    #else
+      sendrecv_buffsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 20
+    #endif
+
     if (allocated(send_fld)) deallocate(send_fld)
-    allocate(send_fld(buffsize))
+    allocate(send_fld(sendrecv_buffsz))
     if (allocated(recv_fld)) deallocate(recv_fld)
-    allocate(recv_fld(buffsize))
+    allocate(recv_fld(sendrecv_buffsz))
   end subroutine initializeFields
 
   subroutine initializeCommunications()
@@ -224,7 +234,6 @@ contains
     integer :: ierr
     call MPI_Init(ierr)
     ! ADD if statement here
-    mpi_initialized = .true.
     call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
     mpi_statsize = MPI_STATUS_SIZE
@@ -264,7 +273,7 @@ contains
   subroutine distributeMeshblocks()
     implicit none
     integer, dimension(3) :: ind, m
-    integer               :: rnk, ind1, ind2, ind3
+    integer               :: rnk, ind1, ind2, ind3, cntr
     m(1) = global_mesh%sx / sizex
     m(2) = global_mesh%sy / sizey
     m(3) = global_mesh%sz / sizez
@@ -290,6 +299,22 @@ contains
       end do
     end do
     this_meshblock%ptr => meshblocks(mpi_rank + 1)
+
+    cntr = 0
+    ! find the number of neighbors
+    do ind1 = -1, 1
+      do ind2 = -1, 1
+        do ind3 = -1, 1
+          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+          #ifndef threeD
+            if (ind3 .ne. 0) cycle
+          #endif
+          if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+          cntr = cntr + 1
+        end do
+      end do
+    end do
+    sendrecv_neighbors = cntr
   end subroutine distributeMeshblocks
 
   subroutine assignNeighbor(rnk, inds1)

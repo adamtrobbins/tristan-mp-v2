@@ -7,3 +7,4 @@ restart/
 *.ipynb
 Makefile
 __pycache__
+vis/

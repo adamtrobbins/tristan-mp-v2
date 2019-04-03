@@ -51,11 +51,17 @@ contains
     if (allocated(bx)) deallocate(bx)
     if (allocated(by)) deallocate(by)
     if (allocated(bz)) deallocate(bz)
+
+    ! dealloc field exchange
+    if (allocated(send_fld)) deallocate(send_fld)
+    if (allocated(recv_fld)) deallocate(recv_fld)
   end subroutine deallocateArrays
 
   subroutine finalizeCommunications()
     implicit none
     integer :: ierr
-    if (mpi_initialized) call MPI_FINALIZE(ierr)
+    #ifdef MPI
+      call MPI_FINALIZE(ierr)
+    #endif
   end subroutine finalizeCommunications
 end module m_finalize

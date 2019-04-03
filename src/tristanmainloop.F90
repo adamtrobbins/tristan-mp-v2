@@ -8,6 +8,7 @@ module m_mainloop
   use m_fldsolver
   use m_mover
   use m_exchangeparts
+  use m_exchangefields
   use m_errors
   implicit none
 
@@ -25,7 +26,7 @@ module m_mainloop
 contains
   subroutine mainloop()
     implicit none
-    integer       :: ierr
+    integer       :: ierr, allparts
 
     ! ADD needs to be changed for restart
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -34,15 +35,29 @@ contains
     do timestep = 0, final_timestep
       t_fullstep_1 = MPI_WTIME()
 
-      call moveParticles()
-
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      call exchangeParticles()
-      call clearGhostParticles()
       if (mod(timestep, output_interval) .eq. 0) then
-        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
         call writeOutput(INT(timestep / output_interval), timestep)
       end if
+
+      call moveParticles()
+
+      call exchangeParticles()
+      ! if (mpi_rank .eq. 1) then
+      !   print *, "before >>", spp_(1)%npart_sp
+      !   call showParticles()
+      ! end if
+      call clearGhostParticles()
+      ! if (mpi_rank .eq. 1) then
+      !   print *, "after >>", spp_(1)%npart_sp
+      !   call showParticles()
+      ! end if
+
+      call MPI_REDUCE(spp_(1)%npart_sp, allparts, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+      if (mpi_rank .eq. 0) then
+        print *, ">>>>>", allparts
+      end if
+
+      ! call fillGhostZones()
 
       t_fullstep_2 = MPI_WTIME()
 
@@ -52,6 +67,19 @@ contains
       end if
     end do
   end subroutine mainloop
+
+  subroutine showParticles()
+    implicit none
+    integer :: s, p
+    print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
+    do s = 1, nspec
+      print *, trim(TAB) // "PRINTING SPECIES:", s
+      do p = 1, spp_(s)%npart_sp
+        print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
+               & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
+      end do
+    end do
+  end subroutine showParticles
 
   subroutine makeReport(tstep)
     implicit none
