@@ -14,13 +14,16 @@ module m_globalnamespace
   integer, parameter     :: sprec = kind(1.0e0)
   integer, parameter     :: UNIT_input = 10
 
-  ! mpi variables
-  integer                :: mpi_rank, mpi_size, mpi_statsize
-  integer                :: sizex, sizey, sizez
+  ! plasma parameters
+  real :: ppc0, c_omp, sigma, B_norm
 
   ! simulation parameters
   integer                :: final_timestep
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart'
+
+  ! mpi variables
+  integer                :: mpi_rank, mpi_size, mpi_statsize
+  integer                :: sizex, sizey, sizez
 end module m_globalnamespace

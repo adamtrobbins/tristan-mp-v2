@@ -9,9 +9,6 @@ module m_writeoutput
   use m_particles
   use m_fields
   use m_helpers
-  #ifdef HDF5
-    use HDF5
-  #endif
   implicit none
 
   integer :: output_stride, output_interval, output_istep
@@ -277,7 +274,8 @@ contains
     integer, intent(in)                 :: step, time
     character(len=STR_MAX)              :: stepchar, filename
     type(MPI_FILE)                      :: flds_out_file
-    integer                             :: ierr, f_xyz, f, i, j, k, rnk, nflds, temp
+    integer                             :: ierr, f_xyz, f, rnk, nflds, temp
+    integer(kind=2)                     :: i, j, k
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_grid, disp_header
     character(len=STR_MAX)              :: flds(100)
     integer                             :: nfld_cum, nfld_all
@@ -369,25 +367,22 @@ contains
         do j = 0, this_meshblock%ptr%sy - 1
           do k = 0, this_meshblock%ptr%sz - 1
             call interpFlds(0.0, 0.0, 0.0, i, j, k, ex0, ey0, ez0, bx0, by0, bz0)
-            ! ey0 = ex(i, j, k)
-            ! ex0 = ex(i, j, k); ey0 = ey(i, j, k); ez0 = ex(i, j, k)
-            ! bx0 = bx(i, j, k); by0 = by(i, j, k); bz0 = bz(i, j, k)
             select case (trim(flds(f)))
             case('dens')
               ! FIX0 count density
               temp_real_arr(temp) = 1.
             case('ex')
-              temp_real_arr(temp) = ex0
+              temp_real_arr(temp) = ex0 * B_norm
             case('ey')
-              temp_real_arr(temp) = ey0
+              temp_real_arr(temp) = ey0 * B_norm
             case('ez')
-              temp_real_arr(temp) = ez0
+              temp_real_arr(temp) = ez0 * B_norm
             case('bx')
-              temp_real_arr(temp) = bx0
+              temp_real_arr(temp) = bx0 * B_norm
             case('by')
-              temp_real_arr(temp) = by0
+              temp_real_arr(temp) = by0 * B_norm
             case('bz')
-              temp_real_arr(temp) = bz0
+              temp_real_arr(temp) = bz0 * B_norm
             end select
             temp = temp + 1
           end do

@@ -17,8 +17,6 @@ contains
   subroutine userInitialize()
     implicit none
     integer        :: npart
-    real           :: ppc0
-    call getInput('particles', 'ppc0', ppc0)
     npart = INT(this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc0)
     call userInitParticles(npart)
     call userInitFields()
@@ -39,16 +37,16 @@ contains
     #endif
 
     ! if (mpi_rank .eq. 1) then
-    u_ = 2 * (random(dseed) - 0.5);
+    u_ = 2 * (random(dseed) - 0.5)
     v_ = 2 * (random(dseed) - 0.5)
-      do i = 0, this_meshblock%ptr%sx - 1
-        do j = 0, this_meshblock%ptr%sy - 1
-          if (((i - this_meshblock%ptr%sx / 2.0) / (this_meshblock%ptr%sx / 3.0))**2 +&
-            & ((j - this_meshblock%ptr%sy / 2.0) / (this_meshblock%ptr%sy / 3.0))**2 < 1) then
-            call createParticle(1, i, j, zi_, 0.5, 0.5, dz_, u_, v_, 0.0)
-          end if
-        end do
+    do i = 0, this_meshblock%ptr%sx - 1
+      do j = 0, this_meshblock%ptr%sy - 1
+        if (((i - this_meshblock%ptr%sx / 2.0) / (this_meshblock%ptr%sx / 3.0))**2 +&
+          & ((j - this_meshblock%ptr%sy / 2.0) / (this_meshblock%ptr%sy / 3.0))**2 < 1) then
+          call createParticle(1, i, j, zi_, 0.5, 0.5, dz_, u_, v_, 0.0)
+        end if
       end do
+    end do
     ! endif
 
   end subroutine userInitParticles

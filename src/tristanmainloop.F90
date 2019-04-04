@@ -35,6 +35,8 @@ contains
     do timestep = 0, final_timestep
       t_fullstep_1 = MPI_WTIME()
 
+      call fillGhostZones()
+
       if (mod(timestep, output_interval) .eq. 0) then
         call writeOutput(INT(timestep / output_interval), timestep)
       end if
@@ -43,8 +45,6 @@ contains
       call exchangeParticles()
       call clearGhostParticles()
 
-      call fillGhostZones()
-      
       t_fullstep_2 = MPI_WTIME()
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)

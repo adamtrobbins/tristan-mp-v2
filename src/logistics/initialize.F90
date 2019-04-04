@@ -25,6 +25,7 @@ contains
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
+    call initializeSimulation()
     call initializeOutput()
     ! ADD possibility to define output function in userfile
     ! ADD hst file?
@@ -35,7 +36,6 @@ contains
 
     call initializeFields()
     call initializeParticles()
-    call initializeSimulation()
     call initializePrtlExchange()
 
     call initializeRandomSeed(mpi_rank)
@@ -62,6 +62,11 @@ contains
     implicit none
     integer                 :: i
     character(len=STR_MAX)  :: var_name
+
+    call getInput('plasma', 'ppc0', ppc0)
+    call getInput('plasma', 'sigma', sigma)
+    call getInput('plasma', 'c_omp', c_omp)
+    B_norm = CC**2 * sqrt(sigma) / c_omp
 
     call getInput('particles', 'nspec', nspec, 2)
 
@@ -113,8 +118,7 @@ contains
     integer(kind=MPI_ADDRESS_KIND), dimension(0:2)  :: offsets
     integer(kind=MPI_COUNT_KIND)                    :: extent_int2, extent_real, lb
 
-    call getInput('particles', 'ppc0', multiplier)
-    multiplier = max(multiplier, 1) * 1000
+    multiplier = max(INT(ppc0), 1) * 1000
     ! FIX this might change over time (due to load balancing)
     buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
     buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
