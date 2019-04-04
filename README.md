@@ -7,21 +7,25 @@ $ python configure.py [-FLAGS]
 ```
 Supported `[-FLAGS]` will be constantly updated. List of flags available now:
 
-- `-3d`: enable 3D
-- `-intel`: compile with intel compatibility
-- `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag, `traceback`, `qopt` reports for intel compilers etc)
-- `-hdf5`: enable `hdf5` and compile with `h5fpc` (otherwise compiles with `gfortran`)
-- `--user=[USER_FILE]`: name of the user file from `user/` directory (without the extension)
-- _... more to come_
+- `-3d`: enable 3D;
+- `-intel`: compile with intel compatibility;
+- `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag, `traceback`, `qopt` reports for intel compilers etc);
+- `--nghosts=[NUM_GHOSTS]`: specify the number of ghost zones, will compile with `-DNGHOST=[NUM_GHOSTS]`;
+- `--user=[USER_FILE]`: name of the user file from `user/` directory (without the extension);
+- _... more to come_.
+<!-- - `-hdf5`: enable `hdf5` and compile with `h5fpc` (otherwise compiles with `gfortran`) -->
 
 `Makefile` will be generated in the main directory (from `Makefile.in`). Now the code can be compiled with `make all` or cleaned with `make clean`.
+
+#### Prerequisites
+For MPI we use `mpi_f08` standard.
 
 #### Running
 Executable is generated in `exec` directory named either `tristan-mp2d` or `tristan-mp3d`. Simply run with
 ```bash
 $ exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
 ```
-or if compiled with `h5pfc` or `mpi` one can run in MPI
+or if compiled with `mpif90` one can run in MPI
 ```bash
 $ mpiexec -np [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name] -r [restart_dir_name]
 ```
@@ -30,21 +34,24 @@ $ mpiexec -np [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name
 - Logistics: `configure.py`, read input, initialize everything, etc;
 - CPU & "meshblocks" handling;
 - species + particles: array of structures (species) of arrays (`x`, `y`, `z`, etc);
-- mover(s) (vectorized & aligned) & particle exchange;
+- particle pusher (vectorized & aligned) & particle exchange;
 - fields & field exchange (ghost zones);
 - MPI-IO output of particles & fields + `python` library to read and create a readable dictionary (and convert to `hdf5` if necessary).
 
 #### ToDo
-- Implement real meshblocks;
-- tree-based meshblock distribution (space filling curve);
 - restart files;
+- "history" file;
+- current deposition & exchange;
 - Maxwell's equations;
 - absorbing (radiation) boundaries;
 - filtering;
 - expanding boundaries;
 - dynamic load balancing;
 - pair-production/annihilation/IC routine;
-- _tasklist_.
+- _tree-based meshblock distribution (space filling curve)_;
+- _tasklist_;
+- generalize for non-MPI;
+- HDF5 support.
 
 #### Code structure
 _TO BE ADDED_
@@ -52,7 +59,7 @@ _TO BE ADDED_
 #### Coding style advices
 Please read this carefully.
 
-1. We use JS style for naming variables and functions:
+1. We use the following style for naming variables and functions:
     - variables are named lowercase with underscores (`_`) if necessary, e.g.:
         - `my_new_var`;
     - function names start lowercase without underscores and can be continued uppercase, e.g.:
@@ -61,8 +68,8 @@ Please read this carefully.
         - `m_mynewmodule`.
 2. Remember, for fortran `THIS` and `tHIs` and `this` are the same.
 3. Use indentations when entering loops, functions, conditional statements etc! Standard for this code is two spaces per one indent.
-4. `#ifdef`-s and other precompiler statements can also be indented(!), since now `Makefile` precompiles the code with the new `cpp`.
-5. Please use spaces and brackets to make code more readable:
+4. `#ifdef`-s and other precompiler macros can also be indented(!), as now `Makefile` precompiles the code with the new `cpp` compiler before compiling with fortran.
+5. Please use spaces and brackets to make the code more readable:
     - in arithmetic statements, e.g.:
         - `2 + 3 * 5 / (2 + a)` instead of `2+3*5/(2+a)`;
     - in function arguments, e.g.:
