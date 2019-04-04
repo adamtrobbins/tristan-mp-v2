@@ -50,6 +50,13 @@ contains
     string = trim(temp)
   end function realToStr
 
+  function STRtoINT(my_str) result(my_int)
+    implicit none
+    character(len=*), intent(in)  :: my_str
+    integer                       :: my_int
+    read (my_str, *) my_int
+  end function
+
   real function random(dseed)
     ! FIX look at precision here
   	implicit none

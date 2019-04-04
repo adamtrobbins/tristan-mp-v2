@@ -10,7 +10,7 @@ sizez        = 1               # number of cpus in z direction
 
 <time>
 
-last 	       = 1000		         # last timestep
+last 	       = 10		         # last timestep
 
 <grid>
 

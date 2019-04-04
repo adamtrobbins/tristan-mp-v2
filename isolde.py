@@ -58,9 +58,9 @@ def getParticles(fname):
         nprt = struct.unpack("i" * nspec, fileContent[read_ptr : read_ptr + nspec * 4])
         read_ptr += nspec * 4
         for s in range(nspec):
-            data[str(s)] = {}
+            data[str(s + 1)] = {}
             for i in range(nvars):
-                (data[str(s)])[variables[i]] = np.array(struct.unpack(variable_types[i] * nprt[s], fileContent[read_ptr : read_ptr + nprt[s] * 4]))
+                (data[str(s + 1)])[variables[i]] = np.array(struct.unpack(variable_types[i] * nprt[s], fileContent[read_ptr : read_ptr + nprt[s] * 4]))
                 read_ptr += nprt[s] * 4
     return data
 

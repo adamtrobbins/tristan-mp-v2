@@ -274,7 +274,7 @@ contains
     integer, intent(in)                 :: step, time
     character(len=STR_MAX)              :: stepchar, filename
     type(MPI_FILE)                      :: flds_out_file
-    integer                             :: ierr, f_xyz, f, rnk, nflds, temp
+    integer                             :: s, ierr, f_xyz, f, rnk, nflds, temp
     integer(kind=2)                     :: i, j, k
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_grid, disp_header
     character(len=STR_MAX)              :: flds(100)
@@ -285,10 +285,13 @@ contains
     ! FIX implement `output_istep` downsampling
 
     ! body
-    nflds = 7
-    flds(1:nflds) = (/'dens ',&
-                    & 'ex   ', 'ey   ', 'ez   ', &
-                    & 'bx   ', 'by   ', 'bz   '/)
+    nflds = 6 + nspec
+    do s = 1, nspec
+      ! hopefully less than 10 species
+      flds(s) = 'dens' // STR(s) // ' '
+    end do
+    flds(nspec + 1 : nspec + 6) = (/'ex   ', 'ey   ', 'ez   ',&
+                                  & 'bx   ', 'by   ', 'bz   '/)
 
     ! create/open file
     write(stepchar, "(i5.5)") step
@@ -368,9 +371,6 @@ contains
           do k = 0, this_meshblock%ptr%sz - 1
             call interpFlds(0.0, 0.0, 0.0, i, j, k, ex0, ey0, ez0, bx0, by0, bz0)
             select case (trim(flds(f)))
-            case('dens')
-              ! FIX0 count density
-              temp_real_arr(temp) = 1.
             case('ex')
               temp_real_arr(temp) = ex0 * B_norm
             case('ey')
@@ -383,6 +383,12 @@ contains
               temp_real_arr(temp) = by0 * B_norm
             case('bz')
               temp_real_arr(temp) = bz0 * B_norm
+            case default
+              ! FIX0 count density
+              if (flds(f)(1:4) .eq. 'dens') then
+                s = REAL(STRtoINT(flds(f)(5:5)))
+                temp_real_arr(temp) = s
+              end if
             end select
             temp = temp + 1
           end do
