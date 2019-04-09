@@ -34,16 +34,30 @@ contains
 
     do timestep = 0, final_timestep
       t_fullstep_1 = MPI_WTIME()
+      ! MAINLOOP >
 
-      call fillGhostZones()
+      call exchangeFields(.true., .true.)
+      call advanceBHalfstep()
+      call exchangeFields(.false., .true.)
+
+      call moveParticles()
+
+      call advanceBHalfstep()
+      call exchangeFields(.false., .true.)
+
+      call advanceEFullstep()
+      call exchangeFields(.true., .false.)
+      
+      ! deposit
+
+      call exchangeParticles()
+      call clearGhostParticles()
 
       if (mod(timestep, output_interval) .eq. 0) then
         call writeOutput(INT(timestep / output_interval), timestep)
       end if
 
-      call moveParticles()
-      call exchangeParticles()
-      call clearGhostParticles()
+      ! </ MAINLOOP
 
       t_fullstep_2 = MPI_WTIME()
 

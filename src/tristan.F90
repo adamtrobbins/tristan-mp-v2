@@ -13,8 +13,8 @@ program tristan
   use m_fields
   implicit none
   !----- main code --------------------------
-  integer :: status, ierr, ind1, ind2, ind3, s, p
-  integer :: mpi_sendto, mpi_recvfrom
+  ! integer :: status, ierr, ind1, ind2, ind3, s, p
+  ! integer :: mpi_sendto, mpi_recvfrom
 
   call initializeAll()
   call mainloop()

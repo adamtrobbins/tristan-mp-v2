@@ -11,10 +11,11 @@ module m_writeoutput
   use m_helpers
   implicit none
 
-  integer :: output_stride, output_interval, output_istep
+  integer               :: output_stride, output_interval, output_istep
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: writeParticles, writeFields
+  private :: writeParticles, writeFields,&
+           & computeDensity
   !...............................................................!
 contains
   subroutine writeOutput(step, time)
@@ -366,6 +367,10 @@ contains
                               & MPI_INTEGER, "native",&
                               & MPI_INFO_NULL, ierr)
       temp = 1
+      if (flds(f)(1:4) .eq. 'dens') then
+        s = STRtoINT(flds(f)(5:5))
+        call computeDensity(s)
+      end if
       do i = 0, this_meshblock%ptr%sx - 1
         do j = 0, this_meshblock%ptr%sy - 1
           do k = 0, this_meshblock%ptr%sz - 1
@@ -384,10 +389,8 @@ contains
             case('bz')
               temp_real_arr(temp) = bz0 * B_norm
             case default
-              ! FIX0 count density
               if (flds(f)(1:4) .eq. 'dens') then
-                s = REAL(STRtoINT(flds(f)(5:5)))
-                temp_real_arr(temp) = s
+                temp_real_arr(temp) = scalar_array(i, j, k)
               end if
             end select
             temp = temp + 1
@@ -402,5 +405,19 @@ contains
     deallocate(temp_real_arr)
     call MPI_FILE_CLOSE(flds_out_file, ierr)
   end subroutine writeFields
+
+  subroutine computeDensity(s)
+    implicit none
+    integer, intent(in)                   :: s
+    integer                               :: p
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    pt_xi => sp_(s)%xi; pt_yi => sp_(s)%yi; pt_zi => sp_(s)%zi
+    ! FIX1 vectorize/align
+    scalar_array(:,:,:) = 0
+    do p = 1, spp_(s)%npart_sp
+      scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
+    end do
+    pt_xi => null(); pt_yi => null(); pt_zi => null()
+  end subroutine computeDensity
 
 end module m_writeoutput

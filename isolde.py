@@ -106,7 +106,8 @@ def convertPartsToHdf5(fname, delete_original = True):
 # !...............................................................!
 # sx,sy,sz -> original dimensions
 # fx,fy,fz -> downsampled dimensions
-def getFields(fname):
+def getFields(fname, nodes = False):
+    # nodes = True -> return node coordinates instead of cells
     def globalizeFld(fld_lst, tuples=False):
         if tuples:
             fld0 = np.zeros((dimx, dimy, dimz, 3))
@@ -170,16 +171,32 @@ def getFields(fname):
             x0, y0, z0 = x_y_z_list[rnk]
             xyz_grid = [[[(i + x0, j + y0, k + z0) for k in range(sz)] for j in range(sy)] for i in range(sx)]
             fld_list.append(xyz_grid)
-        fld_list = globalizeFld(fld_list, True)
-        data['xyz'] = np.array(fld_list)
+        fld_list = np.array(globalizeFld(fld_list, True))
+        if (nodes):
+            x_ = fld_list[:,0,0,0]
+            x_ = np.append(x_, x_[-1] + (x_[-1] - x_[-2]))
+            y_ = fld_list[0,:,0,1]
+            y_ = np.append(y_, y_[-1] + (y_[-1] - y_[-2]))
+            z_ = fld_list[0,0,:,2]
+            if len(z_) > 1:
+                z_ = np.append(z_, z_[-1] + (z_[-1] - z_[-2]))
+            else:
+                z_ = np.append(z_, z_[-1] + 1)
+            data['x'] = x_
+            data['y'] = y_
+            data['z'] = z_
+        else:
+            data['xyz'] = fld_list
         if (len(fileContent) != read_ptr):
             print ("WRONG reading!")
     return data
-# 2D usage example:
+# usage example for 2D uniform grid:
 # ```
-#   data = isolde.getFields("flds.tot.00000")
-#   x_ = data['xyz'][:,:,0,0]
-#   y_ = data['xyz'][:,:,0,1]
-#   ex_ = data['ex'][:,:,0]
-#   plt.pcolormesh(x_, y_, ex_) # <- 2D plot
+#   field_data = isolde.getFields("flds.tot.00000", True)
+#   x_ = field_data['x']
+#   y_ = field_data['y']
+#   x_, y_ = np.mgrid[x_[0]: x_[-1] + 1 : x_[1] - x_[0],
+#                   y_[0]: y_[-1] + 1 : y_[1] - y_[0]]
+#   ex_ = field_data['ex'][:,:,0]
+#   plt.pcolor(x_, y_, ex_) # <- 2D plot
 # ```

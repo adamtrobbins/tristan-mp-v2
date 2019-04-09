@@ -55,6 +55,9 @@ contains
     ! dealloc field exchange
     if (allocated(send_fld)) deallocate(send_fld)
     if (allocated(recv_fld)) deallocate(recv_fld)
+
+    ! dealloc field output
+    if (allocated(scalar_array)) deallocate(scalar_array)
   end subroutine deallocateArrays
 
   subroutine finalizeCommunications()

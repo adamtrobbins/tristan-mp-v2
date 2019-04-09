@@ -97,7 +97,7 @@ contains
             #endif
             if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
             cntr = cntr + 1
-            mpi_sendtag = 10 * (mpi_rank + 1) + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+            mpi_sendtag = 100 * (mpi_rank + 1) + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
 
             ! post non-blocking send requests
             mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
@@ -133,7 +133,7 @@ contains
               end if
 
               mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-              mpi_recvtag = 10 * (mpi_recvfrom + 1) + (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
+              mpi_recvtag = 100 * (mpi_recvfrom + 1) + (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
 
               if (.not. mpi_recvflags(cntr)) then
                 quit_loop = .false.
@@ -161,7 +161,7 @@ contains
 
   subroutine clearGhostParticles()
     implicit none
-    integer                            :: s, p
+    integer :: s, p
     do s = 1, nspec
       ! FIX1 make sure this is vectorized (function call etc)
       p = 1

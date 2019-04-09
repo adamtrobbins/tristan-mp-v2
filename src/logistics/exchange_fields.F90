@@ -3,12 +3,14 @@
 module m_exchangefields
   use m_globalnamespace
   use m_aux
+  use m_errors
   use m_communications
   use m_domain
   use m_fields
 contains
-  subroutine fillGhostZones()
+  subroutine exchangeFields(exchangeE, exchangeB)
     implicit none
+    logical, intent(in) :: exchangeE, exchangeB
     integer           :: i, j, k, imin, imax, jmin, jmax, kmin, kmax
     integer           :: ind1, ind2, ind3, cntr, n_cntr
     integer           :: send_cnt, recv_cnt, ierr
@@ -19,6 +21,10 @@ contains
 
     type(MPI_REQUEST), allocatable  :: mpi_req(:)
     logical, allocatable            :: mpi_sendflags(:), mpi_recvflags(:)
+
+    if ((.not. exchangeE) .and. (.not. exchangeB)) then
+      call throwError('ERROR: `exchangeFields()` called with `.false.` and `.false.`')
+    end if
 
     allocate(mpi_req(sendrecv_neighbors))
     allocate(mpi_sendflags(sendrecv_neighbors))
@@ -36,7 +42,7 @@ contains
           cntr = cntr + 1
 
           mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-          mpi_sendtag = 10 * (mpi_rank + 1) + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+          mpi_sendtag = 100 * (mpi_rank + 1) + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
 
           ! highlight the region to send and save to `send_fld`
           if (ind1 .eq. 0) then
@@ -71,13 +77,18 @@ contains
           do i = imin, imax
             do j = jmin, jmax
               do k = kmin, kmax
-                send_fld(mpi_offset + send_cnt + 0) = ex(i, j, k)
-                send_fld(mpi_offset + send_cnt + 1) = ey(i, j, k)
-                send_fld(mpi_offset + send_cnt + 2) = ez(i, j, k)
-                send_fld(mpi_offset + send_cnt + 3) = bx(i, j, k)
-                send_fld(mpi_offset + send_cnt + 4) = by(i, j, k)
-                send_fld(mpi_offset + send_cnt + 5) = bz(i, j, k)
-                send_cnt = send_cnt + 6
+                if (exchangeE) then
+                  send_fld(mpi_offset + send_cnt + 0) = ex(i, j, k)
+                  send_fld(mpi_offset + send_cnt + 1) = ey(i, j, k)
+                  send_fld(mpi_offset + send_cnt + 2) = ez(i, j, k)
+                  send_cnt = send_cnt + 3
+                end if
+                if (exchangeB) then
+                  send_fld(mpi_offset + send_cnt + 0) = bx(i, j, k)
+                  send_fld(mpi_offset + send_cnt + 1) = by(i, j, k)
+                  send_fld(mpi_offset + send_cnt + 2) = bz(i, j, k)
+                  send_cnt = send_cnt + 3
+                end if
               end do
             end do
           end do
@@ -114,7 +125,7 @@ contains
             end if
 
             mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-            mpi_recvtag = 10 * (mpi_recvfrom + 1) + (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
+            mpi_recvtag = 100 * (mpi_recvfrom + 1) + (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
 
             if (.not. mpi_recvflags(cntr)) then
               quit_loop = .false.
@@ -157,13 +168,18 @@ contains
                 do i = imin, imax
                   do j = jmin, jmax
                     do k = kmin, kmax
-                      ex(i, j, k) = recv_fld(send_cnt + 0)
-                      ey(i, j, k) = recv_fld(send_cnt + 1)
-                      ez(i, j, k) = recv_fld(send_cnt + 2)
-                      bx(i, j, k) = recv_fld(send_cnt + 3)
-                      by(i, j, k) = recv_fld(send_cnt + 4)
-                      bz(i, j, k) = recv_fld(send_cnt + 5)
-                      send_cnt = send_cnt + 6
+                      if (exchangeE) then
+                        ex(i, j, k) = recv_fld(send_cnt + 0)
+                        ey(i, j, k) = recv_fld(send_cnt + 1)
+                        ez(i, j, k) = recv_fld(send_cnt + 2)
+                        send_cnt = send_cnt + 3
+                      end if
+                      if (exchangeB) then
+                        bx(i, j, k) = recv_fld(send_cnt + 0)
+                        by(i, j, k) = recv_fld(send_cnt + 1)
+                        bz(i, j, k) = recv_fld(send_cnt + 2)
+                        send_cnt = send_cnt + 3
+                      end if
                     end do
                   end do
                 end do
@@ -174,5 +190,6 @@ contains
         end do ! ind2
       end do ! ind1
     end do ! global loop
-  end subroutine fillGhostZones
+    call printDiag((mpi_rank .eq. 0), TAB // "exchangeFields()" // TAB // TAB // "[OK]")
+  end subroutine exchangeFields
 end module m_exchangefields

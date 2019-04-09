@@ -15,7 +15,7 @@ user_directory = 'user/'
 user_choices = glob.glob(user_directory + '*.F90')
 user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 parser.add_argument('--user',
-    default='user_emfield',
+    default='user_default',
     choices=user_choices,
     help='select user file')
 

@@ -228,6 +228,12 @@ contains
     allocate(send_fld(sendrecv_buffsz))
     if (allocated(recv_fld)) deallocate(recv_fld)
     allocate(recv_fld(sendrecv_offsetsz))
+
+    ! output fields
+    if (allocated(scalar_array)) deallocate(scalar_array)
+    allocate(scalar_array(0:this_meshblock%ptr%sx - 1,&
+                        & 0:this_meshblock%ptr%sy - 1,&
+                        & 0:this_meshblock%ptr%sz - 1))
   end subroutine initializeFields
 
   subroutine initializeCommunications()

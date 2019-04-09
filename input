@@ -10,12 +10,12 @@ sizez        = 1               # number of cpus in z direction
 
 <time>
 
-last 	       = 10		         # last timestep
+last 	       = 100		         # last timestep
 
 <grid>
 
-mx0 	       = 32 		         # number of actual grid points in the x direction
-my0 	       = 32 	           # number of actual grid points in the y direction
+mx0 	       = 64 		         # number of actual grid points in the x direction
+my0 	       = 64 	           # number of actual grid points in the y direction
 mz0 	       = 1  	           # ... (ignored for 2D simulations)
 
 boundary_x   = 1
@@ -29,7 +29,7 @@ boundary_z   = 1
 
 <output>
 stride        = 1
-interval      = 2
+interval      = 1
 istep         = 1
 
 <boundaries>

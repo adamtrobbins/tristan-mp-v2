@@ -32,6 +32,7 @@ SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
 						 $(SRC_DIR)logistics/read_input.F90 \
 						 $(SRC_DIR)algorithms/particle_mover.F90 \
 						 $(SRC_DIR)algorithms/field_solver.F90 \
+						 $(SRC_DIR)algorithms/current_deposit.F90 \
 						 $(SRC_DIR)logistics/exchange_particles.F90 \
 						 $(SRC_DIR)logistics/exchange_fields.F90 \
 						 $(addprefix $(USR_DIR), $(USER_FILE).F90) \
