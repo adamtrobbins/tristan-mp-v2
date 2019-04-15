@@ -4,7 +4,6 @@ module m_writeoutput
   use m_globalnamespace
   use m_aux
   use m_errors
-  use m_communications
   use m_domain
   use m_particles
   use m_fields
@@ -61,14 +60,15 @@ contains
     integer, intent(in)                 :: step, time
     character(len=STR_MAX)              :: stepchar, filename
     type(MPI_FILE)                      :: prtl_out_file
-    integer                             :: ierr, i, p, s, rnk, nvars, j, temp
+    integer                             :: ierr, i, p, s, rnk, nvars, j, temp, ti, tj, tk, temp_int
     integer(kind=MPI_OFFSET_KIND)       :: disp, disp_header
     character(len=STR_MAX)              :: vars(100), var_types(100)
     integer                             :: npart_stride(nspec), npart_stride_global(nspec, mpi_size)
     integer                             :: npart_cum(nspec), npart_all(nspec)
 
-    integer, allocatable, dimension(:)  :: temp_int_arr, stride_indices_arr
+    integer, allocatable, dimension(:)  :: temp_int_arr, stride_indices_arr, stride_ti_arr, stride_tj_arr, stride_tk_arr
     real, allocatable, dimension(:)     :: temp_real_arr
+		real                                :: temp_real1, temp_real2
 
     ! body
     nvars = 8
@@ -85,12 +85,18 @@ contains
     ! number of strided particles per each species
     do s = 1, nspec
       npart_stride(s) = 0
-      do p = 1, spp_(s)%npart_sp
-        if (modulo(sp_(s)%ind(p), output_stride) .eq. 0) then
-          npart_stride(s) = npart_stride(s) + 1
-        end if
-      end do
-    end do
+			do ti = 1, species(s)%tile_nx
+				do tj = 1, species(s)%tile_ny
+					do tk = 1, species(s)%tile_nz
+			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+			        if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+			          npart_stride(s) = npart_stride(s) + 1
+			        end if
+			      end do ! p
+					end do ! tk
+				end do ! tj
+			end do ! ti
+    end do ! s
 
     call MPI_ALLGATHER(npart_stride, nspec, MPI_INTEGER,&
                      & npart_stride_global, nspec, MPI_INTEGER,&
@@ -158,22 +164,36 @@ contains
     end if
 
     ! writing particle data
-    !   npart_stride(s)           : # of particles to output per species (for a local rank)
-    !   stride_indices_arr(s)     : indices of particles to output for each species (for local rank)
-    !   npart_all(s)              : # of particles to output per species (for all ranks)
-    !   npart_cum(s)              : # of particles to output per species (for all ranks with `rnk < mpi_rank`)
+    !   npart_stride(s)           : # of particles to output per species (for MPI block)
+    !   stride_indices_arr(s)     : indices of particles to output for each species (for MPI block)
+		!   stride_ti_arr(s)          : tile_i of particles to output for each species (for MPI block)
+		!   stride_tj_arr(s)          : tile_j of particles to output for each species (for MPI block)
+		!   stride_tk_arr(s)          : tile_k of particles to output for each species (for MPI block)
+    !   npart_all(s)              : # of particles to output per species (for all MPI blocks)
+    !   npart_cum(s)              : # of particles to output per species (for all MPI blocks with `rnk < mpi_rank`)
     !   temp_int_arr(j)           : contains integer data to write (for a local rank)
     !   temp_real_arr(j)          : contains real data to write (for a local rank)
     do s = 1, nspec
-      if (npart_stride(s) .eq. 0) continue
       allocate(stride_indices_arr(npart_stride(s)))
+			allocate(stride_ti_arr(npart_stride(s)))
+			allocate(stride_tj_arr(npart_stride(s)))
+			allocate(stride_tk_arr(npart_stride(s)))
       j = 1
-      do p = 1, spp_(s)%npart_sp
-        if (modulo(sp_(s)%ind(p), output_stride) .eq. 0) then
-          stride_indices_arr(j) = p
-          j = j + 1
-        end if
-      end do
+			do ti = 1, species(s)%tile_nx
+				do tj = 1, species(s)%tile_ny
+					do tk = 1, species(s)%tile_nz
+			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+			        if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+			          stride_indices_arr(j) = p
+								stride_ti_arr(j) = ti
+								stride_tj_arr(j) = tj
+								stride_tk_arr(j) = tk
+			          j = j + 1
+			        end if
+			      end do ! particles
+					end do ! tk
+				end do ! tj
+			end do ! ti
       do i = 1, nvars
         disp = disp_header +&
                 & (s - 1) * npart_all(s) * nvars * 4 +&
@@ -187,11 +207,21 @@ contains
           select case (trim(vars(i))) ! select integer variable
             case('ind')
               do j = 1, npart_stride(s)
-                temp_int_arr(j) = sp_(s)%ind(stride_indices_arr(j))
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
+                temp_int_arr(j) = temp_int
               end do
             case('proc')
               do j = 1, npart_stride(s)
-                temp_int_arr(j) = sp_(s)%proc(stride_indices_arr(j))
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_int = species(s)%prtl_tile(ti, tj, tk)%proc(temp)
+                temp_int_arr(j) = temp_int
               end do
             case default
               call throwError('ERROR: unrecognized vars: `'//trim(vars(i))//'`')
@@ -205,30 +235,60 @@ contains
           select case (trim(vars(i))) ! select integer variable
             case('x')
               do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%x0 + sp_(s)%xi(temp)) + sp_(s)%dx(temp)
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_int = species(s)%prtl_tile(ti, tj, tk)%xi(temp)
+								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dx(temp)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%x0 + temp_int) + temp_real1
               end do
             case('y')
               do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%y0 + sp_(s)%yi(temp)) + sp_(s)%dy(temp)
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_int = species(s)%prtl_tile(ti, tj, tk)%yi(temp)
+								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dy(temp)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%y0 + temp_int) + temp_real1
               end do
             case('z')
               do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                temp_real_arr(j) = REAL(this_meshblock%ptr%z0 + sp_(s)%zi(temp)) + sp_(s)%dz(temp)
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_int = species(s)%prtl_tile(ti, tj, tk)%zi(temp)
+								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dz(temp)
+                temp_real_arr(j) = REAL(this_meshblock%ptr%z0 + temp_int) + temp_real1
               end do
             case('u')
               do j = 1, npart_stride(s)
-                temp_real_arr(j) = REAL(sp_(s)%u(stride_indices_arr(j)), 4)
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%u(temp)
+                temp_real_arr(j) = REAL(temp_real1, 4)
               end do
             case('v')
               do j = 1, npart_stride(s)
-                temp_real_arr(j) = REAL(sp_(s)%v(stride_indices_arr(j)), 4)
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%v(temp)
+                temp_real_arr(j) = REAL(temp_real1, 4)
               end do
             case('w')
               do j = 1, npart_stride(s)
-                temp_real_arr(j) = REAL(sp_(s)%w(stride_indices_arr(j)), 4)
+								temp = stride_indices_arr(j)
+								ti = stride_ti_arr(j)
+								tj = stride_tj_arr(j)
+								tk = stride_tk_arr(j)
+								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
+								temp_real_arr(j) = REAL(temp_real1, 4)
               end do
             case default
               call throwError('ERROR: unrecognized vars: `'//trim(vars(i))//'`')
@@ -242,7 +302,10 @@ contains
         end if
       end do
       deallocate(stride_indices_arr)
-    end do
+			deallocate(stride_ti_arr)
+			deallocate(stride_tj_arr)
+			deallocate(stride_tk_arr)
+    end do ! species
 
     call MPI_FILE_CLOSE(prtl_out_file, ierr)
   end subroutine writeParticles
@@ -409,15 +472,25 @@ contains
   subroutine computeDensity(s)
     implicit none
     integer, intent(in)                   :: s
-    integer                               :: p
+    integer                               :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
-    pt_xi => sp_(s)%xi; pt_yi => sp_(s)%yi; pt_zi => sp_(s)%zi
-    ! FIX1 vectorize/align
-    scalar_array(:,:,:) = 0
-    do p = 1, spp_(s)%npart_sp
-      scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
-    end do
-    pt_xi => null(); pt_yi => null(); pt_zi => null()
+		scalar_array(:,:,:) = 0
+		do ti = 1, species(s)%tile_nx
+			do tj = 1, species(s)%tile_ny
+				do tk = 1, species(s)%tile_nz
+					pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+					pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+					pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+					! FIX1 vectorize/align
+					!$omp simd
+					!dir$ vector aligned
+					do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+						scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
+					end do
+					pt_xi => null(); pt_yi => null(); pt_zi => null()
+				end do
+			end do
+		end do
   end subroutine computeDensity
 
 end module m_writeoutput

@@ -3,7 +3,6 @@
 module m_errors
   use m_globalnamespace
   use m_finalize
-  use m_communications
   implicit none
 contains
   subroutine throwError(msg)

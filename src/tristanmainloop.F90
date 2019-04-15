@@ -3,7 +3,6 @@
 module m_mainloop
   use m_globalnamespace
   use m_aux
-  use m_communications
   use m_writeoutput
   use m_fldsolver
   use m_mover
@@ -47,7 +46,7 @@ contains
 
       call advanceEFullstep()
       call exchangeFields(.true., .false.)
-      
+
       ! deposit
 
       call exchangeParticles()
@@ -69,18 +68,18 @@ contains
   end subroutine mainloop
 
   #ifdef DEBUG
-    subroutine showParticles()
-      implicit none
-      integer :: s, p
-      print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
-      do s = 1, nspec
-        print *, trim(TAB) // "PRINTING SPECIES:", s
-        do p = 1, spp_(s)%npart_sp
-          print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
-                 & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
-        end do
-      end do
-    end subroutine showParticles
+    ! subroutine showParticles()
+    !   implicit none
+    !   integer :: s, p
+    !   print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
+    !   do s = 1, nspec
+    !     print *, trim(TAB) // "PRINTING SPECIES:", s
+    !     do p = 1, spp_(s)%npart_sp
+    !       print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
+    !              & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
+    !     end do
+    !   end do
+    ! end subroutine showParticles
 
     subroutine showField()
       implicit none

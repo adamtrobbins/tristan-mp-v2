@@ -24,7 +24,6 @@ SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
 						 $(SRC_DIR)objects/domain.F90 \
 						 $(SRC_DIR)objects/particles.F90 \
 						 $(SRC_DIR)objects/fields.F90 \
-						 $(SRC_DIR)logistics/communications.F90 \
 						 $(SRC_DIR)tools/helpers.F90 \
 						 $(SRC_DIR)logistics/finalize.F90 \
 						 $(SRC_DIR)tools/error_handling.F90 \
@@ -33,6 +32,7 @@ SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
 						 $(SRC_DIR)algorithms/particle_mover.F90 \
 						 $(SRC_DIR)algorithms/field_solver.F90 \
 						 $(SRC_DIR)algorithms/current_deposit.F90 \
+						 $(SRC_DIR)logistics/particle_logistics.F90 \
 						 $(SRC_DIR)logistics/exchange_particles.F90 \
 						 $(SRC_DIR)logistics/exchange_fields.F90 \
 						 $(addprefix $(USR_DIR), $(USER_FILE).F90) \

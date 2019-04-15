@@ -4,10 +4,10 @@ module m_userfile
   use m_globalnamespace
   use m_aux
   use m_readinput
-  use m_communications
   use m_domain
   use m_particles
   use m_fields
+	use m_particlelogistics
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!

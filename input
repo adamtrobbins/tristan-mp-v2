@@ -14,13 +14,17 @@ last 	       = 100		         # last timestep
 
 <grid>
 
-mx0 	       = 64 		         # number of actual grid points in the x direction
-my0 	       = 64 	           # number of actual grid points in the y direction
+mx0 	       = 32 		         # number of actual grid points in the x direction
+my0 	       = 32 	           # number of actual grid points in the y direction
 mz0 	       = 1  	           # ... (ignored for 2D simulations)
 
 boundary_x   = 1
 boundary_y   = 1
 boundary_z   = 1
+
+tileX        = 2
+tileY        = 2
+tileZ        = 1
 
 <algorithm>
 

@@ -3,7 +3,6 @@
 module m_finalize
   use m_globalnamespace
   use m_aux
-  use m_communications
   use m_domain
   use m_particles
   use m_fields
@@ -29,9 +28,8 @@ contains
     if (allocated(meshblocks)) deallocate(meshblocks)
     nullify(this_meshblock%ptr)
 
-    ! dealloc particle arrays
-    if (allocated(sp_)) deallocate(sp_)
-    if (allocated(spp_)) deallocate(spp_)
+    ! dealloc particle species
+    if (allocated(species)) deallocate(species)
 
     ! dealloc exchange arrays
     do i = -1, 1

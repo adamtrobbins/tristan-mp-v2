@@ -4,7 +4,6 @@ module m_exchangefields
   use m_globalnamespace
   use m_aux
   use m_errors
-  use m_communications
   use m_domain
   use m_fields
 contains

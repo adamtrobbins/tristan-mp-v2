@@ -5,7 +5,6 @@ module m_helpers
   use m_domain
   use m_particles
   use m_fields
-  use m_communications
   implicit none
 contains
   function rnkToInd(rnk)
