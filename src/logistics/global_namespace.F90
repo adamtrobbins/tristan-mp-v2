@@ -15,7 +15,7 @@ module m_globalnamespace
   integer, parameter     :: UNIT_input = 10
 
   ! plasma parameters
-  real :: ppc0, c_omp, sigma, B_norm
+  real :: ppc0, c_omp, sigma, B_norm, unit_ch
 
   ! simulation parameters
   integer                :: final_timestep

@@ -47,7 +47,11 @@ contains
       call advanceEFullstep()
       call exchangeFields(.true., .false.)
 
-      ! deposit
+      call depositCurrents()
+      call exchangeCurrents()
+
+      call addCurrents()
+      call exchangeFields(.true., .false.)
 
       call exchangeParticles()
       call clearGhostParticles()
@@ -55,7 +59,6 @@ contains
       if (mod(timestep, output_interval) .eq. 0) then
         call writeOutput(INT(timestep / output_interval), timestep)
       end if
-
       ! </ MAINLOOP
 
       t_fullstep_2 = MPI_WTIME()

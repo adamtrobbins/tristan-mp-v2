@@ -67,6 +67,7 @@ contains
     call getInput('plasma', 'sigma', sigma)
     call getInput('plasma', 'c_omp', c_omp)
     B_norm = CC**2 * sqrt(sigma) / c_omp
+    unit_ch = CC**2 / (ppc0 * c_omp**2)
 
     call getInput('particles', 'nspec', nspec, 2)
 
@@ -221,6 +222,9 @@ contains
     if (allocated(bx)) deallocate(bx)
     if (allocated(by)) deallocate(by)
     if (allocated(bz)) deallocate(bz)
+    if (allocated(jx)) deallocate(jx)
+    if (allocated(jy)) deallocate(jy)
+    if (allocated(jz)) deallocate(jz)
     allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
               & fldBoundZ))
@@ -237,6 +241,15 @@ contains
               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
               & fldBoundZ))
     allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+              & fldBoundZ))
+    allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
               & fldBoundZ))
 

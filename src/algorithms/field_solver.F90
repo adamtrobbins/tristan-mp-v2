@@ -46,6 +46,7 @@ contains
   			enddo
   		enddo
     #endif
+    call printDiag((mpi_rank .eq. 0), TAB // "advanceBHalfstep()" // TAB // TAB // "[OK]")
   end subroutine advanceBHalfstep
 
   subroutine advanceEFullstep()
@@ -87,5 +88,32 @@ contains
   			enddo
   		enddo
     #endif
+    call printDiag((mpi_rank .eq. 0), TAB // "advanceEFullstep()" // TAB // TAB // "[OK]")
   end subroutine advanceEFullstep
+
+  subroutine addCurrents()
+    implicit none
+    #ifdef threeD
+      ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) = &
+          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) + &
+          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1)
+      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) = &
+          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) + &
+          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1)
+      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) = &
+          & ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) + &
+          & jz(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1)
+    #else
+      ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) = &
+          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) + &
+          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0)
+      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) = &
+          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) + &
+          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0)
+      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) = &
+          & ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) + &
+          & jz(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0)
+    #endif
+    call printDiag((mpi_rank .eq. 0), TAB // "addCurrents()" // TAB // TAB // "[OK]")
+  end subroutine addCurrents
 end module m_fldsolver
