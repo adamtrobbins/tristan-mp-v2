@@ -19,25 +19,18 @@ contains
   subroutine filterCurrents()
     implicit none
     integer :: n_pass, iter
-
-
     n_pass = NGHOST
     iter = 0
     do while (.true.)
-      if (n_pass .gt. nfilter) then
+      if (n_pass .ge. nfilter) then
         if (nfilter .gt. 0) then
           ! filter `(nfilter - iter * NGHOST)` times
-          call filterInAll(jx, nfilter - iter * NGHOST)
-          call filterInAll(jy, nfilter - iter * NGHOST)
-          call filterInAll(jz, nfilter - iter * NGHOST)
+          call filterInAll(nfilter - iter * NGHOST)
         end if
         exit
       else
         ! filter `(NGHOST)` times
-        call filterInAll(jx, NGHOST)
-        call filterInAll(jy, NGHOST)
-        call filterInAll(jz, NGHOST)
-        call exchangeCurrents()
+        call filterInAll(NGHOST)
         n_pass = n_pass + NGHOST
         iter = iter + 1
       end if
@@ -48,16 +41,24 @@ contains
   !     "blablabla"
   ! end subroutine filterEfield
 
-  subroutine filterInAll(arr, do_n_times)
+  subroutine filterInAll(do_n_times)
     implicit none
-    real, intent(inout) :: arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                             & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                             & fldBoundZ)
     integer, intent(in) :: do_n_times
-    call filterInX(arr, do_n_times)
-    call filterInY(arr, do_n_times)
+    call filterInX(jx, do_n_times)
+    call filterInX(jy, do_n_times)
+    call filterInX(jz, do_n_times)
+    call exchangeCurrents(.true.)
+
+    call filterInY(jx, do_n_times)
+    call filterInY(jy, do_n_times)
+    call filterInY(jz, do_n_times)
+    call exchangeCurrents(.true.)
+
     #ifdef threeD
-      call filterInZ(arr, do_n_times)
+      call filterInZ(jx, do_n_times)
+      call filterInZ(jy, do_n_times)
+      call filterInZ(jz, do_n_times)
+      call exchangeCurrents(.true.)
     #endif
   end subroutine
 

@@ -9,6 +9,7 @@ module m_initialize
   use m_fields
   use m_userfile
   use m_helpers
+  use m_errors
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -17,7 +18,7 @@ module m_initialize
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & assignNeighbor, allocateParticles,&
-           & initializeSimulation
+           & initializeSimulation, checkEverything
   !...............................................................!
 contains
   ! initialize all the necessary arrays and variables
@@ -42,6 +43,9 @@ contains
     if (mpi_rank .eq. 0) call firstRankInitialize()
     call userInitialize()
 
+    ! check everything before moving forward
+    call checkEverything()
+
     call printReport((mpi_rank .eq. 0), "initializeAll()" // TAB // TAB // TAB // "[OK]")
   end subroutine initializeAll
 
@@ -55,6 +59,7 @@ contains
   subroutine initializeSimulation()
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
+    call getInput('algorithm', 'nfilter', nfilter, 1000)
   end subroutine initializeSimulation
 
   subroutine initializeParticles()
@@ -71,7 +76,6 @@ contains
 
     call getInput('particles', 'nspec', nspec, 2)
 
-    ! allocate(spp_(nspec))
     allocate(species(nspec))
 		do s = 1, nspec
 			call getInput('grid', 'tileX', species(s)%tile_sx)
@@ -376,7 +380,7 @@ contains
     else
       meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
     end if
-  end subroutine
+  end subroutine assignNeighbor
 
   subroutine firstRankInitialize()
     ! create output/restart directories
@@ -384,4 +388,21 @@ contains
     call system('mkdir -p ' // trim(output_dir_name))
     call system('mkdir -p ' // trim(restart_dir_name))
   end subroutine firstRankInitialize
+
+  subroutine checkEverything()
+    implicit none
+    ! check that the domain size is larger than the number of ghost zones
+    #ifndef threeD
+      if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
+        & (this_meshblock%ptr%sy .lt. NGHOST)) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #else
+      if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
+        & (this_meshblock%ptr%sy .lt. NGHOST) .or.&
+        & (this_meshblock%ptr%sz .lt. NGHOST)) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #endif
+  end subroutine checkEverything
 end module m_initialize
