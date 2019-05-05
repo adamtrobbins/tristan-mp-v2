@@ -344,18 +344,22 @@ contains
     character(len=STR_MAX)              :: flds(100)
     integer                             :: nfld_cum, nfld_all
     real                                :: ex0, ey0, ez0, bx0, by0, bz0
+    real                                :: jx0, jy0, jz0
     real, allocatable, dimension(:)     :: temp_real_arr
 
     ! FIX implement `output_istep` downsampling
 
     ! body
-    nflds = 6 + nspec
+    ! total number of fields (excluding particle densities)
+    nflds = 9
+    nflds = nflds + nspec
     do s = 1, nspec
       ! hopefully less than 10 species
       flds(s) = 'dens' // STR(s) // ' '
     end do
-    flds(nspec + 1 : nspec + 6) = (/'ex   ', 'ey   ', 'ez   ',&
-                                  & 'bx   ', 'by   ', 'bz   '/)
+    flds(nspec + 1 : nflds) = (/'ex   ', 'ey   ', 'ez   ',&
+                              & 'bx   ', 'by   ', 'bz   ',&
+                              & 'jx   ', 'jy   ', 'jz   '/)
 
     ! create/open file
     write(stepchar, "(i5.5)") step
@@ -430,29 +434,41 @@ contains
                               & MPI_INTEGER, "native",&
                               & MPI_INFO_NULL, ierr)
       temp = 1
-      if (flds(f)(1:4) .eq. 'dens') then
-        s = STRtoINT(flds(f)(5:5))
-        call computeDensity(s)
-      end if
       do i = 0, this_meshblock%ptr%sx - 1
         do j = 0, this_meshblock%ptr%sy - 1
           do k = 0, this_meshblock%ptr%sz - 1
-            call interpFlds(0.0, 0.0, 0.0, i, j, k, ex0, ey0, ez0, bx0, by0, bz0)
             select case (trim(flds(f)))
             case('ex')
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
               temp_real_arr(temp) = ex0 * B_norm
             case('ey')
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
               temp_real_arr(temp) = ey0 * B_norm
             case('ez')
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
               temp_real_arr(temp) = ez0 * B_norm
             case('bx')
+              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
               temp_real_arr(temp) = bx0 * B_norm
             case('by')
+              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
               temp_real_arr(temp) = by0 * B_norm
             case('bz')
+              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
               temp_real_arr(temp) = bz0 * B_norm
+            case('jx')
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              temp_real_arr(temp) = -jx0 * B_norm
+            case('jy')
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              temp_real_arr(temp) = -jy0 * B_norm
+            case('jz')
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              temp_real_arr(temp) = -jz0 * B_norm
             case default
               if (flds(f)(1:4) .eq. 'dens') then
+                s = STRtoINT(flds(f)(5:5))
+                call computeDensity(s)
                 temp_real_arr(temp) = scalar_array(i, j, k)
               end if
             end select

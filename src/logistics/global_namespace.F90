@@ -22,6 +22,7 @@ module m_globalnamespace
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart'
+  integer                :: nfilter
 
   ! mpi variables
   integer                :: mpi_rank, mpi_size, mpi_statsize

@@ -55,7 +55,7 @@ contains
     character(len=*), intent(in)  :: my_str
     integer                       :: my_int
     read (my_str, *) my_int
-  end function
+  end function STRtoINT
 
   real function random(dseed)
     ! FIX look at precision here
@@ -76,7 +76,7 @@ contains
   	e = state(rand_ind)
   	e = abs(e)
   	random = REAL(e) / 2147483648.
-  end function
+  end function random
 
   subroutine initializeRandomSeed(rank)
   	implicit none
