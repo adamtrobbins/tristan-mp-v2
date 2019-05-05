@@ -49,6 +49,11 @@ parser.add_argument('-3d',
     default=False,
     help='enable 3d')
 
+parser.add_argument('-testparts',
+    action='store_true',
+    default=False,
+    help='disable EM pusher for the particles')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -71,6 +76,9 @@ else:
 
 if args['debug']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
+
+if args['testparts']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-Dtestparts '
 
 if args['debug'] and args['intel']:
     makefile_options['COMPILER_FLAGS'] += '-O3 -qopenmp-simd -qopt-report=5 '
@@ -102,6 +110,7 @@ print('  Userfile:                ' + args['user'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
+print('  EM pusher:               ' + ('OFF' if args['testparts'] else 'ON'))
 print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
     + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'])

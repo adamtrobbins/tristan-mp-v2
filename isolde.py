@@ -107,29 +107,16 @@ def convertPartsToHdf5(fname, delete_original = True):
 # sx,sy,sz -> original dimensions
 # fx,fy,fz -> downsampled dimensions
 def getFields(fname, nodes = False):
-    # nodes = True -> return node coordinates instead of cells
-    def globalizeFld(fld_lst, tuples=False):
-        if tuples:
-            fld0 = np.zeros((dimx, dimy, dimz, 3))
-        else:
-            fld0 = np.zeros((dimx, dimy, dimz))
-        def findRank(i, j, k):
-            for rnk in range(mpi_size):
-                x0, y0, z0 = x_y_z_list[rnk]
-                sx, sy, sz = sx_sy_sz_list[rnk]
-                if ((i >= x0) and (i < x0 + sx) and (j >= y0) and (j < y0 + sy) and (k >= z0) and (k < z0 + sz)):
-                    return rnk
-            return -1
-        for i in range(dimx):
-            for j in range(dimy):
-                for k in range(dimz):
-                    field_rnk = findRank(i, j, k)
-                    x0, y0, z0 = x_y_z_list[field_rnk]
-                    if tuples:
-                        fld0[i, j, k] = np.array(fld_lst[field_rnk])[i - x0, j - y0, k - z0]
-                    else:
-                        fld0[i, j, k] = fld_lst[field_rnk][i - x0, j - y0, k - z0]
-        return fld0
+    def getGlobalS(x0, siz):
+        siz = np.array([x for _,x in sorted(zip(x0,siz))])
+        x0 = np.array(sorted(x0))
+        mmin = siz[0]
+        curr = x0[0]
+        for rnk in range(4):
+            if x0[rnk] > curr:
+                mmin += siz[rnk]
+                curr = x0[rnk]
+        return mmin
     with open(fname, mode='rb') as file:
         fileContent = file.read()
         data = {}
@@ -151,33 +138,36 @@ def getFields(fname, nodes = False):
             sx_sy_sz = struct.unpack("i"*3, fileContent[read_ptr : read_ptr + 4 * 3])
             read_ptr += 4 * 3
             x_y_z_list.append(x_y_z); sx_sy_sz_list.append(sx_sy_sz)
-        data['mblocks_xyz'] = x_y_z_list
-        data['mblocks_sxyz'] = sx_sy_sz_list
+        data['mblocks_xyz'] = np.array(x_y_z_list)
+        data['mblocks_sxyz'] = np.array(sx_sy_sz_list)
+        # getting global domain sizes from the local meshblocks
+        sx_glob = getGlobalS(np.array(x_y_z_list)[:,0], np.array(sx_sy_sz_list)[:,0])
+        sy_glob = getGlobalS(np.array(x_y_z_list)[:,1], np.array(sx_sy_sz_list)[:,1])
+        sz_glob = getGlobalS(np.array(x_y_z_list)[:,2], np.array(sx_sy_sz_list)[:,2])
         # saving fields
         for f in range(nflds):
-            fld_list = []
+            fld_glob = np.zeros((sx_glob, sy_glob, sz_glob))
             for rnk in range(mpi_size):
+                x0, y0, z0 = x_y_z_list[rnk]
                 sx, sy, sz = sx_sy_sz_list[rnk]
                 fld = np.array(struct.unpack("f" * sx * sy * sz, fileContent[read_ptr : read_ptr + 4 * sx * sy * sz]))
                 read_ptr += 4 * sx * sy * sz
                 fld = fld.reshape(sx, sy, sz) # then `fld[xi,yi,zi]` is the field at `xi,yi,zi`
-                fld_list.append(fld)
-            fld_list = globalizeFld(fld_list)
-            data[variables[f]] = np.array(fld_list)
+                fld_glob[x0:x0+sx,y0:y0+sy,z0:z0+sz] = fld
+            data[variables[f]] = np.array(fld_glob)
         # saving grid as a field
-        fld_list = []
+        fld_glob = np.zeros((sx_glob, sy_glob, sz_glob, 3))
         for rnk in range(mpi_size):
-            sx, sy, sz = sx_sy_sz_list[rnk]
             x0, y0, z0 = x_y_z_list[rnk]
+            sx, sy, sz = sx_sy_sz_list[rnk]
             xyz_grid = [[[(i + x0, j + y0, k + z0) for k in range(sz)] for j in range(sy)] for i in range(sx)]
-            fld_list.append(xyz_grid)
-        fld_list = np.array(globalizeFld(fld_list, True))
+            fld_glob[x0:x0+sx,y0:y0+sy,z0:z0+sz] = xyz_grid
         if (nodes):
-            x_ = fld_list[:,0,0,0]
+            x_ = fld_glob[:,0,0,0]
             x_ = np.append(x_, x_[-1] + (x_[-1] - x_[-2]))
-            y_ = fld_list[0,:,0,1]
+            y_ = fld_glob[0,:,0,1]
             y_ = np.append(y_, y_[-1] + (y_[-1] - y_[-2]))
-            z_ = fld_list[0,0,:,2]
+            z_ = fld_glob[0,0,:,2]
             if len(z_) > 1:
                 z_ = np.append(z_, z_[-1] + (z_[-1] - z_[-2]))
             else:
@@ -186,7 +176,7 @@ def getFields(fname, nodes = False):
             data['y'] = y_
             data['z'] = z_
         else:
-            data['xyz'] = fld_list
+            data['xyz'] = np.array(fld_glob)
         if (len(fileContent) != read_ptr):
             print ("WRONG reading!")
     return data
@@ -200,3 +190,53 @@ def getFields(fname, nodes = False):
 #   ex_ = field_data['ex'][:,:,0]
 #   plt.pcolor(x_, y_, ex_) # <- 2D plot
 # ```
+
+# easy plotting function
+def plot2DField(ax, x, y, field,
+                title='field', cmap='jet',
+                vmin=None, vmax=None,
+                typ='lin', **kwargs):
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    sx, sy = field.shape
+    if not vmin:
+        vmin = field.min()
+    if not vmax:
+        vmax = field.max()
+    if typ == 'lin':
+        im = ax.pcolormesh(x, y, field, cmap=cmap, norm=mpl.colors.Normalize(vmin=vmin, vmax=vmax))
+    elif typ == 'log':
+        im = ax.pcolormesh(x, y, field, cmap=cmap, norm=mpl.colors.LogNorm(vmin=vmin, vmax=vmax))
+    elif typ == 'sym':
+        vmax = max(np.abs(vmin), vmax)
+        im = ax.pcolormesh(x, y, field, cmap=cmap,
+                           norm=mpl.colors.SymLogNorm(vmin=-vmax, vmax=vmax,
+                                                      linthresh=kwargs['lth'],
+                                                      linscale=kwargs['lsc']))
+    ax.set_aspect(1)
+    ax.set_xlim(0, sx - 1)
+    ax.set_ylim(0, sy - 1)
+    if 'xlabel' in kwargs:
+        ax.set_xlabel(kwargs['xlabel'])
+    else:
+        ax.set_xlabel('x')
+    if 'ylabel' in kwargs:
+        ax.set_ylabel(kwargs['ylabel'])
+    else:
+        ax.set_ylabel('y')
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="2%", pad=0.05)
+    ax.set_title(title)
+    plt.colorbar(im, cax=cax)
+
+# easy plotting function
+def plot2DScatterParticles(ax, sx, sy, x_list, y_list,
+                           label='particles', legend=True,
+                           color='black', **kwargs):
+    ax.scatter(x_list, y_list, c=color, label=label)
+    ax.set_aspect(1)
+    if legend:
+        ax.legend()
+    ax.set_xlim(0, sx - 1)
+    ax.set_ylim(0, sy - 1)
