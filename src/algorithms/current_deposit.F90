@@ -40,15 +40,56 @@ contains
 						pt_v => species(s)%prtl_tile(ti, tj, tk)%v
 						pt_w => species(s)%prtl_tile(ti, tj, tk)%w
 
-            temp_charge = species(s)%ch_sp * unit_ch
+            temp_charge = species(s)%ch_sp * unit_ch / B_norm
 
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               ! push the particle back
-              #ifdef threeD
-                gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              #ifndef threeD
+                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p)
+                x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv
 
-                x2 = pt_xi(p) + pt_dx(p); y2 = pt_yi(p) + pt_dy(p); z2 = pt_zi(p) + pt_dz(p)
-                x1 = x2 - pt_u(p) * CC * gamma_inv; y1 = y2 - pt_u(p) * CC * gamma_inv; z1 = z2 - pt_u(p) * CC * gamma_inv
+                i1 = INT(x1, 2);  i2 = pt_xi(p)
+                j1 = INT(y1, 2);  j2 = pt_yi(p)
+                k1 = 0;           k2 = 0
+
+                xr = min(REAL(min(i1, i2) + 1), max(REAL(max(i1, i2)), 0.5 * (x1 + x2)))
+                yr = min(REAL(min(j1, j2) + 1), max(REAL(max(j1, j2)), 0.5 * (y1 + y2)))
+                zr = min(REAL(min(k1, k2) + 1), max(REAL(max(k1, k2)), 0.5 * (z1 + z2)))
+
+                Wx1 = 0.5 * (x1 + xr) - i1;   Wy1 = 0.5 * (y1 + yr) - j1
+                Wx2 = 0.5 * (x2 + xr) - i2;   Wy2 = 0.5 * (y2 + yr) - j2
+                onemWx1 = 1 - Wx1;            onemWy1 = 1 - Wy1
+                onemWx2 = 1 - Wx2;            onemWy2 = 1 - Wy2
+
+                ! deposit with a "-" sign
+                Fx1 = -temp_charge * (xr - x1); Fy1 = -temp_charge * (yr - y1);  Fz1 = -temp_charge * (zr - z1)
+                Fx2 = -temp_charge * (x2 - xr); Fy2 = -temp_charge * (y2 - yr);  Fz2 = -temp_charge * (z2 - zr)
+
+                jx(i1    , j1    , k1) = jx(i1    , j1    , k1) + Fx1 * onemWy1
+                jx(i1    , j1 + 1, k1) = jx(i1    , j1 + 1, k1) + Fx1 * Wy1
+
+                jy(i1    , j1    , k1) = jy(i1    , j1    , k1) + Fy1 * onemWx1
+                jy(i1 + 1, j1    , k1) = jy(i1 + 1, j1    , k1) + Fy1 * Wx1
+
+                jx(i2    , j2    , k2) = jx(i2    , j2    , k2) + Fx2 * onemWy2
+                jx(i2    , j2 + 1, k2) = jx(i2    , j2 + 1, k2) + Fx2 * Wy2
+
+                jy(i2    , j2    , k2) = jy(i2    , j2    , k2) + Fy2 * onemWx2
+                jy(i2 + 1, j2    , k2) = jy(i2 + 1, j2    , k2) + Fy2 * Wx2
+
+                jz(i1    , j1    , k1) = jz(i1    , j1    , k1) + Fz1 * onemWx1 * onemWy1
+                jz(i1 + 1, j1    , k1) = jz(i1 + 1, j1    , k1) + Fz1 * Wx1 * onemWy1
+                jz(i1    , j1 + 1, k1) = jz(i1    , j1 + 1, k1) + Fz1 * onemWx1 * Wy1
+                jz(i1 + 1, j1 + 1, k1) = jz(i1 + 1, j1 + 1, k1) + Fz1 * Wx1 * Wy1
+
+                jz(i2    , j2    , k2) = jz(i2    , j2    , k2) + Fz2 * onemWx2 * onemWy2
+                jz(i2 + 1, j2    , k2) = jz(i2 + 1, j2    , k2) + Fz2 * Wx2 * onemWy2
+                jz(i2    , j2 + 1, k2) = jz(i2    , j2 + 1, k2) + Fz2 * onemWx2 * Wy2
+                jz(i2 + 1, j2 + 1, k2) = jz(i2 + 1, j2 + 1, k2) + Fz2 * Wx2 * Wy2
+              #else
+                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
+                x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv;   z1 = z2 - pt_w(p) * CC * gamma_inv
 
                 i1 = INT(x1, 2); i2 = pt_xi(p)
                 j1 = INT(y1, 2); j2 = pt_yi(p)
@@ -96,40 +137,6 @@ contains
                 jz(i2 + 1, j2    , k2    ) = jz(i2 + 1, j2    , k2    ) + Fz2 * Wx2 * onemWy2
                 jz(i2    , j2 + 1, k2    ) = jz(i2    , j2 + 1, k2    ) + Fz2 * onemWx2 * Wy2
                 jz(i2 + 1, j2 + 1, k2    ) = jz(i2 + 1, j2 + 1, k2    ) + Fz2 * Wx2 * Wy2
-              #else
-                gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
-
-                x2 = pt_xi(p) + pt_dx(p); y2 = pt_yi(p) + pt_dy(p)
-                x1 = x2 - pt_u(p) * CC * gamma_inv; y1 = y2 - pt_u(p) * CC * gamma_inv
-
-                i1 = INT(x1, 2); i2 = pt_xi(p)
-                j1 = INT(y1, 2); j2 = pt_yi(p)
-                k1 = 0; k2 = 0
-
-                xr = min(REAL(min(i1, i2) + 1), max(REAL(max(i1, i2)), 0.5 * (x1 + x2)))
-                yr = min(REAL(min(j1, j2) + 1), max(REAL(max(j1, j2)), 0.5 * (y1 + y2)))
-                zr = z2
-
-                Wx1 = 0.5 * (x1 + xr) - i1; Wy1 = 0.5 * (y1 + yr) - j1
-                Wx2 = 0.5 * (x2 + xr) - i2; Wy2 = 0.5 * (y2 + yr) - j2
-                onemWx1 = 1 - Wx1; onemWy1 = 1 - Wy1
-                onemWx2 = 1 - Wx2; onemWy2 = 1 - Wy2
-
-                ! deposit with a "-" sign
-                Fx1 = -temp_charge * (xr - x1); Fy1 = -temp_charge * (yr - y1)
-                Fx2 = -temp_charge * (x2 - xr); Fy2 = -temp_charge * (y2 - yr)
-
-                jx(i1    , j1    , k1) = jx(i1    , j1    , k1) + Fx1 * onemWy1
-                jx(i1    , j1 + 1, k1) = jx(i1    , j1 + 1, k1) + Fx1 * Wy1
-
-                jy(i1    , j1    , k1) = jy(i1    , j1    , k1) + Fy1 * onemWx1
-                jy(i1 + 1, j1    , k1) = jy(i1 + 1, j1    , k1) + Fy1 * Wx1
-
-                jx(i2    , j2    , k2) = jx(i2    , j2    , k2) + Fx2 * onemWy2
-                jx(i2    , j2 + 1, k2) = jx(i2    , j2 + 1, k2) + Fx2 * Wy2
-
-                jy(i2    , j2    , k2) = jy(i2    , j2    , k2) + Fy2 * onemWx2
-                jy(i2 + 1, j2    , k2) = jy(i2 + 1, j2    , k2) + Fy2 * Wx2
               #endif
             end do
             pt_xi => null(); pt_yi => null(); pt_zi => null()

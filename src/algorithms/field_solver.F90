@@ -93,27 +93,32 @@ contains
 
   subroutine addCurrents()
     implicit none
-    #ifdef threeD
-      ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) = &
-          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) + &
-          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1)
-      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) = &
-          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) + &
-          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1)
-      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) = &
-          & ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1) + &
-          & jz(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0 : this_meshblock%ptr%sz - 1)
+    integer :: xmin, xmax, ymin, ymax, zmin, zmax
+    xmin = 0;   xmax = this_meshblock%ptr%sx - 1
+    ymin = 0;   ymax = this_meshblock%ptr%sy - 1
+    zmin = 0;   zmax = this_meshblock%ptr%sz - 1
+    ! "-" sign is taken care of in the deposit
+    #ifndef threeD
+      ex(xmin:xmax, ymin:ymax, 0) = &
+          & ex(xmin:xmax, ymin:ymax, 0) + &
+          & jx(xmin:xmax, ymin:ymax, 0)
+      ey(xmin:xmax, ymin:ymax, 0) = &
+          & ey(xmin:xmax, ymin:ymax, 0) + &
+          & jy(xmin:xmax, ymin:ymax, 0)
+      ez(xmin:xmax, ymin:ymax, 0) = &
+          & ez(xmin:xmax, ymin:ymax, 0) + &
+          & jz(xmin:xmax, ymin:ymax, 0)
     #else
-      ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) = &
-          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) + &
-          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0)
-      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) = &
-          & ex(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) + &
-          & jx(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0)
-      ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) = &
-          & ez(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0) + &
-          & jz(0 : this_meshblock%ptr%sx - 1, 0 : this_meshblock%ptr%sy - 1, 0)
+      ex(xmin:xmax, ymin:ymax, zmin:zmax) = &
+          & ex(xmin:xmax, ymin:ymax, zmin:zmax) + &
+          & jx(xmin:xmax, ymin:ymax, zmin:zmax)
+      ey(xmin:xmax, ymin:ymax, zmin:zmax) = &
+          & ey(xmin:xmax, ymin:ymax, zmin:zmax) + &
+          & jy(xmin:xmax, ymin:ymax, zmin:zmax)
+      ez(xmin:xmax, ymin:ymax, zmin:zmax) = &
+          & ez(xmin:xmax, ymin:ymax, zmin:zmax) + &
+          & jz(xmin:xmax, ymin:ymax, zmin:zmax)
     #endif
-    call printDiag((mpi_rank .eq. 0), TAB // "addCurrents()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), TAB // "addCurrents()" // TAB // TAB // TAB // "[OK]")
   end subroutine addCurrents
 end module m_fldsolver

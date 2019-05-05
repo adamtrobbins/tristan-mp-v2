@@ -6,8 +6,12 @@ module m_mainloop
   use m_writeoutput
   use m_fldsolver
   use m_mover
+  use m_currentdeposit
   use m_exchangeparts
   use m_exchangefields
+  use m_exchangecurrents
+  use m_filtering
+  use m_userfile
   use m_errors
   implicit none
 
@@ -49,12 +53,15 @@ contains
 
       call depositCurrents()
       call exchangeCurrents()
+      call filterCurrents()
 
       call addCurrents()
       call exchangeFields(.true., .false.)
 
       call exchangeParticles()
       call clearGhostParticles()
+
+      call userDriveParticles()
 
       if (mod(timestep, output_interval) .eq. 0) then
         call writeOutput(INT(timestep / output_interval), timestep)
@@ -70,29 +77,29 @@ contains
     end do
   end subroutine mainloop
 
-  #ifdef DEBUG
-    ! subroutine showParticles()
-    !   implicit none
-    !   integer :: s, p
-    !   print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
-    !   do s = 1, nspec
-    !     print *, trim(TAB) // "PRINTING SPECIES:", s
-    !     do p = 1, spp_(s)%npart_sp
-    !       print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
-    !              & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
-    !     end do
-    !   end do
-    ! end subroutine showParticles
-
-    subroutine showField()
-      implicit none
-      integer :: j
-      print *, "PRINTING BX FIELD:", mpi_rank
-      do j = this_meshblock%ptr%sy - 1 + NGHOST, -NGHOST, -1
-        print *, bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, j, 0)
-      end do
-    end subroutine showField
-  #endif
+  ! #ifdef DEBUG
+  !   subroutine showParticles()
+  !     implicit none
+  !     integer :: s, p
+  !     print *, "PRINTING PARTICLES FOR RNK:", mpi_rank
+  !     do s = 1, nspec
+  !       print *, trim(TAB) // "PRINTING SPECIES:", s
+  !       do p = 1, spp_(s)%npart_sp
+  !         print *, p, sp_(s)%xi(p) + sp_(s)%dx(p), sp_(s)%yi(p) + sp_(s)%dy(p),&
+  !                & ISIGN(1, sp_(s)%proc(p)) * (ABS(sp_(s)%proc(p)) * 100 + sp_(s)%ind(p))
+  !       end do
+  !     end do
+  !   end subroutine showParticles
+  !
+  !   subroutine showField()
+  !     implicit none
+  !     integer :: j
+  !     print *, "PRINTING BX FIELD:", mpi_rank
+  !     do j = this_meshblock%ptr%sy - 1 + NGHOST, -NGHOST, -1
+  !       print *, bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, j, 0)
+  !     end do
+  !   end subroutine showField
+  ! #endif
 
   subroutine makeReport(tstep)
     implicit none
