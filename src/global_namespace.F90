@@ -24,7 +24,6 @@ module m_globalnamespace
                           & restart_dir_name = 'restart'
 
   integer                :: nfilter, spec_num
-  real                   :: CC, CCINV, CORR
   real                   :: spec_min, spec_max
 
   ! mpi variables
