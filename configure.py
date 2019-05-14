@@ -67,7 +67,7 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 
 if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 -DMPI'
 elif args['mpi']:
     makefile_options['COMPILER_COMMAND'] += 'mpif90 '
     makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
