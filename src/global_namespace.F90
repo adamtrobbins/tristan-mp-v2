@@ -1,3 +1,5 @@
+#include "defs.F90"
+
 !--- GLOBAL_NAMESPACE ------------------------------------------!
 ! To store predefined(!) parameters and functions/interfaces
 !   and share them between modules
