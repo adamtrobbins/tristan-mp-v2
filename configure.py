@@ -74,14 +74,14 @@ elif args['mpi']:
 else:
     makefile_options['COMPILER_COMMAND'] += 'gfortran '
 
-if args['debug']:
+if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 
 if args['testparts']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-Dtestparts '
 
 if args['debug'] and args['intel']:
-    makefile_options['COMPILER_FLAGS'] += '-O3 -qopenmp-simd -qopt-report=5 '
+    makefile_options['COMPILER_FLAGS'] += '-DDEBUG -traceback -O3 -qopenmp-simd -qopt-report=5 '
 
 if args['intel']:
     makefile_options['MODULE'] = '-module '
