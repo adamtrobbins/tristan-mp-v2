@@ -1,4 +1,8 @@
-#include "../defs.F90"
+#ifdef threeD
+#define fldBoundZ           (-NGHOST) : ((this_meshblock%ptr%sz) - 1 + (NGHOST))
+#else
+#define fldBoundZ           (0) : (0)
+#endif
 
 module m_helpers
   use m_globalnamespace

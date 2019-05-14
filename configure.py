@@ -95,6 +95,7 @@ else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
+makefile_options['PREPROCESSOR_FLAGS'] += '-DSTR_MAX=280 -DEND_LINE=char(10) -DTAB=char(9) -DM_PI=3.141592653589793 '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:

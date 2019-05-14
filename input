@@ -28,6 +28,8 @@
 
 <algorithm>
 
+  c             = 0.45
+  corr          = 1.025
   nfilter       = 5
 
 <restart>

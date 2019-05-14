@@ -1,4 +1,9 @@
-#include "../defs.F90"
+#ifdef threeD
+#define fldBoundZ           (-NGHOST) : ((this_meshblock%ptr%sz) - 1 + (NGHOST))
+#else
+#define fldBoundZ           (0) : (0)
+#endif
+
 
 module m_initialize
   use m_globalnamespace
@@ -67,6 +72,9 @@ contains
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
     call getInput('algorithm', 'nfilter', nfilter, 2)
+    call getInput('algorithm', 'corr', CORR, 1.025)
+    call getInput('algorithm', 'c', CC, 0.45)
+    CCINV = 1.0 / CC
   end subroutine initializeSimulation
 
   subroutine initializeParticles()

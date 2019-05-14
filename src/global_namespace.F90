@@ -1,5 +1,3 @@
-#include "defs.F90"
-
 !--- GLOBAL_NAMESPACE ------------------------------------------!
 ! To store predefined(!) parameters and functions/interfaces
 !   and share them between modules
@@ -22,7 +20,9 @@ module m_globalnamespace
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart'
+
   integer                :: nfilter, spec_num
+  real                   :: CC, CCINV, CORR
   real                   :: spec_min, spec_max
 
   ! mpi variables
