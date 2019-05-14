@@ -7,11 +7,9 @@ module m_userfile
   use m_domain
   use m_particles
   use m_fields
-  use m_thermalplasma
+  use m_plasmatools
 	use m_particlelogistics
   implicit none
-
-  real :: plasma_temp
 
   !--- PRIVATE functions -----------------------------------------!
   private :: userInitParticles, userInitFields, userReadInput
@@ -25,30 +23,10 @@ contains
   end subroutine userInitialize
 
   subroutine userReadInput()
-    implicit none
-    call getInput('problem', 'temperature', plasma_temp)
   end subroutine userReadInput
 
   subroutine userInitParticles()
     implicit none
-    integer(kind=2)     :: xi_, yi_, zi_
-    integer(kind=2)     :: i, j
-    integer             :: p, s
-    real                :: dx_, dy_, dz_, u_, v_
-    type(region)        :: user_region
-
-    #ifndef threeD
-      dz_ = 0.5; zi_ = 0
-    #else
-      dz_ = 10; zi_ = 0.43
-    #endif
-
-    user_region%x_min = 0
-    user_region%x_max = this_meshblock%ptr%sx
-    user_region%y_min = 0
-    user_region%y_max = this_meshblock%ptr%sy
-
-    call fillRegionWithThermalPlasma(user_region, (/1, 2/), 2, 1000, plasma_temp)
   end subroutine userInitParticles
 
   subroutine userInitFields()

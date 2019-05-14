@@ -10,6 +10,7 @@ module m_mainloop
   use m_exchangeparts
   use m_exchangefields
   use m_exchangecurrents
+  use m_particlelogistics
   use m_filtering
   use m_userfile
   use m_errors
@@ -37,8 +38,8 @@ contains
 
     do timestep = 0, final_timestep
       t_fullstep_1 = MPI_WTIME()
-      ! MAINLOOP >
 
+      ! MAINLOOP >
       call exchangeFields(.true., .true.)
       call advanceBHalfstep()
       call exchangeFields(.false., .true.)

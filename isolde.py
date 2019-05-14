@@ -191,6 +191,42 @@ def getFields(fname, nodes = False):
 #   plt.pcolor(x_, y_, ex_) # <- 2D plot
 # ```
 
+# !--- SPEC.TOT.***** structure ----------------------------------!
+# ! HEADER:
+# !   timestep......................[4 bytes]
+# !   # of species..................[4 bytes]
+# !   # of bins.....................[4 bytes]
+# !   MIN energy....................[4 bytes]
+# !   MAX energy....................[4 bytes]
+# ! BODY:
+# !   species = 1...............[# of bins * 4 bytes]
+# !     bin = 1.................[4 bytes]
+# !     bin = 2.................[4 bytes]
+# !     ........................
+# !     rank = N................[4 bytes]
+# !   species = 2...............[# of bins * 4 bytes]
+# !   ..........................
+# !   species = S...............[# of bins * 4 bytes]
+# !   ..........................
+# !...............................................................!
+def getSpectra(fname):
+    with open(fname, mode='rb') as file:
+        fileContent = file.read()
+        data = {}
+        timestep, nspec, nbins = struct.unpack("i" * 3, fileContent[:4 * 3])
+        read_ptr = 4 * 3
+        emin, emax = struct.unpack("f" * 2, fileContent[read_ptr : read_ptr + 4 * 2])
+        read_ptr += 4 * 2
+        data['timestep'] = timestep
+        data['nspec'] = nspec
+        emin = np.round(np.log10(np.exp(emin)), 4)
+        emax = np.round(np.log10(np.exp(emax)), 4)
+        data['bins'] = np.logspace(emin, emax, nbins)
+        for s in range(nspec):
+            data['spec' + str(s + 1)] = np.array(struct.unpack("i" * nbins, fileContent[read_ptr : read_ptr + 4 * nbins]))
+            read_ptr += 4 * nbins
+        return data
+
 # easy plotting function
 def plot2DField(ax, x, y, field,
                 title='field', cmap='jet',

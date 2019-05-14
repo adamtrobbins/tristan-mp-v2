@@ -1,4 +1,4 @@
-#include "../defs.F90"
+#include "defs.F90"
 
 !--- GLOBAL_NAMESPACE ------------------------------------------!
 ! To store predefined(!) parameters and functions/interfaces
@@ -12,7 +12,7 @@ module m_globalnamespace
   implicit none
   integer, parameter     :: dprec = kind(1.0d0)
   integer, parameter     :: sprec = kind(1.0e0)
-  integer, parameter     :: UNIT_input = 10
+  integer, parameter     :: UNIT_input = 10, UNIT_output = 20
 
   ! plasma parameters
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
@@ -22,7 +22,8 @@ module m_globalnamespace
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart'
-  integer                :: nfilter
+  integer                :: nfilter, spec_num
+  real                   :: spec_min, spec_max
 
   ! mpi variables
   integer                :: mpi_rank, mpi_size, mpi_statsize

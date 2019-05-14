@@ -19,7 +19,7 @@ EXE_FILE := @EXE_NAME@
 
 EXECUTABLE := $(EXE_DIR)$(EXE_FILE)
 
-SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
+SRC_FILES := $(SRC_DIR)global_namespace.F90 \
 						 $(SRC_DIR)tools/auxiliary.F90 \
 						 $(SRC_DIR)objects/domain.F90 \
 						 $(SRC_DIR)objects/particles.F90 \
@@ -27,12 +27,14 @@ SRC_FILES := $(SRC_DIR)logistics/global_namespace.F90 \
 						 $(SRC_DIR)tools/helpers.F90 \
 						 $(SRC_DIR)logistics/finalize.F90 \
 						 $(SRC_DIR)tools/error_handling.F90 \
-						 $(SRC_DIR)logistics/write_output.F90 \
-						 $(SRC_DIR)logistics/read_input.F90 \
+						 $(SRC_DIR)logistics/particle_logistics.F90 \
+						 $(SRC_DIR)io/write_output.F90 \
+						 $(SRC_DIR)io/write_history.F90 \
+						 $(SRC_DIR)io/read_input.F90 \
+						 $(SRC_DIR)physics/thermal_plasma.F90 \
 						 $(SRC_DIR)algorithms/particle_mover.F90 \
 						 $(SRC_DIR)algorithms/field_solver.F90 \
 						 $(SRC_DIR)algorithms/current_deposit.F90 \
-						 $(SRC_DIR)logistics/particle_logistics.F90 \
 						 $(SRC_DIR)logistics/exchange_particles.F90 \
 						 $(SRC_DIR)logistics/exchange_fields.F90 \
 						 $(SRC_DIR)logistics/exchange_currents.F90 \
@@ -69,8 +71,7 @@ $(OBJ_DIR)%.o:$(PREC_SRC_DIR)%.F90
 clean:
 	rm -f $(OBJS)
 	rm -f $(OBJ_DIR)*.mod
+	rm -rf $(OBJ_DIR)
 	rm -rf $(PREC_SRC_DIR)
 	find . -name "*.o" -delete
 	rm -f $(EXE_DIR)*
-	rm -r $(OBJ_DIR)
-	rm -r $(EXE_DIR)

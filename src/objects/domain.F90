@@ -22,6 +22,14 @@ module m_domain
     type(meshptr), dimension(-1:1,-1:1,-1:1) :: neighbor
   end type mesh
 
+  type :: region
+    real     :: x_min, x_max
+    real     :: y_min, y_max
+    #ifdef threeD
+      real     :: z_min, z_max
+    #endif
+  end type region
+
   type(meshptr)                      :: this_meshblock  ! pointer to current (rank) meshblock
   type(mesh)                         :: global_mesh     ! global mesh parameters
   type(mesh), allocatable, target    :: meshblocks(:)   ! meshblocks for all cpus

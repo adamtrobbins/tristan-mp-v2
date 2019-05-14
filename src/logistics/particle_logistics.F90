@@ -34,6 +34,9 @@ contains
 			call copyParticleFromTo(s, species(s)%prtl_tile(ti, tj, tk)%npart_sp, p, ti, tj, tk)
 		end if
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp - 1
+    ! if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .lt. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.3) then
+      ! FIX0 realloc particle array in the tile
+    ! end if
   end subroutine removeParticleFromTile
 
   subroutine createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w, &
@@ -56,7 +59,9 @@ contains
 			end if
 		#endif
 		species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
-		! FIX0 check overflow
+    ! if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .ge. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
+      ! FIX0 realloc particle array in the tile
+    ! end if
     p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
     species(s)%prtl_tile(ti, tj, tk)%xi(p) = xi
@@ -81,4 +86,48 @@ contains
 			species(s)%cntr_sp = species(s)%cntr_sp + 1
 		end if
   end subroutine createParticle
+
+  subroutine allocateParticles(prt, sz)
+    implicit none
+    type(particle_tile), intent(inout)    :: prt
+    integer, intent(in)             			:: sz
+    if (allocated(prt%xi)) deallocate(prt%xi)
+    if (allocated(prt%yi)) deallocate(prt%yi)
+    if (allocated(prt%zi)) deallocate(prt%zi)
+    if (allocated(prt%dx)) deallocate(prt%dx)
+    if (allocated(prt%dy)) deallocate(prt%dy)
+    if (allocated(prt%dz)) deallocate(prt%dz)
+    if (allocated(prt%u)) deallocate(prt%u)
+    if (allocated(prt%v)) deallocate(prt%v)
+    if (allocated(prt%w)) deallocate(prt%w)
+    allocate(prt%xi(sz)); allocate(prt%yi(sz)); allocate(prt%zi(sz))
+    allocate(prt%dx(sz)); allocate(prt%dy(sz)); allocate(prt%dz(sz))
+    allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
+    allocate(prt%ind(sz)); allocate(prt%proc(sz))
+  end subroutine allocateParticles
+
+  subroutine clearGhostParticles()
+    implicit none
+    integer 											:: s, p, ti, tj, tk
+		do s = 1, nspec ! loop over species
+			do ti = 1, species(s)%tile_nx
+				do tj = 1, species(s)%tile_ny
+					do tk = 1, species(s)%tile_nz
+						! FIX1 try to vectorize this
+						!$omp simd
+						!dir$ vector aligned
+            p = 1
+						do while (p .le. species(s)%prtl_tile(ti, tj, tk)%npart_sp)
+							if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .lt. 0) then
+								call removeParticleFromTile(s, ti, tj, tk, p)
+              else
+                p = p + 1
+							end if
+						end do ! p
+					end do ! tk
+				end do ! tj
+			end do ! ti
+		end do ! s
+    call printDiag((mpi_rank .eq. 0), TAB // "clearGhostParticles()" // TAB // TAB // "[OK]")
+  end subroutine clearGhostParticles
 end module m_particlelogistics

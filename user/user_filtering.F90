@@ -17,6 +17,7 @@ contains
   subroutine userInitialize()
     implicit none
     call userInitFields()
+    call userInitParticles()
   end subroutine userInitialize
 
   subroutine userDriveParticles()
@@ -26,6 +27,7 @@ contains
 
   subroutine userInitParticles()
     implicit none
+    ! do nothing
   end subroutine userInitParticles
 
   subroutine userInitFields()

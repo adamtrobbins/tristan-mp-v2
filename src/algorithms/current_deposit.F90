@@ -17,6 +17,7 @@ contains
     real                                  :: xr, yr, zr, x1, y1, z1, x2, y2, z2
     real                                  :: gamma_inv, temp_charge
     integer(kind=2)                       :: i1, i2, j1, j2, k1, k2
+    integer(kind=2)                       :: i1p1, i2p1, j1p1, j2p1, k1p1, k2p1
     real                                  :: Wx1, Wy1, Wz1, Wx2, Wy2, Wz2
     real                                  :: onemWx1, onemWy1, onemWz1, onemWx2, onemWy2, onemWz2
     real                                  :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2
@@ -52,6 +53,8 @@ contains
                 i1 = INT(x1, 2);  i2 = pt_xi(p)
                 j1 = INT(y1, 2);  j2 = pt_yi(p)
                 k1 = 0;           k2 = 0
+                i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
+                j1p1 = j1 + 1_2;  j2p1 = j2 + 1_2
 
                 xr = min(REAL(min(i1, i2) + 1), max(REAL(max(i1, i2)), 0.5 * (x1 + x2)))
                 yr = min(REAL(min(j1, j2) + 1), max(REAL(max(j1, j2)), 0.5 * (y1 + y2)))
@@ -66,34 +69,37 @@ contains
                 Fx1 = -temp_charge * (xr - x1); Fy1 = -temp_charge * (yr - y1);  Fz1 = -temp_charge * (zr - z1)
                 Fx2 = -temp_charge * (x2 - xr); Fy2 = -temp_charge * (y2 - yr);  Fz2 = -temp_charge * (z2 - zr)
 
-                jx(i1    , j1    , k1) = jx(i1    , j1    , k1) + Fx1 * onemWy1
-                jx(i1    , j1 + 1, k1) = jx(i1    , j1 + 1, k1) + Fx1 * Wy1
+                jx(i1  , j1  , k1) = jx(i1  , j1  , k1) + Fx1 * onemWy1
+                jx(i1  , j1p1, k1) = jx(i1  , j1p1, k1) + Fx1 * Wy1
 
-                jy(i1    , j1    , k1) = jy(i1    , j1    , k1) + Fy1 * onemWx1
-                jy(i1 + 1, j1    , k1) = jy(i1 + 1, j1    , k1) + Fy1 * Wx1
+                jy(i1  , j1  , k1) = jy(i1  , j1  , k1) + Fy1 * onemWx1
+                jy(i1p1, j1  , k1) = jy(i1p1, j1  , k1) + Fy1 * Wx1
 
-                jx(i2    , j2    , k2) = jx(i2    , j2    , k2) + Fx2 * onemWy2
-                jx(i2    , j2 + 1, k2) = jx(i2    , j2 + 1, k2) + Fx2 * Wy2
+                jx(i2  , j2  , k2) = jx(i2  , j2  , k2) + Fx2 * onemWy2
+                jx(i2  , j2p1, k2) = jx(i2  , j2p1, k2) + Fx2 * Wy2
 
-                jy(i2    , j2    , k2) = jy(i2    , j2    , k2) + Fy2 * onemWx2
-                jy(i2 + 1, j2    , k2) = jy(i2 + 1, j2    , k2) + Fy2 * Wx2
+                jy(i2  , j2  , k2) = jy(i2  , j2  , k2) + Fy2 * onemWx2
+                jy(i2p1, j2  , k2) = jy(i2p1, j2  , k2) + Fy2 * Wx2
 
-                jz(i1    , j1    , k1) = jz(i1    , j1    , k1) + Fz1 * onemWx1 * onemWy1
-                jz(i1 + 1, j1    , k1) = jz(i1 + 1, j1    , k1) + Fz1 * Wx1 * onemWy1
-                jz(i1    , j1 + 1, k1) = jz(i1    , j1 + 1, k1) + Fz1 * onemWx1 * Wy1
-                jz(i1 + 1, j1 + 1, k1) = jz(i1 + 1, j1 + 1, k1) + Fz1 * Wx1 * Wy1
+                jz(i1  , j1  , k1) = jz(i1  , j1  , k1) + Fz1 * onemWx1 * onemWy1
+                jz(i1p1, j1  , k1) = jz(i1p1, j1  , k1) + Fz1 * Wx1 * onemWy1
+                jz(i1  , j1p1, k1) = jz(i1  , j1p1, k1) + Fz1 * onemWx1 * Wy1
+                jz(i1p1, j1p1, k1) = jz(i1p1, j1p1, k1) + Fz1 * Wx1 * Wy1
 
-                jz(i2    , j2    , k2) = jz(i2    , j2    , k2) + Fz2 * onemWx2 * onemWy2
-                jz(i2 + 1, j2    , k2) = jz(i2 + 1, j2    , k2) + Fz2 * Wx2 * onemWy2
-                jz(i2    , j2 + 1, k2) = jz(i2    , j2 + 1, k2) + Fz2 * onemWx2 * Wy2
-                jz(i2 + 1, j2 + 1, k2) = jz(i2 + 1, j2 + 1, k2) + Fz2 * Wx2 * Wy2
+                jz(i2  , j2  , k2) = jz(i2  , j2  , k2) + Fz2 * onemWx2 * onemWy2
+                jz(i2p1, j2  , k2) = jz(i2p1, j2  , k2) + Fz2 * Wx2 * onemWy2
+                jz(i2  , j2p1, k2) = jz(i2  , j2p1, k2) + Fz2 * onemWx2 * Wy2
+                jz(i2p1, j2p1, k2) = jz(i2p1, j2p1, k2) + Fz2 * Wx2 * Wy2
               #else
                 x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
                 x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv;   z1 = z2 - pt_w(p) * CC * gamma_inv
 
-                i1 = INT(x1, 2); i2 = pt_xi(p)
-                j1 = INT(y1, 2); j2 = pt_yi(p)
-                k1 = INT(z1, 2); k2 = pt_zi(p)
+                i1 = INT(x1, 2);  i2 = pt_xi(p)
+                j1 = INT(y1, 2);  j2 = pt_yi(p)
+                k1 = INT(z1, 2);  k2 = pt_zi(p)
+                i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
+                j1p1 = j1 + 1_2;  j2p1 = j2 + 1_2
+                k1p1 = k1 + 1_2;  k2p1 = k2 + 1_2
 
                 xr = min(REAL(min(i1, i2) + 1), max(REAL(max(i1, i2)), 0.5 * (x1 + x2)))
                 yr = min(REAL(min(j1, j2) + 1), max(REAL(max(j1, j2)), 0.5 * (y1 + y2)))
@@ -108,35 +114,35 @@ contains
                 Fx1 = -temp_charge * (xr - x1); Fy1 = -temp_charge * (yr - y1); Fz1 = -temp_charge * (zr - z1)
                 Fx2 = -temp_charge * (x2 - xr); Fy2 = -temp_charge * (y2 - yr); Fz2 = -temp_charge * (z2 - zr)
 
-                jx(i1    , j1    , k1    ) = jx(i1    , j1    , k1    ) + Fx1 * onemWy1 * onemWz1
-                jx(i1    , j1 + 1, k1    ) = jx(i1    , j1 + 1, k1    ) + Fx1 * Wy1 * onemWz1
-                jx(i1    , j1    , k1 + 1) = jx(i1    , j1    , k1 + 1) + Fx1 * onemWy1 * Wz1
-                jx(i1    , j1 + 1, k1 + 1) = jx(i1    , j1 + 1, k1 + 1) + Fx1 * Wy1 * Wz1
+                jx(i1  , j1  , k1  ) = jx(i1  , j1  , k1  ) + Fx1 * onemWy1 * onemWz1
+                jx(i1  , j1p1, k1  ) = jx(i1  , j1p1, k1  ) + Fx1 * Wy1 * onemWz1
+                jx(i1  , j1  , k1p1) = jx(i1  , j1  , k1p1) + Fx1 * onemWy1 * Wz1
+                jx(i1  , j1p1, k1p1) = jx(i1  , j1p1, k1p1) + Fx1 * Wy1 * Wz1
 
-                jy(i1    , j1    , k1    ) = jy(i1    , j1    , k1    ) + Fy1 * onemWx1 * onemWz1
-                jy(i1 + 1, j1    , k1    ) = jy(i1 + 1, j1    , k1    ) + Fy1 * Wx1 * onemWz1
-                jy(i1    , j1    , k1 + 1) = jy(i1    , j1    , k1 + 1) + Fy1 * onemWx1 * Wz1
-                jy(i1 + 1, j1    , k1 + 1) = jy(i1 + 1, j1    , k1 + 1) + Fy1 * Wx1 * Wz1
+                jy(i1  , j1  , k1  ) = jy(i1  , j1  , k1  ) + Fy1 * onemWx1 * onemWz1
+                jy(i1p1, j1  , k1  ) = jy(i1p1, j1  , k1  ) + Fy1 * Wx1 * onemWz1
+                jy(i1  , j1  , k1p1) = jy(i1  , j1  , k1p1) + Fy1 * onemWx1 * Wz1
+                jy(i1p1, j1  , k1p1) = jy(i1p1, j1  , k1p1) + Fy1 * Wx1 * Wz1
 
-                jz(i1    , j1    , k1    ) = jz(i1    , j1    , k1    ) + Fz1 * onemWx1 * onemWy1
-                jz(i1 + 1, j1    , k1    ) = jz(i1 + 1, j1    , k1    ) + Fz1 * Wx1 * onemWy1
-                jz(i1    , j1 + 1, k1    ) = jz(i1    , j1 + 1, k1    ) + Fz1 * onemWx1 * Wy1
-                jz(i1 + 1, j1 + 1, k1    ) = jz(i1 + 1, j1 + 1, k1    ) + Fz1 * Wx1 * Wy1
+                jz(i1  , j1  , k1  ) = jz(i1  , j1  , k1  ) + Fz1 * onemWx1 * onemWy1
+                jz(i1p1, j1  , k1  ) = jz(i1p1, j1  , k1  ) + Fz1 * Wx1 * onemWy1
+                jz(i1  , j1p1, k1  ) = jz(i1  , j1p1, k1  ) + Fz1 * onemWx1 * Wy1
+                jz(i1p1, j1p1, k1  ) = jz(i1p1, j1p1, k1  ) + Fz1 * Wx1 * Wy1
 
-                jx(i2    , j2    , k2    ) = jx(i2    , j2    , k2    ) + Fx2 * onemWy2 * onemWz2
-                jx(i2    , j2 + 1, k2    ) = jx(i2    , j2 + 1, k2    ) + Fx2 * Wy2 * onemWz2
-                jx(i2    , j2    , k2 + 1) = jx(i2    , j2    , k2 + 1) + Fx2 * onemWy2 * Wz2
-                jx(i2    , j2 + 1, k2 + 1) = jx(i2    , j2 + 1, k2 + 1) + Fx2 * Wy2 * Wz2
+                jx(i2  , j2  , k2  ) = jx(i2  , j2  , k2  ) + Fx2 * onemWy2 * onemWz2
+                jx(i2  , j2p1, k2  ) = jx(i2  , j2p1, k2  ) + Fx2 * Wy2 * onemWz2
+                jx(i2  , j2  , k2p1) = jx(i2  , j2  , k2p1) + Fx2 * onemWy2 * Wz2
+                jx(i2  , j2p1, k2p1) = jx(i2  , j2p1, k2p1) + Fx2 * Wy2 * Wz2
 
-                jy(i2    , j2    , k2    ) = jy(i2    , j2    , k2    ) + Fy2 * onemWx2 * onemWz2
-                jy(i2 + 1, j2    , k2    ) = jy(i2 + 1, j2    , k2    ) + Fy2 * Wx2 * onemWz2
-                jy(i2    , j2    , k2 + 1) = jy(i2    , j2    , k2 + 1) + Fy2 * onemWx2 * Wz2
-                jy(i2 + 1, j2    , k2 + 1) = jy(i2 + 1, j2    , k2 + 1) + Fy2 * Wx2 * Wz2
+                jy(i2  , j2  , k2  ) = jy(i2  , j2  , k2  ) + Fy2 * onemWx2 * onemWz2
+                jy(i2p1, j2  , k2  ) = jy(i2p1, j2  , k2  ) + Fy2 * Wx2 * onemWz2
+                jy(i2  , j2  , k2p1) = jy(i2  , j2  , k2p1) + Fy2 * onemWx2 * Wz2
+                jy(i2p1, j2  , k2p1) = jy(i2p1, j2  , k2p1) + Fy2 * Wx2 * Wz2
 
-                jz(i2    , j2    , k2    ) = jz(i2    , j2    , k2    ) + Fz2 * onemWx2 * onemWy2
-                jz(i2 + 1, j2    , k2    ) = jz(i2 + 1, j2    , k2    ) + Fz2 * Wx2 * onemWy2
-                jz(i2    , j2 + 1, k2    ) = jz(i2    , j2 + 1, k2    ) + Fz2 * onemWx2 * Wy2
-                jz(i2 + 1, j2 + 1, k2    ) = jz(i2 + 1, j2 + 1, k2    ) + Fz2 * Wx2 * Wy2
+                jz(i2  , j2  , k2  ) = jz(i2  , j2  , k2  ) + Fz2 * onemWx2 * onemWy2
+                jz(i2p1, j2  , k2  ) = jz(i2p1, j2  , k2  ) + Fz2 * Wx2 * onemWy2
+                jz(i2  , j2p1, k2  ) = jz(i2  , j2p1, k2  ) + Fz2 * onemWx2 * Wy2
+                jz(i2p1, j2p1, k2  ) = jz(i2p1, j2p1, k2  ) + Fz2 * Wx2 * Wy2
               #endif
             end do
             pt_xi => null(); pt_yi => null(); pt_zi => null()

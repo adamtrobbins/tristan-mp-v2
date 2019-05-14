@@ -200,31 +200,6 @@ contains
     call printDiag((mpi_rank .eq. 0), TAB // "exchangeParticles()" // TAB // TAB // "[OK]")
   end subroutine exchangeParticles
 
-  subroutine clearGhostParticles()
-    implicit none
-    integer 											:: s, p, ti, tj, tk
-		integer, pointer, contiguous  :: pt_proc(:)
-		do s = 1, nspec ! loop over species
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
-						pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
-						! FIX1 make sure this is vectorized
-						!$omp simd
-						!dir$ vector aligned
-						do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-							if (pt_proc(p) .lt. 0) then
-								call removeParticleFromTile(s, ti, tj, tk, p)
-							end if
-						end do
-						pt_proc => null()
-					end do
-				end do
-			end do
-		end do
-    call printDiag((mpi_rank .eq. 0), TAB // "clearGhostParticles()" // TAB // TAB // "[OK]")
-  end subroutine clearGhostParticles
-
   subroutine copyToEnroute(spec_id, ti, tj, tk, prtl_id, enroute)
     implicit none
     integer, intent(in)               :: spec_id, prtl_id, ti, tj, tk

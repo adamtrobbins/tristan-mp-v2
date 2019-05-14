@@ -24,7 +24,7 @@ contains
 
   subroutine userDriveParticles()
     implicit none
-    integer :: s, ti, tj, tk, p
+    ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
 		! 	do ti = 1, species(s)%tile_nx
 		! 		do tj = 1, species(s)%tile_ny

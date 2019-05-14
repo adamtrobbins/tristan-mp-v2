@@ -17,7 +17,7 @@ contains
                                            & pt_u(:), pt_v(:), pt_w(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_
-
+    
     do s = 1, nspec
 			do ti = 1, species(s)%tile_nx
 				do tj = 1, species(s)%tile_ny
@@ -105,7 +105,6 @@ contains
   			          pt_w(p) = w0 * CCINV
   			          ! <</ advance the velocity
                 #endif testparts
-
 			          g_temp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
 
 			          pt_dx(p) = pt_dx(p) + CC * pt_u(p) / g_temp

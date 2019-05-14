@@ -41,15 +41,12 @@ $ mpiexec -np [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name
 #### ToDo
 - restart files;
 - "history" file;
-- current deposition & exchange;
-- Maxwell's equations;
 - absorbing (radiation) boundaries;
-- filtering;
 - expanding boundaries;
-- dynamic load balancing;
+- check for neighbor of itself;
+- static/dynamic load balancing;
 - pair-production/annihilation/IC routine;
-- _tree-based meshblock distribution (space filling curve)_;
-- _tasklist_;
+- make it work in 1D;
 - generalize for non-MPI;
 - HDF5 support.
 

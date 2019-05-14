@@ -6,6 +6,7 @@ module m_initialize
   use m_readinput
   use m_domain
   use m_particles
+  use m_particlelogistics
   use m_fields
   use m_userfile
   use m_helpers
@@ -54,12 +55,18 @@ contains
     call getInput('output', 'stride', output_stride, 10)
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'istep', output_istep, 4)
+
+    call getInput('output', 'spec_min', spec_min, 1e-2)
+    call getInput('output', 'spec_max', spec_max, 1e2)
+    call getInput('output', 'spec_num', spec_num, 100)
+    spec_min = log(spec_min)
+    spec_max = log(spec_max)
   end subroutine initializeOutput
 
   subroutine initializeSimulation()
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
-    call getInput('algorithm', 'nfilter', nfilter, 1000)
+    call getInput('algorithm', 'nfilter', nfilter, 2)
   end subroutine initializeSimulation
 
   subroutine initializeParticles()
@@ -99,7 +106,6 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
-      ! call allocateParticles(sp_(i), species(s)%maxptl_sp )
 			do ti = 1, species(s)%tile_nx
 				do tj = 1, species(s)%tile_ny
 					do tk = 1, species(s)%tile_nz
@@ -115,25 +121,6 @@ contains
       species(s)%cntr_sp = 0
     end do
   end subroutine initializeParticles
-
-  subroutine allocateParticles(prt, sz)
-    implicit none
-    type(particle_tile), intent(inout)    :: prt
-    integer, intent(in)             			:: sz
-    if (allocated(prt%xi)) deallocate(prt%xi)
-    if (allocated(prt%yi)) deallocate(prt%yi)
-    if (allocated(prt%zi)) deallocate(prt%zi)
-    if (allocated(prt%dx)) deallocate(prt%dx)
-    if (allocated(prt%dy)) deallocate(prt%dy)
-    if (allocated(prt%dz)) deallocate(prt%dz)
-    if (allocated(prt%u)) deallocate(prt%u)
-    if (allocated(prt%v)) deallocate(prt%v)
-    if (allocated(prt%w)) deallocate(prt%w)
-    allocate(prt%xi(sz)); allocate(prt%yi(sz)); allocate(prt%zi(sz))
-    allocate(prt%dx(sz)); allocate(prt%dy(sz)); allocate(prt%dz(sz))
-    allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
-    allocate(prt%ind(sz)); allocate(prt%proc(sz))
-  end subroutine allocateParticles
 
   subroutine initializePrtlExchange()
     implicit none
@@ -201,8 +188,6 @@ contains
     !       3 x integer2  [xi, yi, zi]
     !       6 x real      [dx, dy, dz, u, v, w]
     !       2 x integer   [ind, proc]
-    ! call MPI_TYPE_EXTENT(MPI_INTEGER2, extent_int2, ierr)
-    ! call MPI_TYPE_EXTENT(MPI_REAL, extent_real, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
     blockcounts(0) = 3
@@ -285,7 +270,7 @@ contains
     implicit none
     integer :: ierr
     call MPI_Init(ierr)
-    ! ADD if statement here
+    ! ADD `ifdef MPI`-statement here
     call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
     mpi_statsize = MPI_STATUS_SIZE

@@ -14,7 +14,7 @@ module m_writeoutput
 
   !--- PRIVATE functions -----------------------------------------!
   private :: writeParticles, writeFields,&
-           & computeDensity
+           & writeSpectra, computeDensity
   !...............................................................!
 contains
   subroutine writeOutput(step, time)
@@ -23,6 +23,7 @@ contains
     integer                    :: ierr
     call writeParticles(step, time)
     call writeFields(step, time)
+    call writeSpectra(step, time)
     call printDiag((mpi_rank .eq. 0), TAB // "output()" // TAB // TAB // TAB // "[OK]")
   end subroutine writeOutput
 
@@ -484,6 +485,104 @@ contains
     deallocate(temp_real_arr)
     call MPI_FILE_CLOSE(flds_out_file, ierr)
   end subroutine writeFields
+
+  !--- SPEC.TOT.***** structure ----------------------------------!
+  ! HEADER:
+  !   timestep......................[4 bytes]
+  !   # of species..................[4 bytes]
+  !   # of bins.....................[4 bytes]
+  !   MIN energy....................[4 bytes]
+  !   MAX energy....................[4 bytes]
+  ! BODY:
+  !   species = 1...............[# of bins * 4 bytes]
+  !     bin = 1.................[4 bytes]
+  !     bin = 2.................[4 bytes]
+  !     ........................
+  !     rank = N................[4 bytes]
+  !   species = 2...............[# of bins * 4 bytes]
+  !   ..........................
+  !   species = S...............[# of bins * 4 bytes]
+  !   ..........................
+  !...............................................................!
+  subroutine writeSpectra(step, time)
+    implicit none
+    integer, intent(in)       :: step, time
+    character(len=STR_MAX)    :: stepchar, filename
+    real                      :: energy, u_, v_, w_
+    integer                   :: ierr
+    integer                   :: s, i, ti, tj, tk, p, spec_index
+    integer, allocatable, dimension(:,:)  :: spectra, glob_spectra
+    integer, allocatable, dimension(:)    :: send_spec, recv_spec
+
+    allocate(spectra(nspec, spec_num))
+    spectra(:,:) = 0
+    allocate(glob_spectra(nspec, spec_num))
+    allocate(send_spec(spec_num), recv_spec(spec_num))
+
+    ! compute spectra
+    do s = 1, nspec
+			do ti = 1, species(s)%tile_nx
+				do tj = 1, species(s)%tile_ny
+					do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+              w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+              if (species(s)%m_sp .eq. 0) then
+                energy = sqrt(u_**2 + v_**2 + w_**2)
+              else
+                energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
+              end if
+              energy = log(energy)
+              if (energy .le. spec_min) then
+                spec_index = 1
+              else if (energy .ge. spec_max) then
+                spec_index = spec_num
+              else
+                spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+                if (spec_index .lt. 1) spec_index = 1
+                if (spec_index .gt. spec_num) spec_index = spec_num
+              end if
+              spectra(s, spec_index) = spectra(s, spec_index) + 1
+            end do
+          end do
+        end do
+      end do
+    end do
+
+    ! send to root rank
+    do s = 1, nspec
+      send_spec(:) = spectra(s,:)
+      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_INTEGER,&
+                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+      glob_spectra(s,:) = recv_spec(:)
+    end do
+
+    ! root rank writing to a file
+    if (mpi_rank .eq. 0) then
+      write(stepchar, "(i5.5)") step
+      filename = trim(output_dir_name) // '/spec.tot.' // trim(stepchar)
+
+      open(unit = UNIT_output, file = filename, form = "unformatted", access = "stream")
+      write(unit = UNIT_output) time
+      write(unit = UNIT_output) nspec
+      write(unit = UNIT_output) spec_num
+      write(unit = UNIT_output) spec_min
+      write(unit = UNIT_output) spec_max
+      do s = 1, nspec
+        do i = 1, spec_num
+          write(unit = UNIT_output) glob_spectra(s, i)
+        end do
+      end do
+
+      close(unit = UNIT_output)
+    end if
+
+    if (allocated(spectra)) deallocate(spectra)
+    if (allocated(glob_spectra)) deallocate(glob_spectra)
+    if (allocated(send_spec)) deallocate(send_spec)
+    if (allocated(recv_spec)) deallocate(recv_spec)
+  end subroutine writeSpectra
 
   subroutine computeDensity(s)
     implicit none

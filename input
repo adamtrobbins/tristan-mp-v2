@@ -4,61 +4,71 @@
 
 <node_configuration>
 
-sizex	        = 2               # number of cpus in x direction
-sizey 	      = 2			          # number of cpus in y direction
-sizez         = 1               # number of cpus in z direction
+  sizex	        = 2              # number of cpus in x direction
+  sizey 	      = 2			         # number of cpus in y direction
+  sizez         = 1              # number of cpus in z direction
 
 <time>
 
-last 	        = 100  	         # last timestep
+  last 	        = 10000          # last timestep
 
 <grid>
 
-mx0 	        = 64 		         # number of actual grid points in the x direction
-my0 	        = 64 	           # number of actual grid points in the y direction
-mz0 	        = 1  	           # ... (ignored for 2D simulations)
+  mx0 	        = 64 		         # number of actual grid points in the x direction
+  my0 	        = 64 	           # number of actual grid points in the y direction
+  mz0 	        = 1  	           # ... (ignored for 2D simulations)
 
-boundary_x    = 1
-boundary_y    = 1
-boundary_z    = 1
+  boundary_x    = 1
+  boundary_y    = 1
+  boundary_z    = 1
 
-tileX         = 7
-tileY         = 7
-tileZ         = 1
+  tileX         = 7
+  tileY         = 7
+  tileZ         = 1
 
 <algorithm>
 
-nfilter       = 0
+  nfilter       = 5
 
 <restart>
 
 <output>
-stride        = 1
-interval      = 1
-istep         = 1
+
+  stride        = 1
+  interval      = 100
+  istep         = 1
+
+  history       = 0               # 0 = .false.; 1 = .true.
+  hst_interval  = 1
+
+  spec_min      = 1e-2            # `g - 1` for massive and `e` for massless
+  spec_max      = 1e2             # `g - 1` for massive and `e` for massless
+  spec_num      = 100             # number of energy bins
 
 <boundaries>
 
 <plasma>
 
-ppc0          = 1
-sigma         = 4
-c_omp         = 10
+  ppc0          = 1
+  sigma         = 4
+  c_omp         = 10
 
 <particles>
 
-nspec         = 2
+  nspec         = 2
 
-maxptl1       = 1e3
-m1            = 1
-ch1           = -1
+  maxptl1       = 1e6
+  m1            = 1
+  ch1           = -1
 
-maxptl2       = 1e3
-m2            = 1
-ch2           = 1
+  maxptl2       = 1e6
+  m2            = 1
+  ch2           = 1
 
-maxptl3       = 1e2
-m3            = 0
-ch3           = 0
+  maxptl3       = 1e2
+  m3            = 0
+  ch3           = 0
 
 <problem>
+
+  temperature   = 0.1           # temperature in terms of [m_e c**2]
