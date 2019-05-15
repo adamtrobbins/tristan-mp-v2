@@ -26,28 +26,46 @@ contains
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
+
+    call initializeDomain()
+
+    call initializeCommunications()
+      call printDiag((mpi_rank .eq. 0), "initializeCommunications()", .true.)
+
+    call distributeMeshblocks()
+      call printDiag((mpi_rank .eq. 0), "distributeMeshblocks()", .true.)
+
     call initializeSimulation()
+      call printDiag((mpi_rank .eq. 0), "initializeSimulation()", .true.)
+
     call initializeOutput()
+      call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
+
     ! ADD possibility to define output function in userfile
     ! ADD hst file?
-    call initializeDomain()
-    call initializeCommunications()
     ! ADD possibility to define meshblock distribution in userfile
-    call distributeMeshblocks()
 
     call initializeFields()
+      call printDiag((mpi_rank .eq. 0), "initializeFields()", .true.)
+
     call initializeParticles()
+      call printDiag((mpi_rank .eq. 0), "initializeParticles()", .true.)
+
     call initializePrtlExchange()
+      call printDiag((mpi_rank .eq. 0), "initializePrtlExchange()", .true.)
 
     call initializeRandomSeed(mpi_rank)
+      call printDiag((mpi_rank .eq. 0), "initializeRandomSeed()", .true.)
 
     if (mpi_rank .eq. 0) call firstRankInitialize()
+
     call userInitialize()
+      call printReport((mpi_rank .eq. 0), "userInitialize()", .true.)
 
-    ! check everything before moving forward
     call checkEverything()
+      call printReport((mpi_rank .eq. 0), "checkEverything()", .true.)
 
-    call printReport((mpi_rank .eq. 0), "initializeAll()" // TAB // TAB // TAB // "[OK]")
+    call printReport((mpi_rank .eq. 0), "initializeAll()")
   end subroutine initializeAll
 
   subroutine initializeOutput()

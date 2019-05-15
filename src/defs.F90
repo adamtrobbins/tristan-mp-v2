@@ -1,6 +1,5 @@
 #define STR_MAX   280
 #define END_LINE  char(10)
-#define TAB       char(9)
 
 #define CORR      1.025
 

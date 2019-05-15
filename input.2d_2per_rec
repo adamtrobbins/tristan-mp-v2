@@ -4,38 +4,38 @@
 
 <node_configuration>
 
-  sizex	        = 2							# number of cpus in x direction
-  sizey 	      = 2							# number of cpus in y direction
+  sizex	        = 2             # number of cpus in x direction
+  sizey 	      = 28						# number of cpus in y direction
   sizez         = 1							# number of cpus in z direction
 
 <time>
 
-  last 	        = 100							# last timestep
+  last 	        = 1000000				# last timestep
 
 <grid>
 
-  mx0 	        = 64						# number of actual grid points in the x direction
-  my0 	        = 64						# number of actual grid points in the y direction
+  mx0 	        = 560						# number of actual grid points in the x direction
+  my0 	        = 560						# number of actual grid points in the y direction
   mz0 	        = 1							# ... (ignored for 2D simulations)
 
   boundary_x    = 1
   boundary_y    = 1
   boundary_z    = 1
 
-  tileX         = 7
-  tileY         = 7
+  tileX         = 5
+  tileY         = 5
   tileZ         = 1
 
 <algorithm>
 
-  nfilter       = 0
+  nfilter       = 16
 
 <restart>
 
 <output>
 
   stride        = 1
-  interval      = 1
+  interval      = 100
   istep         = 1
 
   history       = 0							# 0 = .false.; 1 = .true.
@@ -49,8 +49,8 @@
 
 <plasma>
 
-  ppc0          = 1
-  sigma         = 4
+  ppc0          = 10
+  sigma         = 5
   c_omp         = 10
 
 <particles>
@@ -67,4 +67,6 @@
 
 <problem>
 
-  temperature   = 0.1						# temperature in terms of [m_e c**2]
+  upstream_T    = 1e-5					# temperature in terms of [m_e c**2]
+  nCS_nUP       = 0.1
+  current_width = 50

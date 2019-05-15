@@ -24,7 +24,7 @@ contains
     call writeParticles(step, time)
     call writeFields(step, time)
     call writeSpectra(step, time)
-    call printDiag((mpi_rank .eq. 0), TAB // "output()" // TAB // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "output()", .true.)
   end subroutine writeOutput
 
   !--- PRTL.TOT.***** structure ----------------------------------!
@@ -597,8 +597,6 @@ contains
 					pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
 					pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
 					! FIX1 vectorize/align
-					!$omp simd
-					!dir$ vector aligned
 					do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 						scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
 					end do

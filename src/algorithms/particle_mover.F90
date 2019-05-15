@@ -17,7 +17,7 @@ contains
                                            & pt_u(:), pt_v(:), pt_w(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_
-    
+
     do s = 1, nspec
 			do ti = 1, species(s)%tile_nx
 				do tj = 1, species(s)%tile_ny
@@ -36,8 +36,6 @@ contains
 
 			      if (species(s)%m_sp .eq. 0) then
 			        ! routine for massless particles
-			        !$omp simd
-			        !dir$ vector aligned
 			        do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 			          e_temp = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
 
@@ -67,8 +65,6 @@ contains
 			      else
 			        ! routine for massive particles
 			        q_over_m = species(s)%ch_sp / species(s)%m_sp
-			        !$omp simd
-			        !dir$ vector aligned
 			        do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 #ifndef testparts
   			          ! advance the velocity >>
@@ -138,6 +134,6 @@ contains
 				end do ! tj
 			end do ! ti
     end do ! species
-    call printDiag((mpi_rank .eq. 0), TAB // "moveParticles()" // TAB // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
   end subroutine moveParticles
 end module m_mover

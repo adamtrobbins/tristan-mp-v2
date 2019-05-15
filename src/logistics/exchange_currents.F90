@@ -241,6 +241,6 @@ contains
         end do ! ind2
       end do ! ind1
     end do ! global loop
-    call printDiag((mpi_rank .eq. 0), TAB // "exchangeCurrents()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "exchangeCurrents()", .true.)
   end subroutine exchangeCurrents
 end module m_exchangecurrents

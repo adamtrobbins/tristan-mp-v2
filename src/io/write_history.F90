@@ -11,5 +11,9 @@ module m_writehistory
   implicit none
 contains
   ! FIX2 total E^2, total B^2, total E_kin
+  ! time, time step, total mass, momenta, kinetic energies in three directions, total energy, and magnetic energies in three directions
+  subroutine writeHistory()
+    implicit none
+  end subroutine writeHistory
 
 end module m_writehistory

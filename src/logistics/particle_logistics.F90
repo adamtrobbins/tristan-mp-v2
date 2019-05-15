@@ -114,8 +114,6 @@ contains
 				do tj = 1, species(s)%tile_ny
 					do tk = 1, species(s)%tile_nz
 						! FIX1 try to vectorize this
-						!$omp simd
-						!dir$ vector aligned
             p = 1
 						do while (p .le. species(s)%prtl_tile(ti, tj, tk)%npart_sp)
 							if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .lt. 0) then
@@ -128,6 +126,6 @@ contains
 				end do ! tj
 			end do ! ti
 		end do ! s
-    call printDiag((mpi_rank .eq. 0), TAB // "clearGhostParticles()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "clearGhostParticles()", .true.)
   end subroutine clearGhostParticles
 end module m_particlelogistics

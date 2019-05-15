@@ -16,9 +16,7 @@ module m_userfile
 contains
   subroutine userInitialize()
     implicit none
-    integer        :: npart
-    ! npart = INT(this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc0)
-    ! call userInitParticles(npart)
+
     call userInitFields()
   end subroutine userInitialize
 
@@ -63,4 +61,20 @@ contains
       end do
     end do
   end subroutine userInitFields
+
+  subroutine userDriveParticles()
+    implicit none
+    ! integer :: s, ti, tj, tk, p
+    ! do s = 1, nspec
+		! 	do ti = 1, species(s)%tile_nx
+		! 		do tj = 1, species(s)%tile_ny
+		! 			do tk = 1, species(s)%tile_nz
+    !         do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+    !           ...
+    !         end do
+    !       end do
+    !     end do
+    !   end do
+    ! end do
+  end subroutine userDriveParticles
 end module m_userfile

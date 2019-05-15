@@ -7,7 +7,7 @@ module m_userfile
   use m_domain
   use m_particles
   use m_fields
-  use m_plasmatools
+  use m_thermalplasma
 	use m_particlelogistics
   implicit none
 

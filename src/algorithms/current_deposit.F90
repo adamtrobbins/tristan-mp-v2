@@ -47,8 +47,8 @@ contains
               ! push the particle back
               gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
               #ifndef threeD
-                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p)
-                x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv
+                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
+                x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv;   z1 = z2 - pt_w(p) * CC * gamma_inv
 
                 i1 = INT(x1, 2);  i2 = pt_xi(p)
                 j1 = INT(y1, 2);  j2 = pt_yi(p)

@@ -46,7 +46,7 @@ contains
   			enddo
   		enddo
     #endif
-    call printDiag((mpi_rank .eq. 0), TAB // "advanceBHalfstep()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "advanceBHalfstep()", .true.)
   end subroutine advanceBHalfstep
 
   subroutine advanceEFullstep()
@@ -88,7 +88,7 @@ contains
   			enddo
   		enddo
     #endif
-    call printDiag((mpi_rank .eq. 0), TAB // "advanceEFullstep()" // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "advanceEFullstep()", .true.)
   end subroutine advanceEFullstep
 
   subroutine addCurrents()
@@ -119,6 +119,6 @@ contains
           & ez(xmin:xmax, ymin:ymax, zmin:zmax) + &
           & jz(xmin:xmax, ymin:ymax, zmin:zmax)
     #endif
-    call printDiag((mpi_rank .eq. 0), TAB // "addCurrents()" // TAB // TAB // TAB // "[OK]")
+    call printDiag((mpi_rank .eq. 0), "addCurrents()", .true.)
   end subroutine addCurrents
 end module m_fldsolver

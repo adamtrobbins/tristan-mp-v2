@@ -61,7 +61,6 @@ contains
       else
         maxw%DF_table(iter) = maxw%DF_table(iter - 1) + df
       end if
-      print *, df
     end do
     do iter = 1, maxw%npoints
       maxw%DF_table(iter) = maxw%DF_table(iter) / maxw%DF_table(maxw%npoints)

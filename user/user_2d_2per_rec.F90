@@ -12,8 +12,8 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real :: plasma_temp
-  private :: plasma_temp
+  real :: nCS_over_nUP, current_width, upstream_T, cs_x1, cs_x2
+  private :: nCS_over_nUP, current_width, upstream_T, cs_x1, cs_x2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -23,30 +23,33 @@ contains
   subroutine userInitialize()
     implicit none
     call userReadInput()
-      call printReport((mpi_rank .eq. 0), "userReadInput()", .true.)
-
     call userInitParticles()
-      call printReport((mpi_rank .eq. 0), "userInitParticles()", .true.)
-
     call userInitFields()
-      call printReport((mpi_rank .eq. 0), "userInitFields()", .true.)
   end subroutine userInitialize
 
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'temperature', plasma_temp)
+    call getInput('problem', 'upstream_T', upstream_T)
+    call getInput('problem', 'nCS_nUP', nCS_over_nUP)
+    call getInput('problem', 'current_width', current_width)
+    cs_x1 = 1.0 / 3.0; cs_x2 = 2.0 / 3.0
   end subroutine userReadInput
 
   subroutine userInitParticles()
     implicit none
-    type(region)        :: user_region
+    real                :: nUP
+    integer             :: nUP_tot
+    type(region)        :: back_region, cs_region
 
-    user_region%x_min = 0
-    user_region%x_max = this_meshblock%ptr%sx
-    user_region%y_min = 0
-    user_region%y_max = this_meshblock%ptr%sy
+    nUP = ppc0
+    nUP_tot = INT(nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
 
-    call fillRegionWithThermalPlasma(user_region, (/1, 2/), 2, 1000, plasma_temp)
+    back_region%x_min = 0
+    back_region%x_max = this_meshblock%ptr%sx
+    back_region%y_min = 0
+    back_region%y_max = this_meshblock%ptr%sy
+
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -56,16 +59,15 @@ contains
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
-    ! do i = 0, this_meshblock%ptr%sx - 1
-    !   i_glob = i + this_meshblock%ptr%x0
-    !   do j = 0, this_meshblock%ptr%sy - 1
-    !     j_glob = j + this_meshblock%ptr%y0
-    !     do k = 0, this_meshblock%ptr%sz - 1
-    !       k_glob = k + this_meshblock%ptr%z0
-    !       ...
-    !     end do
-    !   end do
-    ! end do
+    k = 0
+    do i = 0, this_meshblock%ptr%sx - 1
+      i_glob = i + this_meshblock%ptr%x0
+      do j = 0, this_meshblock%ptr%sy - 1
+        j_glob = j + this_meshblock%ptr%y0
+        by(i, j, k) = tanh((i_glob + 0.5 - cs_x1 * global_mesh%sx) / current_width) -&
+                    & tanh((i_glob + 0.5 - cs_x2 * global_mesh%sx) / current_width) - 1.0
+      end do
+    end do
   end subroutine userInitFields
 
   subroutine userDriveParticles()
