@@ -18,11 +18,10 @@ module m_mainloop
 
   integer       :: timestep
 
-  real(kind=8)  :: t_fullstep_1, t_fullstep_2, &
-                 & t_movestep_1, t_movestep_2, &
-                 & t_depositstep_1, t_depositstep_2, &
-                 & t_filterstep_1, t_filterstep_2, &
-                 & t_outputstep_1, t_outputstep_2
+  real(kind=8)  :: t_fullstep, t_movestep,&
+                 & t_depositstep, t_filterstep,&
+                 & t_outputstep, t_fldexchstep,&
+                 & t_prtlexchxtep, t_fldslvrstep
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -30,11 +29,10 @@ module m_mainloop
   !...............................................................!
 
   !--- PRIVATE variables -----------------------------------------!
-  private :: t_fullstep_1, t_fullstep_2, &
-           & t_movestep_1, t_movestep_2, &
-           & t_depositstep_1, t_depositstep_2, &
-           & t_filterstep_1, t_filterstep_2, &
-           & t_outputstep_1, t_outputstep_2
+  private :: t_fullstep, t_movestep, &
+           & t_depositstep, t_filterstep, &
+           & t_outputstep, t_fldexchstep,&
+           & t_prtlexchxtep, t_fldslvrstep
   !...............................................................!
 contains
   subroutine mainloop()
@@ -46,51 +44,102 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call printReport((mpi_rank .eq. 0), "Starting mainloop()")
 
+    t_fullstep = 0;       t_movestep = 0
+    t_depositstep = 0;    t_filterstep = 0
+    t_outputstep = 0;     t_fldexchstep = 0
+    t_prtlexchxtep = 0;   t_fldslvrstep = 0
+
     do timestep = 0, final_timestep
-        t_fullstep_1 = MPI_WTIME()
+        t_fullstep = MPI_WTIME()
 
       ! MAINLOOP >
+      !-------------------------------------------------
+      ! Advancing 1st halfstep of `dB / dt = curl E`
+      !.................................................
+        t_fldexchstep = MPI_WTIME()
       call exchangeFields(.true., .true.)
-      call advanceBHalfstep()
-      call exchangeFields(.false., .true.)
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
 
-        t_movestep_1 = MPI_WTIME()
+        t_fldslvrstep = MPI_WTIME()
+      call advanceBHalfstep()
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
+
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
+      call exchangeFields(.false., .true.)
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
+
+      !-------------------------------------------------
+      ! Pushing particles
+      !.................................................
+        t_movestep = MPI_WTIME()
       call moveParticles()
-        t_movestep_2 = MPI_WTIME()
+        t_movestep = MPI_WTIME() - t_movestep
 
+      !-------------------------------------------------
+      ! Advancing 2nd halfstep of `dB / dt = curl E`
+      !.................................................
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       call advanceBHalfstep()
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
+
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
       call exchangeFields(.false., .true.)
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
 
+      !-------------------------------------------------
+      ! Advancing fullstep of `dE / dt = -curl B`
+      !.................................................
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       call advanceEFullstep()
-      call exchangeFields(.true., .false.)
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
 
-        t_depositstep_1 = MPI_WTIME()
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
+      call exchangeFields(.true., .false.)
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
+
+      !-------------------------------------------------
+      ! Depositing current: `j_s = rho_s * v_s`
+      !.................................................
+        t_depositstep = MPI_WTIME()
       call depositCurrents()
-        t_depositstep_2 = MPI_WTIME()
+        t_depositstep = MPI_WTIME() - t_depositstep
 
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
       call exchangeCurrents()
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
 
-        t_filterstep_1 = MPI_WTIME()
+        t_filterstep = MPI_WTIME()
       call filterCurrents()
-        t_filterstep_2 = MPI_WTIME()
+        t_filterstep = MPI_WTIME() - t_filterstep
 
+      !-------------------------------------------------
+      ! Adding currents: `dE / dt += -j`
+      !.................................................
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       call addCurrents()
-      call exchangeFields(.true., .false.)
+        t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
 
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
+      call exchangeFields(.true., .false.)
+        t_fldexchstep = MPI_WTIME() - t_fldexchstep
+
+        t_prtlexchxtep = MPI_WTIME()
       call exchangeParticles()
       call clearGhostParticles()
+      call checkTileSizes()
+        t_prtlexchxtep = MPI_WTIME() - t_prtlexchxtep
 
       call userDriveParticles()
 
-      t_outputstep_1 = MPI_WTIME(); t_outputstep_2 = MPI_WTIME()
-      if (mod(timestep, output_interval) .eq. 0) then
-        t_outputstep_1 = MPI_WTIME()
-        call writeOutput(INT(timestep / output_interval), timestep)
-        t_outputstep_2 = MPI_WTIME()
+      t_outputstep = 0
+      if (modulo(timestep, output_interval) .eq. 0) then
+        t_outputstep = MPI_WTIME()
+        call writeOutput(timestep)
+        t_outputstep = MPI_WTIME() - t_outputstep
       end if
       ! </ MAINLOOP
 
-        t_fullstep_2 = MPI_WTIME()
+        t_fullstep = MPI_WTIME() - t_fullstep
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
       if (ierr .eq. MPI_SUCCESS) then
@@ -106,36 +155,50 @@ contains
     real                          :: fullstep
     real(kind=8), allocatable     :: dt_fullstep(:), dt_movestep(:), &
                                    & dt_depositstep(:), dt_filterstep(:), &
-                                   & dt_outputstep(:)
+                                   & dt_outputstep(:), dt_fldexchstep(:), &
+                                   & dt_prtlexchxtep(:), dt_fldslvrstep(:)
 
     allocate(dt_fullstep(mpi_size), dt_movestep(mpi_size))
     allocate(dt_depositstep(mpi_size), dt_filterstep(mpi_size))
-    allocate(dt_outputstep(mpi_size))
+    allocate(dt_outputstep(mpi_size), dt_fldexchstep(mpi_size))
+    allocate(dt_prtlexchxtep(mpi_size), dt_fldslvrstep(mpi_size))
 
-    call MPI_GATHER(t_fullstep_2 - t_fullstep_1, 1, MPI_REAL8,&
+    call MPI_GATHER(t_fullstep, 1, MPI_REAL8,&
                   & dt_fullstep, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
-    call MPI_GATHER(t_movestep_2 - t_movestep_1, 1, MPI_REAL8,&
+    call MPI_GATHER(t_movestep, 1, MPI_REAL8,&
                   & dt_movestep, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
-    call MPI_GATHER(t_depositstep_2 - t_depositstep_1, 1, MPI_REAL8,&
+    call MPI_GATHER(t_depositstep, 1, MPI_REAL8,&
                   & dt_depositstep, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
-    call MPI_GATHER(t_filterstep_2 - t_filterstep_1, 1, MPI_REAL8,&
+    call MPI_GATHER(t_filterstep, 1, MPI_REAL8,&
                   & dt_filterstep, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
-    call MPI_GATHER(t_outputstep_2 - t_outputstep_1, 1, MPI_REAL8,&
+    call MPI_GATHER(t_outputstep, 1, MPI_REAL8,&
                   & dt_outputstep, 1, MPI_REAL8,&
+                  & 0, MPI_COMM_WORLD, ierr)
+    call MPI_GATHER(t_fldexchstep, 1, MPI_REAL8,&
+                  & dt_fldexchstep, 1, MPI_REAL8,&
+                  & 0, MPI_COMM_WORLD, ierr)
+    call MPI_GATHER(t_prtlexchxtep, 1, MPI_REAL8,&
+                  & dt_prtlexchxtep, 1, MPI_REAL8,&
+                  & 0, MPI_COMM_WORLD, ierr)
+    call MPI_GATHER(t_fldslvrstep, 1, MPI_REAL8,&
+                  & dt_fldslvrstep, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. 0) then
       fullstep = SUM(dt_fullstep) * 1000 / mpi_size
       call printReport(.true., "timestep: " // STR(tstep))
-      call printTime(dt_fullstep, "Full_step: ")
+      call printTime(dt_fullstep, "Full_step: ", is_first_row = .true.)
       call printTime(dt_movestep, "  move_step: ", fullstep)
       call printTime(dt_depositstep, "  deposit_step: ", fullstep)
       call printTime(dt_filterstep, "  filter_step: ", fullstep)
-      call printTime(dt_outputstep, "  output_step: ", fullstep)
+      call printTime(dt_fldexchstep, "  fld_exchange: ", fullstep)
+      call printTime(dt_prtlexchxtep, "  prtl_exchange: ", fullstep)
+      call printTime(dt_fldslvrstep, "  fld_solver: ", fullstep)
+      call printTime(dt_outputstep, "  output_step: ", fullstep, is_first_row = .false.)
       print *, ""
     end if
 
