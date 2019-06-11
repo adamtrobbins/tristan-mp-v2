@@ -93,7 +93,9 @@ contains
                                        & 'xx   ', 'yy   ', 'zz   '/)
 
     ! compute spectra
-    allocate(glob_spectra(nspec, spec_num))
+    if (.not. allocated(glob_spectra)) then
+      allocate(glob_spectra(nspec, spec_num))
+    end if
     allocate(spectra(nspec, spec_num))
     allocate(send_spec(spec_num), recv_spec(spec_num))
 
@@ -631,7 +633,7 @@ contains
     implicit none
     integer, intent(in)               :: step, time
     character(len=STR_MAX)            :: stepchar, filename
-    integer(HID_T)                    :: file_id, dset_id, filespace, memspace, plist_id
+    integer(HID_T)                    :: file_id, dset_id(40), filespace(40), memspace, plist_id
     integer                           :: comm, info, error, f, s
     integer(kind=2)                   :: i, j, k
     logical                           :: writing_intQ
@@ -642,10 +644,7 @@ contains
     integer(HSIZE_T), dimension(3)    :: global_dims
     real                              :: ex0, ey0, ez0, bx0, by0, bz0
     real                              :: jx0, jy0, jz0
-
-    ! mpi_f08 thing
-    comm = MPI_COMM_WORLD%MPI_VAL
-    info = MPI_INFO_NULL%MPI_VAL
+    type(MPI_Info)                    :: FILE_INFO_TEMPLATE
 
     write(stepchar, "(i5.5)") step
     filename = trim(output_dir_name) // '/flds.tot.' // trim(stepchar)
@@ -662,14 +661,27 @@ contains
     global_dims(2) = global_mesh%sy
     global_dims(3) = global_mesh%sz
 
-    ! Initialize HDF5 library and Fortran interfaces
+    ! mpi_f08 thing
+    ! call MPI_INFO_CREATE(FILE_INFO_TEMPLATE, error)
+    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "access_style", "write_once", error)
+    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "collective_buffering", "true", error)
+    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_block_size", "4194304", error)
+    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_buffer_size", "16777216", error)
+    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_nodes", "1", error)
+
+    comm = MPI_COMM_WORLD%MPI_VAL
+    info = MPI_INFO_NULL%MPI_VAL
+    ! info = FILE_INFO_TEMPLATE%MPI_VAL
+
     call h5open_f(error)
-    ! Setup file access property list with parallel I/O access
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
     call h5pset_fapl_mpio_f(plist_id, comm, info, error)
-    ! Create the file collectively
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
     call h5pclose_f(plist_id, error)
+
+    do f = 1, n_fld_vars
+      call h5screate_simple_f(dataset_rank, global_dims, filespace(f), error)
+    end do
 
     do f = 1, n_fld_vars
       if (fld_vars(f)(1:4) .eq. 'dens') then
@@ -682,23 +694,17 @@ contains
         writing_intQ = .false.
         h5type = H5T_NATIVE_REAL
       end if
-      ! Create the data space for the  dataset
-      call h5screate_simple_f(dataset_rank, global_dims, filespace, error)
-      call h5screate_simple_f(dataset_rank, blocks, memspace, error)
-      ! Create chunked dataset
-      call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
-      call h5pset_chunk_f(plist_id, dataset_rank, blocks, error)
-      call h5dcreate_f(file_id, fld_vars(f), h5type, filespace, &
-                     & dset_id, error, plist_id)
-      call h5sclose_f(filespace, error)
 
-      ! Select hyperslab in the file
-      call h5dget_space_f(dset_id, filespace, error)
-      call h5sselect_hyperslab_f (filespace, H5S_SELECT_SET_F, offsets, counts, error, &
-                                & strides, blocks)
-      ! Create property list for collective dataset write
+      call h5dcreate_f(file_id, fld_vars(f), h5type, filespace(f), &
+                     & dset_id(f), error)
+      call h5sclose_f(filespace(f), error)
+      call h5dget_space_f(dset_id(f), filespace(f), error)
+
       call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
       call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
+
+      call h5screate_simple_f(dataset_rank, blocks, memspace, error)
+      call h5sselect_hyperslab_f(filespace(f), H5S_SELECT_SET_F, offsets, blocks, error)
 
       ! Create dataset by interpolating fields
       do i = 0, this_meshblock%ptr%sx - 1
@@ -749,25 +755,20 @@ contains
 
       ! Write the dataset collectively
       if (writing_intQ) then
-        call h5dwrite_f(dset_id, h5type, scalar_int_array, global_dims, error, &
-                      & file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
+        call h5dwrite_f(dset_id(f), h5type, scalar_int_array, global_dims, error, &
+                      & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
       else
-        call h5dwrite_f(dset_id, h5type, scalar_real_array, global_dims, error, &
-                      & file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
+        call h5dwrite_f(dset_id(f), h5type, scalar_real_array, global_dims, error, &
+                      & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
       end if
 
-      ! Close dataspaces
-      call h5sclose_f(filespace, error)
-      call h5sclose_f(memspace, error)
-      ! Close the dataset
-      call h5dclose_f(dset_id, error)
+      call h5dclose_f(dset_id(f), error)
+      call h5sclose_f(filespace(f), error)
     end do
 
-    ! Close the property list
+    call h5sclose_f(memspace, error)
     call h5pclose_f(plist_id, error)
-    ! Close the file
     call h5fclose_f(file_id, error)
-    ! Close FORTRAN interfaces and HDF5 library
     call h5close_f(error)
   end subroutine writeFields_hdf5
 
@@ -776,7 +777,7 @@ contains
     integer, intent(in)               :: step, time
     character(len=STR_MAX)            :: stepchar, filename
     character(len=7)                  :: dsetname
-    integer(HID_T)                    :: file_id, dset_id, filespace, memspace, plist_id
+    integer(HID_T)                    :: file_id, dset_id(100), filespace(100), memspace, plist_id
     integer                           :: comm, info, error, ierr
     integer                           :: rnk, s, p, j, ln_, ti, tj, tk, temp, temp_int
     integer                           :: dataset_rank = 1
@@ -811,19 +812,16 @@ contains
                     & npart_stride_global, nspec, MPI_INTEGER,&
                     & MPI_COMM_WORLD, ierr)
 
+    write(stepchar, "(i5.5)") step
+    filename = trim(output_dir_name) // '/prtl.tot.' // trim(stepchar)
+
     ! mpi_f08 thing
     comm = MPI_COMM_WORLD%MPI_VAL
     info = MPI_INFO_NULL%MPI_VAL
 
-    write(stepchar, "(i5.5)") step
-    filename = trim(output_dir_name) // '/prtl.tot.' // trim(stepchar)
-
-    ! Initialize HDF5 library and Fortran interfaces
     call h5open_f(error)
-    ! Setup file access property list with parallel I/O access
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
     call h5pset_fapl_mpio_f(plist_id, comm, info, error)
-    ! Create the file collectively
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
     call h5pclose_f(plist_id, error)
 
@@ -860,6 +858,10 @@ contains
 					end do ! tk
 				end do ! tj
 			end do ! ti
+
+      do p = 1, n_prtl_vars
+        call h5screate_simple_f(dataset_rank, global_dims, filespace(p), error)
+      end do
 
       do p = 1, n_prtl_vars
         ! dataset name `var_name` + `species #`
@@ -964,40 +966,32 @@ contains
           call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(prtl_var_types(p))//'`')
         end if
 
-        ! Create the data space for the  dataset
-        call h5screate_simple_f(dataset_rank, global_dims, filespace, error)
-        call h5screate_simple_f(dataset_rank, blocks, memspace, error)
-        ! Create chunked dataset
-        call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
-        call h5pset_chunk_f(plist_id, dataset_rank, blocks, error)
-        call h5dcreate_f(file_id, dsetname, h5type, filespace, &
-                       & dset_id, error, plist_id)
-        call h5sclose_f(filespace, error)
+        call h5dcreate_f(file_id, dsetname, h5type, filespace(p),&
+                       & dset_id(p), error)
+        call h5sclose_f(filespace(p), error)
+        call h5dget_space_f(dset_id(p), filespace(p), error)
 
-        ! Select hyperslab in the file
-        call h5dget_space_f(dset_id, filespace, error)
-        call h5sselect_hyperslab_f (filespace, H5S_SELECT_SET_F, offsets, counts, error, &
-                                  & strides, blocks)
-        ! Create property list for collective dataset write
         call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
         call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
 
+        call h5screate_simple_f(dataset_rank, blocks, memspace, error)
+        call h5sselect_hyperslab_f(filespace(p), H5S_SELECT_SET_F, offsets, blocks, error)
+
         ! Write the dataset collectively
         if (writing_intQ) then
-          call h5dwrite_f(dset_id, h5type, temp_int_arr, global_dims, error, &
-                        & file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
+          call h5dwrite_f(dset_id(p), h5type, temp_int_arr, global_dims, error,&
+                        & file_space_id = filespace(p), mem_space_id = memspace,&
+                        & xfer_prp = h5p_default_f)
           deallocate(temp_int_arr)
         else
-          call h5dwrite_f(dset_id, h5type, temp_real_arr, global_dims, error, &
-                        & file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
+          call h5dwrite_f(dset_id(p), h5type, temp_real_arr, global_dims, error,&
+                        & file_space_id = filespace(p), mem_space_id = memspace,&
+                        & xfer_prp = h5p_default_f)
           deallocate(temp_real_arr)
         end if
 
-        ! Close dataspaces
-        call h5sclose_f(filespace, error)
-        call h5sclose_f(memspace, error)
-        ! Close the dataset
-        call h5dclose_f(dset_id, error)
+        call h5sclose_f(filespace(p), error)
+        call h5dclose_f(dset_id(p), error)
       end do
       deallocate(stride_indices_arr)
 			deallocate(stride_ti_arr)
@@ -1005,11 +999,9 @@ contains
 			deallocate(stride_tk_arr)
     end do
 
-    ! Close the property list
+    call h5sclose_f(memspace, error)
     call h5pclose_f(plist_id, error)
-    ! Close the file
     call h5fclose_f(file_id, error)
-    ! Close FORTRAN interfaces and HDF5 library
     call h5close_f(error)
   end subroutine writeParticles_hdf5
 
