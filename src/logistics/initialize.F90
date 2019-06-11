@@ -18,8 +18,7 @@ module m_initialize
            & firstRankInitialize, initializeParticles,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
-           & assignNeighbor, allocateParticles,&
-           & initializeSimulation, checkEverything
+           & assignNeighbor, initializeSimulation, checkEverything
   !...............................................................!
 contains
   ! initialize all the necessary arrays and variables
@@ -60,12 +59,12 @@ contains
     if (mpi_rank .eq. 0) call firstRankInitialize()
 
     call userInitialize()
-      call printReport((mpi_rank .eq. 0), "userInitialize()", .true.)
+      call printDiag((mpi_rank .eq. 0), "userInitialize()", .true.)
 
     call checkEverything()
-      call printReport((mpi_rank .eq. 0), "checkEverything()", .true.)
+      call printDiag((mpi_rank .eq. 0), "checkEverything()", .true.)
 
-    call printReport((mpi_rank .eq. 0), "initializeAll()")
+    call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
 
   subroutine initializeOutput()
@@ -85,6 +84,8 @@ contains
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
     call getInput('algorithm', 'nfilter', nfilter, 2)
+    call getInput('grid', 'resize_tiles', resize_tiles, .false.)
+    call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
   end subroutine initializeSimulation
 
   subroutine initializeParticles()
@@ -278,16 +279,20 @@ contains
     allocate(recv_fld(sendrecv_offsetsz))
 
     ! output fields
-    if (allocated(scalar_array)) deallocate(scalar_array)
-    allocate(scalar_array(0:this_meshblock%ptr%sx - 1,&
-                        & 0:this_meshblock%ptr%sy - 1,&
-                        & 0:this_meshblock%ptr%sz - 1))
+    if (allocated(scalar_int_array)) deallocate(scalar_int_array)
+    if (allocated(scalar_real_array)) deallocate(scalar_real_array)
+    allocate(scalar_int_array(0:this_meshblock%ptr%sx - 1,&
+                            & 0:this_meshblock%ptr%sy - 1,&
+                            & 0:this_meshblock%ptr%sz - 1))
+    allocate(scalar_real_array(0:this_meshblock%ptr%sx - 1,&
+                             & 0:this_meshblock%ptr%sy - 1,&
+                             & 0:this_meshblock%ptr%sz - 1))
   end subroutine initializeFields
 
   subroutine initializeCommunications()
     implicit none
     integer :: ierr
-    call MPI_Init(ierr)
+    call MPI_INIT(ierr)
     ! ADD `ifdef MPI`-statement here
     call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
@@ -316,6 +321,13 @@ contains
     #else
       global_mesh%sz = 1
     #endif
+
+    if ((modulo(global_mesh%sx, sizex) .ne. 0) .and.&
+      & (modulo(global_mesh%sy, sizey) .ne. 0) .and.&
+      & (modulo(global_mesh%sz, sizez) .ne. 0)) then
+      call throwError('ERROR: grid size is not evenly divisible by the number of CPU-s')
+    end if
+
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
     #ifdef threeD

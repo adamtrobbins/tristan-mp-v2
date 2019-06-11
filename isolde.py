@@ -3,65 +3,81 @@ import numpy as np
 import h5py
 import os
 
-# !--- PRTL.TOT.***** structure ----------------------------------!
-# ! HEADER:                                                      _
-# !   timestep......................[4 bytes]                     |
-# !   # of cpus.....................[4 bytes]                     |
-# !   # of species..................[4 bytes]                     |
-# !   # of variables................[4 bytes]                     |- disp_header
-# !   variable names................[#var * 5 bytes]              |
-# !   variable types................[#var * 5 bytes]              |
-# !   # of particles per species....                              |
-# !   ....summed over all ranks.....[#spec * 4 bytes]            _|
-# ! BODY:
-# !   species = 1...............[#of parts of species=1 * # of variables * 4 bytes]
-# !     var = 1.................[#of parts per species * 4 bytes]
-# !       rank = 1..............[#of parts on rank=1 per species * 4 bytes]
-# !         XXX.................[4 bytes]
-# !         XXX.................[4 bytes]
-# !         ....................
-# !         XXX.................[4 bytes]
-# !       rank = 2..............[#of parts on rank=1 per species * 4 bytes]
-# !       ......................
-# !       rank = N..............[#of parts on rank=N per species * 4 bytes]
-# !     var = 2.................[#of parts per species * 4 bytes]
-# !     ........................
-# !     var = V.................[#of parts per species * 4 bytes]
-# !   species = 2...............[#of parts of species=2 * # of variables * 4 bytes]
-# !   ..........................
-# !   species = S...............[#of parts of species=S * # of variables * 4 bytes]
-# !   ..........................
-# !...............................................................!
-def getParticles(fname):
-    with open(fname, mode='rb') as file:
-        fileContent = file.read()
-        data = {}
-        header_start = 4
-        timestep, mpi_size, nspec, nvars = struct.unpack("i" * header_start, fileContent[:4 * header_start])
-        data['timestep'] = timestep
-        variables = []
-        variable_types = []
-        read_ptr = 4 * header_start
-        for i in range(nvars):
-            varn = struct.unpack("s"*5, fileContent[read_ptr : read_ptr + 5])
-            varn = b''.join(varn).replace(b' ', b'').decode('ascii')
-            read_ptr += 5
-            variables.append(varn)
-        for i in range(nvars):
-            vart = struct.unpack("s"*5, fileContent[read_ptr : read_ptr + 5])
-            vart = b''.join(vart).replace(b' ', b'').decode('ascii')
-            read_ptr += 5
-            if (vart == 'real'):
-                variable_types.append("f")
-            elif (vart == 'int'):
-                variable_types.append("i")
-        nprt = struct.unpack("i" * nspec, fileContent[read_ptr : read_ptr + nspec * 4])
-        read_ptr += nspec * 4
-        for s in range(nspec):
-            data[str(s + 1)] = {}
+
+def getParticles(fname, hdf5 = True):
+    if (hdf5):
+        # hd5 file
+        with h5py.File(fname, 'r') as file:
+            keys = list(file.keys())
+            species = np.unique([int(s) for s in ''.join(keys) if s.isdigit()])
+            nspec = len(species)
+            variables = np.unique([''.join([i for i in k if not i.isdigit()]) for k in keys])
+            nvars = len(variables)
+            data = {}
+            for s in range(nspec):
+                data[str(s + 1)] = {}
+                for i in range(nvars):
+                    (data[str(s + 1)])[variables[i]] = file[variables[i] + str(s + 1)][:]
+    else:
+        # !--- PRTL.TOT.***** structure ----------------------------------!
+        # ! HEADER:                                                      _
+        # !   timestep......................[4 bytes]                     |
+        # !   # of cpus.....................[4 bytes]                     |
+        # !   # of species..................[4 bytes]                     |
+        # !   # of variables................[4 bytes]                     |- disp_header
+        # !   variable names................[#var * 5 bytes]              |
+        # !   variable types................[#var * 5 bytes]              |
+        # !   # of particles per species....                              |
+        # !   ....summed over all ranks.....[#spec * 4 bytes]            _|
+        # ! BODY:
+        # !   species = 1...............[#of parts of species=1 * # of variables * 4 bytes]
+        # !     var = 1.................[#of parts per species * 4 bytes]
+        # !       rank = 1..............[#of parts on rank=1 per species * 4 bytes]
+        # !         XXX.................[4 bytes]
+        # !         XXX.................[4 bytes]
+        # !         ....................
+        # !         XXX.................[4 bytes]
+        # !       rank = 2..............[#of parts on rank=1 per species * 4 bytes]
+        # !       ......................
+        # !       rank = N..............[#of parts on rank=N per species * 4 bytes]
+        # !     var = 2.................[#of parts per species * 4 bytes]
+        # !     ........................
+        # !     var = V.................[#of parts per species * 4 bytes]
+        # !   species = 2...............[#of parts of species=2 * # of variables * 4 bytes]
+        # !   ..........................
+        # !   species = S...............[#of parts of species=S * # of variables * 4 bytes]
+        # !   ..........................
+        # !...............................................................!
+        # binary file
+        with open(fname, mode='rb') as file:
+            fileContent = file.read()
+            data = {}
+            header_start = 4
+            timestep, mpi_size, nspec, nvars = struct.unpack("i" * header_start, fileContent[:4 * header_start])
+            data['timestep'] = timestep
+            variables = []
+            variable_types = []
+            read_ptr = 4 * header_start
             for i in range(nvars):
-                (data[str(s + 1)])[variables[i]] = np.array(struct.unpack(variable_types[i] * nprt[s], fileContent[read_ptr : read_ptr + nprt[s] * 4]))
-                read_ptr += nprt[s] * 4
+                varn = struct.unpack("s"*5, fileContent[read_ptr : read_ptr + 5])
+                varn = b''.join(varn).replace(b' ', b'').decode('ascii')
+                read_ptr += 5
+                variables.append(varn)
+            for i in range(nvars):
+                vart = struct.unpack("s"*5, fileContent[read_ptr : read_ptr + 5])
+                vart = b''.join(vart).replace(b' ', b'').decode('ascii')
+                read_ptr += 5
+                if (vart == 'real'):
+                    variable_types.append("f")
+                elif (vart == 'int'):
+                    variable_types.append("i")
+            nprt = struct.unpack("i" * nspec, fileContent[read_ptr : read_ptr + nspec * 4])
+            read_ptr += nspec * 4
+            for s in range(nspec):
+                data[str(s + 1)] = {}
+                for i in range(nvars):
+                    (data[str(s + 1)])[variables[i]] = np.array(struct.unpack(variable_types[i] * nprt[s], fileContent[read_ptr : read_ptr + nprt[s] * 4]))
+                    read_ptr += nprt[s] * 4
     return data
 
 def convertPartsToHdf5(fname, delete_original = True):
@@ -81,104 +97,113 @@ def convertPartsToHdf5(fname, delete_original = True):
             dset = group.create_dataset(v, data=particles[str(i)][v])
     hf.close()
 
-# !--- FLDS.TOT.***** structure ----------------------------------!
-# ! HEADER:                                                      _
-# !   timestep......................[4 bytes]                     |
-# !   # of cpus.....................[4 bytes]                     |
-# !   # of fields...................[4 bytes]                     |
-# !   dimensions..[sx,sy,sz]........[3 * 4 bytes]                 |- disp_header
-# !   field names...................[#flds * 5 bytes]             |
-# !   meshblock dimensions..........[# of cpus * 6 * 4 bytes]    _|
-# ! BODY:
-# !   field = 1.................[fx * fy * fz * 4 bytes]
-# !     rank = 1................[fx * fy * fz (for rank = 1) * 4 bytes]
-# !       XXX...................[4 bytes]
-# !       XXX...................[4 bytes]
-# !       ......................
-# !       XXX...................[4 bytes]
-# !     rank = 2................[fx * fy * fz (for rank = 2) * 4 bytes]
-# !     ........................
-# !     rank = N................[fx * fy * fz (for rank = N) * 4 bytes]
-# !   field = 1.................[fx * fy * fz * 4 bytes]
-# !   ..........................
-# !   field = F.................[fx * fy * fz * 4 bytes]
-# !   ..........................
-# !...............................................................!
-# sx,sy,sz -> original dimensions
-# fx,fy,fz -> downsampled dimensions
-def getFields(fname, nodes = False):
-    def getGlobalS(x0, siz):
-        siz = np.array([x for _,x in sorted(zip(x0,siz))])
-        x0 = np.array(sorted(x0))
-        mmin = siz[0]
-        curr = x0[0]
-        for rnk in range(4):
-            if x0[rnk] > curr:
-                mmin += siz[rnk]
-                curr = x0[rnk]
-        return mmin
-    with open(fname, mode='rb') as file:
-        fileContent = file.read()
-        data = {}
-        header_start = 3 + 3
-        timestep, mpi_size, nflds, dimx, dimy, dimz = struct.unpack("i" * header_start, fileContent[:4 * header_start])
-        data['timestep'] = timestep
-        variables = []
-        read_ptr = 4 * header_start
-        for i in range(nflds):
-            varn = struct.unpack("s"*5, fileContent[read_ptr : read_ptr + 5])
-            varn = b''.join(varn).replace(b' ', b'').decode('ascii')
-            read_ptr += 5
-            variables.append(varn)
-        x_y_z_list = []
-        sx_sy_sz_list = []
-        for i in range(mpi_size):
-            x_y_z = struct.unpack("i"*3, fileContent[read_ptr : read_ptr + 4 * 3])
-            read_ptr += 4 * 3
-            sx_sy_sz = struct.unpack("i"*3, fileContent[read_ptr : read_ptr + 4 * 3])
-            read_ptr += 4 * 3
-            x_y_z_list.append(x_y_z); sx_sy_sz_list.append(sx_sy_sz)
-        data['mblocks_xyz'] = np.array(x_y_z_list)
-        data['mblocks_sxyz'] = np.array(sx_sy_sz_list)
-        # getting global domain sizes from the local meshblocks
-        sx_glob = getGlobalS(np.array(x_y_z_list)[:,0], np.array(sx_sy_sz_list)[:,0])
-        sy_glob = getGlobalS(np.array(x_y_z_list)[:,1], np.array(sx_sy_sz_list)[:,1])
-        sz_glob = getGlobalS(np.array(x_y_z_list)[:,2], np.array(sx_sy_sz_list)[:,2])
-        # saving fields
-        for f in range(nflds):
-            fld_glob = np.zeros((sx_glob, sy_glob, sz_glob))
+def getFields(fname, hdf5 = True, nodes = False):
+    if hdf5:
+        # hdf5 file
+        with h5py.File(fname, 'r') as file:
+            keys = list(file.keys())
+            data = {}
+            for key in keys:
+                data[key] = file[key][:]
+    else:
+        # !--- FLDS.TOT.***** structure ----------------------------------!
+        # ! HEADER:                                                      _
+        # !   timestep......................[4 bytes]                     |
+        # !   # of cpus.....................[4 bytes]                     |
+        # !   # of fields...................[4 bytes]                     |
+        # !   dimensions..[sx,sy,sz]........[3 * 4 bytes]                 |- disp_header
+        # !   field names...................[#flds * 5 bytes]             |
+        # !   meshblock dimensions..........[# of cpus * 6 * 4 bytes]    _|
+        # ! BODY:
+        # !   field = 1.................[fx * fy * fz * 4 bytes]
+        # !     rank = 1................[fx * fy * fz (for rank = 1) * 4 bytes]
+        # !       XXX...................[4 bytes]
+        # !       XXX...................[4 bytes]
+        # !       ......................
+        # !       XXX...................[4 bytes]
+        # !     rank = 2................[fx * fy * fz (for rank = 2) * 4 bytes]
+        # !     ........................
+        # !     rank = N................[fx * fy * fz (for rank = N) * 4 bytes]
+        # !   field = 1.................[fx * fy * fz * 4 bytes]
+        # !   ..........................
+        # !   field = F.................[fx * fy * fz * 4 bytes]
+        # !   ..........................
+        # !...............................................................!
+        # sx,sy,sz -> original dimensions
+        # fx,fy,fz -> downsampled dimensions
+        # binary file
+        def getGlobalS(x0, siz):
+            siz = np.array([x for _,x in sorted(zip(x0,siz))])
+            x0 = np.array(sorted(x0))
+            mmin = siz[0]
+            curr = x0[0]
+            for rnk in range(4):
+                if x0[rnk] > curr:
+                    mmin += siz[rnk]
+                    curr = x0[rnk]
+            return mmin
+        with open(fname, mode='rb') as file:
+            fileContent = file.read()
+            data = {}
+            header_start = 3 + 3
+            timestep, mpi_size, nflds, dimx, dimy, dimz = struct.unpack("i" * header_start, fileContent[:4 * header_start])
+            data['timestep'] = timestep
+            variables = []
+            read_ptr = 4 * header_start
+            for i in range(nflds):
+                varn = struct.unpack("s"*5, fileContent[read_ptr : read_ptr + 5])
+                varn = b''.join(varn).replace(b' ', b'').decode('ascii')
+                read_ptr += 5
+                variables.append(varn)
+            x_y_z_list = []
+            sx_sy_sz_list = []
+            for i in range(mpi_size):
+                x_y_z = struct.unpack("i"*3, fileContent[read_ptr : read_ptr + 4 * 3])
+                read_ptr += 4 * 3
+                sx_sy_sz = struct.unpack("i"*3, fileContent[read_ptr : read_ptr + 4 * 3])
+                read_ptr += 4 * 3
+                x_y_z_list.append(x_y_z); sx_sy_sz_list.append(sx_sy_sz)
+            data['mblocks_xyz'] = np.array(x_y_z_list)
+            data['mblocks_sxyz'] = np.array(sx_sy_sz_list)
+            # getting global domain sizes from the local meshblocks
+            sx_glob = getGlobalS(np.array(x_y_z_list)[:,0], np.array(sx_sy_sz_list)[:,0])
+            sy_glob = getGlobalS(np.array(x_y_z_list)[:,1], np.array(sx_sy_sz_list)[:,1])
+            sz_glob = getGlobalS(np.array(x_y_z_list)[:,2], np.array(sx_sy_sz_list)[:,2])
+            # saving fields
+            for f in range(nflds):
+                fld_glob = np.zeros((sx_glob, sy_glob, sz_glob))
+                for rnk in range(mpi_size):
+                    x0, y0, z0 = x_y_z_list[rnk]
+                    sx, sy, sz = sx_sy_sz_list[rnk]
+                    fld = np.array(struct.unpack("f" * sx * sy * sz, fileContent[read_ptr : read_ptr + 4 * sx * sy * sz]))
+                    read_ptr += 4 * sx * sy * sz
+                    fld = fld.reshape(sx, sy, sz) # then `fld[xi,yi,zi]` is the field at `xi,yi,zi`
+                    fld_glob[x0:x0+sx,y0:y0+sy,z0:z0+sz] = fld
+                data[variables[f]] = np.array(fld_glob)
+            # saving grid as a field
+            fld_glob = np.zeros((sx_glob, sy_glob, sz_glob, 3))
             for rnk in range(mpi_size):
                 x0, y0, z0 = x_y_z_list[rnk]
                 sx, sy, sz = sx_sy_sz_list[rnk]
-                fld = np.array(struct.unpack("f" * sx * sy * sz, fileContent[read_ptr : read_ptr + 4 * sx * sy * sz]))
-                read_ptr += 4 * sx * sy * sz
-                fld = fld.reshape(sx, sy, sz) # then `fld[xi,yi,zi]` is the field at `xi,yi,zi`
-                fld_glob[x0:x0+sx,y0:y0+sy,z0:z0+sz] = fld
-            data[variables[f]] = np.array(fld_glob)
-        # saving grid as a field
-        fld_glob = np.zeros((sx_glob, sy_glob, sz_glob, 3))
-        for rnk in range(mpi_size):
-            x0, y0, z0 = x_y_z_list[rnk]
-            sx, sy, sz = sx_sy_sz_list[rnk]
-            xyz_grid = [[[(i + x0, j + y0, k + z0) for k in range(sz)] for j in range(sy)] for i in range(sx)]
-            fld_glob[x0:x0+sx,y0:y0+sy,z0:z0+sz] = xyz_grid
-        if (nodes):
-            x_ = fld_glob[:,0,0,0]
-            x_ = np.append(x_, x_[-1] + (x_[-1] - x_[-2]))
-            y_ = fld_glob[0,:,0,1]
-            y_ = np.append(y_, y_[-1] + (y_[-1] - y_[-2]))
-            z_ = fld_glob[0,0,:,2]
-            if len(z_) > 1:
-                z_ = np.append(z_, z_[-1] + (z_[-1] - z_[-2]))
+                xyz_grid = [[[(i + x0, j + y0, k + z0) for k in range(sz)] for j in range(sy)] for i in range(sx)]
+                fld_glob[x0:x0+sx,y0:y0+sy,z0:z0+sz] = xyz_grid
+            if (nodes):
+                x_ = fld_glob[:,0,0,0]
+                x_ = np.append(x_, x_[-1] + (x_[-1] - x_[-2]))
+                y_ = fld_glob[0,:,0,1]
+                y_ = np.append(y_, y_[-1] + (y_[-1] - y_[-2]))
+                z_ = fld_glob[0,0,:,2]
+                if len(z_) > 1:
+                    z_ = np.append(z_, z_[-1] + (z_[-1] - z_[-2]))
+                else:
+                    z_ = np.append(z_, z_[-1] + 1)
+                data['x'] = x_
+                data['y'] = y_
+                data['z'] = z_
             else:
-                z_ = np.append(z_, z_[-1] + 1)
-            data['x'] = x_
-            data['y'] = y_
-            data['z'] = z_
-        else:
-            data['xyz'] = np.array(fld_glob)
-        if (len(fileContent) != read_ptr):
-            print ("WRONG reading!")
+                data['xyz'] = np.array(fld_glob)
+            if (len(fileContent) != read_ptr):
+                print ("WRONG reading!")
     return data
 # usage example for 2D uniform grid:
 # ```
@@ -191,41 +216,54 @@ def getFields(fname, nodes = False):
 #   plt.pcolor(x_, y_, ex_) # <- 2D plot
 # ```
 
-# !--- SPEC.TOT.***** structure ----------------------------------!
-# ! HEADER:
-# !   timestep......................[4 bytes]
-# !   # of species..................[4 bytes]
-# !   # of bins.....................[4 bytes]
-# !   MIN energy....................[4 bytes]
-# !   MAX energy....................[4 bytes]
-# ! BODY:
-# !   species = 1...............[# of bins * 4 bytes]
-# !     bin = 1.................[4 bytes]
-# !     bin = 2.................[4 bytes]
-# !     ........................
-# !     rank = N................[4 bytes]
-# !   species = 2...............[# of bins * 4 bytes]
-# !   ..........................
-# !   species = S...............[# of bins * 4 bytes]
-# !   ..........................
-# !...............................................................!
-def getSpectra(fname):
-    with open(fname, mode='rb') as file:
-        fileContent = file.read()
-        data = {}
-        timestep, nspec, nbins = struct.unpack("i" * 3, fileContent[:4 * 3])
-        read_ptr = 4 * 3
-        emin, emax = struct.unpack("f" * 2, fileContent[read_ptr : read_ptr + 4 * 2])
-        read_ptr += 4 * 2
-        data['timestep'] = timestep
-        data['nspec'] = nspec
-        emin = np.round(np.log10(np.exp(emin)), 4)
-        emax = np.round(np.log10(np.exp(emax)), 4)
-        data['bins'] = np.logspace(emin, emax, nbins)
-        for s in range(nspec):
-            data['spec' + str(s + 1)] = np.array(struct.unpack("i" * nbins, fileContent[read_ptr : read_ptr + 4 * nbins]))
-            read_ptr += 4 * nbins
-        return data
+def getSpectra(fname, hdf5 = True):
+    if hdf5:
+        # hdf5 output
+        with h5py.File(fname, 'r') as file:
+            keys = list(file.keys())
+            species = np.unique([int(s) for s in ''.join(keys) if s.isdigit()])
+            nspec = len(species)
+            data = {}
+            for s in range(nspec):
+                data[str(s + 1)] = {}
+                (data[str(s + 1)])['bn'] = np.exp(file['e' + str(s + 1)][:])
+                (data[str(s + 1)])['cnt'] = file['n' + str(s + 1)][:]
+    else:
+        with open(fname, mode='rb') as file:
+            # !--- SPEC.TOT.***** structure ----------------------------------!
+            # ! HEADER:
+            # !   timestep......................[4 bytes]
+            # !   # of species..................[4 bytes]
+            # !   # of bins.....................[4 bytes]
+            # !   MIN energy....................[4 bytes]
+            # !   MAX energy....................[4 bytes]
+            # ! BODY:
+            # !   species = 1...............[# of bins * 4 bytes]
+            # !     bin = 1.................[4 bytes]
+            # !     bin = 2.................[4 bytes]
+            # !     ........................
+            # !     rank = N................[4 bytes]
+            # !   species = 2...............[# of bins * 4 bytes]
+            # !   ..........................
+            # !   species = S...............[# of bins * 4 bytes]
+            # !   ..........................
+            # !...............................................................!
+            # binary output
+            fileContent = file.read()
+            data = {}
+            timestep, nspec, nbins = struct.unpack("i" * 3, fileContent[:4 * 3])
+            read_ptr = 4 * 3
+            emin, emax = struct.unpack("f" * 2, fileContent[read_ptr : read_ptr + 4 * 2])
+            read_ptr += 4 * 2
+            data['timestep'] = timestep
+            data['nspec'] = nspec
+            emin = np.round(np.log10(np.exp(emin)), 4)
+            emax = np.round(np.log10(np.exp(emax)), 4)
+            data['bins'] = np.logspace(emin, emax, nbins)
+            for s in range(nspec):
+                data['spec' + str(s + 1)] = np.array(struct.unpack("i" * nbins, fileContent[read_ptr : read_ptr + 4 * nbins]))
+                read_ptr += 4 * nbins
+    return data
 
 # easy plotting function
 def plot2DField(ax, x, y, field,

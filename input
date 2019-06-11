@@ -10,7 +10,7 @@
 
 <time>
 
-  last 	        = 100							# last timestep
+  last 	        = 100						# last timestep
 
 <grid>
 
@@ -22,34 +22,37 @@
   boundary_y    = 1
   boundary_z    = 1
 
-  tileX         = 7
-  tileY         = 7
+  resize_tiles  = 1
+  min_tile_nprt = 1000
+
+  tileX         = 5
+  tileY         = 5
   tileZ         = 1
 
 <algorithm>
 
-  nfilter       = 0
+  nfilter       = 4
 
 <restart>
 
 <output>
 
   stride        = 1
-  interval      = 1
+  interval      = 10
   istep         = 1
 
   history       = 0							# 0 = .false.; 1 = .true.
   hst_interval  = 1
 
-  spec_min      = 1e-2					# `g - 1` for massive and `e` for massless
-  spec_max      = 1e2						# `g - 1` for massive and `e` for massless
+  spec_min      = 1e-3					# `g - 1` for massive and `e` for massless
+  spec_max      = 1e1						# `g - 1` for massive and `e` for massless
   spec_num      = 100						# number of energy bins
 
 <boundaries>
 
 <plasma>
 
-  ppc0          = 1
+  ppc0          = 10
   sigma         = 4
   c_omp         = 10
 
@@ -67,4 +70,4 @@
 
 <problem>
 
-  temperature   = 0.1						# temperature in terms of [m_e c**2]
+  temperature   = 2.0						# temperature in terms of [m_e c**2]

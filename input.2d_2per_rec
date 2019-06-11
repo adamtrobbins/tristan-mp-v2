@@ -5,7 +5,7 @@
 <node_configuration>
 
   sizex	        = 2             # number of cpus in x direction
-  sizey 	      = 28						# number of cpus in y direction
+  sizey 	      = 2							# number of cpus in y direction
   sizez         = 1							# number of cpus in z direction
 
 <time>
@@ -34,7 +34,7 @@
 
 <output>
 
-  stride        = 1
+  stride        = 1000
   interval      = 100
   istep         = 1
 

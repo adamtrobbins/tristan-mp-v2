@@ -20,7 +20,7 @@ contains
     call finalizeCommunications()
       call printDiag((mpi_rank .eq. 0), "finalizeCommunications()", .true.)
 
-    call printReport((mpi_rank .eq. 0), "finalizeAll()")
+    call printReport((mpi_rank .eq. 0), "FinalizeAll()")
   end subroutine finalizeAll
 
   subroutine deallocateArrays()
@@ -58,7 +58,8 @@ contains
     if (allocated(recv_fld)) deallocate(recv_fld)
 
     ! dealloc field output
-    if (allocated(scalar_array)) deallocate(scalar_array)
+    if (allocated(scalar_int_array)) deallocate(scalar_int_array)
+    if (allocated(scalar_real_array)) deallocate(scalar_real_array)
   end subroutine deallocateArrays
 
   subroutine finalizeCommunications()

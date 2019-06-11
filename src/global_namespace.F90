@@ -18,7 +18,9 @@ module m_globalnamespace
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
 
   ! simulation parameters
-  integer                :: final_timestep
+  integer                :: final_timestep, output_index = 0
+  logical                :: resize_tiles = .false.
+  integer                :: min_tile_nprt = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart'

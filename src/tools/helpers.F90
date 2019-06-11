@@ -46,6 +46,28 @@ contains
     end if
   end function indToRnk
 
+  subroutine computeDensity(s)
+    implicit none
+    integer, intent(in)                   :: s
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+		scalar_int_array(:,:,:) = 0
+		do ti = 1, species(s)%tile_nx
+			do tj = 1, species(s)%tile_ny
+				do tk = 1, species(s)%tile_nz
+					pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+					pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+					pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+					! FIX1 vectorize/align
+					do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+						scalar_int_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_int_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
+					end do
+					pt_xi => null(); pt_yi => null(); pt_zi => null()
+				end do
+			end do
+		end do
+  end subroutine computeDensity
+
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
