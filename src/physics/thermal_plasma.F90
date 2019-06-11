@@ -160,7 +160,9 @@ contains
   end subroutine deallocateMaxwellian
 
   subroutine fillRegionWithThermalPlasma(fillregion, fill_species, num_species, num_part,&
-                                       & temperature, shift_gamma, shift_dir)
+                                       & temperature, shift_gamma, shift_dir,&
+                                       & spat_distr_ptr,&
+                                       & dummy1, dummy2, dummy3)
     implicit none
     ! assuming that the charges of all species given in `fill_species` add up to `0`
     type(region), intent(in)         :: fillregion
@@ -170,16 +172,19 @@ contains
     real, optional, intent(in)       :: shift_gamma
     integer, optional, intent(in)    :: shift_dir
     type(maxwellian)                 :: fill_maxwellian
-    integer                          :: n, s
+    integer                          :: n, s, spec_
     integer(kind=2)                  :: xi_, yi_, zi_
     real                             :: u_, v_, w_, dx_, dy_, dz_
     real                             :: x_, y_, z_, rnd
+    real                             :: x_glob
+
+    procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
+    real, intent(in), optional                                     :: dummy1, dummy2, dummy3
 
     fill_maxwellian%temperature = temperature
     fill_maxwellian%generated = .false.
     if (present(shift_gamma)) then
       fill_maxwellian%shift_gamma = shift_gamma
-      fill_maxwellian%shift_dir = shift_dir
       fill_maxwellian%shift_flag = .true.
     else
       fill_maxwellian%shift_flag = .false.
@@ -204,14 +209,29 @@ contains
       #else
         zi_ = 0; dz_ = 0.5
       #endif
-      do s = 1, num_species
-        ! generate momenta for every species individually
-        call generateFromMaxwellian(fill_maxwellian, u_, v_, w_)
-        call createParticle(fill_species(s), xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_)
-      end do
+
+      ! if spatial distribution function is present, compute it
+      !   otherwise use uniform distribution
+      if (present(spat_distr_ptr)) then
+        x_glob = REAL(this_meshblock%ptr%x0) + x_
+        rnd = spat_distr_ptr(x_glob = x_glob, dummy1 = dummy1, dummy2 = dummy2)
+      else
+        rnd = 1.0
+      end if
+      if (random(dseed) .lt. rnd) then
+        do s = 1, num_species
+          ! generate momenta for every species individually
+          spec_ = fill_species(s)
+          !   shift direction is opposite for opposite signed species
+          if (present(shift_gamma)) then
+            fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
+          end if
+          call generateFromMaxwellian(fill_maxwellian, u_, v_, w_)
+          call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_)
+        end do
+      end if
       n = n + 1
     end do
-
     call deallocateMaxwellian(fill_maxwellian)
   end subroutine fillRegionWithThermalPlasma
 end module m_thermalplasma
