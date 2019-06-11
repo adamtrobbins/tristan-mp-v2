@@ -118,7 +118,7 @@ contains
                 ! increase the tile size
                 call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .true.)
               else if ((species(s)%prtl_tile(ti, tj, tk)%npart_sp .lt. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.3) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%maxptl_sp .gt. min_tile_nprt)) then
+                & (species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.5 .gt. min_tile_nprt)) then
                 ! decrease the tile size
                 call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .false.)
               end if
@@ -132,15 +132,16 @@ contains
   subroutine reallocTileSize(tile, increase_flag)
     implicit none
     type(particle_tile), intent(inout)          :: tile
-    ! `.true.` if need to increase, otherwise `.false`
+    ! `.true.` if need to increase, otherwise `.false.`
     logical, intent(in)                         :: increase_flag
     integer(kind=2), allocatable, dimension(:)  :: dummy_int2
     integer, allocatable, dimension(:)          :: dummy_int
     real, allocatable, dimension(:)             :: dummy_real
+    integer                                     :: current_npart
 
     if (increase_flag) then
       ! increase twice
-      tile%maxptl_sp = INT(tile%maxptl_sp * 2)
+      tile%maxptl_sp = INT(tile%maxptl_sp * 1.5)
     else
       ! decrease twice
       tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
@@ -154,49 +155,51 @@ contains
     allocate(dummy_int(tile%maxptl_sp))
     allocate(dummy_real(tile%maxptl_sp))
 
-    dummy_int2(1:tile%npart_sp) = tile%xi(1:tile%npart_sp)
+    current_npart = tile%npart_sp
+
+    dummy_int2(1 : current_npart) = tile%xi(1 : current_npart)
     deallocate(tile%xi); allocate(tile%xi(tile%maxptl_sp))
-    tile%xi(1:tile%npart_sp) = dummy_int2(1:tile%npart_sp)
+    tile%xi(1 : current_npart) = dummy_int2(1 : current_npart)
 
-    dummy_int2(1:tile%npart_sp) = tile%yi(1:tile%npart_sp)
+    dummy_int2(1 : current_npart) = tile%yi(1 : current_npart)
     deallocate(tile%yi); allocate(tile%yi(tile%maxptl_sp))
-    tile%yi(1:tile%npart_sp) = dummy_int2(1:tile%npart_sp)
+    tile%yi(1 : current_npart) = dummy_int2(1 : current_npart)
 
-    dummy_int2(1:tile%npart_sp) = tile%zi(1:tile%npart_sp)
+    dummy_int2(1 : current_npart) = tile%zi(1 : current_npart)
     deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
-    tile%zi(1:tile%npart_sp) = dummy_int2(1:tile%npart_sp)
+    tile%zi(1 : current_npart) = dummy_int2(1 : current_npart)
 
-    dummy_real(1:tile%npart_sp) = tile%dx(1:tile%npart_sp)
+    dummy_real(1 : current_npart) = tile%dx(1 : current_npart)
     deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
-    tile%dx(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+    tile%dx(1 : current_npart) = dummy_real(1 : current_npart)
 
-    dummy_real(1:tile%npart_sp) = tile%dy(1:tile%npart_sp)
+    dummy_real(1 : current_npart) = tile%dy(1 : current_npart)
     deallocate(tile%dy); allocate(tile%dy(tile%maxptl_sp))
-    tile%dy(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+    tile%dy(1 : current_npart) = dummy_real(1 : current_npart)
 
-    dummy_real(1:tile%npart_sp) = tile%dz(1:tile%npart_sp)
+    dummy_real(1 : current_npart) = tile%dz(1 : current_npart)
     deallocate(tile%dz); allocate(tile%dz(tile%maxptl_sp))
-    tile%dz(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+    tile%dz(1 : current_npart) = dummy_real(1 : current_npart)
 
-    dummy_real(1:tile%npart_sp) = tile%u(1:tile%npart_sp)
+    dummy_real(1 : current_npart) = tile%u(1 : current_npart)
     deallocate(tile%u); allocate(tile%u(tile%maxptl_sp))
-    tile%u(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+    tile%u(1 : current_npart) = dummy_real(1 : current_npart)
 
-    dummy_real(1:tile%npart_sp) = tile%v(1:tile%npart_sp)
+    dummy_real(1 : current_npart) = tile%v(1 : current_npart)
     deallocate(tile%v); allocate(tile%v(tile%maxptl_sp))
-    tile%v(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+    tile%v(1 : current_npart) = dummy_real(1 : current_npart)
 
-    dummy_real(1:tile%npart_sp) = tile%w(1:tile%npart_sp)
+    dummy_real(1 : current_npart) = tile%w(1 : current_npart)
     deallocate(tile%w); allocate(tile%w(tile%maxptl_sp))
-    tile%w(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+    tile%w(1 : current_npart) = dummy_real(1 : current_npart)
 
-    dummy_int(1:tile%npart_sp) = tile%ind(1:tile%npart_sp)
+    dummy_int(1 : current_npart) = tile%ind(1 : current_npart)
     deallocate(tile%ind); allocate(tile%ind(tile%maxptl_sp))
-    tile%ind(1:tile%npart_sp) = dummy_int(1:tile%npart_sp)
+    tile%ind(1 : current_npart) = dummy_int(1 : current_npart)
 
-    dummy_int(1:tile%npart_sp) = tile%proc(1:tile%npart_sp)
+    dummy_int(1 : current_npart) = tile%proc(1 : current_npart)
     deallocate(tile%proc); allocate(tile%proc(tile%maxptl_sp))
-    tile%proc(1:tile%npart_sp) = dummy_int(1:tile%npart_sp)
+    tile%proc(1 : current_npart) = dummy_int(1 : current_npart)
 
     deallocate(dummy_int2)
     deallocate(dummy_int)
