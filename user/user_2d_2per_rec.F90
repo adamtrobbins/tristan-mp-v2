@@ -17,7 +17,8 @@ module m_userfile
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userInitParticles, userInitFields, userReadInput
+  private :: userInitParticles, userInitFields, userReadInput,&
+           & userSpatialDistribution
   !...............................................................!
 contains
   subroutine userInitialize()
@@ -32,40 +33,79 @@ contains
     call getInput('problem', 'upstream_T', upstream_T)
     call getInput('problem', 'nCS_nUP', nCS_over_nUP)
     call getInput('problem', 'current_width', current_width)
-    cs_x1 = 1.0 / 3.0; cs_x2 = 2.0 / 3.0
+    cs_x1 = 0.25; cs_x2 = 0.75
   end subroutine userReadInput
+
+  function userSpatialDistribution(x_glob, y_glob, z_glob,&
+                                 & dummy1, dummy2, dummy3)
+    real :: userSpatialDistribution
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    if (present(x_glob) .and. present(dummy1) .and. present(dummy2)) then
+      userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2
+    else
+      call throwError("ERROR: variable not present in `userSpatialDistribution()`")
+    end if
+    return
+  end function
 
   subroutine userInitParticles()
     implicit none
     real                :: nUP
-    integer             :: nUP_tot
-    type(region)        :: back_region, cs_region
+    integer             :: nUP_tot, nCS_tot
+    type(region)        :: back_region
+    real                :: sx_glob, shift_gamma, shift_beta, current_sheet_T
+
+    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+
+    spat_distr_ptr => userSpatialDistribution
 
     nUP = ppc0
-    nUP_tot = INT(nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
+    nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
+    nCS_tot = INT(0.5 * nUP * nCS_over_nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
 
     back_region%x_min = 0
     back_region%x_max = this_meshblock%ptr%sx
     back_region%y_min = 0
     back_region%y_max = this_meshblock%ptr%sy
 
+    sx_glob = REAL(global_mesh%sx)
+
+    shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
+    if (shift_beta .ge. 1) then
+      call throwError('ERROR: `shift_beta` >= 1 in `userInitParticles()`')
+    end if
+    shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
+    current_sheet_T = 0.5 * sigma / nCS_over_nUP
+
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
+                                  & shift_gamma = shift_gamma, shift_dir = -3,&
+                                  & spat_distr_ptr = spat_distr_ptr,&
+                                  & dummy1 = cs_x1 * sx_glob, dummy2 = current_width)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
+                                  & shift_gamma = shift_gamma, shift_dir = 3,&
+                                  & spat_distr_ptr = spat_distr_ptr,&
+                                  & dummy1 = cs_x2 * sx_glob, dummy2 = current_width)
   end subroutine userInitParticles
 
   subroutine userInitFields()
     implicit none
     integer :: i, j, k
-    integer :: i_glob, j_glob, k_glob
+    integer :: i_glob
+    real    :: x_glob, sx_glob
+
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     k = 0
+    sx_glob = REAL(global_mesh%sx)
     do i = 0, this_meshblock%ptr%sx - 1
       i_glob = i + this_meshblock%ptr%x0
+      x_glob = REAL(i_glob)
       do j = 0, this_meshblock%ptr%sy - 1
-        j_glob = j + this_meshblock%ptr%y0
-        by(i, j, k) = tanh((i_glob + 0.5 - cs_x1 * global_mesh%sx) / current_width) -&
-                    & tanh((i_glob + 0.5 - cs_x2 * global_mesh%sx) / current_width) - 1.0
+        by(i, j, k) = tanh((x_glob - cs_x1 * sx_glob) / current_width) -&
+                    & tanh((x_glob - cs_x2 * sx_glob) / current_width) - 1.0
       end do
     end do
   end subroutine userInitFields

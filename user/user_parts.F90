@@ -23,13 +23,13 @@ contains
   subroutine userInitialize()
     implicit none
     call userReadInput()
-      call printReport((mpi_rank .eq. 0), "userReadInput()", .true.)
+      call printDiag((mpi_rank .eq. 0), "...userReadInput()", .true.)
 
     call userInitParticles()
-      call printReport((mpi_rank .eq. 0), "userInitParticles()", .true.)
+      call printDiag((mpi_rank .eq. 0), "...userInitParticles()", .true.)
 
     call userInitFields()
-      call printReport((mpi_rank .eq. 0), "userInitFields()", .true.)
+      call printDiag((mpi_rank .eq. 0), "...userInitFields()", .true.)
   end subroutine userInitialize
 
   subroutine userReadInput()
@@ -40,13 +40,16 @@ contains
   subroutine userInitParticles()
     implicit none
     type(region)        :: user_region
+    integer             :: npart
 
     user_region%x_min = 0
-    user_region%x_max = this_meshblock%ptr%sx
+    user_region%x_max = this_meshblock%ptr%sx - 1e-6
     user_region%y_min = 0
-    user_region%y_max = this_meshblock%ptr%sy
+    user_region%y_max = this_meshblock%ptr%sy - 1e-6
 
-    call fillRegionWithThermalPlasma(user_region, (/1, 2/), 2, 1000, plasma_temp)
+    npart = this_meshblock%ptr%sx * this_meshblock%ptr%sy * ppc0
+
+    call fillRegionWithThermalPlasma(user_region, (/1, 2/), 2, npart, plasma_temp)
   end subroutine userInitParticles
 
   subroutine userInitFields()
