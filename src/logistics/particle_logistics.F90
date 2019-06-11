@@ -34,9 +34,6 @@ contains
 			call copyParticleFromTo(s, species(s)%prtl_tile(ti, tj, tk)%npart_sp, p, ti, tj, tk)
 		end if
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp - 1
-    ! if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .lt. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.3) then
-      ! FIX0 realloc particle array in the tile
-    ! end if
   end subroutine removeParticleFromTile
 
   subroutine createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w, &
@@ -58,10 +55,7 @@ contains
 				call throwError('ERROR: wrong ti, tj, tk in `createParticle`')
 			end if
 		#endif
-		species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
-    ! if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .ge. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-      ! FIX0 realloc particle array in the tile
-    ! end if
+    species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
     p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
     species(s)%prtl_tile(ti, tj, tk)%xi(p) = xi
@@ -78,9 +72,15 @@ contains
 		species(s)%prtl_tile(ti, tj, tk)%w(p) = w
 
 		if (present(ind) .and. present(proc)) then
+      ! moving particle from one tile/meshblock to another
 			species(s)%prtl_tile(ti, tj, tk)%ind(p) = ind
-			species(s)%prtl_tile(ti, tj, tk)%proc(p) = proc
+      #ifdef DEBUG
+        species(s)%prtl_tile(ti, tj, tk)%proc(p) = mpi_rank
+      #else
+        species(s)%prtl_tile(ti, tj, tk)%proc(p) = proc
+      #endif
 		else
+      ! create a very new particle
     	species(s)%prtl_tile(ti, tj, tk)%ind(p) = species(s)%cntr_sp
 			species(s)%prtl_tile(ti, tj, tk)%proc(p) = mpi_rank
 			species(s)%cntr_sp = species(s)%cntr_sp + 1
@@ -105,6 +105,112 @@ contains
     allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
     allocate(prt%ind(sz)); allocate(prt%proc(sz))
   end subroutine allocateParticles
+
+  subroutine checkTileSizes()
+    implicit none
+    integer     :: s, ti, tj, tk
+    if (resize_tiles) then
+      do s = 1, nspec ! loop over species
+  			do ti = 1, species(s)%tile_nx
+  				do tj = 1, species(s)%tile_ny
+  					do tk = 1, species(s)%tile_nz
+              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .ge. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.7) then
+                ! increase the tile size
+                call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .true.)
+              else if ((species(s)%prtl_tile(ti, tj, tk)%npart_sp .lt. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.3) .and.&
+                & (species(s)%prtl_tile(ti, tj, tk)%maxptl_sp .gt. min_tile_nprt)) then
+                ! decrease the tile size
+                call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .false.)
+              end if
+            end do
+          end do
+        end do
+      end do
+    end if
+  end subroutine checkTileSizes
+
+  subroutine reallocTileSize(tile, increase_flag)
+    implicit none
+    type(particle_tile), intent(inout)          :: tile
+    ! `.true.` if need to increase, otherwise `.false`
+    logical, intent(in)                         :: increase_flag
+    integer(kind=2), allocatable, dimension(:)  :: dummy_int2
+    integer, allocatable, dimension(:)          :: dummy_int
+    real, allocatable, dimension(:)             :: dummy_real
+
+    if (increase_flag) then
+      ! increase twice
+      tile%maxptl_sp = INT(tile%maxptl_sp * 2)
+    else
+      ! decrease twice
+      tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
+    end if
+
+    if (tile%npart_sp .gt. tile%maxptl_sp) then
+      call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
+    end if
+
+    allocate(dummy_int2(tile%maxptl_sp))
+    allocate(dummy_int(tile%maxptl_sp))
+    allocate(dummy_real(tile%maxptl_sp))
+
+    dummy_int2(1:tile%npart_sp) = tile%xi(1:tile%npart_sp)
+    deallocate(tile%xi); allocate(tile%xi(tile%maxptl_sp))
+    tile%xi(1:tile%npart_sp) = dummy_int2(1:tile%npart_sp)
+
+    dummy_int2(1:tile%npart_sp) = tile%yi(1:tile%npart_sp)
+    deallocate(tile%yi); allocate(tile%yi(tile%maxptl_sp))
+    tile%yi(1:tile%npart_sp) = dummy_int2(1:tile%npart_sp)
+
+    dummy_int2(1:tile%npart_sp) = tile%zi(1:tile%npart_sp)
+    deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
+    tile%zi(1:tile%npart_sp) = dummy_int2(1:tile%npart_sp)
+
+    dummy_real(1:tile%npart_sp) = tile%dx(1:tile%npart_sp)
+    deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
+    tile%dx(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+
+    dummy_real(1:tile%npart_sp) = tile%dy(1:tile%npart_sp)
+    deallocate(tile%dy); allocate(tile%dy(tile%maxptl_sp))
+    tile%dy(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+
+    dummy_real(1:tile%npart_sp) = tile%dz(1:tile%npart_sp)
+    deallocate(tile%dz); allocate(tile%dz(tile%maxptl_sp))
+    tile%dz(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+
+    dummy_real(1:tile%npart_sp) = tile%u(1:tile%npart_sp)
+    deallocate(tile%u); allocate(tile%u(tile%maxptl_sp))
+    tile%u(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+
+    dummy_real(1:tile%npart_sp) = tile%v(1:tile%npart_sp)
+    deallocate(tile%v); allocate(tile%v(tile%maxptl_sp))
+    tile%v(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+
+    dummy_real(1:tile%npart_sp) = tile%w(1:tile%npart_sp)
+    deallocate(tile%w); allocate(tile%w(tile%maxptl_sp))
+    tile%w(1:tile%npart_sp) = dummy_real(1:tile%npart_sp)
+
+    dummy_int(1:tile%npart_sp) = tile%ind(1:tile%npart_sp)
+    deallocate(tile%ind); allocate(tile%ind(tile%maxptl_sp))
+    tile%ind(1:tile%npart_sp) = dummy_int(1:tile%npart_sp)
+
+    dummy_int(1:tile%npart_sp) = tile%proc(1:tile%npart_sp)
+    deallocate(tile%proc); allocate(tile%proc(tile%maxptl_sp))
+    tile%proc(1:tile%npart_sp) = dummy_int(1:tile%npart_sp)
+
+    deallocate(dummy_int2)
+    deallocate(dummy_int)
+    deallocate(dummy_real)
+    if (increase_flag) then
+      call printDiag(.true., "...reallocTileSize(+).."//trim(STR(tile%npart_sp))&
+      & //".."//trim(STR(tile%maxptl_sp)),&
+      & .true.)
+    else
+      call printDiag(.true., "...reallocTileSize(-).."//trim(STR(tile%npart_sp))&
+      & //".."//trim(STR(tile%maxptl_sp)),&
+      & .true.)
+    end if
+  end subroutine reallocTileSize
 
   subroutine clearGhostParticles()
     implicit none
