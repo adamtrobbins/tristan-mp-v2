@@ -18,12 +18,13 @@ module m_readinput
     module procedure getReal4Input
     module procedure getInt8Input
     module procedure getReal8Input
+    module procedure getLogicalInput
   end interface getInput
 
   !--- PRIVATE functions -----------------------------------------!
   private :: strToInt4, strToInt8, strToReal4, strToReal8,&
            & getInt4Input, getInt8Input, getReal4Input,&
-           & getReal8Input, parseInput
+           & getReal8Input, getLogicalInput, parseInput
   !...............................................................!
 contains
   ! read input/output filename/directory
@@ -255,6 +256,50 @@ contains
       end if
     end if
   end subroutine getReal8Input
+
+  subroutine getLogicalInput(blockname, varname, val, def_val)
+    implicit none
+    character(len=*), intent(in)  :: blockname, varname
+    logical, optional             :: def_val
+    logical, intent(out)          :: val
+    character(len=STR_MAX)        :: val_str
+    logical                       :: found
+    integer                       :: val_int, iostatus
+
+    val_str = parseInput(blockname, varname, found)
+    if (.not. found) then
+      if (present(def_val)) then
+        val = def_val
+      else
+        call throwError("ERROR variable `"//trim(varname)&
+                      & //"` not found in <"//trim(blockname)//">"//&
+                      & END_LINE &
+                      & // "-- no default value provided")
+      end if
+    else
+      call strToInt4(val_str, val_int, iostatus)
+      if (iostatus /= 0) then
+        if (present(def_val)) then
+          val = def_val
+        else
+          call throwError("ERROR variable `"//trim(varname)//"`="//trim(val_str)&
+                        & //" from <"//trim(blockname)//"> not converted"//&
+                        & END_LINE &
+                        & // "-- no default value provided")
+        end if
+      else
+        if (val_int .eq. 0) then
+          val = .false.
+        else if (val_int .eq. 1) then
+          val = .true.
+        else
+          call throwError("ERROR variable `"//trim(varname)//"`="//trim(val_str)&
+                        & //" from <"//trim(blockname)//"> wrong logical value")
+        end if
+      end if
+    end if
+  end subroutine getLogicalInput
+
   subroutine strToReal8(val_str, val, stat)
     implicit none
     character(len=*), intent(in) :: val_str
