@@ -12,7 +12,8 @@ module m_userfile
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userInitParticles, userInitFields, userReadInput
+  private :: userInitParticles, userInitFields, userReadInput,&
+           & userSpatialDistribution
   !...............................................................!
 contains
   subroutine userInitialize()
@@ -22,11 +23,24 @@ contains
     call userInitFields()
   end subroutine userInitialize
 
+  !--- initialization -----------------------------------------!
   subroutine userReadInput()
+    implicit none
   end subroutine userReadInput
+
+  function userSpatialDistribution(x_glob, y_glob, z_glob,&
+                                 & dummy1, dummy2, dummy3)
+    real :: userSpatialDistribution
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+
+    return
+  end function
 
   subroutine userInitParticles()
     implicit none
+    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    spat_distr_ptr => userSpatialDistribution
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -36,6 +50,7 @@ contains
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
     !   do j = 0, this_meshblock%ptr%sy - 1
@@ -47,9 +62,12 @@ contains
     !   end do
     ! end do
   end subroutine userInitFields
+  !............................................................!
 
+  !--- driving ------------------------------------------------!
   subroutine userDriveParticles()
     implicit none
+    ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
 		! 	do ti = 1, species(s)%tile_nx
@@ -63,4 +81,15 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+  !............................................................!
+
+  !--- boundaries ---------------------------------------------!
+  subroutine userParticleBoundaryConditions()
+    implicit none
+  end subroutine userParticleBoundaryConditions
+
+  subroutine userFieldBoundaryConditions()
+    implicit none
+  end subroutine userFieldBoundaryConditions
+  !............................................................!
 end module m_userfile
