@@ -197,6 +197,7 @@ contains
   end subroutine exchangeParticles
 
   subroutine copyToEnroute(spec_id, ti, tj, tk, prtl_id, enroute)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)               :: spec_id, prtl_id, ti, tj, tk
     type(prtl_enroute), intent(inout) :: enroute
@@ -214,6 +215,7 @@ contains
   end subroutine copyToEnroute
 
   subroutine copyFromEnroute(enroute, spec_id)
+    ! DEP_PRT [particle-dependent]
     implicit none
     type(prtl_enroute), intent(inout) :: enroute
     integer, intent(in)               :: spec_id
@@ -251,6 +253,7 @@ contains
   end subroutine copyFromEnroute
 
 	subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
+    ! DEP_PRT [particle-dependent]
 		implicit none
 		integer, intent(in) :: s, ti, tj, tk, p
 		call createParticle(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&

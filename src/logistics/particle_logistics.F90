@@ -8,6 +8,7 @@ module m_particlelogistics
   use m_particles
 contains
 	subroutine copyParticleFromTo(s, p_from, p_to, ti, tj, tk)
+    ! DEP_PRT [particle-dependent]
 		implicit none
 		! within a single tile
     integer, intent(in)   :: s, p_from, p_to, ti, tj, tk
@@ -38,6 +39,7 @@ contains
 
   subroutine createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w, &
 		                      & ind, proc)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)           :: s
     integer(kind=2), intent(in)   :: xi, yi, zi
@@ -88,6 +90,7 @@ contains
   end subroutine createParticle
 
   subroutine allocateParticles(prt, sz)
+    ! DEP_PRT [particle-dependent]
     implicit none
     type(particle_tile), intent(inout)    :: prt
     integer, intent(in)             			:: sz
@@ -130,6 +133,7 @@ contains
   end subroutine checkTileSizes
 
   subroutine reallocTileSize(tile, increase_flag)
+    ! DEP_PRT [particle-dependent]
     implicit none
     type(particle_tile), intent(inout)          :: tile
     ! `.true.` if need to increase, otherwise `.false.`

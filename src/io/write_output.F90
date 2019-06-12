@@ -64,6 +64,7 @@ contains
   end subroutine writeOutput
 
   subroutine initializeOutput()
+    ! DEP_PRT [particle-dependent]
     implicit none
     real                      :: energy, u_, v_, w_
     integer                   :: s, i, ti, tj, tk, p, spec_index
@@ -773,6 +774,7 @@ contains
   end subroutine writeFields_hdf5
 
   subroutine writeParticles_hdf5(step, time)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)               :: step, time
     character(len=STR_MAX)            :: stepchar, filename
