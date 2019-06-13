@@ -199,7 +199,7 @@ contains
 
     call system_clock(COUNT = clock)
 
-    seed = clock + 37 * (/ (i - 1, i = 1, n) /)
+    seed = clock + rank * (/ (i - 1, i = 1, n) /)
     call random_seed(PUT = seed)
     deallocate(seed)
   end subroutine initializeRandomSeed
