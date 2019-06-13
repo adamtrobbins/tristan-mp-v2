@@ -176,10 +176,27 @@ contains
     integer(kind=2)                  :: xi_, yi_, zi_
     real                             :: u_, v_, w_, dx_, dy_, dz_
     real                             :: x_, y_, z_, rnd
-    real                             :: x_glob
+    real                             :: x_glob, y_glob, z_glob
 
     procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
     real, intent(in), optional                                     :: dummy1, dummy2, dummy3
+    real                                                           :: dummy1_, dummy2_, dummy3_
+
+    if (present(dummy1)) then
+      dummy1_ = dummy1
+    else
+      dummy1_ = 0.0
+    end if
+    if (present(dummy2)) then
+      dummy2_ = dummy2
+    else
+      dummy2_ = 0.0
+    end if
+    if (present(dummy3)) then
+      dummy3_ = dummy3
+    else
+      dummy3_ = 0.0
+    end if
 
     fill_maxwellian%temperature = temperature
     fill_maxwellian%generated = .false.
@@ -214,7 +231,10 @@ contains
       !   otherwise use uniform distribution
       if (present(spat_distr_ptr)) then
         x_glob = REAL(this_meshblock%ptr%x0) + x_
-        rnd = spat_distr_ptr(x_glob = x_glob, dummy1 = dummy1, dummy2 = dummy2)
+        y_glob = REAL(this_meshblock%ptr%y0) + y_
+        z_glob = REAL(this_meshblock%ptr%z0) + z_
+        rnd = spat_distr_ptr(x_glob = x_glob, y_glob = y_glob, z_glob = z_glob,&
+                           & dummy1 = dummy1_, dummy2 = dummy2_, dummy3 = dummy3_)
       else
         rnd = 1.0
       end if
