@@ -1,6 +1,7 @@
 #include "../defs.F90"
 
 module m_initialize
+  use ifport
   use m_globalnamespace
   use m_aux
   use m_readinput
@@ -56,7 +57,10 @@ contains
     call initializeRandomSeed(mpi_rank)
       call printDiag((mpi_rank .eq. 0), "initializeRandomSeed()", .true.)
 
-    if (mpi_rank .eq. 0) call firstRankInitialize()
+    if (mpi_rank .eq. 0) then
+      call firstRankInitialize()
+      call printDiag(.true., "firstRankInitialize()", .true.)
+    end if
 
     call userInitialize()
       call printDiag((mpi_rank .eq. 0), "userInitialize()", .true.)
@@ -400,8 +404,9 @@ contains
   subroutine firstRankInitialize()
     ! create output/restart directories
     !   if does not already exist
-    call system('mkdir -p ' // trim(output_dir_name))
-    call system('mkdir -p ' // trim(restart_dir_name))
+    logical :: result
+    result = makedirqq(trim(output_dir_name))
+    result = makedirqq(trim(restart_dir_name))
   end subroutine firstRankInitialize
 
   subroutine checkEverything()
