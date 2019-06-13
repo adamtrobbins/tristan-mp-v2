@@ -164,8 +164,10 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! User defined driving conditions for particles
+      ! User defined driving and ...
+      !     ... boundary conditions for particles
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      call userParticleBoundaryConditions()
       call userDriveParticles()
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
