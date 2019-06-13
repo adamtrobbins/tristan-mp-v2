@@ -39,9 +39,6 @@ contains
     call getInput('problem', 'current_width', current_width)
     call getInput('problem', 'injector_sx', injector_sx)
     call getInput('problem', 'injector_betax', injector_betax)
-    cs_x = 0.5
-    injector_x1 = ...
-    injector_x2 = ...
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -56,14 +53,31 @@ contains
     end if
     return
     return
-  end function
+  end function userSpatialDistribution
+
+  ! function userSpatialDistribution(x_glob, y_glob, z_glob,&
+  !                                & dummy1, dummy2, dummy3)
+  !   real :: userSpatialDistribution
+  !   real, intent(in), optional  :: x_glob, y_glob, z_glob
+  !   real, intent(in), optional  :: dummy1, dummy2, dummy3
+  !   real :: temp_r2
+  !   if (present(x_glob) .and. present(y_glob) .and. &
+  !     & present(dummy1) .and. present(dummy2) .and. present(dummy3)) then
+  !     temp_r2 = (x_glob - dummy1)**2 + (y_glob - dummy2)**2
+  !     userSpatialDistribution = (1.0 - exp(-temp_r2 / dummy3**2)) / (cosh((x_glob - dummy1) / dummy3))**2
+  !   else
+  !     call throwError("ERROR: variable not present in `userSpatialDistribution()`")
+  !   end if
+  !   return
+  !   return
+  ! end function userSpatialDistribution
 
   subroutine userInitParticles()
     implicit none
     real                :: nUP
     integer             :: nUP_tot, nCS_tot
     type(region)        :: back_region
-    real                :: sx_glob, shift_gamma, shift_beta, current_sheet_T
+    real                :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
@@ -77,6 +91,7 @@ contains
     back_region%y_max = this_meshblock%ptr%sy
 
     sx_glob = REAL(global_mesh%sx)
+    sy_glob = REAL(global_mesh%sy)
 
     shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
     if (shift_beta .ge. 1) then
@@ -86,10 +101,17 @@ contains
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
+    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
+    !                                & spat_distr_ptr = spat_distr_ptr,&
+    !                                & dummy1 = cs_x * sx_glob, dummy2 = current_width)
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
-                                   & shift_gamma = shift_gamma, shift_dir = -3,&
+                                   & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)
+    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
+    !                                & shift_gamma = shift_gamma, shift_dir = 3,&
+    !                                & spat_distr_ptr = spat_distr_ptr,&
+    !                                & dummy1 = cs_x * sx_glob, dummy2 = 0.5 * sy_glob, dummy3 = current_width)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -100,13 +122,18 @@ contains
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+
+    cs_x = 0.5
+    injector_x1 = injector_sx - 1.0e-3
+    injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-3
+
     k = 0
     sx_glob = REAL(global_mesh%sx)
     do i = 0, this_meshblock%ptr%sx - 1
       i_glob = i + this_meshblock%ptr%x0
       x_glob = REAL(i_glob)
       do j = 0, this_meshblock%ptr%sy - 1
-        by(i, j, k) = tanh((x_glob - cs_x * sx_glob) / current_width)
+        by(i, j, k) = tanh((x_glob + 0.5 - cs_x * sx_glob) / current_width)
       end do
     end do
   end subroutine userInitFields
@@ -132,12 +159,114 @@ contains
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
+  function userSpatialDistributionInjector(x_glob, y_glob, z_glob,&
+                                         & dummy1, dummy2, dummy3)
+    real :: userSpatialDistributionInjector
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    integer                     :: i_glob, injector_i1_glob, injector_i2_glob
+    ! only inject in cell columns along the injectors
+    if (present(x_glob) .and. present(dummy1) .and. present(dummy2)) then
+      i_glob = INT(x_glob)
+      injector_i1_glob = INT(dummy1)
+      injector_i2_glob = INT(dummy2)
+      if ((i_glob .eq. injector_i1_glob) .or. (i_glob .eq. injector_i2_glob)) then
+        userSpatialDistributionInjector = 1.0
+      else
+        userSpatialDistributionInjector = 0.0
+      end if
+    else
+      call throwError("ERROR: variable not present in `userSpatialDistribution()`")
+    end if
+    return
+    return
+  end function userSpatialDistributionInjector
+
   subroutine userParticleBoundaryConditions()
     implicit none
+    real          :: nUP
+    integer       :: s, ti, tj, tk, p, nUP_tot
+    integer       :: i_glob, injector_i1_glob, injector_i2_glob
+    type(region)  :: back_region
+    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    spat_distr_ptr => userSpatialDistributionInjector
+
+    ! move the injectors
+    injector_x1 = injector_x1 - injector_betax * CC
+    injector_x2 = injector_x2 + injector_betax * CC
+    ! reset the injector positions if necessary
+    if (injector_x1 .le. 0.0) then
+      injector_x1 = injector_x1 + injector_sx
+    end if
+    if (injector_x2 .ge. REAL(global_mesh%sx)) then
+      injector_x2 = injector_x2 - injector_sx
+    end if
+
+    injector_i1_glob = INT(injector_x1)
+    injector_i2_glob = INT(injector_x2)
+
+    if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and. (injector_i1_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
+      & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and. (injector_i2_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
+
+      ! remove particles left and right from the injectors
+      do s = 1, nspec
+  			do ti = 1, species(s)%tile_nx
+  				do tj = 1, species(s)%tile_ny
+  					do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                i_glob = species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0
+                if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
+                  call removeParticleFromTile(s, ti, tj, tk, p)
+                end if
+              end do
+            end do
+          end do
+        end do
+      end do
+
+      ! inject background particles at the injectors' positions
+      nUP = ppc0
+      nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
+
+      back_region%x_min = 0
+      back_region%x_max = this_meshblock%ptr%sx
+      back_region%y_min = 0
+      back_region%y_max = this_meshblock%ptr%sy
+
+      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T,&
+                                     & spat_distr_ptr = spat_distr_ptr,&
+                                     & dummy1 = injector_x1, dummy2 = injector_x2)
+    end if
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions()
     implicit none
+    real    :: sx_glob, x_glob
+    integer :: i, j, k
+    integer :: i_glob, injector_i1_glob, injector_i2_glob
+    injector_i1_glob = INT(injector_x1)
+    injector_i2_glob = INT(injector_x2)
+
+    if ((injector_i1_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx) .or.&
+      & (injector_i2_glob .ge. this_meshblock%ptr%x0)) then
+
+      ! reset fields left and right from the injectors
+      ! FIX0: do I need to do anything with the currents?
+      k = 0
+      sx_glob = REAL(global_mesh%sx)
+      do i = 0, this_meshblock%ptr%sx - 1
+        i_glob = i + this_meshblock%ptr%x0
+        x_glob = REAL(i_glob)
+        do j = 0, this_meshblock%ptr%sy - 1
+          if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
+            ex(i, j, k) = 0; ey(i, j, k) = 0; ez(i, j, k) = 0
+            bx(i, j, k) = 0; bz(i, j, k) = 0
+            by(i, j, k) = tanh((x_glob + 0.5 - cs_x * sx_glob) / current_width)
+          end if
+        end do
+      end do
+
+    end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
 end module m_userfile
