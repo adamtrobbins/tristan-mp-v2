@@ -58,6 +58,8 @@ contains
         call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
       call writeSpectra_hdf5(step, time)
         call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
+      call writeDomain_hdf5(step, time)
+        call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
     #endif
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
@@ -1078,7 +1080,7 @@ contains
     datarank = 1
     data_dims(1) = spec_num
 
-    ! only root rank writes spectra file
+    ! only root rank writes the spectra file
     if (mpi_rank .eq. 0) then
       ! saving the energy bins
       allocate(bin_data(spec_num))
