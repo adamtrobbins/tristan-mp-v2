@@ -26,20 +26,20 @@ contains
 
     do s = 1, nspec ! loop over species
       if (species(s)%ch_sp .eq. 0) cycle
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
             pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
-						pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
-						pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
 
-						pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
-						pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
-						pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
+            pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
+            pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
+            pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
 
-						pt_u => species(s)%prtl_tile(ti, tj, tk)%u
-						pt_v => species(s)%prtl_tile(ti, tj, tk)%v
-						pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+            pt_u => species(s)%prtl_tile(ti, tj, tk)%u
+            pt_v => species(s)%prtl_tile(ti, tj, tk)%v
+            pt_w => species(s)%prtl_tile(ti, tj, tk)%w
 
             temp_charge = species(s)%ch_sp * unit_ch / B_norm
 

@@ -1,22 +1,22 @@
 #
-#	Tristan-mp input file
+#  Tristan-mp input file
 #
 
 <node_configuration>
 
-  sizex	        = 2             # number of cpus in x direction
-  sizey 	      = 2							# number of cpus in y direction
-  sizez         = 1							# number of cpus in z direction
+  sizex          = 2             # number of cpus in x direction
+  sizey         = 2              # number of cpus in y direction
+  sizez         = 1              # number of cpus in z direction
 
 <time>
 
-  last 	        = 1000000				# last timestep
+  last           = 1000000        # last timestep
 
 <grid>
 
-  mx0 	        = 560						# number of actual grid points in the x direction
-  my0 	        = 560						# number of actual grid points in the y direction
-  mz0 	        = 1							# ... (ignored for 2D simulations)
+  mx0           = 560            # number of actual grid points in the x direction
+  my0           = 560            # number of actual grid points in the y direction
+  mz0           = 1              # ... (ignored for 2D simulations)
 
   boundary_x    = 1
   boundary_y    = 1
@@ -38,12 +38,12 @@
   interval      = 100
   istep         = 1
 
-  history       = 0							# 0 = .false.; 1 = .true.
+  history       = 0              # 0 = .false.; 1 = .true.
   hst_interval  = 1
 
-  spec_min      = 1e-2					# `g - 1` for massive and `e` for massless
-  spec_max      = 1e2						# `g - 1` for massive and `e` for massless
-  spec_num      = 100						# number of energy bins
+  spec_min      = 1e-2          # `g - 1` for massive and `e` for massless
+  spec_max      = 1e2            # `g - 1` for massive and `e` for massless
+  spec_num      = 100            # number of energy bins
 
 <boundaries>
 
@@ -67,6 +67,6 @@
 
 <problem>
 
-  upstream_T    = 1e-5					# temperature in terms of [m_e c**2]
+  upstream_T    = 1e-5          # temperature in terms of [m_e c**2]
   nCS_nUP       = 0.1
   current_width = 50

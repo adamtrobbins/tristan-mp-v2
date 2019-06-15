@@ -1,28 +1,28 @@
 #
-#	Tristan-mp input file
+#  Tristan-mp input file
 #
 
 <node_configuration>
 
-  sizex	        = 2							# number of cpus in x direction
-  sizey 	      = 2							# number of cpus in y direction
-  sizez         = 1							# number of cpus in z direction
+  sizex         = 2              # number of cpus in x direction
+  sizey         = 2              # number of cpus in y direction
+  sizez         = 1              # number of cpus in z direction
 
 <time>
 
-  last 	        = 100						# last timestep
+  last           = 10            # last timestep
 
 <grid>
 
-  mx0 	        = 64						# number of actual grid points in the x direction
-  my0 	        = 64						# number of actual grid points in the y direction
-  mz0 	        = 1							# ... (ignored for 2D simulations)
+  mx0           = 64            # number of actual grid points in the x direction
+  my0           = 64            # number of actual grid points in the y direction
+  mz0           = 1             # ... (ignored for 2D simulations)
 
   boundary_x    = 1
   boundary_y    = 1
   boundary_z    = 1
 
-  resize_tiles  = 1
+  resize_tiles  = 0
   min_tile_nprt = 1000
 
   tileX         = 5
@@ -31,22 +31,22 @@
 
 <algorithm>
 
-  nfilter       = 4
+  nfilter       = 8
 
 <restart>
 
 <output>
 
   stride        = 1
-  interval      = 10
-  istep         = 1
+  interval      = 1
+  istep         = 4
 
-  history       = 0							# 0 = .false.; 1 = .true.
+  history       = 0              # 0 = .false.; 1 = .true.
   hst_interval  = 1
 
-  spec_min      = 1e-3					# `g - 1` for massive and `e` for massless
-  spec_max      = 1e1						# `g - 1` for massive and `e` for massless
-  spec_num      = 100						# number of energy bins
+  spec_min      = 1e-3           # `g - 1` for massive and `e` for massless
+  spec_max      = 1e1            # `g - 1` for massive and `e` for massless
+  spec_num      = 100            # number of energy bins
 
 <boundaries>
 
@@ -70,4 +70,4 @@
 
 <problem>
 
-  temperature   = 2.0						# temperature in terms of [m_e c**2]
+  temperature   = 2.0            # temperature in terms of [m_e c**2]

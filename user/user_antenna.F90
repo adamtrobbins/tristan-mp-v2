@@ -7,7 +7,7 @@ module m_userfile
   use m_domain
   use m_particles
   use m_fields
-	use m_particlelogistics
+  use m_particlelogistics
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -26,9 +26,9 @@ contains
     implicit none
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
-		! 	do ti = 1, species(s)%tile_nx
-		! 		do tj = 1, species(s)%tile_ny
-		! 			do tk = 1, species(s)%tile_nz
+    !   do ti = 1, species(s)%tile_nx
+    !     do tj = 1, species(s)%tile_ny
+    !       do tk = 1, species(s)%tile_nz
     !         do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
     !           species(s)%prtl_tile(ti, tj, tk)%u(p) = 1.0
     !         end do

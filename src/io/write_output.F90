@@ -185,7 +185,7 @@ contains
       integer                             :: npart_cum(nspec), npart_all(nspec)
       integer, allocatable, dimension(:)  :: temp_int_arr, stride_indices_arr, stride_ti_arr, stride_tj_arr, stride_tk_arr
       real, allocatable, dimension(:)     :: temp_real_arr
-  		real                                :: temp_real1, temp_real2
+      real                                :: temp_real1, temp_real2
 
       disp_header = 4 * 4 + 5 * n_prtl_vars + 5 * n_prtl_vars + 4 * nspec
 
@@ -193,17 +193,17 @@ contains
       ! number of strided particles per each species
       do s = 1, nspec
         npart_stride(s) = 0
-  			do ti = 1, species(s)%tile_nx
-  				do tj = 1, species(s)%tile_ny
-  					do tk = 1, species(s)%tile_nz
-  			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-  			        if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
-  			          npart_stride(s) = npart_stride(s) + 1
-  			        end if
-  			      end do ! p
-  					end do ! tk
-  				end do ! tj
-  			end do ! ti
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+                  npart_stride(s) = npart_stride(s) + 1
+                end if
+              end do ! p
+            end do ! tk
+          end do ! tj
+        end do ! ti
       end do ! s
 
       call MPI_ALLGATHER(npart_stride, nspec, MPI_INTEGER,&
@@ -272,34 +272,34 @@ contains
       ! writing particle data
       !   npart_stride(s)           : # of particles to output per species (for MPI block)
       !   stride_indices_arr(s)     : indices of particles to output for each species (for MPI block)
-  		!   stride_ti_arr(s)          : tile_i of particles to output for each species (for MPI block)
-  		!   stride_tj_arr(s)          : tile_j of particles to output for each species (for MPI block)
-  		!   stride_tk_arr(s)          : tile_k of particles to output for each species (for MPI block)
+      !   stride_ti_arr(s)          : tile_i of particles to output for each species (for MPI block)
+      !   stride_tj_arr(s)          : tile_j of particles to output for each species (for MPI block)
+      !   stride_tk_arr(s)          : tile_k of particles to output for each species (for MPI block)
       !   npart_all(s)              : # of particles to output per species (for all MPI blocks)
       !   npart_cum(s)              : # of particles to output per species (for all MPI blocks with `rnk < mpi_rank`)
       !   temp_int_arr(j)           : contains integer data to write (for a local rank)
       !   temp_real_arr(j)          : contains real data to write (for a local rank)
       do s = 1, nspec
         allocate(stride_indices_arr(npart_stride(s)))
-  			allocate(stride_ti_arr(npart_stride(s)))
-  			allocate(stride_tj_arr(npart_stride(s)))
-  			allocate(stride_tk_arr(npart_stride(s)))
+        allocate(stride_ti_arr(npart_stride(s)))
+        allocate(stride_tj_arr(npart_stride(s)))
+        allocate(stride_tk_arr(npart_stride(s)))
         j = 1
-  			do ti = 1, species(s)%tile_nx
-  				do tj = 1, species(s)%tile_ny
-  					do tk = 1, species(s)%tile_nz
-  			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-  			        if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
-  			          stride_indices_arr(j) = p
-  								stride_ti_arr(j) = ti
-  								stride_tj_arr(j) = tj
-  								stride_tk_arr(j) = tk
-  			          j = j + 1
-  			        end if
-  			      end do ! particles
-  					end do ! tk
-  				end do ! tj
-  			end do ! ti
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+                  stride_indices_arr(j) = p
+                  stride_ti_arr(j) = ti
+                  stride_tj_arr(j) = tj
+                  stride_tk_arr(j) = tk
+                  j = j + 1
+                end if
+              end do ! particles
+            end do ! tk
+          end do ! tj
+        end do ! ti
         do i = 1, n_prtl_vars
           disp = disp_header +&
                   & (s - 1) * npart_all(s) * n_prtl_vars * 4 +&
@@ -313,20 +313,20 @@ contains
             select case (trim(prtl_vars(i))) ! select integer variable
               case('ind')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
                   temp_int_arr(j) = temp_int
                 end do
               case('proc')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_int = species(s)%prtl_tile(ti, tj, tk)%proc(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_int = species(s)%prtl_tile(ti, tj, tk)%proc(temp)
                   temp_int_arr(j) = temp_int
                 end do
               case default
@@ -341,60 +341,60 @@ contains
             select case (trim(prtl_vars(i))) ! select integer variable
               case('x')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_int = species(s)%prtl_tile(ti, tj, tk)%xi(temp)
-  								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dx(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_int = species(s)%prtl_tile(ti, tj, tk)%xi(temp)
+                  temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dx(temp)
                   temp_real_arr(j) = REAL(this_meshblock%ptr%x0 + temp_int) + temp_real1
                 end do
               case('y')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_int = species(s)%prtl_tile(ti, tj, tk)%yi(temp)
-  								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dy(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_int = species(s)%prtl_tile(ti, tj, tk)%yi(temp)
+                  temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dy(temp)
                   temp_real_arr(j) = REAL(this_meshblock%ptr%y0 + temp_int) + temp_real1
                 end do
               case('z')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_int = species(s)%prtl_tile(ti, tj, tk)%zi(temp)
-  								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dz(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_int = species(s)%prtl_tile(ti, tj, tk)%zi(temp)
+                  temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dz(temp)
                   temp_real_arr(j) = REAL(this_meshblock%ptr%z0 + temp_int) + temp_real1
                 end do
               case('u')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%u(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_real1 = species(s)%prtl_tile(ti, tj, tk)%u(temp)
                   temp_real_arr(j) = REAL(temp_real1, 4)
                 end do
               case('v')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%v(temp)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_real1 = species(s)%prtl_tile(ti, tj, tk)%v(temp)
                   temp_real_arr(j) = REAL(temp_real1, 4)
                 end do
               case('w')
                 do j = 1, npart_stride(s)
-  								temp = stride_indices_arr(j)
-  								ti = stride_ti_arr(j)
-  								tj = stride_tj_arr(j)
-  								tk = stride_tk_arr(j)
-  								temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
-  								temp_real_arr(j) = REAL(temp_real1, 4)
+                  temp = stride_indices_arr(j)
+                  ti = stride_ti_arr(j)
+                  tj = stride_tj_arr(j)
+                  tk = stride_tk_arr(j)
+                  temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
+                  temp_real_arr(j) = REAL(temp_real1, 4)
                 end do
               case default
                 call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(i))//'`')
@@ -408,9 +408,9 @@ contains
           end if
         end do
         deallocate(stride_indices_arr)
-  			deallocate(stride_ti_arr)
-  			deallocate(stride_tj_arr)
-  			deallocate(stride_tk_arr)
+        deallocate(stride_ti_arr)
+        deallocate(stride_tj_arr)
+        deallocate(stride_tk_arr)
       end do ! species
 
       call MPI_FILE_CLOSE(prtl_out_file, ierr)
@@ -637,30 +637,81 @@ contains
     integer(HID_T)                    :: file_id, dset_id(40), filespace(40), memspace, plist_id
     integer                           :: comm, info, error, f, s
     integer(kind=2)                   :: i, j, k
-    logical                           :: writing_intQ
+    logical                           :: writing_intQ, writing_densQ
     integer                           :: dataset_rank = 3
-    integer(HID_T)                    :: h5type
     integer(HSSIZE_T), dimension(3)   :: offsets
-    integer(HSIZE_T), dimension(3)    :: counts, strides, blocks
-    integer(HSIZE_T), dimension(3)    :: global_dims
+    integer(HSIZE_T), dimension(3)    :: global_dims, blocks
     real                              :: ex0, ey0, ez0, bx0, by0, bz0
     real                              :: jx0, jy0, jz0
-    type(MPI_Info)                    :: FILE_INFO_TEMPLATE
+    ! type(MPI_Info)                    :: FILE_INFO_TEMPLATE
+
+    ! downsampling variables
+    integer :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
+    integer :: i_start, i_end, j_start, j_end, k_start, k_end
+    integer :: offset_i, offset_j, offset_k, i1, j1, k1
+    integer :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
+
+    ! for convenience
+    this_x0 = this_meshblock%ptr%x0
+    this_y0 = this_meshblock%ptr%y0
+    this_z0 = this_meshblock%ptr%z0
+    this_sx = this_meshblock%ptr%sx
+    this_sy = this_meshblock%ptr%sy
+    this_sz = this_meshblock%ptr%sz
 
     write(stepchar, "(i5.5)") step
     filename = trim(output_dir_name) // '/flds.tot.' // trim(stepchar)
 
-    offsets(1) = this_meshblock%ptr%x0
-    offsets(2) = this_meshblock%ptr%y0
-    offsets(3) = this_meshblock%ptr%z0
-    counts(1) = 1; counts(2) = 1; counts(3) = 1
-    strides(1) = 1; strides(2) = 1; strides(3) = 1
-    blocks(1) = this_meshblock%ptr%sx
-    blocks(2) = this_meshblock%ptr%sy
-    blocks(3) = this_meshblock%ptr%sz
-    global_dims(1) = global_mesh%sx
-    global_dims(2) = global_mesh%sy
-    global_dims(3) = global_mesh%sz
+    ! assuming `global_mesh%{x0,y0,z0} .eq. 0`
+    if (output_istep .eq. 1) then
+      offset_i = this_x0;   offset_j = this_y0;   offset_k = this_z0
+      n_i = this_sx - 1;    n_j = this_sy - 1;    n_k = this_sz - 1
+      glob_n_i = global_mesh%sx
+      glob_n_j = global_mesh%sy
+      glob_n_k = global_mesh%sz
+
+      i_start = 0; j_start = 0; k_start = 0
+    else
+      offset_i = FLOOR(REAL(this_x0) / REAL(output_istep))
+      offset_j = FLOOR(REAL(this_y0) / REAL(output_istep))
+
+      i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
+      i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
+      j_start = CEILING(REAL(this_y0) / REAL(output_istep)) * output_istep - this_y0
+      j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_istep)) - 1) * output_istep - this_y0
+
+      n_i = (i_end - i_start) / output_istep
+      n_j = (j_end - j_start) / output_istep
+
+      glob_n_i = FLOOR(REAL(global_mesh%sx) / REAL(output_istep))
+      glob_n_i = MAX(1, glob_n_i)
+
+      glob_n_j = FLOOR(REAL(global_mesh%sy) / REAL(output_istep))
+      glob_n_j = MAX(1, glob_n_j)
+
+      #ifndef threeD
+        k_start = 0; k_end = 0
+        offset_k = 0; n_k = 0
+        glob_n_k = 1
+      #else
+        offset_k = FLOOR(REAL(this_z0) / REAL(output_istep))
+        k_start = CEILING(REAL(this_z0) / REAL(output_istep)) * output_istep - this_z0
+        k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_istep)) - 1) * output_istep - this_z0
+        n_k = (k_end - k_start) / output_istep
+        glob_n_k = FLOOR(REAL(global_mesh%sz) / REAL(output_istep))
+        glob_n_k = MAX(1, glob_n_k)
+      #endif
+    end if
+
+    offsets(1) = offset_i
+    offsets(2) = offset_j
+    offsets(3) = offset_k
+    blocks(1) = n_i + 1
+    blocks(2) = n_j + 1
+    blocks(3) = n_k + 1
+    global_dims(1) = glob_n_i
+    global_dims(2) = glob_n_j
+    global_dims(3) = glob_n_k
 
     ! mpi_f08 thing
     ! call MPI_INFO_CREATE(FILE_INFO_TEMPLATE, error)
@@ -686,17 +737,14 @@ contains
 
     do f = 1, n_fld_vars
       if (fld_vars(f)(1:4) .eq. 'dens') then
+        writing_densQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeDensity(s)
-        ! filled `scalar_int_array` with density of species `s`
-        writing_intQ = .true.
-        h5type = H5T_NATIVE_INTEGER
+        call computeDensity(s) ! filled `scalar_int_array` with density of species `s`
       else
-        writing_intQ = .false.
-        h5type = H5T_NATIVE_REAL
+        writing_densQ = .false.
       end if
 
-      call h5dcreate_f(file_id, fld_vars(f), h5type, filespace(f), &
+      call h5dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, filespace(f), &
                      & dset_id(f), error)
       call h5sclose_f(filespace(f), error)
       call h5dget_space_f(dset_id(f), filespace(f), error)
@@ -708,46 +756,54 @@ contains
       call h5sselect_hyperslab_f(filespace(f), H5S_SELECT_SET_F, offsets, blocks, error)
 
       ! Create dataset by interpolating fields
-      do i = 0, this_meshblock%ptr%sx - 1
-        do j = 0, this_meshblock%ptr%sy - 1
-          do k = 0, this_meshblock%ptr%sz - 1
+      ! do i = 0, this_meshblock%ptr%sx - 1
+      !   do j = 0, this_meshblock%ptr%sy - 1
+      !     do k = 0, this_meshblock%ptr%sz - 1
+      do i1 = 0, n_i
+        do j1 = 0, n_j
+          do k1 = 0, n_k
+            i = i_start + i1 * output_istep
+            j = j_start + j1 * output_istep
+            k = k_start + k1 * output_istep
             select case (trim(fld_vars(f)))
             case('ex')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              scalar_real_array(i, j, k) = ex0 * B_norm
+              scalar_real_array(i1, j1, k1) = ex0 * B_norm
             case('ey')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              scalar_real_array(i, j, k) = ey0 * B_norm
+              scalar_real_array(i1, j1, k1) = ey0 * B_norm
             case('ez')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              scalar_real_array(i, j, k) = ez0 * B_norm
+              scalar_real_array(i1, j1, k1) = ez0 * B_norm
             case('bx')
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              scalar_real_array(i, j, k) = bx0 * B_norm
+              scalar_real_array(i1, j1, k1) = bx0 * B_norm
             case('by')
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              scalar_real_array(i, j, k) = by0 * B_norm
+              scalar_real_array(i1, j1, k1) = by0 * B_norm
             case('bz')
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              scalar_real_array(i, j, k) = bz0 * B_norm
+              scalar_real_array(i1, j1, k1) = bz0 * B_norm
             case('jx')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              scalar_real_array(i, j, k) = -jx0 * B_norm
+              scalar_real_array(i1, j1, k1) = -jx0 * B_norm
             case('jy')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              scalar_real_array(i, j, k) = -jy0 * B_norm
+              scalar_real_array(i1, j1, k1) = -jy0 * B_norm
             case('jz')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              scalar_real_array(i, j, k) = -jz0 * B_norm
+              scalar_real_array(i1, j1, k1) = -jz0 * B_norm
             case('xx')
-              scalar_real_array(i, j, k) = REAL(this_meshblock%ptr%x0 + i, 4)
+              scalar_real_array(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
             case('yy')
-              scalar_real_array(i, j, k) = REAL(this_meshblock%ptr%y0 + j, 4)
+              scalar_real_array(i1, j1, k1) = REAL(this_meshblock%ptr%y0 + j, 4)
             case('zz')
-              scalar_real_array(i, j, k) = REAL(this_meshblock%ptr%z0 + k, 4)
+              scalar_real_array(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
             case default
-              if (fld_vars(f)(1:4) .ne. 'dens') then
+              if ((fld_vars(f)(1:4) .ne. 'dens') .or. (.not. writing_densQ)) then
                 call throwError("ERROR: unrecognized `fld_vars(f)`")
+              else
+                scalar_real_array(i1, j1, k1) = REAL(scalar_int_array(i, j, k), 4)
               end if
             end select
           end do
@@ -755,13 +811,17 @@ contains
       end do
 
       ! Write the dataset collectively
-      if (writing_intQ) then
-        call h5dwrite_f(dset_id(f), h5type, scalar_int_array, global_dims, error, &
-                      & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
-      else
-        call h5dwrite_f(dset_id(f), h5type, scalar_real_array, global_dims, error, &
-                      & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
-      end if
+      call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_real_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
+                    & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
+
+      ! Write the dataset collectively
+      ! if (writing_intQ) then
+      !   call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_int_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
+      !                 & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
+      ! else
+      !   call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_real_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
+      !                 & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
+      ! end if
 
       call h5dclose_f(dset_id(f), error)
       call h5sclose_f(filespace(f), error)
@@ -785,8 +845,7 @@ contains
     integer                           :: dataset_rank = 1
     integer(HID_T)                    :: h5type
     integer(HSSIZE_T), dimension(1)   :: offsets
-    integer(HSIZE_T), dimension(1)    :: counts, strides, blocks
-    integer(HSIZE_T), dimension(1)    :: global_dims
+    integer(HSIZE_T), dimension(1)    :: global_dims, blocks
     integer                           :: npart_stride(nspec), npart_stride_global(nspec, mpi_size)
     integer, allocatable, dimension(:):: temp_int_arr, stride_indices_arr, stride_ti_arr, stride_tj_arr, stride_tk_arr
     real, allocatable, dimension(:)   :: temp_real_arr
@@ -797,17 +856,17 @@ contains
     ! number of strided particles per each species
     do s = 1, nspec
       npart_stride(s) = 0
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
-			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-			        if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
-			          npart_stride(s) = npart_stride(s) + 1
-			        end if
-			      end do ! p
-					end do ! tk
-				end do ! tj
-			end do ! ti
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+                npart_stride(s) = npart_stride(s) + 1
+              end if
+            end do ! p
+          end do ! tk
+        end do ! tj
+      end do ! ti
     end do ! s
 
     call MPI_ALLGATHER(npart_stride, nspec, MPI_INTEGER,&
@@ -836,30 +895,29 @@ contains
         end if
         global_dims(1) = global_dims(1) + npart_stride_global(s, rnk + 1)
       end do
-      counts(1) = 1; strides(1) = 1
       blocks(1) = npart_stride(s)
 
       ! saving the particle (and tile) indices to output for a given species
       allocate(stride_indices_arr(npart_stride(s)))
-			allocate(stride_ti_arr(npart_stride(s)))
-			allocate(stride_tj_arr(npart_stride(s)))
-			allocate(stride_tk_arr(npart_stride(s)))
+      allocate(stride_ti_arr(npart_stride(s)))
+      allocate(stride_tj_arr(npart_stride(s)))
+      allocate(stride_tk_arr(npart_stride(s)))
       j = 1
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
-			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-			        if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
-			          stride_indices_arr(j) = p
-								stride_ti_arr(j) = ti
-								stride_tj_arr(j) = tj
-								stride_tk_arr(j) = tk
-			          j = j + 1
-			        end if
-			      end do ! particles
-					end do ! tk
-				end do ! tj
-			end do ! ti
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+                stride_indices_arr(j) = p
+                stride_ti_arr(j) = ti
+                stride_tj_arr(j) = tj
+                stride_tk_arr(j) = tk
+                j = j + 1
+              end if
+            end do ! particles
+          end do ! tk
+        end do ! tj
+      end do ! ti
 
       do p = 1, n_prtl_vars
         call h5screate_simple_f(dataset_rank, global_dims, filespace(p), error)
@@ -879,20 +937,20 @@ contains
           select case (trim(prtl_vars(p))) ! select integer variable
             case('ind')
               do j = 1, npart_stride(s)
-								temp = stride_indices_arr(j)
-								ti = stride_ti_arr(j)
-								tj = stride_tj_arr(j)
-								tk = stride_tk_arr(j)
-								temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
                 temp_int_arr(j) = temp_int
               end do
             case('proc')
               do j = 1, npart_stride(s)
-								temp = stride_indices_arr(j)
-								ti = stride_ti_arr(j)
-								tj = stride_tj_arr(j)
-								tk = stride_tk_arr(j)
-								temp_int = species(s)%prtl_tile(ti, tj, tk)%proc(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_int = species(s)%prtl_tile(ti, tj, tk)%proc(temp)
                 temp_int_arr(j) = temp_int
               end do
             case default
@@ -906,60 +964,60 @@ contains
           select case (trim(prtl_vars(p))) ! select real variable
             case('x')
               do j = 1, npart_stride(s)
-  							temp = stride_indices_arr(j)
-  							ti = stride_ti_arr(j)
-  							tj = stride_tj_arr(j)
-  							tk = stride_tk_arr(j)
-  							temp_int = species(s)%prtl_tile(ti, tj, tk)%xi(temp)
-  							temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dx(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_int = species(s)%prtl_tile(ti, tj, tk)%xi(temp)
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dx(temp)
                 temp_real_arr(j) = REAL(this_meshblock%ptr%x0 + temp_int) + temp_real1
               end do
             case('y')
               do j = 1, npart_stride(s)
-  							temp = stride_indices_arr(j)
-  							ti = stride_ti_arr(j)
-  							tj = stride_tj_arr(j)
-  							tk = stride_tk_arr(j)
-  							temp_int = species(s)%prtl_tile(ti, tj, tk)%yi(temp)
-  							temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dy(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_int = species(s)%prtl_tile(ti, tj, tk)%yi(temp)
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dy(temp)
                 temp_real_arr(j) = REAL(this_meshblock%ptr%y0 + temp_int) + temp_real1
               end do
             case('z')
               do j = 1, npart_stride(s)
-  							temp = stride_indices_arr(j)
-  							ti = stride_ti_arr(j)
-  							tj = stride_tj_arr(j)
-  							tk = stride_tk_arr(j)
-  							temp_int = species(s)%prtl_tile(ti, tj, tk)%zi(temp)
-  							temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dz(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_int = species(s)%prtl_tile(ti, tj, tk)%zi(temp)
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dz(temp)
                 temp_real_arr(j) = REAL(this_meshblock%ptr%z0 + temp_int) + temp_real1
               end do
             case('u')
               do j = 1, npart_stride(s)
-  							temp = stride_indices_arr(j)
-  							ti = stride_ti_arr(j)
-  							tj = stride_tj_arr(j)
-  							tk = stride_tk_arr(j)
-  							temp_real1 = species(s)%prtl_tile(ti, tj, tk)%u(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%u(temp)
                 temp_real_arr(j) = REAL(temp_real1, 4)
               end do
             case('v')
               do j = 1, npart_stride(s)
-  							temp = stride_indices_arr(j)
-  							ti = stride_ti_arr(j)
-  							tj = stride_tj_arr(j)
-  							tk = stride_tk_arr(j)
-  							temp_real1 = species(s)%prtl_tile(ti, tj, tk)%v(temp)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%v(temp)
                 temp_real_arr(j) = REAL(temp_real1, 4)
               end do
             case('w')
               do j = 1, npart_stride(s)
-  							temp = stride_indices_arr(j)
-  							ti = stride_ti_arr(j)
-  							tj = stride_tj_arr(j)
-  							tk = stride_tk_arr(j)
-  							temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
-  							temp_real_arr(j) = REAL(temp_real1, 4)
+                temp = stride_indices_arr(j)
+                ti = stride_ti_arr(j)
+                tj = stride_tj_arr(j)
+                tk = stride_tk_arr(j)
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
+                temp_real_arr(j) = REAL(temp_real1, 4)
               end do
             case default
               call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
@@ -996,9 +1054,9 @@ contains
         call h5dclose_f(dset_id(p), error)
       end do
       deallocate(stride_indices_arr)
-			deallocate(stride_ti_arr)
-			deallocate(stride_tj_arr)
-			deallocate(stride_tk_arr)
+      deallocate(stride_ti_arr)
+      deallocate(stride_tj_arr)
+      deallocate(stride_tk_arr)
     end do
 
     call h5sclose_f(memspace, error)

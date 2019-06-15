@@ -7,38 +7,90 @@ module m_userfile
   use m_domain
   use m_particles
   use m_fields
-	use m_particlelogistics
+  use m_thermalplasma
+  use m_particlelogistics
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userInitParticles, userInitFields
+  private :: userInitParticles, userInitFields, userReadInput,&
+           & userSpatialDistribution
   !...............................................................!
 contains
   subroutine userInitialize()
     implicit none
-    call userInitFields()
+    call userReadInput()
     call userInitParticles()
+    call userInitFields()
   end subroutine userInitialize
 
-  subroutine userDriveParticles()
+  !--- initialization -----------------------------------------!
+  subroutine userReadInput()
     implicit none
-    ! do nothing
-  end subroutine userDriveParticles
+  end subroutine userReadInput
+
+  function userSpatialDistribution(x_glob, y_glob, z_glob,&
+                                 & dummy1, dummy2, dummy3)
+    real :: userSpatialDistribution
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+
+    return
+  end function
 
   subroutine userInitParticles()
     implicit none
-    ! do nothing
+    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    spat_distr_ptr => userSpatialDistribution
   end subroutine userInitParticles
 
   subroutine userInitFields()
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    real :: kx, ky, ex_norm, ey_norm, exy_norm
-
+    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
-    jx(20, 2, 0) = 1000
-    jy(20, 2, 0) = 1000
-    jz(20, 2, 0) = 1000
+    ! ... dummy loop ...
+    do i = 0, this_meshblock%ptr%sx - 1
+      i_glob = i + this_meshblock%ptr%x0
+      do j = 0, this_meshblock%ptr%sy - 1
+        j_glob = j + this_meshblock%ptr%y0
+        do k = 0, this_meshblock%ptr%sz - 1
+          k_glob = k + this_meshblock%ptr%z0
+          ex(i, j, k) = REAL(i_glob)
+          bx(i, j, k) = REAL(j_glob)
+        end do
+      end do
+    end do
   end subroutine userInitFields
+  !............................................................!
+
+  !--- driving ------------------------------------------------!
+  subroutine userDriveParticles()
+    implicit none
+    ! ... dummy loop ...
+    ! integer :: s, ti, tj, tk, p
+    ! do s = 1, nspec
+    !   do ti = 1, species(s)%tile_nx
+    !     do tj = 1, species(s)%tile_ny
+    !       do tk = 1, species(s)%tile_nz
+    !         do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+    !           ...
+    !         end do
+    !       end do
+    !     end do
+    !   end do
+    ! end do
+  end subroutine userDriveParticles
+  !............................................................!
+
+  !--- boundaries ---------------------------------------------!
+  subroutine userParticleBoundaryConditions()
+    implicit none
+  end subroutine userParticleBoundaryConditions
+
+  subroutine userFieldBoundaryConditions()
+    implicit none
+  end subroutine userFieldBoundaryConditions
+  !............................................................!
 end module m_userfile

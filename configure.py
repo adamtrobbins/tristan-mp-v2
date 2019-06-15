@@ -15,44 +15,49 @@ user_directory = 'user/'
 user_choices = glob.glob(user_directory + '*.F90')
 user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 parser.add_argument('--user',
-    default='user_default',
-    choices=user_choices,
-    help='select user file')
+                    default='user_default',
+                    choices=user_choices,
+                    help='select user file')
 
 parser.add_argument('--nghosts',
-    action='store',
-    default=2,
-    help='specify the # of ghost cells')
+                    action='store',
+                    default=2,
+                    help='specify the # of ghost cells')
 
 parser.add_argument('-hdf5',
-    action='store_true',
-    default=False,
-    help='enable HDF5 & use h5pfc compiler')
+                    action='store_true',
+                    default=False,
+                    help='enable HDF5 & use h5pfc compiler')
+
+parser.add_argument('-ifport',
+                    action='store_true',
+                    default=False,
+                    help='enable IFPORT library (`mkdir` etc)')
 
 parser.add_argument('-mpi',
-    action='store_true',
-    default=False,
-    help='enable mpi & use mpif90 compiler')
+                    action='store_true',
+                    default=False,
+                    help='enable mpi & use mpif90 compiler')
 
 parser.add_argument('-intel',
-    action='store_true',
-    default=False,
-    help='enable intel compiler')
+                    action='store_true',
+                    default=False,
+                    help='enable intel compiler')
 
 parser.add_argument('-debug',
-    action='store_true',
-    default=False,
-    help='enable DEBUG flag')
+                    action='store_true',
+                    default=False,
+                    help='enable DEBUG flag')
 
 parser.add_argument('-3d',
-    action='store_true',
-    default=False,
-    help='enable 3d')
+                    action='store_true',
+                    default=False,
+                    help='enable 3d')
 
 parser.add_argument('-testparts',
-    action='store_true',
-    default=False,
-    help='disable EM pusher for the particles')
+                    action='store_true',
+                    default=False,
+                    help='disable EM pusher for the particles')
 
 args = vars(parser.parse_args())
 
@@ -73,6 +78,9 @@ elif args['mpi']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
 else:
     makefile_options['COMPILER_COMMAND'] += 'gfortran '
+
+if args['ifport']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 
 if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
@@ -113,5 +121,6 @@ print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  EM pusher:               ' + ('OFF' if args['testparts'] else 'ON'))
 print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
+print('  IFPORT mkdir:            ' + ('ON' if args['ifport'] else 'OFF'))
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
     + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'])

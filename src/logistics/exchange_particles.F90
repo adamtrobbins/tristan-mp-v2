@@ -3,10 +3,10 @@
 module m_exchangeparts
   use m_globalnamespace
   use m_aux
-	use m_errors
+  use m_errors
   use m_domain
   use m_particles
-	use m_particlelogistics
+  use m_particlelogistics
   !--- PRIVATE functions -----------------------------------------!
   private :: copyToEnroute, copyFromEnroute,&
            & extractParticlesFromEnroute
@@ -35,70 +35,70 @@ contains
 
     do s = 1, nspec ! loop over species
       enroute_bot%get(:,:,:)%cnt_send = 0
-			! particle crosses MPI blocks //
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
-						pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
-						pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
-						pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+      ! particle crosses MPI blocks //
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
 
-						pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
-						pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
-						pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
+            pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
+            pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
+            pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
 
-						pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
-			      ! FIX1 make sure this is vectorized
-			      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-			        ! send_* = -1 / 0 / +1
-			        send_z = 0
-			        send_x = (ISIGN(1, pt_xi(p) - this_meshblock%ptr%sx) + 1) / 2 - (ISIGN(1, -pt_xi(p) - 1) + 1) / 2
-			        send_y = (ISIGN(1, pt_yi(p) - this_meshblock%ptr%sy) + 1) / 2 - (ISIGN(1, -pt_yi(p) - 1) + 1) / 2
-			        #ifdef threeD
-			          send_z = (ISIGN(1, pt_zi(p) - this_meshblock%ptr%sz) + 1) / 2 - (ISIGN(1, -pt_zi(p) - 1) + 1) / 2
-			        #endif
-			        ! FIX1 check for null() boundaries
-			        if ((send_x .ne. 0) .or. (send_y .ne. 0) .or. (send_z .ne. 0)) then
-			          if (.not. associated(this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr)) then
-			            ! make ghost particle
-			            pt_proc(p) = -pt_proc(p) - 1
-			            cycle
-			          end if
-			          ! copy this particle to temporary `enroute_bot` array
-			          enroute_bot%get(send_x, send_y, send_z)%cnt_send = enroute_bot%get(send_x, send_y, send_z)%cnt_send + 1
-			          cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
-			          call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr))
-			          ! make ghost particle
-			          pt_proc(p) = -pt_proc(p) - 1
+            pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
+            ! FIX1 make sure this is vectorized
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              ! send_* = -1 / 0 / +1
+              send_z = 0
+              send_x = (ISIGN(1, pt_xi(p) - this_meshblock%ptr%sx) + 1) / 2 - (ISIGN(1, -pt_xi(p) - 1) + 1) / 2
+              send_y = (ISIGN(1, pt_yi(p) - this_meshblock%ptr%sy) + 1) / 2 - (ISIGN(1, -pt_yi(p) - 1) + 1) / 2
+              #ifdef threeD
+                send_z = (ISIGN(1, pt_zi(p) - this_meshblock%ptr%sz) + 1) / 2 - (ISIGN(1, -pt_zi(p) - 1) + 1) / 2
+              #endif
+              ! FIX1 check for null() boundaries
+              if ((send_x .ne. 0) .or. (send_y .ne. 0) .or. (send_z .ne. 0)) then
+                if (.not. associated(this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr)) then
+                  ! make ghost particle
+                  pt_proc(p) = -pt_proc(p) - 1
+                  cycle
+                end if
+                ! copy this particle to temporary `enroute_bot` array
+                enroute_bot%get(send_x, send_y, send_z)%cnt_send = enroute_bot%get(send_x, send_y, send_z)%cnt_send + 1
+                cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
+                call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr))
+                ! make ghost particle
+                pt_proc(p) = -pt_proc(p) - 1
 
-			          ! shift coordinates to fit the new grid
-			          new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi
-			          temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
-			          new_xyz = -(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2
-			          enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi = new_xyz
+                ! shift coordinates to fit the new grid
+                new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi
+                temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
+                new_xyz = -(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2
+                enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi = new_xyz
 
-			          new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi
-			          temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
-			          new_xyz = -(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2
-			          enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi = new_xyz
+                new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi
+                temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
+                new_xyz = -(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2
+                enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi = new_xyz
 
-			          #ifdef threeD
-			            new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi
-			            temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
-			            new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
-			            enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi = new_xyz
-			          #endif
-			        end if
-      			end do ! particles
-						pt_xi => null(); pt_yi => null(); pt_zi => null()
-						pt_dx => null(); pt_dy => null(); pt_dz => null()
-						pt_proc => null()
-					end do ! tk
-				end do ! tj
-			end do ! ti
-			! // particle crosses MPI blocks
+                #ifdef threeD
+                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi
+                  temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
+                  new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
+                  enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi = new_xyz
+                #endif
+              end if
+            end do ! particles
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_dx => null(); pt_dy => null(); pt_dz => null()
+            pt_proc => null()
+          end do ! tk
+        end do ! tj
+      end do ! ti
+      ! // particle crosses MPI blocks
 
-			! start sending //
+      ! start sending //
       cntr = 0
       do ind1 = -1, 1
         do ind2 = -1, 1
@@ -119,32 +119,32 @@ contains
           end do
         end do
       end do
-			! // start sending
+      ! // start sending
 
-			! particle moves between tiles within a single MPI block //
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
-						pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
-						pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
-						pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
-						pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
-			      ! FIX1 make sure this is vectorized
-			      do p = species(s)%prtl_tile(ti, tj, tk)%npart_sp, 1, -1
-							if (pt_proc(p) .lt. 0) cycle
-							ti_p = pt_xi(p) / species(s)%tile_sx + 1
-							tj_p = pt_yi(p) / species(s)%tile_sy + 1
-							tk_p = pt_zi(p) / species(s)%tile_sz + 1
-							if ((ti_p .ne. ti) .or. (tj_p .ne. tj) .or. (tk_p .ne. tk)) then
-								call moveParticleBetweenTiles(s, ti, tj, tk, p)
-							end if
-						end do ! particles
-						pt_xi => null(); pt_yi => null(); pt_zi => null()
-						pt_proc => null()
-					end do ! tk
-				end do ! tj
-			end do ! ti
-			! // particle moves between tiles within a single MPI block
+      ! particle moves between tiles within a single MPI block //
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
+            ! FIX1 make sure this is vectorized
+            do p = species(s)%prtl_tile(ti, tj, tk)%npart_sp, 1, -1
+              if (pt_proc(p) .lt. 0) cycle
+              ti_p = pt_xi(p) / species(s)%tile_sx + 1
+              tj_p = pt_yi(p) / species(s)%tile_sy + 1
+              tk_p = pt_zi(p) / species(s)%tile_sz + 1
+              if ((ti_p .ne. ti) .or. (tj_p .ne. tj) .or. (tk_p .ne. tk)) then
+                call moveParticleBetweenTiles(s, ti, tj, tk, p)
+              end if
+            end do ! particles
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_proc => null()
+          end do ! tk
+        end do ! tj
+      end do ! ti
+      ! // particle moves between tiles within a single MPI block
 
       ! wait to send & receive all the MPI calls and write data to memory
       quit_loop = .false.
@@ -219,21 +219,21 @@ contains
     implicit none
     type(prtl_enroute), intent(inout) :: enroute
     integer, intent(in)               :: spec_id
-		integer                           :: ti_p, tj_p, tk_p, p
-		ti_p = enroute%xi / species(spec_id)%tile_sx + 1
-		tj_p = enroute%yi / species(spec_id)%tile_sy + 1
-		tk_p = enroute%zi / species(spec_id)%tile_sz + 1
+    integer                           :: ti_p, tj_p, tk_p, p
+    ti_p = enroute%xi / species(spec_id)%tile_sx + 1
+    tj_p = enroute%yi / species(spec_id)%tile_sy + 1
+    tk_p = enroute%zi / species(spec_id)%tile_sz + 1
 
-		#ifdef DEBUG
-			if ((ti_p .gt. species(spec_id)%tile_nx) .or. &
-				& (tj_p .gt. species(spec_id)%tile_ny) .or. &
-				& (tk_p .gt. species(spec_id)%tile_nz)) then
-				call throwError('ERROR: wrong ti, tj, tk in `copyFromEnroute`')
-			end if
-		#endif
+    #ifdef DEBUG
+      if ((ti_p .gt. species(spec_id)%tile_nx) .or. &
+        & (tj_p .gt. species(spec_id)%tile_ny) .or. &
+        & (tk_p .gt. species(spec_id)%tile_nz)) then
+        call throwError('ERROR: wrong ti, tj, tk in `copyFromEnroute`')
+      end if
+    #endif
 
-		species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp + 1
-		p = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp
+    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp + 1
+    p = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp
 
     species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%xi(p) = enroute%xi
     species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%yi(p) = enroute%yi
@@ -252,25 +252,25 @@ contains
     #endif
   end subroutine copyFromEnroute
 
-	subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
+  subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
     ! DEP_PRT [particle-dependent]
-		implicit none
-		integer, intent(in) :: s, ti, tj, tk, p
-		call createParticle(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
-		                     & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%u(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%v(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%w(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
-												 & species(s)%prtl_tile(ti, tj, tk)%proc(p))
-		call removeParticleFromTile(s, ti, tj, tk, p)
-	end subroutine
+    implicit none
+    integer, intent(in) :: s, ti, tj, tk, p
+    call createParticle(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%u(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%v(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%proc(p))
+    call removeParticleFromTile(s, ti, tj, tk, p)
+  end subroutine
 
-	subroutine extractParticlesFromEnroute(cnt, spec_id)
+  subroutine extractParticlesFromEnroute(cnt, spec_id)
     implicit none
     integer, intent(in)   :: cnt, spec_id
     integer               :: p

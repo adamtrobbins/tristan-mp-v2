@@ -1,7 +1,9 @@
 #include "../defs.F90"
 
 module m_initialize
-  use ifport
+  #ifdef IFPORT
+    use ifport
+  #endif
   use m_globalnamespace
   use m_aux
   use m_readinput
@@ -96,7 +98,7 @@ contains
     implicit none
     integer                 :: s, ti, tj, tk
     character(len=STR_MAX)  :: var_name
-		integer        					:: maxptl_
+    integer                  :: maxptl_
 
     call getInput('plasma', 'ppc0', ppc0)
     call getInput('plasma', 'sigma', sigma)
@@ -107,20 +109,20 @@ contains
     call getInput('particles', 'nspec', nspec, 2)
 
     allocate(species(nspec))
-		do s = 1, nspec
-			call getInput('grid', 'tileX', species(s)%tile_sx)
-			call getInput('grid', 'tileY', species(s)%tile_sy)
-			call getInput('grid', 'tileZ', species(s)%tile_sz)
-			#ifndef threeD
-				species(s)%tile_sz = 1
-			#endif
-			species(s)%tile_nx = ceiling(real(this_meshblock%ptr%sx) / real(species(s)%tile_sx))
-			species(s)%tile_ny = ceiling(real(this_meshblock%ptr%sy) / real(species(s)%tile_sy))
-			species(s)%tile_nz = ceiling(real(this_meshblock%ptr%sz) / real(species(s)%tile_sz))
-			allocate(species(s)%prtl_tile(species(s)%tile_nx,&
-			                            & species(s)%tile_ny,&
-																	& species(s)%tile_nz))
-		end do
+    do s = 1, nspec
+      call getInput('grid', 'tileX', species(s)%tile_sx)
+      call getInput('grid', 'tileY', species(s)%tile_sy)
+      call getInput('grid', 'tileZ', species(s)%tile_sz)
+      #ifndef threeD
+        species(s)%tile_sz = 1
+      #endif
+      species(s)%tile_nx = ceiling(real(this_meshblock%ptr%sx) / real(species(s)%tile_sx))
+      species(s)%tile_ny = ceiling(real(this_meshblock%ptr%sy) / real(species(s)%tile_sy))
+      species(s)%tile_nz = ceiling(real(this_meshblock%ptr%sz) / real(species(s)%tile_sz))
+      allocate(species(s)%prtl_tile(species(s)%tile_nx,&
+                                  & species(s)%tile_ny,&
+                                  & species(s)%tile_nz))
+    end do
 
     do s = 1, nspec
       write (var_name, "(A6,I1)") "maxptl", s
@@ -129,18 +131,18 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
-			do ti = 1, species(s)%tile_nx
-				do tj = 1, species(s)%tile_ny
-					do tk = 1, species(s)%tile_nz
-						species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = max(maxptl_ / &
-															& (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz),&
-															& max(INT(ppc0), 1) * species(s)%tile_sx * species(s)%tile_sy * species(s)%tile_sz)
-						species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
-						call allocateParticles(species(s)%prtl_tile(ti, tj, tk),&
-																 & species(s)%prtl_tile(ti, tj, tk)%maxptl_sp)
-					end do
-				end do
-			end do
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = max(maxptl_ / &
+                              & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz),&
+                              & max(INT(ppc0), 1) * species(s)%tile_sx * species(s)%tile_sy * species(s)%tile_sz)
+            species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
+            call allocateParticles(species(s)%prtl_tile(ti, tj, tk),&
+                                 & species(s)%prtl_tile(ti, tj, tk)%maxptl_sp)
+          end do
+        end do
+      end do
       species(s)%cntr_sp = 0
     end do
   end subroutine initializeParticles
@@ -164,14 +166,14 @@ contains
     buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
     buffsize_xy = this_meshblock%ptr%sz * multiplier
     #ifdef threeD
-			buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
 
       buffsize_z = this_meshblock%ptr%sx * this_meshblock%ptr%sy * multiplier
       buffsize_xz = this_meshblock%ptr%sz * multiplier
       buffsize_yz = this_meshblock%ptr%sx * multiplier
       buffsize_xyz = multiplier
     #else
-			buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
 
       buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
     #endif
@@ -222,8 +224,8 @@ contains
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
-  	call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
-  	call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
+    call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
+    call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
   end subroutine initializePrtlExchange
 
   subroutine initializeFields()
@@ -404,9 +406,15 @@ contains
   subroutine firstRankInitialize()
     ! create output/restart directories
     !   if does not already exist
-    logical :: result
-    result = makedirqq(trim(output_dir_name))
-    result = makedirqq(trim(restart_dir_name))
+    !     note: some compilers may not support IFPORT
+    #ifdef IFPORT
+      logical :: result
+      result = makedirqq(trim(output_dir_name))
+      result = makedirqq(trim(restart_dir_name))
+    #else
+      call system('mkdir -p ' // trim(output_dir_name))
+      call system('mkdir -p ' // trim(restart_dir_name))
+    #endif
   end subroutine firstRankInitialize
 
   subroutine checkEverything()

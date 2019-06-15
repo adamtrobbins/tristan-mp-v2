@@ -8,7 +8,7 @@ module m_userfile
   use m_particles
   use m_fields
   use m_thermalplasma
-	use m_particlelogistics
+  use m_particlelogistics
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -145,9 +145,9 @@ contains
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
-		! 	do ti = 1, species(s)%tile_nx
-		! 		do tj = 1, species(s)%tile_ny
-		! 			do tk = 1, species(s)%tile_nz
+    !   do ti = 1, species(s)%tile_nx
+    !     do tj = 1, species(s)%tile_ny
+    !       do tk = 1, species(s)%tile_nz
     !         do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
     !           ...
     !         end do
@@ -210,9 +210,9 @@ contains
 
       ! remove particles left and right from the injectors
       do s = 1, nspec
-  			do ti = 1, species(s)%tile_nx
-  				do tj = 1, species(s)%tile_ny
-  					do tk = 1, species(s)%tile_nz
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 i_glob = species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0
                 if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
@@ -254,10 +254,10 @@ contains
       ! FIX0: do I need to do anything with the currents?
       k = 0
       sx_glob = REAL(global_mesh%sx)
-      do i = 0, this_meshblock%ptr%sx - 1
+      do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
         i_glob = i + this_meshblock%ptr%x0
         x_glob = REAL(i_glob)
-        do j = 0, this_meshblock%ptr%sy - 1
+        do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
           if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
             ex(i, j, k) = 0; ey(i, j, k) = 0; ez(i, j, k) = 0
             bx(i, j, k) = 0; bz(i, j, k) = 0
