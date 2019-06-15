@@ -35,6 +35,11 @@ contains
             pt_w => species(s)%prtl_tile(ti, tj, tk)%w
 
             if (species(s)%m_sp .eq. 0) then
+              if (species(s)%ch_sp .ne. 0) then
+                ! if massless but charged -> don't do anything
+                !   can be used for, e.g., stationary ions
+                cycle
+              end if
               ! routine for massless particles
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 e_temp = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)

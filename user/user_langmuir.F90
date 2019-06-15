@@ -12,7 +12,9 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  
+  integer :: nwaves
+  real    :: upstream_T, amplitude
+  private :: nwaves, upstream_T, amplitude
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -30,6 +32,9 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    call getInput('problem', 'upstream_T', upstream_T)
+    call getInput('problem', 'nwaves', nwaves)
+    call getInput('problem', 'amplitude', amplitude)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -43,8 +48,50 @@ contains
 
   subroutine userInitParticles()
     implicit none
+    real                :: nUP
+    integer             :: nUP_tot, nCS_tot
+    integer             :: s, ti, tj, tk, p
+    real                :: xp, kx, u_
+    type(region)        :: back_region
+    real                :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
+
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
+
+    nUP = ppc0
+    nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
+
+    back_region%x_min = 0
+    back_region%x_max = this_meshblock%ptr%sx
+    back_region%y_min = 0
+    back_region%y_max = this_meshblock%ptr%sy
+
+    kx = 2.0 * M_PI * REAL(nwaves) / REAL(global_mesh%sx)
+
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
+    s = 1
+    do ti = 1, species(s)%tile_nx
+      do tj = 1, species(s)%tile_ny
+        do tk = 1, species(s)%tile_nz
+          do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+            xp = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p)) + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+            xp = xp + REAL(this_meshblock%ptr%x0)
+            u_ = amplitude * sin(kx * xp)
+            species(s)%prtl_tile(ti, tj, tk)%u(p) = u_
+          end do
+        end do
+      end do
+    end do
+    ! "removing" ions
+    s = 2
+    do ti = 1, species(s)%tile_nx
+      do tj = 1, species(s)%tile_ny
+        do tk = 1, species(s)%tile_nz
+          species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
+        end do
+      end do
+    end do
+
   end subroutine userInitParticles
 
   subroutine userInitFields()

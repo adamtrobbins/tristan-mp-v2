@@ -22,6 +22,9 @@
   boundary_y    = 1
   boundary_z    = 1
 
+  resize_tiles  = 1
+  min_tile_nprt = 1000
+
   tileX         = 5
   tileY         = 5
   tileZ         = 1

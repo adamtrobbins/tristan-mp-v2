@@ -109,7 +109,7 @@ contains
              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
              w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
-             if (species(s)%m_sp .eq. 0) then
+             if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
                energy = sqrt(u_**2 + v_**2 + w_**2)
              else
                energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
