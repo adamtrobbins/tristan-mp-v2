@@ -12,8 +12,10 @@ Supported `[-FLAGS]` will be constantly updated. List of flags available now:
 - `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag, `traceback`, `qopt` reports for intel compilers etc);
 - `--nghosts=[NUM_GHOSTS]`: specify the number of ghost zones, will compile with `-DNGHOST=[NUM_GHOSTS]`;
 - `--user=[USER_FILE]`: name of the user file from `user/` directory (without the extension);
+- `-hdf5`: enable `hdf5` and compile with `h5fpc`;
+- `-ifport`: handles `mkdir` commands, some systems do not support this;
 - _... more to come_.
-<!-- - `-hdf5`: enable `hdf5` and compile with `h5fpc` (otherwise compiles with `gfortran`) -->
+
 
 `Makefile` will be generated in the main directory (from `Makefile.in`). Now the code can be compiled with `make all` or cleaned with `make clean`.
 
@@ -33,22 +35,21 @@ $ mpiexec -np [NPROC] exec/tristan-mp2d -i [input_file_name] -o [output_dir_name
 #### Done so far
 - Logistics: `configure.py`, read input, initialize everything, etc;
 - CPU & "meshblocks" handling;
-- species + particles: array of structures (species) of arrays (`x`, `y`, `z`, etc);
-- particle pusher (vectorized & aligned) & particle exchange;
+- particle tiles (size is configurable from the input);
+- species + particles: array of structures (species) of arrays (`xi`, `yi`, `zi`, etc);
+- particle pusher (aligned) & particle exchange;
 - fields & field exchange (ghost zones);
-- MPI-IO output of particles & fields + `python` library to read and create a readable dictionary (and convert to `hdf5` if necessary).
+- binary/hdf5 output of particles, fields, spectra + `python` library to read and create a readable dictionary (and convert to `hdf5` if necessary).
 
 #### ToDo
 - restart files;
 - "history" file;
 - absorbing (radiation) boundaries;
 - expanding boundaries;
-- check for neighbor of itself;
-- static/dynamic load balancing;
+- static/adaptive load balancing;
 - pair-production/annihilation/IC routine;
 - make it work in 1D;
-- generalize for non-MPI;
-- HDF5 support.
+- generalize for non-MPI.
 
 #### Code structure
 _TO BE ADDED_

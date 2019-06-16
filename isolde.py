@@ -272,6 +272,48 @@ def getDomains(fname):
             data[k] = file[k][:]
     return data
 
+def parseReport(fname, nsteps = None, skip = 1):
+    if (not nsteps):
+        nsteps = 1e100
+    import re
+    def parseBlock(block, data, isfirst = False):
+        for line in block.split('\n')[1:]:
+            routine = line.split(':', 1)[0].strip()
+            if (routine != ''):
+                line1 = line.split(':', 1)[1]
+                if (isfirst):
+                    data[routine] = {}
+                    data[routine]['dt'] = np.array([])
+                    data[routine]['min'] = np.array([])
+                    data[routine]['max'] = np.array([])
+                nums = [float(x.strip()) for x in re.findall(re.compile('-?\.? *[0-9]+\.?[0-9]*(?:[Ee]\ *[-+]?\ *[0-9]+)?'), line1)]
+                if (len(nums) < 3):
+                    raise ValueError('len(nums) < 3')
+                else:
+                    data[routine]['dt'] = np.append(data[routine]['dt'], [nums[0]])
+                    data[routine]['min'] = np.append(data[routine]['min'], [nums[1]])
+                    data[routine]['max'] = np.append(data[routine]['max'], [nums[2]])
+    data = {}
+    data['t'] = np.array([])
+    with open(fname, 'r') as file:
+        line = file.readline()
+        isfirst = True
+        ni = 0
+        while line and (ni < nsteps):
+            while (line.strip() != '-------------------------------------------------------------------'):
+                line = file.readline()
+            block = ""
+            line = file.readline()
+            while (line.strip() != '...................................................................'):
+                block += line
+                line = file.readline()
+            if (ni % skip == 0):
+                parseBlock(block, data, isfirst = isfirst)
+                isfirst = False
+                data['t'] = np.append(data['t'], [ni])
+            ni += 1
+    return data
+
 # easy plotting functions
 def plot2DField(ax, x, y, field,
                 title='field', cmap='jet',
@@ -332,3 +374,22 @@ def plot2DDomains(ax, domain_data,
         rect = Rectangle((x0, y0), sx, sy,
                          edgecolor=color, facecolor='none')
         ax.add_patch(rect)
+
+def plotReport(ax, data, only_fullstep = True, **kwargs):
+    labels = []
+    y_list = []
+    for k in list(data.keys())[1:]:
+        y_list.append
+        if (k.split()[0] != 'nprt') and (((k.split()[0] != 'Full_step') and (not only_fullstep)) or (only_fullstep and k.split()[0] == 'Full_step')):
+            labels.append(k)
+            y_list.append(data[k]['dt'])
+    y = np.vstack(y_list)
+    if (only_fullstep and 'label' in kwargs):
+        labels = [kwargs['label']]
+    if (only_fullstep):
+        ax.plot(data['t'], y[0], label = labels[0])
+    else:
+        ax.stackplot(data['t'], y, labels = labels)
+    ax.legend()
+    ax.set_ylabel(r'$\Delta t$ [ms]')
+    ax.set_xlabel(r'timestep')

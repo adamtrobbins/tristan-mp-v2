@@ -270,10 +270,10 @@ contains
       do s = 1, nspec
         if (s .ne. nspec) then
           call printNpart(nprt_sp_global(s, :),&
-                        & "  npart per CPU " // trim(STR(s)) // ": ")
+                        & "  nprt " // trim(STR(s)) // " [per core]: ")
         else
           call printNpart(nprt_sp_global(s, :),&
-                        & "  npart per CPU " // trim(STR(s)) // ": ", is_first_row = .false.)
+                        & "  nprt " // trim(STR(s)) // " [per core]: ", is_first_row = .false.)
         end if
       end do
       print *, ""
