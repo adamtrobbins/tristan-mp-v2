@@ -265,7 +265,14 @@ def getSpectra(fname, hdf5 = True):
                 read_ptr += 4 * nbins
     return data
 
-# easy plotting function
+def getDomains(fname):
+    with h5py.File(fname, 'r') as file:
+        data = {}
+        for k in file.keys():
+            data[k] = file[k][:]
+    return data
+
+# easy plotting functions
 def plot2DField(ax, x, y, field,
                 title='field', cmap='jet',
                 vmin=None, vmax=None,
@@ -304,7 +311,6 @@ def plot2DField(ax, x, y, field,
     ax.set_title(title)
     plt.colorbar(im, cax=cax)
 
-# easy plotting function
 def plot2DScatterParticles(ax, sx, sy, x_list, y_list,
                            label='particles', legend=True,
                            color='black', **kwargs):
@@ -314,3 +320,15 @@ def plot2DScatterParticles(ax, sx, sy, x_list, y_list,
         ax.legend()
     ax.set_xlim(0, sx - 1)
     ax.set_ylim(0, sy - 1)
+
+def plot2DDomains(ax, domain_data,
+                  color='red', **kwargs):
+    from matplotlib.patches import Rectangle
+    x0_list = domain_data['x0']
+    y0_list = domain_data['y0']
+    sx_list = domain_data['sx']
+    sy_list = domain_data['sy']
+    for x0, y0, sx, sy in zip(x0_list, y0_list, sx_list, sy_list):
+        rect = Rectangle((x0, y0), sx, sy,
+                         edgecolor=color, facecolor='none')
+        ax.add_patch(rect)
