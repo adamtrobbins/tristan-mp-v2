@@ -195,13 +195,31 @@ contains
   subroutine makeReport(tstep)
     implicit none
     integer, intent(in)           :: tstep
-    integer                       :: ierr
+    integer                       :: ierr, s, ti, tj, tk, send, recv
     real                          :: fullstep
+    integer, allocatable          :: nprt_sp(:), nprt_sp_global(:,:)
     real(kind=8), allocatable     :: dt_fullstep(:), dt_movestep(:),&
                                    & dt_depositstep(:), dt_filterstep(:),&
                                    & dt_outputstep(:), dt_fldexchstep(:),&
                                    & dt_prtlexchxtep(:), dt_fldslvrstep(:),&
                                    & dt_usrfuncs(:)
+
+    ! full # of particles for each species
+    allocate(nprt_sp(nspec), nprt_sp_global(nspec, mpi_size))
+    nprt_sp(:) = 0
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            nprt_sp(s) = nprt_sp(s) + species(s)%prtl_tile(ti, tj, tk)%npart_sp
+          end do
+        end do
+      end do
+    end do
+
+    call MPI_GATHER(nprt_sp, nspec, MPI_INTEGER,&
+                  & nprt_sp_global, nspec, MPI_INTEGER,&
+                  & 0, MPI_COMM_WORLD, ierr)
 
     allocate(dt_fullstep(mpi_size), dt_movestep(mpi_size))
     allocate(dt_depositstep(mpi_size), dt_filterstep(mpi_size))
@@ -248,11 +266,18 @@ contains
       call printTime(dt_prtlexchxtep, "  prtl_exchange: ", fullstep)
       call printTime(dt_fldslvrstep, "  fld_solver: ", fullstep)
       call printTime(dt_usrfuncs, "  usr_funcs: ", fullstep)
-      call printTime(dt_outputstep, "  output_step: ", fullstep, is_first_row = .false.)
+      call printTime(dt_outputstep, "  output_step: ", fullstep)
+      do s = 1, nspec
+        if (s .ne. nspec) then
+          call printNpart(nprt_sp_global(s, :),&
+                        & "  npart per CPU " // trim(STR(s)) // ": ")
+        else
+          call printNpart(nprt_sp_global(s, :),&
+                        & "  npart per CPU " // trim(STR(s)) // ": ", is_first_row = .false.)
+        end if
+      end do
       print *, ""
     end if
-
-    ! full # of particles ...
 
     deallocate(dt_fullstep, dt_movestep)
     deallocate(dt_depositstep, dt_filterstep)
