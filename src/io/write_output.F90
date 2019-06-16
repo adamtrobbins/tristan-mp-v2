@@ -14,8 +14,8 @@ module m_writeoutput
   implicit none
 
   integer                 :: output_stride, output_interval, output_istep
-  integer                 :: n_fld_vars, n_prtl_vars
-  character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100)
+  integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
+  character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   integer, allocatable, dimension(:,:)  :: glob_spectra
 
 
@@ -25,7 +25,7 @@ module m_writeoutput
              & writeSpectra_Binary
   #else
     private :: writeParticles_hdf5, writeFields_hdf5,&
-             & writeSpectra_hdf5
+             & writeSpectra_hdf5, writeDomain_hdf5
   #endif
   private :: initializeOutput
   !...............................................................!
@@ -94,6 +94,12 @@ contains
                                        & 'bx   ', 'by   ', 'bz   ',&
                                        & 'jx   ', 'jy   ', 'jz   ',&
                                        & 'xx   ', 'yy   ', 'zz   '/)
+
+    ! initialize domain output variables
+    !   FIX1: maybe add # of particles per domain
+    n_dom_vars = 6
+    dom_vars(1 : 6) = (/'x0   ', 'y0   ', 'z0   ',&
+                      & 'sx   ', 'sy   ', 'sz   '/)
 
     ! compute spectra
     if (.not. allocated(glob_spectra)) then
@@ -758,9 +764,6 @@ contains
       call h5sselect_hyperslab_f(filespace(f), H5S_SELECT_SET_F, offsets, blocks, error)
 
       ! Create dataset by interpolating fields
-      ! do i = 0, this_meshblock%ptr%sx - 1
-      !   do j = 0, this_meshblock%ptr%sy - 1
-      !     do k = 0, this_meshblock%ptr%sz - 1
       do i1 = 0, n_i
         do j1 = 0, n_j
           do k1 = 0, n_k
@@ -815,15 +818,6 @@ contains
       ! Write the dataset collectively
       call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_real_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
                     & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
-
-      ! Write the dataset collectively
-      ! if (writing_intQ) then
-      !   call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_int_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
-      !                 & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
-      ! else
-      !   call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_real_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
-      !                 & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
-      ! end if
 
       call h5dclose_f(dset_id(f), error)
       call h5sclose_f(filespace(f), error)
@@ -1101,7 +1095,7 @@ contains
         dsetname = 'e' // trim(STR(s))
         call h5screate_simple_f(datarank, data_dims, dspace_id, error)
         call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
-             dset_id, error)
+                       & dset_id, error)
         call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
@@ -1110,7 +1104,7 @@ contains
         dsetname = 'n' // trim(STR(s))
         call h5screate_simple_f(datarank, data_dims, dspace_id, error)
         call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER, dspace_id, &
-             dset_id, error)
+                       & dset_id, error)
         call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, glob_spectra(s,:), data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
@@ -1126,6 +1120,77 @@ contains
 
     if (allocated(glob_spectra)) deallocate(glob_spectra)
   end subroutine writeSpectra_hdf5
+
+  subroutine writeDomain_hdf5(step, time)
+    implicit none
+    integer, intent(in)               :: step, time
+    character(len=STR_MAX)            :: stepchar, filename
+    integer                           :: error, s, i, datarank, d, rnk
+    integer(HID_T)                    :: file_id, dset_id, dspace_id
+    integer(HSIZE_T), dimension(1)    :: data_dims
+    integer, allocatable, dimension(:):: domain_data
+
+    datarank = 1
+    data_dims(1) = mpi_size
+
+    ! only root rank writes the domain file
+    if (mpi_rank .eq. 0) then
+      write(stepchar, "(i5.5)") step
+      filename = trim(output_dir_name) // '/domain.' // trim(stepchar)
+
+      ! Initialize FORTRAN interface
+      call h5open_f(error)
+      ! Create a new file using default properties
+      call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+
+      allocate(domain_data(mpi_size))
+
+      do d = 1, n_dom_vars
+        select case (trim(dom_vars(d)))
+          case('x0')
+            do rnk = 0, mpi_size - 1
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%x0
+            end do
+          case('y0')
+            do rnk = 0, mpi_size - 1
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%y0
+            end do
+          case('z0')
+            do rnk = 0, mpi_size - 1
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%z0
+            end do
+          case('sx')
+            do rnk = 0, mpi_size - 1
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%sx
+            end do
+          case('sy')
+            do rnk = 0, mpi_size - 1
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%sy
+            end do
+          case('sz')
+            do rnk = 0, mpi_size - 1
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%sz
+            end do
+          case default
+            call throwError('ERROR: unrecognized `dom_vars`: `'//trim(dom_vars(d))//'`')
+        end select
+
+        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+        call h5dcreate_f(file_id, dom_vars(d), H5T_NATIVE_INTEGER, dspace_id, &
+                       & dset_id, error)
+        call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, domain_data, data_dims, error)
+        call h5dclose_f(dset_id, error)
+        call h5sclose_f(dspace_id, error)
+      end do
+
+      ! Close the file
+      call h5fclose_f(file_id, error)
+      ! Close FORTRAN interface
+      call h5close_f(error)
+
+      if (allocated(domain_data)) deallocate(domain_data)
+    end if
+  end subroutine writeDomain_hdf5
 
   #endif
 
