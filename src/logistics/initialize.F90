@@ -75,8 +75,9 @@ contains
 
   subroutine initializeOutput()
     implicit none
-    call getInput('output', 'stride', output_stride, 10)
+    call getInput('output', 'start', output_start, 0)
     call getInput('output', 'interval', output_interval, 10)
+    call getInput('output', 'stride', output_stride, 10)
     call getInput('output', 'istep', output_istep, 4)
 
     call getInput('output', 'spec_min', spec_min, 1e-2)

@@ -175,7 +175,8 @@ contains
       !-------------------------------------------------
       ! Output
       t_outputstep = 0
-      if (modulo(timestep, output_interval) .eq. 0) then
+      if ((modulo(timestep, output_interval) .eq. 0) .and.&
+        & (timestep .ge. output_start)) then
         t_outputstep = MPI_WTIME()
         call writeOutput(timestep)
         t_outputstep = MPI_WTIME() - t_outputstep
