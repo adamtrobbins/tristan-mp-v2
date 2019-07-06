@@ -59,6 +59,16 @@ parser.add_argument('-testparts',
                     default=False,
                     help='disable EM pusher for the particles')
 
+parser.add_argument('-alb',
+                    action='store_true',
+                    default=False,
+                    help='enable adaptive load balancing')
+
+parser.add_argument('-slb',
+                    action='store_true',
+                    default=False,
+                    help='enable static load balancing')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -79,17 +89,11 @@ elif args['mpi']:
 else:
     makefile_options['COMPILER_COMMAND'] += 'gfortran '
 
-if args['ifport']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
-
 if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 if args['debug'] and args['intel']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     makefile_options['COMPILER_FLAGS'] += '-traceback -qopenmp-simd -qopt-report=5 '
-
-if args['testparts']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-Dtestparts '
 
 if args['intel']:
     makefile_options['MODULE'] = '-module '
@@ -102,6 +106,15 @@ if args['3d']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DthreeD '
 else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
+
+if args['testparts']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-Dtestparts '
+if args['ifport']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
+if args['alb']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
+if args['slb']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
@@ -122,5 +135,6 @@ print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  EM pusher:               ' + ('OFF' if args['testparts'] else 'ON'))
 print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  IFPORT mkdir:            ' + ('ON' if args['ifport'] else 'OFF'))
+print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
     + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'])

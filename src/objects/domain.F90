@@ -33,6 +33,9 @@ module m_domain
   type(meshptr)                      :: this_meshblock  ! pointer to current (rank) meshblock
   type(mesh)                         :: global_mesh     ! global mesh parameters
   type(mesh), allocatable, target    :: meshblocks(:)   ! meshblocks for all cpus
+
+  type(mesh), allocatable :: new_meshblocks(:) !!! FIX
+
   ! boundary conditions for all dimensions
   !   - boundary = 0: unmodelled
   !   - boundary = 1: periodic
