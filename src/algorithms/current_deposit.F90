@@ -42,7 +42,8 @@ contains
             pt_w => species(s)%prtl_tile(ti, tj, tk)%w
 
             temp_charge = species(s)%ch_sp * unit_ch / B_norm
-
+            !$omp simd
+            !dir$ vector aligned
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               ! push the particle back
               gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)

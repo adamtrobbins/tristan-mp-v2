@@ -49,6 +49,8 @@ contains
 
             pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
             ! FIX1 make sure this is vectorized
+            !$omp simd
+            !dir$ vector aligned
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               ! send_* = -1 / 0 / +1
               send_z = 0

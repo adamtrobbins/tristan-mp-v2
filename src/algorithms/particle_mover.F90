@@ -41,6 +41,8 @@ contains
                 cycle
               end if
               ! routine for massless particles
+              !$omp simd
+              !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 e_temp = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
 
@@ -70,6 +72,8 @@ contains
             else
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
+              !$omp simd
+              !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 #ifndef testparts
                   ! advance the velocity >>

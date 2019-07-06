@@ -71,6 +71,7 @@ contains
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
+    !$omp declare simd(interpFromEdges)
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz
@@ -159,6 +160,7 @@ contains
   subroutine interpFromFaces(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
+    !$omp declare simd(interpFromFaces)
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz

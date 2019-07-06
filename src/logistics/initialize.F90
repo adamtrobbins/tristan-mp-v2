@@ -11,13 +11,15 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
+  use m_adaptivelb
   use m_userfile
   use m_helpers
   use m_errors
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: initializeCommunications, initializeOutput, &
+  private :: initializeCommunications, initializeOutput,&
+           & initializeALB,&
            & firstRankInitialize, initializeParticles,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
@@ -42,6 +44,9 @@ contains
 
     call initializeOutput()
       call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
+
+    call initializeALB()
+      call printDiag((mpi_rank .eq. 0), "initializeALB()", .true.)
 
     ! ADD possibility to define output function in userfile
     ! ADD hst file?
@@ -86,6 +91,33 @@ contains
     spec_min = log(spec_min)
     spec_max = log(spec_max)
   end subroutine initializeOutput
+
+  subroutine initializeALB()
+    implicit none
+    call getInput('load_balancing', 'in_x', alb_x, .false.)
+    call getInput('load_balancing', 'in_y', alb_y, .false.)
+
+    call getInput('load_balancing', 'sx_min', alb_sxmin, 10)
+    call getInput('load_balancing', 'sy_min', alb_symin, 10)
+
+    call getInput('load_balancing', 'interval_x', alb_int_x, 1000)
+    call getInput('load_balancing', 'interval_y', alb_int_y, 1000)
+
+    call getInput('load_balancing', 'start_x', alb_start_x, 0)
+    call getInput('load_balancing', 'start_y', alb_start_y, 0)
+
+    #ifdef threeD
+      call getInput('load_balancing', 'in_z', alb_z, .false.)
+      call getInput('load_balancing', 'sz_min', alb_szmin, 10)
+      call getInput('load_balancing', 'interval_z', alb_int_z, 1000)
+      call getInput('load_balancing', 'start_z', alb_start_z, 0)
+    #else
+      alb_z = .false.
+      alb_szmin = -1
+      alb_int_z = -1
+      alb_start_z = -1
+    #endif
+  end subroutine initializeALB
 
   subroutine initializeSimulation()
     implicit none
@@ -208,6 +240,7 @@ contains
       end do
     end do
 
+    ! DEP_PRT [particle-dependent]
     ! new type for myMPI_ENROUTE
     !   BY DEFAULT:
     !     # of blockcounts = 3:
@@ -311,20 +344,20 @@ contains
 
   subroutine initializeDomain()
     implicit none
-    call getInput('node_configuration', 'sizex', sizex, 1)
-    call getInput('node_configuration', 'sizey', sizey, 1)
+    call getInput('node_configuration', 'sizex', sizex)
+    call getInput('node_configuration', 'sizey', sizey)
     #ifdef threeD
-      call getInput('node_configuration', 'sizez', sizez, 1)
+      call getInput('node_configuration', 'sizez', sizez)
     #else
       sizez = 1
     #endif
     global_mesh%x0 = 0
     global_mesh%y0 = 0
     global_mesh%z0 = 0
-    call getInput('grid', 'mx0', global_mesh%sx, 1)
-    call getInput('grid', 'my0', global_mesh%sy, 1)
+    call getInput('grid', 'mx0', global_mesh%sx)
+    call getInput('grid', 'my0', global_mesh%sy)
     #ifdef threeD
-      call getInput('grid', 'mz0', global_mesh%sz, 1)
+      call getInput('grid', 'mz0', global_mesh%sz)
     #else
       global_mesh%sz = 1
     #endif
@@ -332,7 +365,7 @@ contains
     if ((modulo(global_mesh%sx, sizex) .ne. 0) .and.&
       & (modulo(global_mesh%sy, sizey) .ne. 0) .and.&
       & (modulo(global_mesh%sz, sizez) .ne. 0)) then
-      call throwError('ERROR: grid size is not evenly divisible by the number of CPU-s')
+      call throwError('ERROR: grid size is not evenly divisible by the number of cores')
     end if
 
     call getInput('grid', 'boundary_x', boundary_x, 1)
@@ -362,6 +395,9 @@ contains
       meshblocks(rnk + 1)%x0 = ind(1) * m(1) + global_mesh%x0
       meshblocks(rnk + 1)%y0 = ind(2) * m(2) + global_mesh%y0
       meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
+
+      if (.not. allocated(new_meshblocks)) allocate(new_meshblocks(mpi_size))
+      new_meshblocks(:) = meshblocks(:)
 
       ! assign neighbors
       do ind1 = -1, 1

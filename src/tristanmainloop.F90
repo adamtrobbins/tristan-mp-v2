@@ -12,6 +12,7 @@ module m_mainloop
   use m_exchangecurrents
   use m_particlelogistics
   use m_filtering
+  use m_adaptivelb
   use m_userfile
   use m_errors
   implicit none
@@ -22,7 +23,7 @@ module m_mainloop
                  & t_depositstep, t_filterstep,&
                  & t_outputstep, t_fldexchstep,&
                  & t_prtlexchxtep, t_fldslvrstep,&
-                 & t_usrfuncs
+                 & t_usrfuncs, t_loadbalancing
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -34,7 +35,7 @@ module m_mainloop
            & t_depositstep, t_filterstep, &
            & t_outputstep, t_fldexchstep,&
            & t_prtlexchxtep, t_fldslvrstep,&
-           & t_usrfuncs
+           & t_usrfuncs, t_loadbalancing
   !...............................................................!
 contains
   subroutine mainloop()
@@ -50,7 +51,7 @@ contains
     t_depositstep = 0;    t_filterstep = 0
     t_outputstep = 0;     t_fldexchstep = 0
     t_prtlexchxtep = 0;   t_fldslvrstep = 0
-    t_usrfuncs = 0;
+    t_usrfuncs = 0;       t_loadbalancing = 0
 
     do timestep = 0, final_timestep
         t_fullstep = MPI_WTIME()
@@ -173,6 +174,13 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! Load balancing
+        t_loadbalancing = MPI_WTIME()
+      call redistributeDomain(timestep)
+        t_loadbalancing = MPI_WTIME() - t_loadbalancing
+      !.................................................
+
+      !-------------------------------------------------
       ! Output
       t_outputstep = 0
       if ((modulo(timestep, output_interval) .eq. 0) .and.&
@@ -196,14 +204,14 @@ contains
   subroutine makeReport(tstep)
     implicit none
     integer, intent(in)           :: tstep
-    integer                       :: ierr, s, ti, tj, tk, send, recv
+    integer                       :: ierr, s, ti, tj, tk
     real                          :: fullstep
     integer, allocatable          :: nprt_sp(:), nprt_sp_global(:,:)
     real(kind=8), allocatable     :: dt_fullstep(:), dt_movestep(:),&
                                    & dt_depositstep(:), dt_filterstep(:),&
                                    & dt_outputstep(:), dt_fldexchstep(:),&
                                    & dt_prtlexchxtep(:), dt_fldslvrstep(:),&
-                                   & dt_usrfuncs(:)
+                                   & dt_usrfuncs(:), dt_loadbalancing(:)
 
     ! full # of particles for each species
     allocate(nprt_sp(nspec), nprt_sp_global(nspec, mpi_size))
@@ -226,7 +234,7 @@ contains
     allocate(dt_depositstep(mpi_size), dt_filterstep(mpi_size))
     allocate(dt_outputstep(mpi_size), dt_fldexchstep(mpi_size))
     allocate(dt_prtlexchxtep(mpi_size), dt_fldslvrstep(mpi_size))
-    allocate(dt_usrfuncs(mpi_size))
+    allocate(dt_usrfuncs(mpi_size), dt_loadbalancing(mpi_size))
 
     call MPI_GATHER(t_fullstep, 1, MPI_REAL8,&
                   & dt_fullstep, 1, MPI_REAL8,&
@@ -255,6 +263,9 @@ contains
     call MPI_GATHER(t_usrfuncs, 1, MPI_REAL8,&
                   & dt_usrfuncs, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
+    call MPI_GATHER(t_loadbalancing, 1, MPI_REAL8,&
+                  & dt_loadbalancing, 1, MPI_REAL8,&
+                  & 0, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. 0) then
       fullstep = SUM(dt_fullstep) * 1000 / mpi_size
@@ -268,13 +279,14 @@ contains
       call printTime(dt_fldslvrstep, "  fld_solver: ", fullstep)
       call printTime(dt_usrfuncs, "  usr_funcs: ", fullstep)
       call printTime(dt_outputstep, "  output_step: ", fullstep)
+      call printTime(dt_loadbalancing, "  load_bal: ", fullstep)
       do s = 1, nspec
         if (s .ne. nspec) then
           call printNpart(nprt_sp_global(s, :),&
-                        & "  nprt " // trim(STR(s)) // " [per core]: ")
+                        & "  nprt " // trim(STR(s)) // " [core]: ")
         else
           call printNpart(nprt_sp_global(s, :),&
-                        & "  nprt " // trim(STR(s)) // " [per core]: ", is_first_row = .false.)
+                        & "  nprt " // trim(STR(s)) // " [core]: ", is_first_row = .false.)
         end if
       end do
       print *, ""
@@ -284,7 +296,7 @@ contains
     deallocate(dt_depositstep, dt_filterstep)
     deallocate(dt_outputstep, dt_fldexchstep)
     deallocate(dt_prtlexchxtep, dt_fldslvrstep)
-    deallocate(dt_usrfuncs)
+    deallocate(dt_usrfuncs, dt_loadbalancing)
   end subroutine makeReport
 
 end module m_mainloop

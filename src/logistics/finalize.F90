@@ -29,6 +29,7 @@ contains
 
     ! dealloc meshblocks
     if (allocated(meshblocks)) deallocate(meshblocks)
+    if (allocated(new_meshblocks)) deallocate(new_meshblocks)
     nullify(this_meshblock%ptr)
 
     ! dealloc particle species

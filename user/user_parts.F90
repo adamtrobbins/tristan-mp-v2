@@ -12,30 +12,36 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real :: plasma_temp
-  private :: plasma_temp
+  real      :: plasma_temp
+  private   :: plasma_temp
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userInitParticles, userInitFields, userReadInput
+  private :: userInitParticles, userInitFields, userReadInput,&
+           & userSpatialDistribution
   !...............................................................!
 contains
   subroutine userInitialize()
     implicit none
     call userReadInput()
-      call printDiag((mpi_rank .eq. 0), "...userReadInput()", .true.)
-
     call userInitParticles()
-      call printDiag((mpi_rank .eq. 0), "...userInitParticles()", .true.)
-
     call userInitFields()
-      call printDiag((mpi_rank .eq. 0), "...userInitFields()", .true.)
   end subroutine userInitialize
 
+  !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
     call getInput('problem', 'temperature', plasma_temp)
   end subroutine userReadInput
+
+  function userSpatialDistribution(x_glob, y_glob, z_glob,&
+                                 & dummy1, dummy2, dummy3)
+    real :: userSpatialDistribution
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+
+    return
+  end function
 
   subroutine userInitParticles()
     implicit none
@@ -49,7 +55,9 @@ contains
 
     npart = this_meshblock%ptr%sx * this_meshblock%ptr%sy * ppc0
 
-    call fillRegionWithThermalPlasma(user_region, (/1, 2/), 2, npart, plasma_temp)
+    if (mpi_rank .eq. 0) then
+      call fillRegionWithThermalPlasma(user_region, (/1, 2/), 2, npart, plasma_temp)
+    end if
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -59,6 +67,7 @@ contains
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
     !   do j = 0, this_meshblock%ptr%sy - 1
@@ -70,9 +79,12 @@ contains
     !   end do
     ! end do
   end subroutine userInitFields
+  !............................................................!
 
+  !--- driving ------------------------------------------------!
   subroutine userDriveParticles()
     implicit none
+    ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
     !   do ti = 1, species(s)%tile_nx
@@ -86,4 +98,15 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+  !............................................................!
+
+  !--- boundaries ---------------------------------------------!
+  subroutine userParticleBoundaryConditions()
+    implicit none
+  end subroutine userParticleBoundaryConditions
+
+  subroutine userFieldBoundaryConditions()
+    implicit none
+  end subroutine userFieldBoundaryConditions
+  !............................................................!
 end module m_userfile
