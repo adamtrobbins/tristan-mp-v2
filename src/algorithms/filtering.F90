@@ -39,7 +39,7 @@ contains
   end subroutine filterCurrents
 
   ! subroutine filterEfield(arr)
-  !     "blablabla"
+  ! ...
   ! end subroutine filterEfield
 
   subroutine filterInAll(do_n_times)
