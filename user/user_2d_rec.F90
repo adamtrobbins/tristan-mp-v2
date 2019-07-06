@@ -55,23 +55,6 @@ contains
     return
   end function userSpatialDistribution
 
-  ! function userSpatialDistribution(x_glob, y_glob, z_glob,&
-  !                                & dummy1, dummy2, dummy3)
-  !   real :: userSpatialDistribution
-  !   real, intent(in), optional  :: x_glob, y_glob, z_glob
-  !   real, intent(in), optional  :: dummy1, dummy2, dummy3
-  !   real :: temp_r2
-  !   if (present(x_glob) .and. present(y_glob) .and. &
-  !     & present(dummy1) .and. present(dummy2) .and. present(dummy3)) then
-  !     temp_r2 = (x_glob - dummy1)**2 + (y_glob - dummy2)**2
-  !     userSpatialDistribution = (1.0 - exp(-temp_r2 / dummy3**2)) / (cosh((x_glob - dummy1) / dummy3))**2
-  !   else
-  !     call throwError("ERROR: variable not present in `userSpatialDistribution()`")
-  !   end if
-  !   return
-  !   return
-  ! end function userSpatialDistribution
-
   subroutine userInitParticles()
     implicit none
     real                :: nUP
@@ -101,17 +84,10 @@ contains
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
-    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
-    !                                & spat_distr_ptr = spat_distr_ptr,&
-    !                                & dummy1 = cs_x * sx_glob, dummy2 = current_width)
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)
-    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
-    !                                & shift_gamma = shift_gamma, shift_dir = 3,&
-    !                                & spat_distr_ptr = spat_distr_ptr,&
-    !                                & dummy1 = cs_x * sx_glob, dummy2 = 0.5 * sy_glob, dummy3 = current_width)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -129,11 +105,11 @@ contains
 
     k = 0
     sx_glob = REAL(global_mesh%sx)
-    do i = 0, this_meshblock%ptr%sx - 1
+    do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
       i_glob = i + this_meshblock%ptr%x0
       x_glob = REAL(i_glob)
-      do j = 0, this_meshblock%ptr%sy - 1
-        by(i, j, k) = tanh((x_glob + 0.5 - cs_x * sx_glob) / current_width)
+      do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
+        by(i, j, k) = tanh((x_glob - cs_x * sx_glob) / current_width)
       end do
     end do
   end subroutine userInitFields
@@ -198,7 +174,7 @@ contains
     if (injector_x1 .le. 0.0) then
       injector_x1 = injector_x1 + injector_sx
     end if
-    if (injector_x2 .ge. REAL(global_mesh%sx)) then
+    if (injector_x2 .ge. REAL(global_mesh%sx - 1)) then
       injector_x2 = injector_x2 - injector_sx
     end if
 
@@ -261,7 +237,7 @@ contains
           if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
             ex(i, j, k) = 0; ey(i, j, k) = 0; ez(i, j, k) = 0
             bx(i, j, k) = 0; bz(i, j, k) = 0
-            by(i, j, k) = tanh((x_glob + 0.5 - cs_x * sx_glob) / current_width)
+            by(i, j, k) = tanh((x_glob - cs_x * sx_glob) / current_width)
           end if
         end do
       end do
