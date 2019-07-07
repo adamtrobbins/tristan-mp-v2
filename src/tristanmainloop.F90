@@ -169,6 +169,7 @@ contains
       !     ... boundary conditions for particles
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       call userParticleBoundaryConditions()
+      call clearGhostParticles() ! hack
       call userDriveParticles()
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................

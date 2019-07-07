@@ -46,5 +46,13 @@ module m_particles
 
   type(prtl_enroute), allocatable, dimension(:)    :: recv_enroute
   type(enroute_handler)                            :: enroute_bot
-  type(MPI_DATATYPE)                               :: myMPI_ENROUTE
+
+  #ifdef MPI08
+    type(MPI_DATATYPE)                             :: myMPI_ENROUTE
+  #endif
+
+  #ifdef MPI
+    integer                                        :: myMPI_ENROUTE
+  #endif
+  
 end module m_particles

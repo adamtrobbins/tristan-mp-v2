@@ -12,15 +12,12 @@ Supported `[-FLAGS]` will be constantly updated. List of flags available now:
 - `-debug`: enable debug mode (enables custom `-DDEBUG` macros flag, `traceback`, `qopt` reports for intel compilers etc);
 - `--nghosts=[NUM_GHOSTS]`: specify the number of ghost zones, will compile with `-DNGHOST=[NUM_GHOSTS]`;
 - `--user=[USER_FILE]`: name of the user file from `user/` directory (without the extension);
+- `-mpi` or `-mpi08`: use default MPI or MPI_08;
 - `-hdf5`: enable `hdf5` and compile with `h5fpc`;
 - `-ifport`: handles `mkdir` commands, some systems do not support this;
 - _... more to come_.
 
-
 `Makefile` will be generated in the main directory (from `Makefile.in`). Now the code can be compiled with `make all` or cleaned with `make clean`.
-
-#### Prerequisites
-For MPI we use `mpi_f08` standard.
 
 #### Running
 Executable is generated in `exec` directory named either `tristan-mp2d` or `tristan-mp3d`. Simply run with

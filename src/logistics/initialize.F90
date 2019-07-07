@@ -90,6 +90,20 @@ contains
     call getInput('output', 'spec_num', spec_num, 100)
     spec_min = log(spec_min)
     spec_max = log(spec_max)
+
+    #ifdef HDF5
+
+    #ifdef MPI08
+      h5comm = MPI_COMM_WORLD%MPI_VAL
+      h5info = MPI_INFO_NULL%MPI_VAL
+    #endif
+
+    #ifdef MPI
+      h5comm = MPI_COMM_WORLD
+      h5info = MPI_INFO_NULL
+    #endif
+
+    #endif
   end subroutine initializeOutput
 
   subroutine initializeALB()
@@ -188,10 +202,17 @@ contains
     integer            :: buffsize_xyz
     integer            :: multiplier, ierr, ind1, ind2, ind3
 
-    type(MPI_DATATYPE), dimension(0:2)              :: oldtypes
+    #ifdef MPI08
+      type(MPI_DATATYPE), dimension(0:2)            :: oldtypes
+    #endif
+    
+    #ifdef MPI
+      integer, dimension(0:2)                       :: oldtypes
+    #endif
+
     integer, dimension(0:2)                         :: blockcounts
     integer(kind=MPI_ADDRESS_KIND), dimension(0:2)  :: offsets
-    integer(kind=MPI_COUNT_KIND)                    :: extent_int2, extent_real, lb
+    integer(kind=MPI_ADDRESS_KIND)                  :: extent_int2, extent_real, lb
 
     multiplier = max(INT(ppc0), 1) * 1000
     ! FIX this might change over time (due to load balancing)

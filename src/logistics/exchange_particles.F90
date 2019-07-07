@@ -20,12 +20,19 @@ contains
     integer             :: s, p, send_x, send_y, send_z, ti, tj, tk, ti_p, tj_p, tk_p
     integer             :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
     integer             :: ierr, ind1, ind2, ind3, cntr, temp_xyz
-    type(MPI_STATUS)    :: istat
     integer             :: cnt_recv_enroute
     integer(kind=2)     :: new_xyz
 
-    type(MPI_REQUEST), allocatable    :: mpi_req(:)
-    type(MPI_STATUS), allocatable     :: mpi_stat(:)
+    #ifdef MPI08
+      type(MPI_REQUEST), allocatable  :: mpi_req(:)
+      type(MPI_STATUS)                :: istat
+    #endif
+
+    #ifdef MPI
+      integer, allocatable            :: mpi_req(:)
+      integer                         :: istat(MPI_STATUS_SIZE)
+    #endif
+
     logical, allocatable              :: mpi_sendflags(:), mpi_recvflags(:)
     logical                           :: quit_loop
 
@@ -177,7 +184,7 @@ contains
 
               if (.not. mpi_recvflags(cntr)) then
                 quit_loop = .false.
-                call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat)
+                call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
                 if (mpi_recvflags(cntr)) then
                   call MPI_GET_COUNT(istat, myMPI_ENROUTE, cnt_recv_enroute, ierr)
                   call MPI_RECV(recv_enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&

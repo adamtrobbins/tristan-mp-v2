@@ -66,8 +66,6 @@ contains
   subroutine finalizeCommunications()
     implicit none
     integer :: ierr
-    #ifdef MPI
-      call MPI_FINALIZE(ierr)
-    #endif
+    call MPI_FINALIZE(ierr)
   end subroutine finalizeCommunications
 end module m_finalize

@@ -649,7 +649,7 @@ contains
     integer, intent(in)               :: step, time
     character(len=STR_MAX)            :: stepchar, filename
     integer(HID_T)                    :: file_id, dset_id(40), filespace(40), memspace, plist_id
-    integer                           :: comm, info, error, f, s
+    integer                           :: error, f, s
     integer(kind=2)                   :: i, j, k
     logical                           :: writing_intQ, writing_densQ
     integer                           :: dataset_rank = 3
@@ -657,8 +657,7 @@ contains
     integer(HSIZE_T), dimension(3)    :: global_dims, blocks
     real                              :: ex0, ey0, ez0, bx0, by0, bz0
     real                              :: jx0, jy0, jz0
-    ! type(MPI_Info)                    :: FILE_INFO_TEMPLATE
-
+    
     ! downsampling variables
     integer :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
     integer :: i_start, i_end, j_start, j_end, k_start, k_end
@@ -735,13 +734,9 @@ contains
     ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_buffer_size", "16777216", error)
     ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_nodes", "1", error)
 
-    comm = MPI_COMM_WORLD%MPI_VAL
-    info = MPI_INFO_NULL%MPI_VAL
-    ! info = FILE_INFO_TEMPLATE%MPI_VAL
-
     call h5open_f(error)
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
-    call h5pset_fapl_mpio_f(plist_id, comm, info, error)
+    call h5pset_fapl_mpio_f(plist_id, h5comm, h5info, error)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
     call h5pclose_f(plist_id, error)
 
@@ -842,7 +837,7 @@ contains
     character(len=STR_MAX)            :: stepchar, filename
     character(len=7)                  :: dsetname
     integer(HID_T)                    :: file_id, dset_id(100), filespace(100), memspace, plist_id
-    integer                           :: comm, info, error, ierr
+    integer                           :: error, ierr
     integer                           :: rnk, s, p, j, ln_, ti, tj, tk, temp, temp_int
     integer                           :: dataset_rank = 1
     integer(HID_T)                    :: h5type
@@ -880,13 +875,9 @@ contains
     write(stepchar, "(i5.5)") step
     filename = trim(output_dir_name) // '/prtl.tot.' // trim(stepchar)
 
-    ! mpi_f08 thing
-    comm = MPI_COMM_WORLD%MPI_VAL
-    info = MPI_INFO_NULL%MPI_VAL
-
     call h5open_f(error)
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
-    call h5pset_fapl_mpio_f(plist_id, comm, info, error)
+    call h5pset_fapl_mpio_f(plist_id, h5comm, h5info, error)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
     call h5pclose_f(plist_id, error)
 

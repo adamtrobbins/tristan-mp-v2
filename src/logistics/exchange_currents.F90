@@ -14,12 +14,21 @@ contains
     integer           :: send_cnt, recv_cnt, ierr
     integer           :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
     integer           :: mpi_offset
-    type(MPI_STATUS)  :: istat
-    logical           :: quit_loop, fill_ghosts
+    logical           :: fill_ghosts
     logical, optional, intent(in) :: fill_ghosts_Q
 
-    type(MPI_REQUEST), allocatable  :: mpi_req(:)
-    logical, allocatable            :: mpi_sendflags(:), mpi_recvflags(:)
+    #ifdef MPI08
+      type(MPI_REQUEST), allocatable  :: mpi_req(:)
+      type(MPI_STATUS)                :: istat
+    #endif
+
+    #ifdef MPI
+      integer, allocatable            :: mpi_req(:)
+      integer                         :: istat(MPI_STATUS_SIZE)
+    #endif
+
+    logical, allocatable              :: mpi_sendflags(:), mpi_recvflags(:)
+    logical                           :: quit_loop
 
     if (present(fill_ghosts_Q)) then
       fill_ghosts = fill_ghosts_Q
@@ -152,7 +161,7 @@ contains
 
             if (.not. mpi_recvflags(cntr)) then
               quit_loop = .false.
-              call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat)
+              call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
               if (mpi_recvflags(cntr)) then
                 ! if the message is ready to be received -> get the size & receive it
                 call MPI_GET_COUNT(istat, MPI_REAL, recv_cnt, ierr)

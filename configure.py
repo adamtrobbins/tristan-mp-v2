@@ -37,7 +37,12 @@ parser.add_argument('-ifport',
 parser.add_argument('-mpi',
                     action='store_true',
                     default=False,
-                    help='enable mpi & use mpif90 compiler')
+                    help='enable mpi')
+
+parser.add_argument('-mpi08',
+                    action='store_true',
+                    default=False,
+                    help='enable mpi_f08')
 
 parser.add_argument('-intel',
                     action='store_true',
@@ -82,12 +87,17 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 
 if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 -DMPI '
-elif args['mpi']:
-    makefile_options['COMPILER_COMMAND'] += 'mpif90 '
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
 else:
-    makefile_options['COMPILER_COMMAND'] += 'gfortran '
+    if ((not args['mpi']) and (not args['mpi08'])):
+        makefile_options['COMPILER_COMMAND'] += 'gfortran '
+    else:
+        makefile_options['COMPILER_COMMAND'] += 'mpif90 '
+
+if args['mpi']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
+elif args['mpi08']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI08 '
 
 if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
