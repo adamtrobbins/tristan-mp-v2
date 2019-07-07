@@ -100,8 +100,8 @@ contains
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
     cs_x = 0.5
-    injector_x1 = injector_sx - 1.0e-3
-    injector_x2 = REAL(global_mesh%sx - 1) - injector_sx + 1.0e-3
+    injector_x1 = injector_sx - 1.0e-5
+    injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
 
     k = 0
     sx_glob = REAL(global_mesh%sx)
@@ -171,11 +171,13 @@ contains
     injector_x1 = injector_x1 - injector_betax * CC
     injector_x2 = injector_x2 + injector_betax * CC
     ! reset the injector positions if necessary
-    if (injector_x1 .le. 0.0) then
-      injector_x1 = injector_x1 + injector_sx
+    if (injector_x1 .le. 1.0) then
+      ! injector_x1 = injector_x1 + injector_sx
+      injector_x1 = injector_sx - 1.0e-5
     end if
     if (injector_x2 .ge. REAL(global_mesh%sx - 1)) then
-      injector_x2 = injector_x2 - injector_sx
+      ! injector_x2 = injector_x2 - injector_sx
+      injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
     end if
 
     injector_i1_glob = INT(injector_x1)
@@ -192,7 +194,7 @@ contains
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 i_glob = species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0
                 if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
-                  call removeParticleFromTile(s, ti, tj, tk, p)
+                  species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
                 end if
               end do
             end do
@@ -202,29 +204,16 @@ contains
 
       ! inject background particles at the injectors' positions
       nUP = ppc0
-      nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sy)
+      nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
 
-      ! left injector
-      back_region%x_min = REAL(injector_i1_glob - this_meshblock%ptr%x0)
-      back_region%x_max = REAL(injector_i1_glob - this_meshblock%ptr%x0 + 1)
+      back_region%x_min = REAL(0)
+      back_region%x_max = REAL(this_meshblock%ptr%sx)
       back_region%y_min = REAL(0)
       back_region%y_max = REAL(this_meshblock%ptr%sy)
 
-      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
-      ! ,&
-      !                                & spat_distr_ptr = spat_distr_ptr,&
-      !                                & dummy1 = injector_x1, dummy2 = injector_x2)
-
-      ! right injector
-      back_region%x_min = REAL(injector_i2_glob - this_meshblock%ptr%x0)
-      back_region%x_max = REAL(injector_i2_glob - this_meshblock%ptr%x0 + 1)
-      back_region%y_min = REAL(0)
-      back_region%y_max = REAL(this_meshblock%ptr%sy)
-
-      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
-      ! ,&
-      !                               & spat_distr_ptr = spat_distr_ptr,&
-      !                               & dummy1 = injector_x1, dummy2 = injector_x2)
+      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T,&
+                                     & spat_distr_ptr = spat_distr_ptr,&
+                                     & dummy1 = injector_x1, dummy2 = injector_x2)
     end if
   end subroutine userParticleBoundaryConditions
 
