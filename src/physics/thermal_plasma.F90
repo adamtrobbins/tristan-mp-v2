@@ -213,19 +213,30 @@ contains
     n = 0
     do while (n .lt. num_part)
       ! generate coords for all species
-      rnd = random(dseed)
-      x_ = fillregion%x_min + rnd * (fillregion%x_max - fillregion%x_min)
-      xi_ = INT(x_, 2); dx_ = x_ - REAL(xi_)
-      rnd = random(dseed)
-      y_ = fillregion%y_min + rnd * (fillregion%y_max - fillregion%y_min)
-      yi_ = INT(y_, 2); dx_ = y_ - REAL(yi_)
+      ! rnd = random(dseed)
+      ! x_ = fillregion%x_min + rnd * (fillregion%x_max - fillregion%x_min)
+      ! xi_ = INT(x_, 2); dx_ = x_ - REAL(xi_)
+      ! rnd = random(dseed)
+      ! y_ = fillregion%y_min + rnd * (fillregion%y_max - fillregion%y_min)
+      ! yi_ = INT(y_, 2); dx_ = y_ - REAL(yi_)
+      ! #ifdef threeD
+      !   rnd = random(dseed)
+      !   z_ = fillregion%z_min + rnd * (fillregion%z_max - fillregion%z_min)
+      !   zi_ = INT(z_, 2); dz_ = z_ - REAL(zi_)
+      ! #else
+      !   zi_ = 0; dz_ = 0.5
+      ! #endif
+      x_ = fillregion%x_min + random(dseed) * (fillregion%x_max - fillregion%x_min)
+      xi_ = INT(x_, 2); dx_ = random(dseed)
+      y_ = fillregion%y_min + random(dseed) * (fillregion%y_max - fillregion%y_min)
+      yi_ = INT(y_, 2); dy_ = random(dseed)
       #ifdef threeD
-        rnd = random(dseed)
-        z_ = fillregion%z_min + rnd * (fillregion%z_max - fillregion%z_min)
-        zi_ = INT(z_, 2); dz_ = z_ - REAL(zi_)
+        z_ = fillregion%z_min + random(dseed) * (fillregion%z_max - fillregion%z_min)
+        zi_ = INT(z_, 2); dz_ = random(dseed)
       #else
         zi_ = 0; dz_ = 0.5
       #endif
+
 
       ! if spatial distribution function is present, compute it
       !   otherwise use uniform distribution

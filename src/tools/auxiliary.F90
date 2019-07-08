@@ -3,7 +3,7 @@
 module m_aux
   use m_globalnamespace
   implicit none
-  integer                  :: dseed
+  real(dprec)                  :: dseed
   ! integer, dimension(0:15)        :: state
   ! integer                         :: rand_ind
 
@@ -238,26 +238,41 @@ contains
   ! Reference: http://gcc.gnu.org/onlinedocs/gfortran/RANDOM_005fSEED.html
   !........................................................................!
 
-  real function random(dseed)
-    implicit none
-    integer, intent(in) :: dseed
-    call random_number(random)
+  real function random(DSEED)
+    ! implicit none
+    ! integer, intent(in) :: dseed
+    ! call random_number(random)
+  	implicit none
+  	real(dprec)    :: DSEED
+  	integer        :: I
+  	real(dprec)    :: S2P31, S2P31M, SEED
+  	DATA              S2P31M/2147483647.D0/,S2P31/2147483648.D0/
+
+  	SEED = DSEED
+
+  	SEED = DMOD(16807.D0*SEED,S2P31M)
+  	random= SEED /S2P31
+  	DSEED = SEED
+
+  	return
   end function random
 
   subroutine initializeRandomSeed(rank)
     implicit none
     integer, intent(in) :: rank
-    integer :: i, n, clock
-    integer, dimension(:), allocatable :: seed
-
-    call random_seed(size = n)
-    allocate(seed(n))
-
-    call system_clock(COUNT = clock)
-
-    seed = clock + rank * (/ (i - 1, i = 1, n) /)
-    call random_seed(PUT = seed)
-    deallocate(seed)
+    dseed = 123457.D0
+    dseed = dseed + rank
+    ! integer :: i, n, clock
+    ! integer, dimension(:), allocatable :: seed
+    !
+    ! call random_seed(size = n)
+    ! allocate(seed(n))
+    !
+    ! call system_clock(COUNT = clock)
+    !
+    ! seed = clock + rank * (/ (i - 1, i = 1, n) /)
+    ! call random_seed(PUT = seed)
+    ! deallocate(seed)
   end subroutine initializeRandomSeed
 
 end module m_aux

@@ -136,7 +136,7 @@ contains
   subroutine initializeSimulation()
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
-    call getInput('algorithm', 'nfilter', nfilter, 2)
+    call getInput('algorithm', 'nfilter', nfilter, 16)
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
   end subroutine initializeSimulation
@@ -205,7 +205,7 @@ contains
     #ifdef MPI08
       type(MPI_DATATYPE), dimension(0:2)            :: oldtypes
     #endif
-    
+
     #ifdef MPI
       integer, dimension(0:2)                       :: oldtypes
     #endif

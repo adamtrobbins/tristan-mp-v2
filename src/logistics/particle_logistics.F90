@@ -112,24 +112,29 @@ contains
   subroutine checkTileSizes()
     implicit none
     integer     :: s, ti, tj, tk
-    if (resize_tiles) then
-      do s = 1, nspec ! loop over species
-        do ti = 1, species(s)%tile_nx
-          do tj = 1, species(s)%tile_ny
-            do tk = 1, species(s)%tile_nz
-              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .ge. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.7) then
-                ! increase the tile size
+    do s = 1, nspec ! loop over species
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .ge. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.7) then
+              ! increase the tile size
+              if (resize_tiles) then
                 call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .true.)
-              else if ((species(s)%prtl_tile(ti, tj, tk)%npart_sp .lt. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.3) .and.&
-                     & (species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.5 .gt. min_tile_nprt)) then
-                ! decrease the tile size
+              else
+                print *, "DANGER: `maxptl_sp` in tiles too low, consider increasing `maxptl` or turning on `resize_tiles`."
+              end if
+            else if ((species(s)%prtl_tile(ti, tj, tk)%npart_sp .lt. (species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.3)) .and.&
+                   & ((species(s)%prtl_tile(ti, tj, tk)%maxptl_sp * 0.5) .gt. min_tile_nprt)) then
+              ! decrease the tile size
+              if (resize_tiles) then
                 call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .false.)
               end if
-            end do
+            end if
           end do
         end do
       end do
-    end if
+    end do
+
   end subroutine checkTileSizes
 
   subroutine reallocTileSize(tile, increase_flag)
