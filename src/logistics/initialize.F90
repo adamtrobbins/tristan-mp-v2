@@ -338,13 +338,20 @@ contains
     allocate(send_fld(sendrecv_buffsz))
     if (allocated(recv_fld)) deallocate(recv_fld)
     allocate(recv_fld(sendrecv_offsetsz))
+    if (allocated(send_arr)) deallocate(send_arr)
+    allocate(send_arr(sendrecv_buffsz))
+    if (allocated(recv_arr)) deallocate(recv_arr)
+    allocate(recv_arr(sendrecv_offsetsz))
 
     ! output fields
     if (allocated(scalar_int_array)) deallocate(scalar_int_array)
     if (allocated(scalar_real_array)) deallocate(scalar_real_array)
-    allocate(scalar_int_array(0:this_meshblock%ptr%sx - 1,&
-                            & 0:this_meshblock%ptr%sy - 1,&
-                            & 0:this_meshblock%ptr%sz - 1))
+    !allocate(scalar_int_array(0:this_meshblock%ptr%sx - 1,&
+    !                        & 0:this_meshblock%ptr%sy - 1,&
+    !                        & 0:this_meshblock%ptr%sz - 1))
+    allocate(scalar_int_array(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                            & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                            & fldBoundZ))
     allocate(scalar_real_array(0:this_meshblock%ptr%sx - 1,&
                              & 0:this_meshblock%ptr%sy - 1,&
                              & 0:this_meshblock%ptr%sz - 1))

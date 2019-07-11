@@ -11,6 +11,7 @@ module m_writeoutput
   use m_particles
   use m_fields
   use m_helpers
+  use m_exchangearray
   implicit none
 
   integer                 :: output_start, output_interval, output_stride, output_istep
@@ -749,6 +750,7 @@ contains
         writing_densQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
         call computeDensity(s) ! filled `scalar_int_array` with density of species `s`
+        call exchangeArray()
       else
         writing_densQ = .false.
       end if
