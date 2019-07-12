@@ -51,6 +51,9 @@ contains
     integer, intent(in)                   :: s
     integer                               :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2) :: i, j, k
+    integer :: i1, i2, j1, j2, k1, k2, ds
+    ds = 2
     scalar_int_array(:,:,:) = 0
     do ti = 1, species(s)%tile_nx
       do tj = 1, species(s)%tile_ny
@@ -60,7 +63,30 @@ contains
           pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
           ! FIX1 vectorize/align
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-            scalar_int_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_int_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
+            i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+            
+            i1 = max(i - ds, -NGHOST)
+            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1) 
+            
+            j1 = max(j - ds, -NGHOST)
+            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1) 
+
+            #ifndef threeD
+             k1 = 0; k2 = 0
+            #else
+              k1 = max(k - ds, -NGHOST)
+              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1) 
+            #endif
+            
+            do k = k1, k2
+              do j = j1, j2
+                do i = i1, i2
+                  scalar_int_array(i, j, k) = scalar_int_array(i, j, k) + 1
+                end do
+              end do
+            end do
+             
+            ! scalar_int_array(pt_xi(p), pt_yi(p), pt_zi(p)) = scalar_int_array(pt_xi(p), pt_yi(p), pt_zi(p)) + 1
           end do
           pt_xi => null(); pt_yi => null(); pt_zi => null()
         end do
