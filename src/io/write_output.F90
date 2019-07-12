@@ -750,7 +750,7 @@ contains
         writing_densQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
         call computeDensity(s) ! filled `scalar_int_array` with density of species `s`
-        call exchangeArray()
+        ! call exchangeArray()
       else
         writing_densQ = .false.
       end if

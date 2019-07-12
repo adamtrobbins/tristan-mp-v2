@@ -72,7 +72,7 @@ contains
             j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1) 
 
             #ifndef threeD
-             k1 = 0; k2 = 0
+              k1 = 0; k2 = 0
             #else
               k1 = max(k - ds, -NGHOST)
               k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1) 
