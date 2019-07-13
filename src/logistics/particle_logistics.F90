@@ -57,11 +57,11 @@ contains
         call throwError('ERROR: wrong ti, tj, tk in `createParticle`')
       end if
       if ((xi .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
-        & (xi .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
+        & (xi .gt. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
         & (yi .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or. &
-        & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
+        & (yi .gt. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
         & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
-        & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
+        & (zi .gt. species(s)%prtl_tile(ti, tj, tk)%z2)) then
         print *, xi, yi, zi
         print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
                & species(s)%prtl_tile(ti, tj, tk)%x2,&
