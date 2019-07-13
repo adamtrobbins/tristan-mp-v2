@@ -87,7 +87,7 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + 1.0 / (ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + 1.0 / (2 * ds + 1.0)**pow
                 end do
               end do
             end do
