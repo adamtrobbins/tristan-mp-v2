@@ -16,8 +16,9 @@ module m_particles
   type :: particle_species
     integer     :: cntr_sp
     real        :: m_sp, ch_sp
-    ! sizes of the tiles in each direction
+    ! sizes and boundaries of the tiles in each direction
     integer     :: tile_sx, tile_sy, tile_sz
+    integer     :: x1, x2, y1, y2, z1, z2
     ! numbers of the tiles in each direction
     integer     :: tile_nx, tile_ny, tile_nz
     type (particle_tile), allocatable, dimension(:,:,:) :: prtl_tile

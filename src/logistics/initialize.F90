@@ -181,10 +181,20 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = max(maxptl_ / &
-                              & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz),&
-                              & max(INT(ppc0), 1) * species(s)%tile_sx * species(s)%tile_sy * species(s)%tile_sz)
+            ! species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = max(maxptl_ / &
+            !                  & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz),&
+            !                  & max(INT(ppc0), 1) * species(s)%tile_sx * species(s)%tile_sy * species(s)%tile_sz)
+            species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = maxptl_ / &
+                              & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
             species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
+
+            species(s)%prtl_tile(ti, tj, tk)%x1 = (ti - 1) * species(s)%tile_sx
+            species(s)%prtl_tile(ti, tj, tk)%x2 = min(ti * species(s)%tile_sx, this_meshblock%ptr%sx)
+            species(s)%prtl_tile(ti, tj, tk)%y1 = (tj - 1) * species(s)%tile_sy
+            species(s)%prtl_tile(ti, tj, tk)%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
+            species(s)%prtl_tile(ti, tj, tk)%z1 = (tk - 1) * species(s)%tile_sz
+            species(s)%prtl_tile(ti, tj, tk)%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
+
             call allocateParticles(species(s)%prtl_tile(ti, tj, tk),&
                                  & species(s)%prtl_tile(ti, tj, tk)%maxptl_sp)
           end do

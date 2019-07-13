@@ -139,7 +139,7 @@ contains
             pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
             pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
             ! FIX1 make sure this is vectorized
-            do p = species(s)%prtl_tile(ti, tj, tk)%npart_sp, 1, -1
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (pt_proc(p) .eq. -1) cycle
               ti_p = pt_xi(p) / species(s)%tile_sx + 1
               tj_p = pt_yi(p) / species(s)%tile_sy + 1
@@ -154,6 +154,30 @@ contains
         end do ! tj
       end do ! ti
       ! // particle moves between tiles within a single MPI block
+
+      #ifdef DEBUG
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              if (pt_proc(p) .eq. -1) cycle
+              if ((xi .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
+                & (xi .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
+                & (yi .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or. &
+                & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
+                & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
+                & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2) .or. &) then
+                call throwError('ERROR: particle in wrong tile after exchange')
+              end if
+            end do
+          end do
+        end do
+      end do
+      #endif
 
       ! wait to send & receive all the MPI calls and write data to memory
       quit_loop = .false.
@@ -224,41 +248,48 @@ contains
   end subroutine copyToEnroute
 
   subroutine copyFromEnroute(enroute, spec_id)
-    ! DEP_PRT [particle-dependent]
     implicit none
-    type(prtl_enroute), intent(inout) :: enroute
-    integer, intent(in)               :: spec_id
-    integer                           :: ti_p, tj_p, tk_p, p
-    ti_p = enroute%xi / species(spec_id)%tile_sx + 1
-    tj_p = enroute%yi / species(spec_id)%tile_sy + 1
-    tk_p = enroute%zi / species(spec_id)%tile_sz + 1
+    type(prtl_enroute), intent(in)  :: enroute
+    integer, intent(in)             :: spec_id
+    call createParticle(spec_id, enroute%xi, enroute%yi, enroute%zi, &
+                               & enroute%u, enroute%v, enroute%w, 
+                               & enroute%ind, enroute%proc)
 
-    #ifdef DEBUG
-      if ((ti_p .gt. species(spec_id)%tile_nx) .or. &
-        & (tj_p .gt. species(spec_id)%tile_ny) .or. &
-        & (tk_p .gt. species(spec_id)%tile_nz)) then
-        call throwError('ERROR: wrong ti, tj, tk in `copyFromEnroute`')
-      end if
-    #endif
+   ! ! DEP_PRT [particle-dependent]
+   ! implicit none
+   ! type(prtl_enroute), intent(inout) :: enroute
+   ! integer, intent(in)               :: spec_id
+   ! integer                           :: ti_p, tj_p, tk_p, p
+   ! ti_p = enroute%xi / species(spec_id)%tile_sx + 1
+   ! tj_p = enroute%yi / species(spec_id)%tile_sy + 1
+   ! tk_p = enroute%zi / species(spec_id)%tile_sz + 1
 
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp + 1
-    p = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp
+   ! #ifdef DEBUG
+   !   if ((ti_p .gt. species(spec_id)%tile_nx) .or. &
+   !     & (tj_p .gt. species(spec_id)%tile_ny) .or. &
+   !     & (tk_p .gt. species(spec_id)%tile_nz)) then
+   !     call throwError('ERROR: wrong ti, tj, tk in `copyFromEnroute`')
+   !   end if
+   ! #endif
 
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%xi(p) = enroute%xi
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%yi(p) = enroute%yi
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%zi(p) = enroute%zi
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%dx(p) = enroute%dx
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%dy(p) = enroute%dy
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%dz(p) = enroute%dz
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%u(p) = enroute%u
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%v(p) = enroute%v
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%w(p) = enroute%w
-    species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%ind(p) = enroute%ind
-    #ifdef DEBUG
-      species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%proc(p) = mpi_rank
-    #else
-      species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%proc(p) = enroute%proc
-    #endif
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp + 1
+   ! p = species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%npart_sp
+
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%xi(p) = enroute%xi
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%yi(p) = enroute%yi
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%zi(p) = enroute%zi
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%dx(p) = enroute%dx
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%dy(p) = enroute%dy
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%dz(p) = enroute%dz
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%u(p) = enroute%u
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%v(p) = enroute%v
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%w(p) = enroute%w
+   ! species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%ind(p) = enroute%ind
+   ! #ifdef DEBUG
+   !   species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%proc(p) = mpi_rank
+   ! #else
+   !   species(spec_id)%prtl_tile(ti_p, tj_p, tk_p)%proc(p) = enroute%proc
+   ! #endif
   end subroutine copyFromEnroute
 
   subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
@@ -276,7 +307,9 @@ contains
                          & species(s)%prtl_tile(ti, tj, tk)%w(p),&
                          & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
                          & species(s)%prtl_tile(ti, tj, tk)%proc(p))
-    call removeParticleFromTile(s, ti, tj, tk, p)
+    ! schedule particle for deletion
+    species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+    ! call removeParticleFromTile(s, ti, tj, tk, p)
   end subroutine
 
   subroutine extractParticlesFromEnroute(cnt, spec_id)
