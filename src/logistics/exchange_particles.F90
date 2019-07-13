@@ -170,7 +170,7 @@ contains
                 & (yi .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or. &
                 & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
                 & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
-                & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2) .or. &) then
+                & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
                 call throwError('ERROR: particle in wrong tile after exchange')
               end if
             end do
