@@ -165,12 +165,12 @@ contains
             pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (pt_proc(p) .eq. -1) cycle
-              if ((xi .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
-                & (xi .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
-                & (yi .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or. &
-                & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
-                & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
-                & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
+              if ((pt_xi(p) .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
+                & (pt_xi(p) .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
+                & (pt_yi(p) .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or. &
+                & (pt_yi(p) .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
+                & (pt_zi(p) .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
+                & (pt_zi(p) .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
                 call throwError('ERROR: particle in wrong tile after exchange')
               end if
             end do
