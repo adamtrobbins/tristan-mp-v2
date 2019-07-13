@@ -15,8 +15,7 @@ module m_fields
                          & bx(:,:,:), by(:,:,:), bz(:,:,:)
   real, allocatable     :: jx(:,:,:), jy(:,:,:), jz(:,:,:)
   real, allocatable     :: recv_fld(:), send_fld(:)
-  integer, allocatable  :: send_arr(:), recv_arr(:)
   integer               :: sendrecv_buffsz, sendrecv_offsetsz
-  integer, allocatable  :: scalar_int_array(:,:,:)
-  real, allocatable     :: scalar_real_array(:,:,:)
+  real, allocatable     :: lg_arr(:,:,:)
+  real, allocatable     :: sm_arr(:,:,:)
 end module m_fields

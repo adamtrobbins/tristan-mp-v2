@@ -580,7 +580,7 @@ contains
               case default
                 if (fld_vars(f)(1:4) .eq. 'dens') then
                   s = STRtoINT(fld_vars(f)(5:5))
-                  temp_real_arr(temp) = REAL(scalar_int_array(i, j, k))
+                  temp_real_arr(temp) = REAL(lg_arr(i, j, k))
                 end if
               end select
               temp = temp + 1
@@ -749,8 +749,8 @@ contains
       if (fld_vars(f)(1:4) .eq. 'dens') then
         writing_densQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeDensity(s) ! filled `scalar_int_array` with density of species `s`
-        ! call exchangeArray()
+        call computeDensity(s) ! filled `lg_arr` with density of species `s`
+        call exchangeArray()
       else
         writing_densQ = .false.
       end if
@@ -776,42 +776,42 @@ contains
             select case (trim(fld_vars(f)))
             case('ex')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              scalar_real_array(i1, j1, k1) = ex0 * B_norm
+              sm_arr(i1, j1, k1) = ex0 * B_norm
             case('ey')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              scalar_real_array(i1, j1, k1) = ey0 * B_norm
+              sm_arr(i1, j1, k1) = ey0 * B_norm
             case('ez')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              scalar_real_array(i1, j1, k1) = ez0 * B_norm
+              sm_arr(i1, j1, k1) = ez0 * B_norm
             case('bx')
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              scalar_real_array(i1, j1, k1) = bx0 * B_norm
+              sm_arr(i1, j1, k1) = bx0 * B_norm
             case('by')
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              scalar_real_array(i1, j1, k1) = by0 * B_norm
+              sm_arr(i1, j1, k1) = by0 * B_norm
             case('bz')
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              scalar_real_array(i1, j1, k1) = bz0 * B_norm
+              sm_arr(i1, j1, k1) = bz0 * B_norm
             case('jx')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              scalar_real_array(i1, j1, k1) = -jx0 * B_norm
+              sm_arr(i1, j1, k1) = -jx0 * B_norm
             case('jy')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              scalar_real_array(i1, j1, k1) = -jy0 * B_norm
+              sm_arr(i1, j1, k1) = -jy0 * B_norm
             case('jz')
               call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              scalar_real_array(i1, j1, k1) = -jz0 * B_norm
+              sm_arr(i1, j1, k1) = -jz0 * B_norm
             case('xx')
-              scalar_real_array(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
+              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
             case('yy')
-              scalar_real_array(i1, j1, k1) = REAL(this_meshblock%ptr%y0 + j, 4)
+              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%y0 + j, 4)
             case('zz')
-              scalar_real_array(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
+              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
             case default
               if ((fld_vars(f)(1:4) .ne. 'dens') .or. (.not. writing_densQ)) then
                 call throwError("ERROR: unrecognized `fld_vars(f)`")
               else
-                scalar_real_array(i1, j1, k1) = REAL(scalar_int_array(i, j, k), 4)
+                sm_arr(i1, j1, k1) = lg_arr(i, j, k)
               end if
             end select
           end do
@@ -819,7 +819,7 @@ contains
       end do
 
       ! Write the dataset collectively
-      call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, scalar_real_array(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
+      call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, sm_arr(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
                     & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
 
       call h5dclose_f(dset_id(f), error)

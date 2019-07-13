@@ -79,7 +79,7 @@ contains
           do i = imin, imax
             do j = jmin, jmax
               do k = kmin, kmax
-                send_arr(mpi_offset + send_cnt) = scalar_int_array(i, j, k)
+                send_fld(mpi_offset + send_cnt) = lg_arr(i, j, k)
                 send_cnt = send_cnt + 1
               end do
             end do
@@ -87,7 +87,7 @@ contains
           send_cnt = send_cnt - 1
 
           ! post non-blocking send requests
-          call MPI_ISEND(send_fld(mpi_offset + 1 : mpi_offset + send_cnt), send_cnt, MPI_INTEGER,&
+          call MPI_ISEND(send_fld(mpi_offset + 1 : mpi_offset + send_cnt), send_cnt, MPI_REAL,&
                        & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
         end do
       end do
@@ -125,7 +125,7 @@ contains
               if (mpi_recvflags(cntr)) then
                 ! if the message is ready to be received -> get the size & receive it
                 call MPI_GET_COUNT(istat, MPI_INTEGER, recv_cnt, ierr)
-                call MPI_RECV(recv_arr(1:recv_cnt), recv_cnt, MPI_INTEGER,&
+                call MPI_RECV(recv_fld(1:recv_cnt), recv_cnt, MPI_REAL,&
                             & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
 
                 ! write received data to local memory
@@ -160,7 +160,7 @@ contains
                 do i = imin, imax
                   do j = jmin, jmax
                     do k = kmin, kmax
-                      scalar_int_array(i, j, k) = scalar_int_array(i, j, k) + recv_arr(send_cnt)
+                      lg_arr(i, j, k) = lg_arr(i, j, k) + recv_fld(send_cnt)
                       send_cnt = send_cnt + 1
                     end do
                   end do
