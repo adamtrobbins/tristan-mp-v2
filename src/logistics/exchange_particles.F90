@@ -70,7 +70,7 @@ contains
               if ((send_x .ne. 0) .or. (send_y .ne. 0) .or. (send_z .ne. 0)) then
                 if (.not. associated(this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr)) then
                   ! make ghost particle
-                  pt_proc(p) = -pt_proc(p) - 1
+                  pt_proc(p) = -1
                   cycle
                 end if
                 ! copy this particle to temporary `enroute_bot` array
@@ -78,7 +78,7 @@ contains
                 cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
                 call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr))
                 ! make ghost particle
-                pt_proc(p) = -pt_proc(p) - 1
+                pt_proc(p) = -1
 
                 ! shift coordinates to fit the new grid
                 new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi
@@ -140,7 +140,7 @@ contains
             pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
             ! FIX1 make sure this is vectorized
             do p = species(s)%prtl_tile(ti, tj, tk)%npart_sp, 1, -1
-              if (pt_proc(p) .lt. 0) cycle
+              if (pt_proc(p) .eq. -1) cycle
               ti_p = pt_xi(p) / species(s)%tile_sx + 1
               tj_p = pt_yi(p) / species(s)%tile_sy + 1
               tk_p = pt_zi(p) / species(s)%tile_sz + 1
