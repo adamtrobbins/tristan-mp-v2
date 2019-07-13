@@ -62,6 +62,15 @@ contains
         & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
         & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
         & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
+        print *, xi, yi, zi
+        print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
+               & species(s)%prtl_tile(ti, tj, tk)%x2,&
+               & species(s)%prtl_tile(ti, tj, tk)%y1,&
+               & species(s)%prtl_tile(ti, tj, tk)%y2,&
+               & species(s)%prtl_tile(ti, tj, tk)%z1,&
+               & species(s)%prtl_tile(ti, tj, tk)%z2
+        print *, ti, tj, tk
+        print *, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz
         call throwError('ERROR: wrong ti, tj, tk in `createParticle` according to x1,x2,etc')
       end if
     #endif
