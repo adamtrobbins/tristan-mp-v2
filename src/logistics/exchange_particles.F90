@@ -252,6 +252,7 @@ contains
     type(prtl_enroute), intent(in)  :: enroute
     integer, intent(in)             :: spec_id
     call createParticle(spec_id, enroute%xi, enroute%yi, enroute%zi, &
+                               & enroute%dx, enroute%dy, enroute%dz, &
                                & enroute%u, enroute%v, enroute%w, & 
                                & enroute%ind, enroute%proc)
    ! ! DEP_PRT [particle-dependent]
