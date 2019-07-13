@@ -72,84 +72,111 @@ contains
     type(maxwellian), intent(in) :: maxw
     real, intent(out)            :: u_, v_, w_
     real                         :: U, ETA, X1, X2, X3, X4, X5, X6, X7, X8, dx1, dx2, BETA, gamma, gamma1
-    logical                      :: flag1, flag2
+    logical                      :: flag
     integer                      :: iter
-    flag1 = .false.
-    do while (.not. flag1)
-      if (maxw%temperature .lt. 0.1) then
-        ! using tabulated Maxwellian
-        if (.not. maxw%generated) then
-          call throwError('ERROR: maxwell table not generated yet.')
-        end if
-        X3 = random(dseed)
-        do iter = 1, maxw%npoints
-          if (maxw%DF_table(iter) .ge. X3) then
-            if (iter .gt. 1) then
-              dx1 = (maxw%DF_table(iter) - X3) / (maxw%DF_table(iter) - maxw%DF_table(iter - 1))
-              dx2 = (X3 - maxw%DF_table(iter - 1)) / (maxw%DF_table(iter) - maxw%DF_table(iter - 1))
-              U = maxw%beta_table(iter) * dx2 +&
-                & maxw%beta_table(iter - 1) * dx1
-            else
-              dx2 = X3 / maxw%DF_table(iter)
-              U = maxw%beta_table(iter) * dx2
-            end if
-            ! `U` now is in terms of `beta_wave = beta / sqrt(T)`
-            !   step 1 (convert to `beta`):
-            U = U * sqrt(maxw%temperature)
-            !   step 2 (convert to 4-velocity):
-            U = U / sqrt(1.0 - U**2)
-            exit
+    if (maxw%temperature .lt. 0.1) then
+      ! using tabulated Maxwellian
+      if (.not. maxw%generated) then
+        call throwError('ERROR: maxwell table not generated yet.')
+      end if
+      X3 = random(dseed)
+      do iter = 1, maxw%npoints
+        if (maxw%DF_table(iter) .ge. X3) then
+          if (iter .gt. 1) then
+            dx1 = (maxw%DF_table(iter) - X3) / (maxw%DF_table(iter) - maxw%DF_table(iter - 1))
+            dx2 = (X3 - maxw%DF_table(iter - 1)) / (maxw%DF_table(iter) - maxw%DF_table(iter - 1))
+            U = maxw%beta_table(iter) * dx2 +&
+              & maxw%beta_table(iter - 1) * dx1
+          else
+            dx2 = X3 / maxw%DF_table(iter)
+            U = maxw%beta_table(iter) * dx2
           end if
-        end do
-      else
-        ! using Sobol method
-        flag2 = .false.
-        do while (.not. flag2)
+          ! `U` now is in terms of `beta_wave = beta / sqrt(T)`
+          !   step 1 (convert to `beta`):
+          U = U * sqrt(maxw%temperature)
+           !   step 2 (convert to 4-velocity):
+          U = U / sqrt(1.0 - U**2)
+          exit
+        end if
+      end do
+    else
+      ! using Sobol method
+      flag = .false.
+        do while (.not. flag)
           X4 = random(dseed); X5 = random(dseed)
           X6 = random(dseed); X7 = random(dseed)
           if (X4 * X5 * X6 * X7 .eq. 0) cycle
           U = -maxw%temperature * log(X4 * X5 * X6)
           ETA = -maxw%temperature * log(X4 * X5 * X6 * X7)
           if (ETA**2 - U**2 .gt. 1) then
-            flag2 = .true.
+            flag = .true.
           end if
         end do
-      end if
+    end if
 
-      ! generate projections
-      X1 = random(dseed); X2 = random(dseed)
-      u_ = U * (2.0 * X1 - 1.0)
-      v_ = 2.0 * U * sqrt(X1 * (1.0 - X1)) * cos(2.0 * M_PI * X2)
-      w_ = 2.0 * U * sqrt(X1 * (1.0 - X1)) * sin(2.0 * M_PI * X2)
+    ! generate projections
+    X1 = random(dseed); X2 = random(dseed)
+    u_ = U * (2.0 * X1 - 1.0)
+    v_ = 2.0 * U * sqrt(X1 * (1.0 - X1)) * cos(2.0 * M_PI * X2)
+    w_ = 2.0 * U * sqrt(X1 * (1.0 - X1)) * sin(2.0 * M_PI * X2)
 
-      ! shift maxwellian
-      if (maxw%shift_flag) then
-        gamma = sqrt(1.0 + U**2)
-        BETA = sqrt(1.0 - 1.0 / maxw%shift_gamma**2)
-        if (maxw%shift_dir .eq. 1) then ! in +x
-          u_ = maxw%shift_gamma * (u_ + BETA * gamma)
-        else if (maxw%shift_dir .eq. -1) then ! in -x
-          u_ = maxw%shift_gamma * (u_ - BETA * gamma)
-        else if (maxw%shift_dir .eq. 2) then ! in +y
-          v_ = maxw%shift_gamma * (v_ + BETA * gamma)
-        else if (maxw%shift_dir .eq. -2) then ! in -y
-          v_ = maxw%shift_gamma * (v_ - BETA * gamma)
-        else if (maxw%shift_dir .eq. 3) then ! in +z
-          w_ = maxw%shift_gamma * (w_ + BETA * gamma)
-        else if (maxw%shift_dir .eq. -3) then ! in -z
-          w_ = maxw%shift_gamma * (w_ - BETA * gamma)
-        else
-          call throwError('ERROR: unknown shift directions of maxwellian.')
-        end if
-        X8 = random(dseed)
-        gamma1 = sqrt(1.0 + u_**2 + v_**2 + w_**2)
-        if (0.5 * (gamma1 / gamma) / maxw%shift_gamma .gt. X8) then
-          flag1 = .true.
-        end if
-      else
-        flag1 = .true.
-      end if
-    end do
+    ! shift maxwellian
+    if (maxw%shift_flag) then
+      X8 = random(dseed)
+      gamma = sqrt(1.0 + U**2)
+      BETA = sqrt(1.0 - 1.0 / maxw%shift_gamma**2)
+      select case (maxw%shift_dir)
+        case (+1) ! +x
+          ETA = u_ / gamma
+          if (-BETA * ETA .gt. X8) ETA = -ETA
+          u_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+        case (-1) ! -x
+          BETA = -BETA
+          ETA = u_ / gamma
+          if (-BETA * ETA .gt. X8) ETA = -ETA
+          u_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+        case (+2) ! +y
+          ETA = v_ / gamma
+          if (-BETA * ETA .gt. X8) ETA = -ETA
+          v_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+        case (-2) ! -y
+          BETA = -BETA
+          ETA = v_ / gamma
+          if (-BETA * ETA .gt. X8) ETA = -ETA
+          v_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+        case (+3) ! +z
+          ETA = w_ / gamma
+          if (-BETA * ETA .gt. X8) ETA = -ETA
+          w_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+        case (-3) ! -z
+          BETA = -BETA
+          ETA = w_ / gamma
+          if (-BETA * ETA .gt. X8) ETA = -ETA
+          w_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+        case default
+      end select
+    end if
+        !    BETA = sqrt(1.0 - 1.0 / maxw%shift_gamma**2)
+        !    if (maxw%shift_dir .eq. 1) then ! in +x
+        !      u_ = maxw%shift_gamma * (u_ + BETA * gamma)
+        !    else if (maxw%shift_dir .eq. -1) then ! in -x
+        !      u_ = maxw%shift_gamma * (u_ - BETA * gamma)
+        !    else if (maxw%shift_dir .eq. 2) then ! in +y
+        !      v_ = maxw%shift_gamma * (v_ + BETA * gamma)
+        !    else if (maxw%shift_dir .eq. -2) then ! in -y
+        !      v_ = maxw%shift_gamma * (v_ - BETA * gamma)
+        !    else if (maxw%shift_dir .eq. 3) then ! in +z
+        !      w_ = maxw%shift_gamma * (w_ + BETA * gamma)
+        !    else if (maxw%shift_dir .eq. -3) then ! in -z
+        !      w_ = maxw%shift_gamma * (w_ - BETA * gamma)
+        !    else
+        !      call throwError('ERROR: unknown shift directions of maxwellian.')
+        !    end if
+        !    X8 = random(dseed)
+        !    gamma1 = sqrt(1.0 + u_**2 + v_**2 + w_**2)
+        !    if (0.5 * (gamma1 / gamma) / maxw%shift_gamma .gt. X8) then
+        !      flag1 = .true.
+        !    end if
   end subroutine generateFromMaxwellian
 
   subroutine deallocateMaxwellian(maxw)
@@ -213,19 +240,6 @@ contains
     n = 0
     do while (n .lt. num_part)
       ! generate coords for all species
-      ! rnd = random(dseed)
-      ! x_ = fillregion%x_min + rnd * (fillregion%x_max - fillregion%x_min)
-      ! xi_ = INT(x_, 2); dx_ = x_ - REAL(xi_)
-      ! rnd = random(dseed)
-      ! y_ = fillregion%y_min + rnd * (fillregion%y_max - fillregion%y_min)
-      ! yi_ = INT(y_, 2); dx_ = y_ - REAL(yi_)
-      ! #ifdef threeD
-      !   rnd = random(dseed)
-      !   z_ = fillregion%z_min + rnd * (fillregion%z_max - fillregion%z_min)
-      !   zi_ = INT(z_, 2); dz_ = z_ - REAL(zi_)
-      ! #else
-      !   zi_ = 0; dz_ = 0.5
-      ! #endif
       x_ = fillregion%x_min + random(dseed) * (fillregion%x_max - fillregion%x_min)
       xi_ = INT(x_, 2); dx_ = random(dseed)
       y_ = fillregion%y_min + random(dseed) * (fillregion%y_max - fillregion%y_min)
@@ -236,7 +250,6 @@ contains
       #else
         zi_ = 0; dz_ = 0.5
       #endif
-
 
       ! if spatial distribution function is present, compute it
       !   otherwise use uniform distribution
