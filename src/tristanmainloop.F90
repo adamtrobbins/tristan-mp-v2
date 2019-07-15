@@ -60,7 +60,7 @@ contains
       !-------------------------------------------------
       ! User defined boundary conditions for fields
         t_usrfuncs = MPI_WTIME()
-      call userFieldBoundaryConditions()
+      call userFieldBoundaryConditions(timestep)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 
@@ -168,9 +168,9 @@ contains
       ! User defined driving and ...
       !     ... boundary conditions for particles
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
-      call userParticleBoundaryConditions()
+      call userParticleBoundaryConditions(timestep)
       call clearGhostParticles() ! hack
-      call userDriveParticles()
+      call userDriveParticles(timestep)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 

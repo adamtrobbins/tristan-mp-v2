@@ -14,9 +14,11 @@ module m_userfile
   !--- PRIVATE variables -----------------------------------------!
   real    :: nCS_over_nUP, current_width, upstream_T, cs_x
   real    :: injector_x1, injector_x2, injector_sx, injector_betax
+  integer :: injector_reset_interval
 
   private :: nCS_over_nUP, current_width, upstream_T, cs_x
   private :: injector_x1, injector_x2, injector_sx, injector_betax
+  private :: injector_reset_interval
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -102,6 +104,7 @@ contains
     cs_x = 0.5
     injector_x1 = injector_sx - 1.0e-5
     injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
+    injector_reset_interval = INT(injector_sx / (injector_betax * CC))
 
     k = 0
     sx_glob = REAL(global_mesh%sx)
@@ -116,8 +119,9 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
-  subroutine userDriveParticles()
+  subroutine userDriveParticles(step)
     implicit none
+    integer, optional, intent(in) :: step
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
@@ -158,27 +162,15 @@ contains
     return
   end function userSpatialDistributionInjector
 
-  subroutine userParticleBoundaryConditions()
+  subroutine userParticleBoundaryConditions(step)
     implicit none
-    real          :: nUP
-    integer       :: s, ti, tj, tk, p, nUP_tot
-    integer       :: i_glob, injector_i1_glob, injector_i2_glob
-    type(region)  :: back_region
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    real                            :: nUP
+    integer                         :: s, ti, tj, tk, p, nUP_tot
+    integer                         :: i_glob, injector_i1_glob, injector_i2_glob
+    type(region)                    :: back_region
+    integer, optional, intent(in)             :: step
+    procedure (spatialDistribution), pointer  :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistributionInjector
-
-    ! move the injectors
-    injector_x1 = injector_x1 - injector_betax * CC
-    injector_x2 = injector_x2 + injector_betax * CC
-    ! reset the injector positions if necessary
-    if (injector_x1 .le. 1.0) then
-      ! injector_x1 = injector_x1 + injector_sx
-      injector_x1 = injector_sx - 1.0e-5
-    end if
-    if (injector_x2 .ge. REAL(global_mesh%sx - 1)) then
-      ! injector_x2 = injector_x2 - injector_sx
-      injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
-    end if
 
     injector_i1_glob = INT(injector_x1)
     injector_i2_glob = INT(injector_x2)
@@ -186,21 +178,23 @@ contains
     if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and. (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
       & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and. (injector_i2_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
 
-      ! remove particles left and right from the injectors
-      do s = 1, nspec
-        do ti = 1, species(s)%tile_nx
-          do tj = 1, species(s)%tile_ny
-            do tk = 1, species(s)%tile_nz
-              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                i_glob = species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0
-                if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
-                  species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
-                end if
+      if (modulo(step, injector_reset_interval) .eq. 0) then
+        ! remove particles left and right from the injectors every once in a while
+        do s = 1, nspec
+          do ti = 1, species(s)%tile_nx
+            do tj = 1, species(s)%tile_ny
+              do tk = 1, species(s)%tile_nz
+                do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                  i_glob = species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0
+                  if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
+                    species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+                  end if
+                end do
               end do
             end do
           end do
         end do
-      end do
+      end if
 
       ! inject background particles at the injectors' positions
       nUP = ppc0
@@ -217,11 +211,24 @@ contains
     end if
   end subroutine userParticleBoundaryConditions
 
-  subroutine userFieldBoundaryConditions()
+  subroutine userFieldBoundaryConditions(step)
     implicit none
-    real    :: sx_glob, x_glob
-    integer :: i, j, k
-    integer :: i_glob, injector_i1_glob, injector_i2_glob
+    real                          :: sx_glob, x_glob
+    integer                       :: i, j, k
+    integer                       :: i_glob, injector_i1_glob, injector_i2_glob
+    integer, optional, intent(in) :: step
+    
+    ! move the injectors
+    injector_x1 = injector_x1 - injector_betax * CC
+    injector_x2 = injector_x2 + injector_betax * CC
+    ! reset the injector position
+    if ((modulo(step, injector_reset_interval) .eq. 0) .and. (step .gt. 0)) then
+      injector_x1 = injector_x1 +&
+                        & REAL(injector_reset_interval) * CC * injector_betax
+      injector_x2 = injector_x2 -&
+                        & REAL(injector_reset_interval) * CC * injector_betax
+    end if
+
     injector_i1_glob = INT(injector_x1)
     injector_i2_glob = INT(injector_x2)
 
@@ -229,19 +236,15 @@ contains
       & (injector_i2_glob .ge. this_meshblock%ptr%x0)) then
 
       ! reset fields left and right from the injectors
-      ! FIX0: do I need to do anything with the currents?
-      k = 0
       sx_glob = REAL(global_mesh%sx)
       do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
         i_glob = i + this_meshblock%ptr%x0
         x_glob = REAL(i_glob)
-        do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
-          if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
-            ex(i, j, k) = 0; ey(i, j, k) = 0; ez(i, j, k) = 0
-            bx(i, j, k) = 0; bz(i, j, k) = 0
-            by(i, j, k) = tanh((x_glob - cs_x * sx_glob) / current_width)
-          end if
-        end do
+        if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
+          ex(i, :, :) = 0.0; ey(i, :, :) = 0.0; ez(i, :, :) = 0.0
+          bx(i, :, :) = 0.0; bz(i, :, :) = 0.0
+          by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
+        end if
       end do
 
     end if
