@@ -59,16 +59,14 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real                :: nUP
-    integer             :: nUP_tot, nCS_tot
+    real                :: nUP, nCS
     type(region)        :: back_region
     real                :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    nUP = ppc0
-    nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
-    nCS_tot = INT(0.5 * nUP * nCS_over_nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
+    nUP = 0.5 * ppc0
+    nCS = nUP * nCS_over_nUP
 
     back_region%x_min = REAL(0)
     back_region%x_max = REAL(this_meshblock%ptr%sx)
@@ -85,8 +83,8 @@ contains
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS_tot, current_sheet_T,&
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)
@@ -139,38 +137,27 @@ contains
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
-  function userSpatialDistributionInjector(x_glob, y_glob, z_glob,&
-                                         & dummy1, dummy2, dummy3)
-    real :: userSpatialDistributionInjector
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
-    integer                     :: i_glob, injector_i1_glob, injector_i2_glob
-    ! only inject in cell columns along the injectors
-    if (present(x_glob) .and. present(dummy1) .and. present(dummy2)) then
-      i_glob = INT(x_glob)
-      injector_i1_glob = INT(dummy1)
-      injector_i2_glob = INT(dummy2)
-      if ((i_glob .eq. injector_i1_glob) .or. (i_glob .eq. injector_i2_glob)) then
-        userSpatialDistributionInjector = 1.0
-      else
-        userSpatialDistributionInjector = 0.0
-      end if
-    else
-      call throwError("ERROR: variable not present in `userSpatialDistribution()`")
-    end if
-    return
-    return
-  end function userSpatialDistributionInjector
-
   subroutine userParticleBoundaryConditions(step)
     implicit none
-    real                            :: nUP
+    real                            :: nUP, old_x1, old_x2, x_glob
     integer                         :: s, ti, tj, tk, p, nUP_tot
-    integer                         :: i_glob, injector_i1_glob, injector_i2_glob
+    integer                         :: injector_i1_glob, injector_i2_glob
     type(region)                    :: back_region
     integer, optional, intent(in)             :: step
     procedure (spatialDistribution), pointer  :: spat_distr_ptr => null()
-    spat_distr_ptr => userSpatialDistributionInjector
+    
+    ! reset the injector position every once in a while
+    if ((modulo(step, injector_reset_interval) .eq. 0) .and. (step .gt. 0)) then
+      injector_x1 = injector_x1 +&
+                        & REAL(injector_reset_interval) * CC * injector_betax
+      injector_x2 = injector_x2 -&
+                        & REAL(injector_reset_interval) * CC * injector_betax
+    end if
+    
+    ! move the injectors
+    old_x1 = injector_x1; old_x2 = injector_x2
+    injector_x1 = injector_x1 - injector_betax * CC
+    injector_x2 = injector_x2 + injector_betax * CC
 
     injector_i1_glob = INT(injector_x1)
     injector_i2_glob = INT(injector_x2)
@@ -184,9 +171,10 @@ contains
           do ti = 1, species(s)%tile_nx
             do tj = 1, species(s)%tile_ny
               do tk = 1, species(s)%tile_nz
-                do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                  i_glob = species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0
-                  if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
+                do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp 
+                  x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                         & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+                  if ((x_glob .lt. old_x1) .or. (x_glob .gt. old_x2)) then
                     species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
                   end if
                 end do
@@ -197,17 +185,23 @@ contains
       end if
 
       ! inject background particles at the injectors' positions
-      nUP = ppc0
-      nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
-
-      back_region%x_min = REAL(0)
-      back_region%x_max = REAL(this_meshblock%ptr%sx)
-      back_region%y_min = REAL(0)
+      nUP = 0.5 * ppc0
+      
+      ! left injector
+      back_region%x_min = injector_x1 - REAL(this_meshblock%ptr%x0)
+      back_region%x_max = old_x1 - REAL(this_meshblock%ptr%x0)
+      back_region%y_min = 0.0
+      back_region%y_max = REAL(this_meshblock%ptr%sy)
+      
+      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+      
+      ! right injector
+      back_region%x_min = old_x2 - REAL(this_meshblock%ptr%x0)
+      back_region%x_max = injector_x2 - REAL(this_meshblock%ptr%x0)
+      back_region%y_min = 0.0
       back_region%y_max = REAL(this_meshblock%ptr%sy)
 
-      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T,&
-                                     & spat_distr_ptr = spat_distr_ptr,&
-                                     & dummy1 = injector_x1, dummy2 = injector_x2)
+      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
     end if
   end subroutine userParticleBoundaryConditions
 
@@ -218,17 +212,6 @@ contains
     integer                       :: i_glob, injector_i1_glob, injector_i2_glob
     integer, optional, intent(in) :: step
     
-    ! move the injectors
-    injector_x1 = injector_x1 - injector_betax * CC
-    injector_x2 = injector_x2 + injector_betax * CC
-    ! reset the injector position
-    if ((modulo(step, injector_reset_interval) .eq. 0) .and. (step .gt. 0)) then
-      injector_x1 = injector_x1 +&
-                        & REAL(injector_reset_interval) * CC * injector_betax
-      injector_x2 = injector_x2 -&
-                        & REAL(injector_reset_interval) * CC * injector_betax
-    end if
-
     injector_i1_glob = INT(injector_x1)
     injector_i2_glob = INT(injector_x2)
 
