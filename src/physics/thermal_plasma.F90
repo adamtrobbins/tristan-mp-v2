@@ -238,12 +238,12 @@ contains
     end if
     
     #ifndef threeD
-      num_part = INT(ndens_sp * (fill_region%x_max - fill_region%x_min)&
-                            & * (fill_region%y_max - fill_region%y_min))
+      num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&
+                            & * (fillregion%y_max - fillregion%y_min))
     #else 
-      num_part = INT(ndens_sp * (fill_region%x_max - fill_region%x_min)&
-                            & * (fill_region%y_max - fill_region%y_min)&
-                            & * (fill_region%z_max - fill_region%z_min))
+      num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&
+                            & * (fillregion%y_max - fillregion%y_min)&
+                            & * (fillregion%z_max - fillregion%z_min))
     #endif
 
     n = 0
