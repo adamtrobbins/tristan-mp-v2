@@ -186,16 +186,16 @@ contains
     if (allocated(maxw%beta_table)) deallocate(maxw%beta_table)
   end subroutine deallocateMaxwellian
 
-  subroutine fillRegionWithThermalPlasma(fillregion, fill_species, num_species, num_part,&
+  subroutine fillRegionWithThermalPlasma(fillregion, fill_species, num_species, ndens_sp,&
                                        & temperature, shift_gamma, shift_dir,&
                                        & spat_distr_ptr,&
                                        & dummy1, dummy2, dummy3)
     implicit none
     ! assuming that the charges of all species given in `fill_species` add up to `0`
     type(region), intent(in)         :: fillregion
-    integer, intent(in)              :: num_part, num_species
+    integer, intent(in)              :: num_species
     integer, intent(in)              :: fill_species(num_species)
-    real, intent(in)                 :: temperature
+    real, intent(in)                 :: ndens_sp, temperature
     real, optional, intent(in)       :: shift_gamma
     integer, optional, intent(in)    :: shift_dir
     type(maxwellian)                 :: fill_maxwellian
@@ -236,6 +236,15 @@ contains
     if (temperature .lt. 0.1) then
       call tabulateMaxwellian(fill_maxwellian, 2000)
     end if
+    
+    #ifndef threeD
+      num_part = INT(ndens_sp * (fill_region%x_max - fill_region%x_min)&
+                            & * (fill_region%y_max - fill_region%y_min))
+    #else 
+      num_part = INT(ndens_sp * (fill_region%x_max - fill_region%x_min)&
+                            & * (fill_region%y_max - fill_region%y_min)&
+                            & * (fill_region%z_max - fill_region%z_min))
+    #endif
 
     n = 0
     do while (n .lt. num_part)
