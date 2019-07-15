@@ -191,16 +191,16 @@ contains
     nUP = 0.5 * ppc0
     
     ! left injector
-    back_region%x_min = MIN(injector_x1 - REAL(this_meshblock%ptr%x0), 0.0)
-    back_region%x_max = MAX(old_x1 - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx))
+    back_region%x_min = MAX(injector_x1 - REAL(this_meshblock%ptr%x0), 0.0)
+    back_region%x_max = MIN(old_x1 - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx))
     back_region%y_min = 0.0
     back_region%y_max = REAL(this_meshblock%ptr%sy)
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
 
     ! right injector
-    back_region%x_min = MIN(old_x2 - REAL(this_meshblock%ptr%x0), 0.0)
-    back_region%x_max = MAX(injector_x2 - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx))
+    back_region%x_min = MAX(old_x2 - REAL(this_meshblock%ptr%x0), 0.0)
+    back_region%x_max = MIN(injector_x2 - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx))
     back_region%y_min = 0.0
     back_region%y_max = REAL(this_meshblock%ptr%sy)
 
