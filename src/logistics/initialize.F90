@@ -19,7 +19,6 @@ module m_initialize
 
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
-           & initializeALB,&
            & firstRankInitialize, initializeParticles,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
@@ -44,9 +43,6 @@ contains
 
     call initializeOutput()
       call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
-
-    call initializeALB()
-      call printDiag((mpi_rank .eq. 0), "initializeALB()", .true.)
 
     ! ADD possibility to define output function in userfile
     ! ADD hst file?
@@ -105,33 +101,6 @@ contains
 
     #endif
   end subroutine initializeOutput
-
-  subroutine initializeALB()
-    implicit none
-    call getInput('load_balancing', 'in_x', alb_x, .false.)
-    call getInput('load_balancing', 'in_y', alb_y, .false.)
-
-    call getInput('load_balancing', 'sx_min', alb_sxmin, 10)
-    call getInput('load_balancing', 'sy_min', alb_symin, 10)
-
-    call getInput('load_balancing', 'interval_x', alb_int_x, 1000)
-    call getInput('load_balancing', 'interval_y', alb_int_y, 1000)
-
-    call getInput('load_balancing', 'start_x', alb_start_x, 0)
-    call getInput('load_balancing', 'start_y', alb_start_y, 0)
-
-    #ifdef threeD
-      call getInput('load_balancing', 'in_z', alb_z, .false.)
-      call getInput('load_balancing', 'sz_min', alb_szmin, 10)
-      call getInput('load_balancing', 'interval_z', alb_int_z, 1000)
-      call getInput('load_balancing', 'start_z', alb_start_z, 0)
-    #else
-      alb_z = .false.
-      alb_szmin = -1
-      alb_int_z = -1
-      alb_start_z = -1
-    #endif
-  end subroutine initializeALB
 
   subroutine initializeSimulation()
     implicit none
@@ -364,7 +333,6 @@ contains
     implicit none
     integer :: ierr
     call MPI_INIT(ierr)
-    ! ADD `ifdef MPI`-statement here
     call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
     mpi_statsize = MPI_STATUS_SIZE

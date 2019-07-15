@@ -21,7 +21,7 @@ parser.add_argument('--user',
 
 parser.add_argument('--nghosts',
                     action='store',
-                    default=2,
+                    default=3,
                     help='specify the # of ghost cells')
 
 parser.add_argument('-hdf5',
@@ -58,11 +58,6 @@ parser.add_argument('-3d',
                     action='store_true',
                     default=False,
                     help='enable 3d')
-
-parser.add_argument('-testparts',
-                    action='store_true',
-                    default=False,
-                    help='disable EM pusher for the particles')
 
 parser.add_argument('-alb',
                     action='store_true',
@@ -117,8 +112,6 @@ if args['3d']:
 else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
 
-if args['testparts']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-Dtestparts '
 if args['ifport']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 if args['alb']:

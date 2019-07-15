@@ -48,8 +48,6 @@
   spec_max      = 1e2             # `g - 1` for massive and `e` for massless
   spec_num      = 100             # number of energy bins
 
-<boundaries>
-
 <plasma>
 
   ppc0          = 5

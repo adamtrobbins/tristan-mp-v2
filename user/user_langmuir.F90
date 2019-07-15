@@ -49,7 +49,6 @@ contains
   subroutine userInitParticles()
     implicit none
     real                :: nUP
-    integer             :: nUP_tot, nCS_tot
     integer             :: s, ti, tj, tk, p
     real                :: xp, kx, u_
     type(region)        :: back_region
@@ -58,17 +57,16 @@ contains
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    nUP = ppc0
-    nUP_tot = INT(0.5 * nUP * this_meshblock%ptr%sx * this_meshblock%ptr%sy)
+    nUP = 0.5 * ppc0
 
-    back_region%x_min = 0
-    back_region%x_max = this_meshblock%ptr%sx
-    back_region%y_min = 0
-    back_region%y_max = this_meshblock%ptr%sy
+    back_region%x_min = REAL(0)
+    back_region%x_max = REAL(this_meshblock%ptr%sx)
+    back_region%y_min = REAL(0)
+    back_region%y_max = REAL(this_meshblock%ptr%sy)
 
     kx = 2.0 * M_PI * REAL(nwaves) / REAL(global_mesh%sx)
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP_tot, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
     s = 1
     do ti = 1, species(s)%tile_nx
       do tj = 1, species(s)%tile_ny
