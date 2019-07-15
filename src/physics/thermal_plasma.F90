@@ -199,7 +199,7 @@ contains
     real, optional, intent(in)       :: shift_gamma
     integer, optional, intent(in)    :: shift_dir
     type(maxwellian)                 :: fill_maxwellian
-    integer                          :: n, s, spec_
+    integer                          :: num_part, n, s, spec_
     integer(kind=2)                  :: xi_, yi_, zi_
     real                             :: u_, v_, w_, dx_, dy_, dz_
     real                             :: x_, y_, z_, rnd
