@@ -74,8 +74,8 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          ex(i, j, k) = ex_norm * sin((i_glob - 0.5) * kx + (j_glob - 0.5) * ky)
-          ey(i, j, k) = ey_norm * sin((i_glob - 0.5) * kx + (j_glob - 0.5) * ky)
+          ex(i, j, k) = ex_norm * sin((i_glob) * kx + (j_glob - 0.5) * ky)
+          ey(i, j, k) = ey_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky)
           ez(i, j, k) = 0
           bx(i, j, k) = 0
           by(i, j, k) = 0

@@ -17,7 +17,6 @@ module m_domain
     integer             :: rnk          ! rank of the cpu that takes care of the current meshblock
     integer             :: x0, y0, z0   ! global coordinates (in cells) of the corner
     integer             :: sx, sy, sz   ! # of cells in each dimension
-    integer             :: nghost       ! # of ghost cells (FIX2)
     ! pointers to the neighboring meshblocks
     type(meshptr), dimension(-1:1,-1:1,-1:1) :: neighbor
   end type mesh
@@ -37,9 +36,8 @@ module m_domain
   type(mesh), allocatable :: new_meshblocks(:) !!! FIX
 
   ! boundary conditions for all dimensions
-  !   - boundary = 0: unmodelled
   !   - boundary = 1: periodic
-  !   - boundary = 2: outflow
+  !   - boundary = 0: open
   integer                            :: boundary_x, boundary_y, boundary_z
   integer                            :: sendrecv_neighbors
 end module m_domain
