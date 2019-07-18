@@ -12,7 +12,6 @@ module m_mainloop
   use m_exchangecurrents
   use m_particlelogistics
   use m_filtering
-  use m_adaptivelb
   use m_userfile
   use m_errors
   implicit none

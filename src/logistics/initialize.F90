@@ -11,7 +11,6 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
-  use m_adaptivelb
   use m_userfile
   use m_helpers
   use m_errors
