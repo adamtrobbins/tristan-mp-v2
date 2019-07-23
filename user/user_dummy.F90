@@ -12,7 +12,7 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  
+
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -69,8 +69,9 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
-  subroutine userDriveParticles()
+  subroutine userDriveParticles(step)
     implicit none
+    integer, optional, intent(in) :: step
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
@@ -88,12 +89,14 @@ contains
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
-  subroutine userParticleBoundaryConditions()
+  subroutine userParticleBoundaryConditions(step)
     implicit none
+    integer, optional, intent(in) :: step
   end subroutine userParticleBoundaryConditions
 
-  subroutine userFieldBoundaryConditions()
+  subroutine userFieldBoundaryConditions(step)
     implicit none
+    integer, optional, intent(in) :: step
   end subroutine userFieldBoundaryConditions
   !............................................................!
 end module m_userfile
