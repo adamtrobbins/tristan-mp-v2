@@ -6,7 +6,6 @@ module m_loadbalancing
   use m_errors
   use m_domain
   use m_particles
-  use m_particlelogistics
   use m_fields
   use m_helpers
   use m_staticlb
