@@ -8,6 +8,7 @@ module m_initialize
   use m_aux
   use m_readinput
   use m_domain
+  use m_loadbalancing
   use m_particles
   use m_particlelogistics
   use m_fields
@@ -19,6 +20,7 @@ module m_initialize
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
            & firstRankInitialize, initializeParticles,&
+           & initializeALB,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & assignNeighbor, initializeSimulation, checkEverything
@@ -33,19 +35,27 @@ contains
 
     call initializeCommunications()
       call printDiag((mpi_rank .eq. 0), "initializeCommunications()", .true.)
+    
+    call initializeLB()
+      call printDiag((mpi_rank .eq. 0), "initializeLB()", .true.)
 
     call distributeMeshblocks()
       call printDiag((mpi_rank .eq. 0), "distributeMeshblocks()", .true.)
+
+    ! static LB here
+    #ifdef SLB
+      call redistributeMeshblocksSLB(user_SLB_load_ptr)
+        call printDiag((mpi_rank .eq. 0), "redistributeMeshblocksSLB()", .true.)
+    #endif
 
     call initializeSimulation()
       call printDiag((mpi_rank .eq. 0), "initializeSimulation()", .true.)
 
     call initializeOutput()
-      call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
+      call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)  
 
     ! ADD possibility to define output function in userfile
     ! ADD hst file?
-    ! ADD possibility to define meshblock distribution in userfile
 
     call initializeFields()
       call printDiag((mpi_rank .eq. 0), "initializeFields()", .true.)
@@ -72,6 +82,47 @@ contains
 
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
+
+  subroutine initializeLB()
+    implicit none
+    ! initializing static LB variables
+    call getInput('static_load_balancing', 'in_x', slb_x, .false.) 
+    call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
+    call getInput('static_load_balancing', 'in_y', slb_y, .false.)
+    call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
+    #ifdef threeD
+      call getInput('static_load_balancing', 'in_z', slb_z, .false.)
+      call getInput('static_load_balancing', 'sz_min', slb_szmin, 10)
+    #else
+      slb_z = .false.
+      slb_szmin = -1
+    #endif
+    
+    ! initializing adaptive LB variables
+    call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
+    call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
+
+    call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
+    call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
+
+    call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
+    call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
+
+    call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
+    call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
+
+    #ifdef threeD
+      call getInput('adaptive_load_balancing', 'in_z', alb_z, .false.)
+      call getInput('adaptive_load_balancing', 'sz_min', alb_szmin, 10)
+      call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
+      call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
+    #else
+      alb_z = .false.
+      alb_szmin = -1
+      alb_int_z = -1
+      alb_start_z = -1
+    #endif
+  end subroutine initializeLB
 
   subroutine initializeOutput()
     implicit none
@@ -405,8 +456,8 @@ contains
     end do
     this_meshblock%ptr => meshblocks(mpi_rank + 1)
 
-    cntr = 0
     ! find the number of neighbors
+    cntr = 0
     do ind1 = -1, 1
       do ind2 = -1, 1
         do ind3 = -1, 1

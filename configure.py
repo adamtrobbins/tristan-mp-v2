@@ -114,9 +114,10 @@ else:
 
 if args['ifport']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
-if args['alb']:
+if args['alb'] and (not args['slb']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
 if args['slb']:
+    args['alb'] = False
     makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
