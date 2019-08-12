@@ -6,7 +6,6 @@ module m_finalize
   use m_domain
   use m_particles
   use m_fields
-  use m_loadbalancing
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
