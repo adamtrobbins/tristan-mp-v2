@@ -35,14 +35,13 @@ contains
 
     call initializeCommunications()
       call printDiag((mpi_rank .eq. 0), "initializeCommunications()", .true.)
+
+    call distributeMeshblocks()
+      call printDiag((mpi_rank .eq. 0), "distributeMeshblocks()", .true.)
     
     call initializeLB()
       call printDiag((mpi_rank .eq. 0), "initializeLB()", .true.)
 
-    call distributeMeshblocks()
-      call printDiag((mpi_rank .eq. 0), "distributeMeshblocks()", .true.)
-
-    ! static LB here
     #ifdef SLB
       call redistributeMeshblocksSLB(user_slb_load_ptr)
         call printDiag((mpi_rank .eq. 0), "redistributeMeshblocksSLB()", .true.)
@@ -82,6 +81,115 @@ contains
 
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
+  
+  subroutine initializeCommunications()
+    implicit none
+    integer :: ierr
+    call MPI_INIT(ierr)
+    call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
+    mpi_statsize = MPI_STATUS_SIZE
+    if (mpi_size .ne. sizex * sizey * sizez) then
+      call throwError('ERROR: # of processors is not equal to the number of processors from input')
+    end if
+  end subroutine initializeCommunications
+
+  subroutine initializeDomain()
+    implicit none
+    call getInput('node_configuration', 'sizex', sizex)
+    call getInput('node_configuration', 'sizey', sizey)
+    #ifdef threeD
+      call getInput('node_configuration', 'sizez', sizez)
+    #else
+      sizez = 1
+    #endif
+    global_mesh%x0 = 0
+    global_mesh%y0 = 0
+    global_mesh%z0 = 0
+    call getInput('grid', 'mx0', global_mesh%sx)
+    call getInput('grid', 'my0', global_mesh%sy)
+    #ifdef threeD
+      call getInput('grid', 'mz0', global_mesh%sz)
+    #else
+      global_mesh%sz = 1
+    #endif
+
+    if ((modulo(global_mesh%sx, sizex) .ne. 0) .and.&
+      & (modulo(global_mesh%sy, sizey) .ne. 0) .and.&
+      & (modulo(global_mesh%sz, sizez) .ne. 0)) then
+      call throwError('ERROR: grid size is not evenly divisible by the number of cores')
+    end if
+
+    call getInput('grid', 'boundary_x', boundary_x, 1)
+    call getInput('grid', 'boundary_y', boundary_y, 1)
+    #ifdef threeD
+      call getInput('grid', 'boundary_z', boundary_z, 1)
+    #else
+      boundary_z = 0
+    #endif
+  end subroutine initializeDomain
+
+  subroutine distributeMeshblocks()
+    implicit none
+    integer, dimension(3) :: ind, m
+    integer               :: rnk, ind1, ind2, ind3, cntr
+    m(1) = global_mesh%sx / sizex
+    m(2) = global_mesh%sy / sizey
+    m(3) = global_mesh%sz / sizez
+    allocate(meshblocks(mpi_size))
+    do rnk = 0, mpi_size - 1
+      ind = rnkToInd(rnk)
+      meshblocks(rnk + 1)%rnk = rnk
+      ! find sizes and corner coords
+      meshblocks(rnk + 1)%sx = m(1)
+      meshblocks(rnk + 1)%sy = m(2)
+      meshblocks(rnk + 1)%sz = m(3)
+      meshblocks(rnk + 1)%x0 = ind(1) * m(1) + global_mesh%x0
+      meshblocks(rnk + 1)%y0 = ind(2) * m(2) + global_mesh%y0
+      meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
+
+      if (.not. allocated(new_meshblocks)) allocate(new_meshblocks(mpi_size))
+
+      ! assign neighbors
+      do ind1 = -1, 1
+        do ind2 = -1, 1
+          do ind3 = -1, 1
+            call assignNeighbor(rnk, (/ ind1, ind2, ind3/))
+          end do
+        end do
+      end do
+    end do
+    this_meshblock%ptr => meshblocks(mpi_rank + 1)
+
+    ! find the number of neighbors
+    cntr = 0
+    do ind1 = -1, 1
+      do ind2 = -1, 1
+        do ind3 = -1, 1
+          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+          #ifndef threeD
+            if (ind3 .ne. 0) cycle
+          #endif
+          if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+          cntr = cntr + 1
+        end do
+      end do
+    end do
+    sendrecv_neighbors = cntr
+  end subroutine distributeMeshblocks
+
+  subroutine assignNeighbor(rnk, inds1)
+    implicit none
+    integer, intent(in)       :: rnk, inds1(3)
+    integer                   :: rnk2, inds0(3)
+    inds0 = rnkToInd(rnk)
+    rnk2 = indToRnk([inds0(1) + inds1(1), inds0(2) + inds1(2), inds0(3) + inds1(3)])
+    if (rnk2 .eq. -1) then
+      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
+    else
+      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
+    end if
+  end subroutine assignNeighbor
 
   subroutine initializeLB()
     implicit none
@@ -375,116 +483,6 @@ contains
                   & 0:this_meshblock%ptr%sy - 1,&
                   & 0:this_meshblock%ptr%sz - 1))
   end subroutine initializeFields
-
-  subroutine initializeCommunications()
-    implicit none
-    integer :: ierr
-    call MPI_INIT(ierr)
-    call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
-    mpi_statsize = MPI_STATUS_SIZE
-    if (mpi_size .ne. sizex * sizey * sizez) then
-      call throwError('ERROR: # of processors is not equal to the number of processors from input')
-    end if
-  end subroutine initializeCommunications
-
-  subroutine initializeDomain()
-    implicit none
-    call getInput('node_configuration', 'sizex', sizex)
-    call getInput('node_configuration', 'sizey', sizey)
-    #ifdef threeD
-      call getInput('node_configuration', 'sizez', sizez)
-    #else
-      sizez = 1
-    #endif
-    global_mesh%x0 = 0
-    global_mesh%y0 = 0
-    global_mesh%z0 = 0
-    call getInput('grid', 'mx0', global_mesh%sx)
-    call getInput('grid', 'my0', global_mesh%sy)
-    #ifdef threeD
-      call getInput('grid', 'mz0', global_mesh%sz)
-    #else
-      global_mesh%sz = 1
-    #endif
-
-    if ((modulo(global_mesh%sx, sizex) .ne. 0) .and.&
-      & (modulo(global_mesh%sy, sizey) .ne. 0) .and.&
-      & (modulo(global_mesh%sz, sizez) .ne. 0)) then
-      call throwError('ERROR: grid size is not evenly divisible by the number of cores')
-    end if
-
-    call getInput('grid', 'boundary_x', boundary_x, 1)
-    call getInput('grid', 'boundary_y', boundary_y, 1)
-    #ifdef threeD
-      call getInput('grid', 'boundary_z', boundary_z, 1)
-    #else
-      boundary_z = 0
-    #endif
-  end subroutine initializeDomain
-
-  subroutine distributeMeshblocks()
-    implicit none
-    integer, dimension(3) :: ind, m
-    integer               :: rnk, ind1, ind2, ind3, cntr
-    m(1) = global_mesh%sx / sizex
-    m(2) = global_mesh%sy / sizey
-    m(3) = global_mesh%sz / sizez
-    allocate(meshblocks(mpi_size))
-    do rnk = 0, mpi_size - 1
-      ind = rnkToInd(rnk)
-      meshblocks(rnk + 1)%rnk = rnk
-      ! find sizes and corner coords
-      meshblocks(rnk + 1)%sx = m(1)
-      meshblocks(rnk + 1)%sy = m(2)
-      meshblocks(rnk + 1)%sz = m(3)
-      meshblocks(rnk + 1)%x0 = ind(1) * m(1) + global_mesh%x0
-      meshblocks(rnk + 1)%y0 = ind(2) * m(2) + global_mesh%y0
-      meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
-
-      if (.not. allocated(new_meshblocks)) allocate(new_meshblocks(mpi_size))
-      new_meshblocks(:) = meshblocks(:)
-
-      ! assign neighbors
-      do ind1 = -1, 1
-        do ind2 = -1, 1
-          do ind3 = -1, 1
-            call assignNeighbor(rnk, (/ ind1, ind2, ind3/))
-          end do
-        end do
-      end do
-    end do
-    this_meshblock%ptr => meshblocks(mpi_rank + 1)
-
-    ! find the number of neighbors
-    cntr = 0
-    do ind1 = -1, 1
-      do ind2 = -1, 1
-        do ind3 = -1, 1
-          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifndef threeD
-            if (ind3 .ne. 0) cycle
-          #endif
-          if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
-          cntr = cntr + 1
-        end do
-      end do
-    end do
-    sendrecv_neighbors = cntr
-  end subroutine distributeMeshblocks
-
-  subroutine assignNeighbor(rnk, inds1)
-    implicit none
-    integer, intent(in)       :: rnk, inds1(3)
-    integer                   :: rnk2, inds0(3)
-    inds0 = rnkToInd(rnk)
-    rnk2 = indToRnk([inds0(1) + inds1(1), inds0(2) + inds1(2), inds0(3) + inds1(3)])
-    if (rnk2 .eq. -1) then
-      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
-    else
-      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
-    end if
-  end subroutine assignNeighbor
 
   subroutine firstRankInitialize()
     ! create output/restart directories

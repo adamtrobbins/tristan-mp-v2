@@ -51,14 +51,26 @@ contains
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
-    userSLBload = 1e2 * x_glob + 10
+    real                        :: radius
+    radius = sqrt((dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2) + 1.0
+    userSLBload = 10.0 / radius
     return
   end function
 
   subroutine userInitParticles()
     implicit none
+    type(region) :: fill_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
+
+    fill_region%x_min = REAL(0)
+    fill_region%y_min = REAL(0)
+    fill_region%x_max = REAL(this_meshblock%ptr%sx)
+    fill_region%y_max = REAL(this_meshblock%ptr%sy)
+
+    ! now filling region with plasma
+    !     upstream:
+    call fillRegionWithThermalPlasma(fill_region, (/1, 2/), 2, 0.5 * ppc0, 1e-4)
   end subroutine userInitParticles
 
   subroutine userInitFields()

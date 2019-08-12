@@ -22,6 +22,7 @@ contains
     implicit none
     integer, intent(out) :: load_SLB
     integer              :: i, j, k
+    real                 :: load_real
     real                 :: x_glob, y_glob, z_glob
     real                 :: sx_glob, sy_glob, sz_glob
 
@@ -31,19 +32,20 @@ contains
     sy_glob = REAL(global_mesh%sy)
     sz_glob = REAL(global_mesh%sz)
 
-    load_SLB = 0
+    load_real = 0.0
     do i = 0, this_meshblock%ptr%sx - 1
       x_glob = REAL(i + this_meshblock%ptr%x0)
       do j = 0, this_meshblock%ptr%sy - 1
         y_glob = REAL(j + this_meshblock%ptr%y0)
         do k = 0, this_meshblock%ptr%sz - 1
           z_glob = REAL(k + this_meshblock%ptr%z0)
-          load_SLB = load_SLB +&
-            & INT(spat_load_ptr(x_glob = x_glob, y_glob = y_glob, z_glob = z_glob,&
-                              & dummy1 = sx_glob, dummy2 = sy_glob, dummy3 = sz_glob))
+          load_real = load_real +&
+            & spat_load_ptr(x_glob = x_glob, y_glob = y_glob, z_glob = z_glob,&
+                          & dummy1 = sx_glob, dummy2 = sy_glob, dummy3 = sz_glob)
         end do
       end do
     end do
+    load_SLB = INT(load_real)
   end subroutine computeLoadSLB
 
 end module m_staticlb
