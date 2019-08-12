@@ -190,8 +190,8 @@ contains
 
       i_start = 0; j_start = 0; k_start = 0
     else
-      offset_i = FLOOR(REAL(this_x0) / REAL(output_istep))
-      offset_j = FLOOR(REAL(this_y0) / REAL(output_istep))
+      offset_i = CEILING(REAL(this_x0) / REAL(output_istep))
+      offset_j = CEILING(REAL(this_y0) / REAL(output_istep))
 
       i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
       i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
@@ -201,10 +201,10 @@ contains
       n_i = (i_end - i_start) / output_istep
       n_j = (j_end - j_start) / output_istep
 
-      glob_n_i = FLOOR(REAL(global_mesh%sx) / REAL(output_istep))
+      glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_istep))
       glob_n_i = MAX(1, glob_n_i)
 
-      glob_n_j = FLOOR(REAL(global_mesh%sy) / REAL(output_istep))
+      glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_istep))
       glob_n_j = MAX(1, glob_n_j)
 
       #ifndef threeD
@@ -212,11 +212,11 @@ contains
         offset_k = 0; n_k = 0
         glob_n_k = 1
       #else
-        offset_k = FLOOR(REAL(this_z0) / REAL(output_istep))
+        offset_k = CEILING(REAL(this_z0) / REAL(output_istep))
         k_start = CEILING(REAL(this_z0) / REAL(output_istep)) * output_istep - this_z0
         k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_istep)) - 1) * output_istep - this_z0
         n_k = (k_end - k_start) / output_istep
-        glob_n_k = FLOOR(REAL(global_mesh%sz) / REAL(output_istep))
+        glob_n_k = CEILING(REAL(global_mesh%sz) / REAL(output_istep))
         glob_n_k = MAX(1, glob_n_k)
       #endif
     end if
