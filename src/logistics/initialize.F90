@@ -20,7 +20,7 @@ module m_initialize
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
            & firstRankInitialize, initializeParticles,&
-           & initializeALB,&
+           & initializeLB,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & assignNeighbor, initializeSimulation, checkEverything
