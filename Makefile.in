@@ -25,11 +25,11 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)objects/particles.F90 \
              $(SRC_DIR)objects/fields.F90 \
              $(SRC_DIR)tools/helpers.F90 \
+             $(SRC_DIR)logistics/finalize.F90 \
              $(SRC_DIR)tools/error_handling.F90 \
              $(SRC_DIR)load_balancing/static_lb.F90 \
              $(SRC_DIR)load_balancing/adaptive_lb.F90 \
              $(SRC_DIR)load_balancing/loadbalancing.F90 \
-             $(SRC_DIR)logistics/finalize.F90 \
              $(SRC_DIR)logistics/particle_logistics.F90 \
              $(SRC_DIR)physics/thermal_plasma.F90 \
              $(SRC_DIR)algorithms/particle_mover.F90 \

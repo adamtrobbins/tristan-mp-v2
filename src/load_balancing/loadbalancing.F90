@@ -12,26 +12,6 @@ module m_loadbalancing
   use m_adaptivelb
   implicit none
 
-  ! global constants for SLB
-  logical :: slb_x, slb_y, slb_z
-  integer :: slb_sxmin, slb_symin, slb_szmin
-  
-  ! global constants for ALB
-  logical :: alb_x, alb_y, alb_z
-  integer :: alb_sxmin, alb_symin, alb_szmin
-  integer :: alb_int_x, alb_int_y, alb_int_z
-  integer :: alb_start_x, alb_start_y, alb_start_z
-
-  ! load per each MPI process
-  integer :: lb_load
-
-  ! array of loads per each MPI process
-  integer, allocatable :: lb_load_glob(:)
-  ! array of loads per each slab in each direction
-  integer, allocatable :: lb_group_x0(:), lb_group_x1(:),&
-                        & lb_group_y0(:), lb_group_y1(:),&
-                        & lb_group_z0(:), lb_group_z1(:)
-
   !--- PRIVATE variables/functions -------------------------------!
   private :: metaRedistInX, metaRedistInY, metaRedistInZ,&
            & accumulateLoads, balanceLoad
@@ -45,6 +25,7 @@ contains
     procedure (spatialDistribution), pointer, intent(in) :: spat_load_ptr
     integer :: ntimes
     integer :: nit
+    ntimes = 10
     
     do nit = 1, ntimes
       if (slb_x) then

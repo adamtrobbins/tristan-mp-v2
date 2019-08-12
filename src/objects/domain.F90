@@ -33,11 +33,33 @@ module m_domain
   type(mesh)                         :: global_mesh     ! global mesh parameters
   type(mesh), allocatable, target    :: meshblocks(:)   ! meshblocks for all cpus
 
-  type(mesh), allocatable :: new_meshblocks(:) !!! FIX
-
   ! boundary conditions for all dimensions
   !   - boundary = 1: periodic
   !   - boundary = 0: open
   integer                            :: boundary_x, boundary_y, boundary_z
   integer                            :: sendrecv_neighbors
+  
+  ! loadbalancing variables
+  type(mesh), allocatable :: new_meshblocks(:)
+
+  ! global constants for SLB
+  logical :: slb_x, slb_y, slb_z
+  integer :: slb_sxmin, slb_symin, slb_szmin
+  
+  ! global constants for ALB
+  logical :: alb_x, alb_y, alb_z
+  integer :: alb_sxmin, alb_symin, alb_szmin
+  integer :: alb_int_x, alb_int_y, alb_int_z
+  integer :: alb_start_x, alb_start_y, alb_start_z
+
+  ! load per each MPI process
+  integer :: lb_load
+
+  ! array of loads per each MPI process
+  integer, allocatable :: lb_load_glob(:)
+  ! array of loads per each slab in each direction
+  integer, allocatable :: lb_group_x0(:), lb_group_x1(:),&
+                        & lb_group_y0(:), lb_group_y1(:),&
+                        & lb_group_z0(:), lb_group_z1(:)
+
 end module m_domain
