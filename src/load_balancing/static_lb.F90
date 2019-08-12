@@ -23,8 +23,13 @@ contains
     integer, intent(out) :: load_SLB
     integer              :: i, j, k
     real                 :: x_glob, y_glob, z_glob
+    real                 :: sx_glob, sy_glob, sz_glob
 
     procedure (spatialDistribution), pointer, intent(in) :: spat_load_ptr
+    
+    sx_glob = REAL(global_mesh%sx)
+    sy_glob = REAL(global_mesh%sy)
+    sz_glob = REAL(global_mesh%sz)
 
     load_SLB = 0
     do i = 0, this_meshblock%ptr%sx - 1
@@ -35,7 +40,7 @@ contains
           z_glob = REAL(k + this_meshblock%ptr%z0)
           load_SLB = load_SLB +&
             & INT(spat_load_ptr(x_glob = x_glob, y_glob = y_glob, z_glob = z_glob,&
-                              & dummy1 = global_mesh%sx, dummy2 = global_mesh%sy, dummy3 = global_mesh%sz))
+                              & dummy1 = sx_glob, dummy2 = sy_glob, dummy3 = sz_glob))
         end do
       end do
     end do
