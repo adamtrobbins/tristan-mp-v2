@@ -136,7 +136,7 @@ print('  Userfile:                ' + args['user'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
-print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
+print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
 print('  IFPORT mkdir:            ' + ('ON' if args['ifport'] else 'OFF'))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
