@@ -156,10 +156,12 @@ contains
 
   subroutine metaRedistInY(symin)
     implicit none
+    integer, intent(in)   :: symin
   end subroutine metaRedistInY
 
   subroutine metaRedistInZ(szmin)
     implicit none
+    integer, intent(in)   :: szmin
   end subroutine metaRedistInZ
 
 end module m_loadbalancing
