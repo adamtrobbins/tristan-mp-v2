@@ -34,7 +34,9 @@ contains
         y_glob = REAL(j + this_meshblock%ptr%y0)
         do k = 0, this_meshblock%ptr%sz - 1
           z_glob = REAL(k + this_meshblock%ptr%z0)
-          load_SLB = load_SLB + INT(spat_load_ptr(x_glob=x_glob, y_glob=y_glob, z_glob=z_glob))
+          load_SLB = load_SLB +&
+            & INT(spat_load_ptr(x_glob = x_glob, y_glob = y_glob, z_glob = z_glob,&
+                              & dummy1 = global_mesh%sx, dummy2 = global_mesh%sy, dummy3 = global_mesh%sz))
         end do
       end do
     end do

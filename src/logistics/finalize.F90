@@ -31,6 +31,14 @@ contains
     if (allocated(meshblocks)) deallocate(meshblocks)
     if (allocated(new_meshblocks)) deallocate(new_meshblocks)
     nullify(this_meshblock%ptr)
+    ! SLB/ALB arrays
+    if (allocated(lb_load_glob)) deallocate(lb_load_glob)
+    if (allocated(lb_group_x0)) deallocate(lb_group_x0)
+    if (allocated(lb_group_x1)) deallocate(lb_group_x1)
+    if (allocated(lb_group_y0)) deallocate(lb_group_y0)
+    if (allocated(lb_group_y1)) deallocate(lb_group_y1)
+    if (allocated(lb_group_z0)) deallocate(lb_group_z0)
+    if (allocated(lb_group_z1)) deallocate(lb_group_z1)
 
     ! dealloc particle species
     if (allocated(species)) deallocate(species)

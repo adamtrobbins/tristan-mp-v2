@@ -656,27 +656,27 @@ contains
         select case (trim(dom_vars(d)))
           case('x0')
             do rnk = 0, mpi_size - 1
-              domain_data(rnk + 1) = new_meshblocks(rnk + 1)%x0
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%x0
             end do
           case('y0')
             do rnk = 0, mpi_size - 1
-              domain_data(rnk + 1) = new_meshblocks(rnk + 1)%y0
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%y0
             end do
           case('z0')
             do rnk = 0, mpi_size - 1
-              domain_data(rnk + 1) = new_meshblocks(rnk + 1)%z0
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%z0
             end do
           case('sx')
             do rnk = 0, mpi_size - 1
-              domain_data(rnk + 1) = new_meshblocks(rnk + 1)%sx
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%sx
             end do
           case('sy')
             do rnk = 0, mpi_size - 1
-              domain_data(rnk + 1) = new_meshblocks(rnk + 1)%sy
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%sy
             end do
           case('sz')
             do rnk = 0, mpi_size - 1
-              domain_data(rnk + 1) = new_meshblocks(rnk + 1)%sz
+              domain_data(rnk + 1) = meshblocks(rnk + 1)%sz
             end do
           case default
             call throwError('ERROR: unrecognized `dom_vars`: `'//trim(dom_vars(d))//'`')
