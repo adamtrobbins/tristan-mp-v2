@@ -44,7 +44,7 @@ contains
 
     ! static LB here
     #ifdef SLB
-      call redistributeMeshblocksSLB(user_SLB_load_ptr)
+      call redistributeMeshblocksSLB(user_slb_load_ptr)
         call printDiag((mpi_rank .eq. 0), "redistributeMeshblocksSLB()", .true.)
     #endif
 

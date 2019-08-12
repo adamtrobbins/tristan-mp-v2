@@ -11,6 +11,8 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
+  procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
+
   !--- PRIVATE variables -----------------------------------------!
 
   !...............................................................!
@@ -25,6 +27,7 @@ contains
     call userReadInput()
     call userInitParticles()
     call userInitFields()
+    user_slb_load_ptr => userSLBload
   end subroutine userInitialize
 
   !--- initialization -----------------------------------------!
