@@ -70,10 +70,6 @@ contains
     ! dealloc field output
     if (allocated(lg_arr)) deallocate(lg_arr)
     if (allocated(sm_arr)) deallocate(sm_arr)
-
-    ! dealloc radiation spectra
-    if (allocated(rad_spectra)) deallocate(rad_spectra)
-    if (allocated(glob_rad_spectra)) deallocate(glob_rad_spectra)
   end subroutine deallocateArrays
 
   subroutine finalizeCommunications()
