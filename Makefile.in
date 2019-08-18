@@ -31,6 +31,7 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)load_balancing/static_lb.F90 \
              $(SRC_DIR)load_balancing/adaptive_lb.F90 \
              $(SRC_DIR)load_balancing/loadbalancing.F90 \
+             $(SRC_DIR)physics/radiation.F90 \
              $(SRC_DIR)physics/thermal_plasma.F90 \
              $(SRC_DIR)algorithms/particle_mover.F90 \
              $(SRC_DIR)algorithms/field_solver.F90 \
@@ -65,7 +66,7 @@ precomp:
 	$(foreach fl, $(SRC_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=_.F90)));)
 
 $(EXECUTABLE):$(OBJ_FILES)
-		$(FC) $(FFLAGS) $(PFLAGS) -o $@ $(OBJ_FILES)
+	$(FC) $(FFLAGS) $(PFLAGS) -o $@ $(OBJ_FILES)
 
 $(OBJ_FILES):$(PREC_SRC_FILES)
 

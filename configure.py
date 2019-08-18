@@ -14,6 +14,9 @@ parser = argparse.ArgumentParser()
 user_directory = 'user/'
 user_choices = glob.glob(user_directory + '*.F90')
 user_choices = [choice[len(user_directory):-4] for choice in user_choices]
+
+rad_choices = ['no', 'sync', 'ic', 'sync+ic']
+
 parser.add_argument('--user',
                     default='user_default',
                     choices=user_choices,
@@ -69,6 +72,16 @@ parser.add_argument('-slb',
                     default=False,
                     help='enable static load balancing')
 
+parser.add_argument('--radiation',
+                    default='no',
+                    choices=rad_choices,
+                    help='choose radiation mechanism')
+
+parser.add_argument('-emit', 
+                    action='store_true', 
+                    default=False, 
+                    help='enable photon emission')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -120,6 +133,17 @@ if args['slb']:
     args['alb'] = False
     makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
+if args['radiation'] != 'no':
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
+
+if 'sync' in args['radiation']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCRAD '
+if 'ic' in args['radiation']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DICRAD '
+
+if args['emit'] and args['radiation'] != 'no':
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
+
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
 # Step 3. Create new files, finish up
@@ -134,6 +158,8 @@ with open(makefile_output, 'w') as current_file:
 print('Your TRISTAN distribution has now been configured with the following options:')
 print('  Userfile:                ' + args['user'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
+print('  Cooling:                 ' + args['radiation'])
+print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
