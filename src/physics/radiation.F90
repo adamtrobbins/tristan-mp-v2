@@ -72,5 +72,5 @@ contains
       if (spec_index .gt. spec_num) spec_index = spec_num
     end if
     rad_spectra(spec_index) = rad_spectra(spec_index) + tau_rad
-  subroutine particleRadiate
+  end subroutine particleRadiate
 end module m_radiation
