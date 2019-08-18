@@ -107,8 +107,8 @@ contains
      do ti = 1, species(s)%tile_nx
        do tj = 1, species(s)%tile_ny
          do tk = 1, species(s)%tile_nz
-           !$omp simd
-           !dir$ vector aligned
+           ! !$omp simd
+           ! !dir$ vector aligned
            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
@@ -142,6 +142,13 @@ contains
                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
      glob_spectra(s,:) = recv_spec(:)
     end do
+
+    if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+      send_spec(:) = rad_spectra(:)
+      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+      glob_rad_spectra(:) = recv_spec(:)
+    end if
 
     if (allocated(spectra)) deallocate(spectra)
     if (allocated(send_spec)) deallocate(send_spec)
@@ -616,6 +623,28 @@ contains
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
       end do
+
+      if (allocated(glob_rad_spectra)) then
+        ! writing bins:
+        dsetname = 'erad'
+        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                       & dset_id, error)
+        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
+        call h5dclose_f(dset_id, error)
+        call h5sclose_f(dspace_id, error)
+
+        ! writing spectra:
+        dsetname = 'nrad'
+        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                       & dset_id, error)
+        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(:), data_dims, error)
+        call h5dclose_f(dset_id, error)
+        call h5sclose_f(dspace_id, error)
+        rad_spectra(:) = 0.0
+        glob_rad_spectra(:) = 0.0
+      end if
 
       ! Close the file
       call h5fclose_f(file_id, error)
