@@ -10,6 +10,7 @@ module m_writeoutput
   use m_domain
   use m_particles
   use m_fields
+  use m_radiation
   use m_helpers
   use m_exchangearray
   implicit none

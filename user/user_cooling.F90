@@ -14,7 +14,8 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-
+  real      :: upstream_T
+  private   :: upstream_T
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!

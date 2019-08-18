@@ -498,8 +498,8 @@ contains
 
     rad_beta_c = sqrt(1.0 - 1.0 / rad_gamma_c**2)
     rad_beta_rad = sqrt(1.0 - 1.0 / rad_gamma_rad**2)
-    over_rad_beta_c = 1.0 / rad_beta_c
-    over_rad_beta_rad = 1.0 / rad_beta_rad
+    rad_over_beta_c = 1.0 / rad_beta_c
+    rad_over_beta_rad = 1.0 / rad_beta_rad
 
     if (.not. allocated(rad_spectra)) allocate(rad_spectra(spec_num))
     if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(spec_num))

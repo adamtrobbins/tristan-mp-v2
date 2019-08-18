@@ -6,10 +6,10 @@ module m_radiation
   use m_errors
   implicit none
 
-  real :: rad_gamma_c, rad_gamma_rad, rad_beta_rec
-  real :: rad_beta_c, rad_beta_rad,&
-        & rad_over_beta_c, rad_over_beta_rad
-  real :: rad_spectra(:), glob_rad_spectra(:)
+  real        :: rad_gamma_c, rad_gamma_rad, rad_beta_rec
+  real        :: rad_beta_c, rad_beta_rad,&
+              & rad_over_beta_c, rad_over_beta_rad
+  real, allocatable :: rad_spectra(:), glob_rad_spectra(:)
 
   !--- PRIVATE variables/functions -------------------------------!
   !...............................................................!
@@ -52,8 +52,8 @@ contains
     kappaR_y = (-bz * e_bar_x + bx * e_bar_z) + (ey * beta_dot_e)
     kappaR_z = (by * e_bar_x - bx * e_bar_y) + (ez * beta_dot_e)
     
-    tau_rad = (rad_beta_rec * rad_beta_c * over_rad_beta_rad) * (rad_gamma_c / rad_gamma_rad)**2 * (chiR * B_norm * CCINV)
-    eph_rad = (gci / rad_gamma_c)**2 * chiR * over_rad_beta_c
+    tau_rad = (rad_beta_rec * rad_beta_c * rad_over_beta_rad) * (rad_gamma_c / rad_gamma_rad)**2 * (chiR * B_norm * CCINV)
+    eph_rad = (gci / rad_gamma_c)**2 * chiR * rad_over_beta_c
 
     dummy_ = rad_beta_rec * rad_over_beta_rad / (rad_gamma_rad**2 * CC)
 
