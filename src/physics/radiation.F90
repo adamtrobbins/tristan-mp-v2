@@ -45,7 +45,7 @@ contains
     e_bar_sq = e_bar_x**2 + e_bar_y**2 + e_bar_z**2
     beta_dot_e = (ex * uci + ey * vci + ez * wci) * over_gci
 
-    chiR_sq = e_bar_sq - beta_dot_E**2
+    chiR_sq = abs(e_bar_sq - beta_dot_E**2)
     chiR = sqrt(chiR_sq)
 
     kappaR_x = (bz * e_bar_y - by * e_bar_z) + (ex * beta_dot_e)
@@ -72,5 +72,8 @@ contains
       if (spec_index .gt. spec_num) spec_index = spec_num
     end if
     rad_spectra(spec_index) = rad_spectra(spec_index) + tau_rad
+    if (isnan(tau_rad) .or. isnan(rad_spectra(spec_index))) then
+      print *, "WRONG", spec_index, tau_rad, chiR, chiR_sq
+    end if
   end subroutine particleRadiate
 end module m_radiation

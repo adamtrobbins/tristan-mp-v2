@@ -67,7 +67,8 @@ contains
     integer                   :: s, i, ti, tj, tk, p, spec_index
     integer                   :: ierr
     integer, allocatable, dimension(:,:)  :: spectra
-    integer, allocatable, dimension(:)    :: send_spec, recv_spec
+    integer, allocatable, dimension(:)    :: send_spec_int, recv_spec_int
+    real, allocatable, dimension(:)       :: send_spec_real, recv_spec_real
     ! initialize particle variables
     n_prtl_vars = 8
     prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ', &
@@ -101,7 +102,8 @@ contains
       allocate(glob_spectra(nspec, spec_num))
     end if
     allocate(spectra(nspec, spec_num))
-    allocate(send_spec(spec_num), recv_spec(spec_num))
+    allocate(send_spec_int(spec_num), recv_spec_int(spec_num))
+    allocate(send_spec_real(spec_num), recv_spec_real(spec_num))
 
     spectra(:,:) = 0
     do s = 1, nspec
@@ -138,22 +140,26 @@ contains
 
     ! send to root rank
     do s = 1, nspec
-     send_spec(:) = spectra(s,:)
-     call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_INTEGER,&
+     send_spec_int(:) = spectra(s,:)
+     call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-     glob_spectra(s,:) = recv_spec(:)
+     glob_spectra(s,:) = recv_spec_int(:)
     end do
-
+    
+    ! compute radiation spectra
     if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
-      send_spec(:) = rad_spectra(:)
-      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+      send_spec_real(:) = rad_spectra(:)
+      call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
                     & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-      glob_rad_spectra(:) = recv_spec(:)
+      glob_rad_spectra(:) = recv_spec_real(:)
+      rad_spectra(1:spec_num) = 0.0
     end if
 
     if (allocated(spectra)) deallocate(spectra)
-    if (allocated(send_spec)) deallocate(send_spec)
-    if (allocated(recv_spec)) deallocate(recv_spec)
+    if (allocated(send_spec_int)) deallocate(send_spec_int)
+    if (allocated(recv_spec_int)) deallocate(recv_spec_int)
+    if (allocated(send_spec_real)) deallocate(send_spec_real)
+    if (allocated(recv_spec_real)) deallocate(recv_spec_real)
   end subroutine initializeOutput
 
   #ifdef HDF5
@@ -627,7 +633,7 @@ contains
 
       if (allocated(glob_rad_spectra)) then
         ! writing bins:
-        dsetname = 'erad'
+        dsetname = 'er'
         call h5screate_simple_f(datarank, data_dims, dspace_id, error)
         call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
                        & dset_id, error)
@@ -636,15 +642,14 @@ contains
         call h5sclose_f(dspace_id, error)
 
         ! writing spectra:
-        dsetname = 'nrad'
+        dsetname = 'nr'
         call h5screate_simple_f(datarank, data_dims, dspace_id, error)
         call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
                        & dset_id, error)
         call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(:), data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
-        rad_spectra(:) = 0.0
-        glob_rad_spectra(:) = 0.0
+        glob_rad_spectra(1:spec_num) = 0.0
       end if
 
       ! Close the file

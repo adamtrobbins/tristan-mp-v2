@@ -83,6 +83,12 @@
   sigma         = 4
   c_omp         = 10
 
+<radiation>
+
+  gamma_c       = 10
+  gamma_rad     = 5
+  beta_rec      = 0.1
+
 <particles>
 
   nspec         = 2
