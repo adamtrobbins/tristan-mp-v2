@@ -38,13 +38,13 @@ def getFields(fname, nodes = False):
 def getSpectra(fname):
     with h5py.File(fname, 'r') as file:
         keys = list(file.keys())
-        species = np.unique([int(s) for s in ''.join(keys) if s.isdigit()])
-        nspec = len(species)
+        spectra = np.unique([s for s in ''.join(keys) if ((s is not 'e') and (s is not 'n'))])
         data = {}
-        for s in range(nspec):
-            data[str(s + 1)] = {}
-            (data[str(s + 1)])['bn'] = np.exp(file['e' + str(s + 1)][:])
-            (data[str(s + 1)])['cnt'] = file['n' + str(s + 1)][:]
+        for sp in spectra:
+            data[sp] = {}
+            (data[sp])['bn'] = np.exp(file['e' + sp][:])
+            (data[sp])['cnt'] = file['n' + sp][:]
+    return data
 
 def getDomains(fname):
     with h5py.File(fname, 'r') as file:
