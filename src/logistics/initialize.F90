@@ -495,14 +495,19 @@ contains
     call getInput('radiation', 'gamma_c', rad_gamma_c, 10.0)
     call getInput('radiation', 'gamma_rad', rad_gamma_rad, 10.0)
     call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
-
-    rad_beta_c = sqrt(1.0 - 1.0 / rad_gamma_c**2)
-    rad_beta_rad = sqrt(1.0 - 1.0 / rad_gamma_rad**2)
-    rad_over_beta_c = 1.0 / rad_beta_c
-    rad_over_beta_rad = 1.0 / rad_beta_rad
+    #ifdef EMIT
+      call getInput('radiation', 'photon_ind', rad_photon_ind, 3)
+      if ((nspec .lt. rad_photon_ind) .or.&
+        & (species(rad_photon_ind)%ch_sp .ne. 0) .or.&
+        & (species(rad_photon_ind)%m_sp .ne. 0)) then
+        call throwError('Wrong choice of `photon_ind`.') 
+      end if 
+    #endif
 
     if (.not. allocated(rad_spectra)) allocate(rad_spectra(spec_num))
     if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(spec_num))
+    rad_spectra(:) = 0.0
+    glob_rad_spectra(:) = 0.0
   end subroutine initializeRadiation
 
   subroutine firstRankInitialize()

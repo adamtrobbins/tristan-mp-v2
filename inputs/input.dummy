@@ -85,13 +85,14 @@
 
 <radiation>
 
-  gamma_c       = 10
-  gamma_rad     = 5
-  beta_rec      = 0.1
+  gamma_c       = 10            # `gamma_c` parameter (determines synchrotron peak energy)
+  gamma_rad     = 5             # `gamma_rad` parameter (determines cooling rate)
+  beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_rad`
+  photon_ind    = 3             # index of species to which to emit photons
 
 <particles>
 
-  nspec         = 2
+  nspec         = 3
 
   maxptl1       = 1e6           # max number of particles per core
   m1            = 1
@@ -100,5 +101,9 @@
   maxptl2       = 1e6           # max number of particles per core
   m2            = 1
   ch2           = 1
+  
+  maxptl3       = 1e6           # max number of particles per core
+  m3            = 0
+  ch3           = 0
 
 <problem>

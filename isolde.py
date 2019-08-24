@@ -15,6 +15,7 @@ def getParticles(fname):
             data[str(s + 1)] = {}
             for i in range(nvars):
                 (data[str(s + 1)])[variables[i]] = file[variables[i] + str(s + 1)][:]
+    return data
 
 def getFields(fname, nodes = False):
     # hdf5 file
@@ -23,6 +24,7 @@ def getFields(fname, nodes = False):
         data = {}
         for key in keys:
             data[key] = file[key][:]
+    return data
 
 # usage example for 2D uniform grid:
 # ```

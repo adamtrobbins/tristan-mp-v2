@@ -152,7 +152,7 @@ contains
       call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
                     & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
       glob_rad_spectra(:) = recv_spec_real(:)
-      rad_spectra(1:spec_num) = 0.0
+      rad_spectra(:) = 0.0
     end if
 
     if (allocated(spectra)) deallocate(spectra)
@@ -649,7 +649,7 @@ contains
         call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(:), data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
-        glob_rad_spectra(1:spec_num) = 0.0
+        glob_rad_spectra(:) = 0.0
       end if
 
       ! Close the file
