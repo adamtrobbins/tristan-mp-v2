@@ -7,6 +7,27 @@ module m_helpers
   use m_fields
   implicit none
 contains
+  subroutine checkNpart(msg)
+    implicit none
+    integer             :: ti, tj, tk, s, nprt
+    character(len=*), intent(in) :: msg
+    integer :: glob_nprt
+    do s = 1, nspec
+      nprt = 0
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            nprt = nprt + species(s)%prtl_tile(ti, tj, tk)%npart_sp
+          end do
+        end do
+      end do
+      call MPI_REDUCE(nprt, glob_nprt, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD)
+      if (mpi_rank .eq. 0) then
+        print *, "npart of", s, msg, ":", glob_nprt
+      end if
+    end do
+  end subroutine checkNpart
+
   function rnkToInd(rnk)
     implicit none
     integer, intent(in)   :: rnk
