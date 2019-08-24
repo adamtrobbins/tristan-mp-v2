@@ -45,7 +45,7 @@ contains
     integer(kind=2), intent(in)   :: xi, yi, zi
     real, intent(in)              :: dx, dy, dz, u, v, w
     integer                       :: p
-    integer                        :: ti, tj, tk
+    integer                       :: ti, tj, tk
     integer, optional, intent(in) :: ind, proc
     ti = xi / species(s)%tile_sx + 1
     tj = yi / species(s)%tile_sy + 1
