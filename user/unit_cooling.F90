@@ -61,7 +61,7 @@ contains
     if (mpi_rank .eq. 0) then
       call createParticle(1, 20, 20, 0,&
                            & 0.3, 0.5, 0.5,&
-                           & 12.0, 0.0, 0.0)
+                           & 2.0, 0.0, 2.0)
     end if
   end subroutine userInitParticles
 
