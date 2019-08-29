@@ -41,6 +41,7 @@
   interval      = 10             # interval between output steps
   stride        = 100            # particle stride
   istep         = 4              # field downsampling
+  flds_at_prtl  = 1              # save fields at particle position
 
   history       = 0              # 0 = .false.; 1 = .true.
   hst_interval  = 1
