@@ -2,6 +2,7 @@
 
 module m_mainloop
   use m_globalnamespace
+  use m_helpers
   use m_aux
   use m_writeoutput
   use m_fldsolver

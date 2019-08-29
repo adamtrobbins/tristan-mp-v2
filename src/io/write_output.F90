@@ -10,6 +10,7 @@ module m_writeoutput
   use m_domain
   use m_particles
   use m_fields
+  use m_radiation
   use m_helpers
   use m_exchangearray
   implicit none
@@ -66,7 +67,8 @@ contains
     integer                   :: s, i, ti, tj, tk, p, spec_index
     integer                   :: ierr
     integer, allocatable, dimension(:,:)  :: spectra
-    integer, allocatable, dimension(:)    :: send_spec, recv_spec
+    integer, allocatable, dimension(:)    :: send_spec_int, recv_spec_int
+    real, allocatable, dimension(:)       :: send_spec_real, recv_spec_real
     ! initialize particle variables
     n_prtl_vars = 8
     prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ', &
@@ -100,15 +102,16 @@ contains
       allocate(glob_spectra(nspec, spec_num))
     end if
     allocate(spectra(nspec, spec_num))
-    allocate(send_spec(spec_num), recv_spec(spec_num))
+    allocate(send_spec_int(spec_num), recv_spec_int(spec_num))
+    allocate(send_spec_real(spec_num), recv_spec_real(spec_num))
 
     spectra(:,:) = 0
     do s = 1, nspec
      do ti = 1, species(s)%tile_nx
        do tj = 1, species(s)%tile_ny
          do tk = 1, species(s)%tile_nz
-           !$omp simd
-           !dir$ vector aligned
+           ! !$omp simd
+           ! !dir$ vector aligned
            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
@@ -137,15 +140,26 @@ contains
 
     ! send to root rank
     do s = 1, nspec
-     send_spec(:) = spectra(s,:)
-     call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_INTEGER,&
+     send_spec_int(:) = spectra(s,:)
+     call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-     glob_spectra(s,:) = recv_spec(:)
+     glob_spectra(s,:) = recv_spec_int(:)
     end do
+    
+    ! compute radiation spectra
+    if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+      send_spec_real(:) = rad_spectra(:)
+      call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
+                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+      glob_rad_spectra(:) = recv_spec_real(:)
+      rad_spectra(:) = 0.0
+    end if
 
     if (allocated(spectra)) deallocate(spectra)
-    if (allocated(send_spec)) deallocate(send_spec)
-    if (allocated(recv_spec)) deallocate(recv_spec)
+    if (allocated(send_spec_int)) deallocate(send_spec_int)
+    if (allocated(recv_spec_int)) deallocate(recv_spec_int)
+    if (allocated(send_spec_real)) deallocate(send_spec_real)
+    if (allocated(recv_spec_real)) deallocate(recv_spec_real)
   end subroutine initializeOutput
 
   #ifdef HDF5
@@ -616,6 +630,27 @@ contains
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
       end do
+
+      if (allocated(glob_rad_spectra)) then
+        ! writing bins:
+        dsetname = 'er'
+        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                       & dset_id, error)
+        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
+        call h5dclose_f(dset_id, error)
+        call h5sclose_f(dspace_id, error)
+
+        ! writing spectra:
+        dsetname = 'nr'
+        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                       & dset_id, error)
+        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(:), data_dims, error)
+        call h5dclose_f(dset_id, error)
+        call h5sclose_f(dspace_id, error)
+        glob_rad_spectra(:) = 0.0
+      end if
 
       ! Close the file
       call h5fclose_f(file_id, error)

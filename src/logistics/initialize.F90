@@ -12,6 +12,7 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
+  use m_radiation
   use m_userfile
   use m_helpers
   use m_errors
@@ -61,6 +62,11 @@ contains
 
     call initializeParticles()
       call printDiag((mpi_rank .eq. 0), "initializeParticles()", .true.)
+
+    #ifdef RADIATION
+      call initializeRadiation()
+        call printDiag((mpi_rank .eq. 0), "initializeRadiation()", .true.)
+    #endif
 
     call initializePrtlExchange()
       call printDiag((mpi_rank .eq. 0), "initializePrtlExchange()", .true.)
@@ -483,6 +489,26 @@ contains
                   & 0:this_meshblock%ptr%sy - 1,&
                   & 0:this_meshblock%ptr%sz - 1))
   end subroutine initializeFields
+  
+  subroutine initializeRadiation()
+    implicit none
+    call getInput('radiation', 'gamma_c', rad_gamma_c, 10.0)
+    call getInput('radiation', 'gamma_rad', rad_gamma_rad, 10.0)
+    call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
+    #ifdef EMIT
+      call getInput('radiation', 'photon_ind', rad_photon_ind, 3)
+      if ((nspec .lt. rad_photon_ind) .or.&
+        & (species(rad_photon_ind)%ch_sp .ne. 0) .or.&
+        & (species(rad_photon_ind)%m_sp .ne. 0)) then
+        call throwError('Wrong choice of `photon_ind`.') 
+      end if 
+    #endif
+
+    if (.not. allocated(rad_spectra)) allocate(rad_spectra(spec_num))
+    if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(spec_num))
+    rad_spectra(:) = 0.0
+    glob_rad_spectra(:) = 0.0
+  end subroutine initializeRadiation
 
   subroutine firstRankInitialize()
     ! create output/restart directories
