@@ -251,6 +251,8 @@ contains
     spec_min = log(spec_min)
     spec_max = log(spec_max)
 
+    call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
+
     #ifdef HDF5
 
     #ifdef MPI08

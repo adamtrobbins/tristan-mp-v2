@@ -129,8 +129,7 @@ contains
 
                 ! RADIATION >
                 #ifdef RADIATION
-                  call particleRadiate(&
-                                     & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
+                  call particleRadiate(pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
                                      & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
                                      & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
                 #endif

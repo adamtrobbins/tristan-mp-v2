@@ -19,6 +19,7 @@ module m_writeoutput
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   integer, allocatable, dimension(:,:) :: glob_spectra
+  logical                 :: flds_at_prtl
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -70,13 +71,27 @@ contains
     integer, allocatable, dimension(:)    :: send_spec_int, recv_spec_int
     real, allocatable, dimension(:)       :: send_spec_real, recv_spec_real
     ! initialize particle variables
-    n_prtl_vars = 8
-    prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ', &
-                               & 'u    ', 'v    ', 'w    ', &
-                               & 'ind  ', 'proc '/)
-    prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ', &
-                                    & 'real ', 'real ', 'real ', &
-                                    & 'int  ', 'int  '/)
+    if (.not. flds_at_prtl) then
+      n_prtl_vars = 8
+      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
+                                 & 'u    ', 'v    ', 'w    ',&
+                                 & 'ind  ', 'proc '/)
+      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
+                                      & 'real ', 'real ', 'real ',&
+                                      & 'int  ', 'int  '/)
+    else
+      n_prtl_vars = 14
+      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
+                                 & 'u    ', 'v    ', 'w    ',&
+                                 & 'ind  ', 'proc ',&
+                                 & 'ex   ', 'ey   ', 'ez   ',&
+                                 & 'bx   ', 'by   ', 'bz   '/)
+      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
+                                      & 'real ', 'real ', 'real ',&
+                                      & 'int  ', 'int  ',&
+                                      & 'real ', 'real ', 'real ',&
+                                      & 'real ', 'real ', 'real '/)
+    end if
 
     ! initialize field variables
     !   total number of fields (excluding particle densities)
@@ -366,7 +381,7 @@ contains
     integer                           :: npart_stride(nspec), npart_stride_global(nspec, mpi_size)
     integer, allocatable, dimension(:):: temp_int_arr, stride_indices_arr, stride_ti_arr, stride_tj_arr, stride_tk_arr
     real, allocatable, dimension(:)   :: temp_real_arr
-    real                              :: temp_real1, temp_real2
+    real                              :: temp_real1, temp_real2, temp_real3
     logical                           :: writing_intQ
 
     ! preparation
@@ -451,95 +466,113 @@ contains
           h5type = H5T_NATIVE_INTEGER
           ! Create dataset
           allocate(temp_int_arr(npart_stride(s)))
-          select case (trim(prtl_vars(p))) ! select integer variable
-            case('ind')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+          do j = 1, npart_stride(s)
+            temp = stride_indices_arr(j)
+            ti = stride_ti_arr(j)
+            tj = stride_tj_arr(j)
+            tk = stride_tk_arr(j)
+            select case (trim(prtl_vars(p))) ! select integer variable
+              case('ind')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
                 temp_int_arr(j) = temp_int
-              end do
-            case('proc')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+              case('proc')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%proc(temp)
                 temp_int_arr(j) = temp_int
-              end do
-            case default
-              call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
-          end select
+              case default
+                call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
+            end select
+          end do
         else if (trim(prtl_var_types(p)) .eq. 'real') then
           writing_intQ = .false.
           h5type = H5T_NATIVE_REAL
           ! Create dataset
           allocate(temp_real_arr(npart_stride(s)))
-          select case (trim(prtl_vars(p))) ! select real variable
-            case('x')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+          do j = 1, npart_stride(s)
+            temp = stride_indices_arr(j)
+            ti = stride_ti_arr(j)
+            tj = stride_tj_arr(j)
+            tk = stride_tk_arr(j)
+            select case (trim(prtl_vars(p)))
+              case('x')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%xi(temp)
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dx(temp)
                 temp_real_arr(j) = REAL(this_meshblock%ptr%x0 + temp_int) + temp_real1
-              end do
-            case('y')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+              case('y')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%yi(temp)
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dy(temp)
                 temp_real_arr(j) = REAL(this_meshblock%ptr%y0 + temp_int) + temp_real1
-              end do
-            case('z')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+              case('z')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%zi(temp)
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%dz(temp)
                 temp_real_arr(j) = REAL(this_meshblock%ptr%z0 + temp_int) + temp_real1
-              end do
-            case('u')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+              case('u')
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%u(temp)
                 temp_real_arr(j) = REAL(temp_real1, 4)
-              end do
-            case('v')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+              case('v')
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%v(temp)
                 temp_real_arr(j) = REAL(temp_real1, 4)
-              end do
-            case('w')
-              do j = 1, npart_stride(s)
-                temp = stride_indices_arr(j)
-                ti = stride_ti_arr(j)
-                tj = stride_tj_arr(j)
-                tk = stride_tk_arr(j)
+              case('w')
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
                 temp_real_arr(j) = REAL(temp_real1, 4)
-              end do
-            case default
-              call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
-          end select
-        else
+              case('ex')
+                call interpFromEdges(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dz(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%zi(temp),&
+                                   & ex, ey, ez, temp_real1, temp_real2, temp_real3)
+                temp_real_arr(j) = REAL(temp_real1 * B_norm, 4)
+              case('ey')
+                call interpFromEdges(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dz(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%zi(temp),&
+                                   & ex, ey, ez, temp_real1, temp_real2, temp_real3)
+                temp_real_arr(j) = REAL(temp_real2 * B_norm, 4)
+              case('ez')
+                call interpFromEdges(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dz(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%zi(temp),&
+                                   & ex, ey, ez, temp_real1, temp_real2, temp_real3)
+                temp_real_arr(j) = REAL(temp_real3 * B_norm, 4)
+              case('bx')
+                call interpFromFaces(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dz(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%zi(temp),&
+                                   & bx, by, bz, temp_real1, temp_real2, temp_real3)
+                temp_real_arr(j) = REAL(temp_real1 * B_norm, 4)
+              case('by')
+                call interpFromFaces(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dz(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%zi(temp),&
+                                   & bx, by, bz, temp_real1, temp_real2, temp_real3)
+                temp_real_arr(j) = REAL(temp_real2 * B_norm, 4)
+              case('bz')
+                call interpFromFaces(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%dz(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                   & species(s)%prtl_tile(ti, tj, tk)%zi(temp),&
+                                   & bx, by, bz, temp_real1, temp_real2, temp_real3)
+                temp_real_arr(j) = REAL(temp_real3 * B_norm, 4)
+              case default
+                call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
+            end select ! select variable 
+          end do ! strided prtls
+        else ! if unrecognized vartype
           call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(prtl_var_types(p))//'`')
         end if
 
