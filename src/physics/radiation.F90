@@ -78,10 +78,6 @@ contains
       v0 = ky * g_new * beta_new
       w0 = kz * g_new * beta_new
       if (random(dseed) .lt. tau_rad) then
-        !if (g_new .gt. 1.5) then
-        !  if (eph_rad .gt. g_new - 1.0) then
-        !   eph_rad = g_new - 1.5
-        !  end if
         call createParticle(rad_photon_ind, xi, yi, zi, dx, dy, dz,&
                           & kx * eph_rad, ky * eph_rad, kz * eph_rad) 
       end if
