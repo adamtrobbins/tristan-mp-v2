@@ -84,7 +84,7 @@ contains
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS, current_sheet_T,&
+    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nCS, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)
