@@ -159,16 +159,16 @@ contains
      call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
      glob_spectra(s,:) = recv_spec_int(:)
+     
+     ! compute radiation spectra
+     if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+       send_spec_real(:) = rad_spectra(s,:)
+       call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
+                     & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+       glob_rad_spectra(s,:) = recv_spec_real(:)
+       rad_spectra(s,:) = 0.0
+      end if
     end do
-    
-    ! compute radiation spectra
-    if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
-      send_spec_real(:) = rad_spectra(:)
-      call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
-                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-      glob_rad_spectra(:) = recv_spec_real(:)
-      rad_spectra(:) = 0.0
-    end if
 
     if (allocated(spectra)) deallocate(spectra)
     if (allocated(send_spec_int)) deallocate(send_spec_int)
@@ -282,7 +282,7 @@ contains
       if (fld_vars(f)(1:4) .eq. 'dens') then
         writing_densQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeDensity(s) ! filled `lg_arr` with density of species `s`
+        call computeDensity(s, reset=.true.) ! filled `lg_arr` with density of species `s`
         call exchangeArray()
       else
         writing_densQ = .false.
@@ -622,7 +622,7 @@ contains
     integer                           :: error, s, i, datarank
     integer(HID_T)                    :: file_id, dset_id, dspace_id
     integer(HSIZE_T), dimension(1)    :: data_dims
-    character(len=2)                  :: dsetname
+    character(len=3)                  :: dsetname
     real, allocatable, dimension(:)   :: bin_data
 
     datarank = 1
@@ -662,28 +662,28 @@ contains
         call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, glob_spectra(s,:), data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
+        
+        if (allocated(glob_rad_spectra)) then
+          ! writing bins:
+          dsetname = 'er' // trim(STR(s))
+          call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                         & dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
+          call h5dclose_f(dset_id, error)
+          call h5sclose_f(dspace_id, error)
+
+          ! writing spectra:
+          dsetname = 'nr' // trim(STR(s))
+          call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                         & dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(s,:), data_dims, error)
+          call h5dclose_f(dset_id, error)
+          call h5sclose_f(dspace_id, error)
+          glob_rad_spectra(s,:) = 0.0
+        end if
       end do
-
-      if (allocated(glob_rad_spectra)) then
-        ! writing bins:
-        dsetname = 'er'
-        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
-                       & dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
-        call h5dclose_f(dset_id, error)
-        call h5sclose_f(dspace_id, error)
-
-        ! writing spectra:
-        dsetname = 'nr'
-        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
-                       & dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(:), data_dims, error)
-        call h5dclose_f(dset_id, error)
-        call h5sclose_f(dspace_id, error)
-        glob_rad_spectra(:) = 0.0
-      end if
 
       ! Close the file
       call h5fclose_f(file_id, error)

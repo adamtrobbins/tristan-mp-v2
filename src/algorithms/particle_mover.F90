@@ -6,6 +6,7 @@ module m_mover
   use m_helpers
   use m_domain
   use m_particles
+  use m_fields
   use m_radiation
   implicit none
 contains
@@ -20,6 +21,17 @@ contains
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_
     real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
     real                                  :: u_init, v_init, w_init, du_rad, dv_rad, dw_rad
+    logical                               :: dummy_flag
+    
+    #ifdef RADIATION
+      dummy_flag = .true.
+      do s = 1, nspec
+        if (species(s)%m_sp .ne. 0) then
+          call computeDensity(s, reset=dummy_flag)
+          dummy_flag = .false.
+        end if
+      end do
+    #endif
 
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
@@ -129,9 +141,12 @@ contains
 
                 ! RADIATION >
                 #ifdef RADIATION
-                  call particleRadiate(pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                     & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                     & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                  if (species(s)%cool_sp) then
+                    call particleRadiate(s,&
+                                       & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
+                                       & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
+                                       & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                  end if
                 #endif
                 ! </ RADIATION
                 

@@ -23,7 +23,7 @@ module m_globalnamespace
 
   ! simulation parameters
   integer                :: final_timestep, output_index = 0
-  logical                :: resize_tiles = .false.
+  logical                :: resize_tiles
   integer                :: min_tile_nprt = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&

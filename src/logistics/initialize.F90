@@ -313,6 +313,10 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
+      #ifdef RADIATION
+        write (var_name, "(A4,I1)") "cool", s
+        call getInput('particles', var_name, species(s)%cool_sp, .false.)
+      #endif
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
@@ -497,6 +501,7 @@ contains
     call getInput('radiation', 'gamma_c', rad_gamma_c, 10.0)
     call getInput('radiation', 'gamma_rad', rad_gamma_rad, 10.0)
     call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
+    call getInput('radiation', 'dens_limit', rad_dens_lim, 1e8)
     #ifdef EMIT
       call getInput('radiation', 'photon_ind', rad_photon_ind, 3)
       if ((nspec .lt. rad_photon_ind) .or.&
@@ -506,10 +511,10 @@ contains
       end if 
     #endif
 
-    if (.not. allocated(rad_spectra)) allocate(rad_spectra(spec_num))
-    if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(spec_num))
-    rad_spectra(:) = 0.0
-    glob_rad_spectra(:) = 0.0
+    if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, spec_num))
+    if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, spec_num))
+    rad_spectra(:, :) = 0.0
+    glob_rad_spectra(:, :) = 0.0
   end subroutine initializeRadiation
 
   subroutine firstRankInitialize()

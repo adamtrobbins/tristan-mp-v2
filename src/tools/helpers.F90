@@ -67,9 +67,10 @@ contains
     end if
   end function indToRnk
 
-  subroutine computeDensity(s)
+  subroutine computeDensity(s, reset)
     implicit none
     integer, intent(in)                   :: s
+    logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     integer(kind=2) :: i, j, k
@@ -81,7 +82,9 @@ contains
     #else
       pow = 3
     #endif
-    lg_arr(:,:,:) = 0
+    if (reset) then
+      lg_arr(:,:,:) = 0
+    end if
     do ti = 1, species(s)%tile_nx
       do tj = 1, species(s)%tile_ny
         do tk = 1, species(s)%tile_nz

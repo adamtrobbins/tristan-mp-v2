@@ -40,7 +40,7 @@ def getFields(fname, nodes = False):
 def getSpectra(fname):
     with h5py.File(fname, 'r') as file:
         keys = list(file.keys())
-        spectra = np.unique([s for s in ''.join(keys) if ((s is not 'e') and (s is not 'n'))])
+        spectra = [key[1:] for key in keys if key.startswith("n")]
         data = {}
         for sp in spectra:
             data[sp] = {}
