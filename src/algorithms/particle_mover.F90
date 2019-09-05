@@ -31,6 +31,7 @@ contains
           dummy_flag = .false.
         end if
       end do
+      call exchangeArray()
     #endif
 
     do s = 1, nspec
