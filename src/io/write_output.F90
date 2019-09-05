@@ -96,15 +96,19 @@ contains
     ! initialize field variables
     !   total number of fields (excluding particle densities)
     n_fld_vars = 12
-    n_fld_vars = n_fld_vars + nspec
+    n_fld_vars = n_fld_vars + 2 * nspec
     do s = 1, nspec
       ! hopefully less than 10 species
       fld_vars(s) = 'dens' // STR(s) // ' '
     end do
-    fld_vars(nspec + 1 : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
-                                       & 'bx   ', 'by   ', 'bz   ',&
-                                       & 'jx   ', 'jy   ', 'jz   ',&
-                                       & 'xx   ', 'yy   ', 'zz   '/)
+    do s = 1, nspec
+      ! hopefully less than 10 species
+      fld_vars(nspec + s) = 'enrg' // STR(s) // ' '
+    end do
+    fld_vars(2 * nspec + 1 : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
+                                           & 'bx   ', 'by   ', 'bz   ',&
+                                           & 'jx   ', 'jy   ', 'jz   ',&
+                                           & 'xx   ', 'yy   ', 'zz   '/)
 
     ! initialize domain output variables
     !   FIX1: maybe add # of particles per domain
@@ -185,7 +189,7 @@ contains
     integer(HID_T)                    :: file_id, dset_id(40), filespace(40), memspace, plist_id
     integer                           :: error, f, s
     integer(kind=2)                   :: i, j, k
-    logical                           :: writing_intQ, writing_densQ
+    logical                           :: writing_intQ, writing_lgarrQ
     integer                           :: dataset_rank = 3
     integer(HSSIZE_T), dimension(3)   :: offsets
     integer(HSIZE_T), dimension(3)    :: global_dims, blocks
@@ -280,12 +284,17 @@ contains
 
     do f = 1, n_fld_vars
       if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_densQ = .true.
+        writing_lgarrQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
         call computeDensity(s, reset=.true.) ! filled `lg_arr` with density of species `s`
         call exchangeArray()
+      else if (fld_vars(f)(1:4) .eq. 'enrg') then
+        writing_lgarrQ = .true.
+        s = STRtoINT(fld_vars(f)(5:5))
+        call computeEnergy(s, reset=.true.) ! filled `lg_arr` with energies of species `s`
+        call exchangeArray()
       else
-        writing_densQ = .false.
+        writing_lgarrQ = .false.
       end if
 
       call h5dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, filespace(f), &
@@ -341,7 +350,8 @@ contains
             case('zz')
               sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
             case default
-              if ((fld_vars(f)(1:4) .ne. 'dens') .or. (.not. writing_densQ)) then
+              if (((fld_vars(f)(1:4) .ne. 'dens') .and. (fld_vars(f)(1:4) .ne. 'enrg')) .or.&
+                 & (.not. writing_lgarrQ)) then
                 call throwError("ERROR: unrecognized `fld_vars(f)`")
               else
                 sm_arr(i1, j1, k1) = lg_arr(i, j, k)

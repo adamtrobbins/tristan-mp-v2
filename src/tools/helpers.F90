@@ -122,6 +122,81 @@ contains
       end do
     end do
   end subroutine computeDensity
+  
+  subroutine computeEnergy(s, reset)
+    implicit none
+    integer, intent(in)                   :: s
+    logical, intent(in)                   :: reset
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:)
+    integer(kind=2) :: i, j, k
+    integer :: i1, i2, j1, j2, k1, k2, ds
+    integer :: pow
+    logical :: massive
+    real    :: energy
+
+    if (species(s)%m_sp .gt. 0) then
+      massive = .true.
+    else
+      massive = .false.
+    end if
+
+    ds = 2
+    #ifndef threeD
+      pow = 2
+    #else
+      pow = 3
+    #endif
+    if (reset) then
+      lg_arr(:,:,:) = 0
+    end if
+    do ti = 1, species(s)%tile_nx
+      do tj = 1, species(s)%tile_ny
+        do tk = 1, species(s)%tile_nz
+          pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+          pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+          pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+          pt_u => species(s)%prtl_tile(ti, tj, tk)%u
+          pt_v => species(s)%prtl_tile(ti, tj, tk)%v
+          pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+          ! FIX1 vectorize/align
+          do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+            i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+            if (massive) then
+              energy = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+            else
+              energy = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+            end if
+            
+            i1 = max(i - ds, -NGHOST)
+            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1) 
+            
+            j1 = max(j - ds, -NGHOST)
+            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1) 
+
+            #ifndef threeD
+              k1 = 0; k2 = 0
+            #else
+              k1 = max(k - ds, -NGHOST)
+              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1) 
+            #endif
+            
+            do k = k1, k2
+              do j = j1, j2
+                do i = i1, i2
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy / (2 * ds + 1.0)**pow
+                end do
+              end do
+            end do
+             
+          end do
+          pt_xi => null(); pt_yi => null(); pt_zi => null()
+          pt_u => null(); pt_v => null(); pt_w => null()
+        end do
+      end do
+    end do
+  end subroutine computeEnergy
 
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &

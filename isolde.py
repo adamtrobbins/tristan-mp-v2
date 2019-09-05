@@ -98,39 +98,53 @@ def parseReport(fname, nsteps = None, skip = 1):
     return data
 
 # easy plotting functions
-def plot2DField(ax, x, y, field,
+def plot2DField(ax, x, y, field, rotate=False,
                 title='field', cmap='jet',
                 vmin=None, vmax=None,
-                typ='lin', **kwargs):
+                scale='lin', region=[-np.inf, np.inf, -np.inf, np.inf],
+                **kwargs):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-    sx, sy = field.shape
+    if rotate:
+      field = np.rot90(field)
+      x_dummy = 1.0 * np.array(x)
+      x = 1.0 * np.array(y)
+      y = 1.0 * np.array(x_dummy)
+    xmin = x[x > region[0]].min()
+    xmax = x[x <= region[1]].max()
+    ymin = y[y > region[2]].min()
+    ymax = y[y <= region[3]].max()
+    ax.set_aspect(1)
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
     if not vmin:
         vmin = field.min()
     if not vmax:
         vmax = field.max()
-    if typ == 'lin':
-        im = ax.pcolormesh(x, y, field, cmap=cmap, norm=mpl.colors.Normalize(vmin=vmin, vmax=vmax))
-    elif typ == 'log':
-        im = ax.pcolormesh(x, y, field, cmap=cmap, norm=mpl.colors.LogNorm(vmin=vmin, vmax=vmax))
-    elif typ == 'sym':
-        vmax = max(np.abs(vmin), vmax)
-        im = ax.pcolormesh(x, y, field, cmap=cmap,
-                           norm=mpl.colors.SymLogNorm(vmin=-vmax, vmax=vmax,
-                                                      linthresh=kwargs['lth'],
-                                                      linscale=kwargs['lsc']))
-    ax.set_aspect(1)
-    ax.set_xlim(0, sx - 1)
-    ax.set_ylim(0, sy - 1)
+    if scale == 'lin':
+      norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax) 
+    elif scale == 'log':
+      vmax = max(vmax, 1e-10)
+      norm = mpl.colors.LogNorm(vmin=max(vmin, vmax/1e10), vmax=vmax)
+    elif scale == 'sym':
+      vmax = max(np.abs(vmin), vmax)
+      norm=mpl.colors.SymLogNorm(vmin=-vmax, vmax=vmax,
+                                 linthresh=kwargs['lth'],
+                                 linscale=kwargs['lsc'])
+
+    im = ax.imshow(field, norm=norm, 
+                   cmap=cmap, origin='lower',
+                   extent=(x.min(), x.max(), y.min(), y.max()))
+
     if 'xlabel' in kwargs:
         ax.set_xlabel(kwargs['xlabel'])
     else:
-        ax.set_xlabel('x')
+        ax.set_xlabel('x' if not rotate else 'y')
     if 'ylabel' in kwargs:
         ax.set_ylabel(kwargs['ylabel'])
     else:
-        ax.set_ylabel('y')
+        ax.set_ylabel('y' if not rotate else 'x')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="2%", pad=0.05)
     ax.set_title(title)
