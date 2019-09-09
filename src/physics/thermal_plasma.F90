@@ -102,16 +102,16 @@ contains
     else
       ! using Sobol method
       flag = .false.
-        do while (.not. flag)
-          X4 = random(dseed); X5 = random(dseed)
-          X6 = random(dseed); X7 = random(dseed)
-          if (X4 * X5 * X6 * X7 .eq. 0) cycle
-          U = -maxw%temperature * log(X4 * X5 * X6)
-          ETA = -maxw%temperature * log(X4 * X5 * X6 * X7)
-          if (ETA**2 - U**2 .gt. 1) then
-            flag = .true.
-          end if
-        end do
+      do while (.not. flag)
+        X4 = random(dseed); X5 = random(dseed)
+        X6 = random(dseed); X7 = random(dseed)
+        if (X4 * X5 * X6 * X7 .eq. 0) cycle
+        U = -maxw%temperature * log(X4 * X5 * X6)
+        ETA = -maxw%temperature * log(X4 * X5 * X6 * X7)
+        if (ETA**2 - U**2 .gt. 1) then
+          flag = .true.
+        end if
+      end do
     end if
 
     ! generate projections
@@ -127,56 +127,29 @@ contains
       BETA = sqrt(1.0 - 1.0 / maxw%shift_gamma**2)
       select case (maxw%shift_dir)
         case (+1) ! +x
-          ETA = u_ / gamma
-          if (-BETA * ETA .gt. X8) ETA = -ETA
-          u_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+          if (-BETA * u_ / gamma .gt. X8) u_ = -u_
+          u_ = maxw%shift_gamma * (u_ + BETA * sqrt(1 + U**2))
         case (-1) ! -x
           BETA = -BETA
-          ETA = u_ / gamma
-          if (-BETA * ETA .gt. X8) ETA = -ETA
-          u_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+          if (-BETA * u_ / gamma .gt. X8) u_ = -u_
+          u_ = maxw%shift_gamma * (u_ + BETA * sqrt(1 + U**2))
         case (+2) ! +y
-          ETA = v_ / gamma
-          if (-BETA * ETA .gt. X8) ETA = -ETA
-          v_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+          if (-BETA * v_ / gamma .gt. X8) v_ = -v_
+          v_ = maxw%shift_gamma * (v_ + BETA * sqrt(1 + U**2))
         case (-2) ! -y
           BETA = -BETA
-          ETA = v_ / gamma
-          if (-BETA * ETA .gt. X8) ETA = -ETA
-          v_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+          if (-BETA * v_ / gamma .gt. X8) v_ = -v_
+          v_ = maxw%shift_gamma * (v_ + BETA * sqrt(1 + U**2))
         case (+3) ! +z
-          ETA = w_ / gamma
-          if (-BETA * ETA .gt. X8) ETA = -ETA
-          w_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+          if (-BETA * w_ / gamma .gt. X8) w_ = -w_
+          w_ = maxw%shift_gamma * (w_ + BETA * sqrt(1 + U**2))
         case (-3) ! -z
           BETA = -BETA
-          ETA = w_ / gamma
-          if (-BETA * ETA .gt. X8) ETA = -ETA
-          w_ = maxw%shift_gamma * (ETA + BETA * sqrt(1 + U**2))
+          if (-BETA * w_ / gamma .gt. X8) w_ = -w_
+          w_ = maxw%shift_gamma * (w_ + BETA * sqrt(1 + U**2))
         case default
       end select
     end if
-        !    BETA = sqrt(1.0 - 1.0 / maxw%shift_gamma**2)
-        !    if (maxw%shift_dir .eq. 1) then ! in +x
-        !      u_ = maxw%shift_gamma * (u_ + BETA * gamma)
-        !    else if (maxw%shift_dir .eq. -1) then ! in -x
-        !      u_ = maxw%shift_gamma * (u_ - BETA * gamma)
-        !    else if (maxw%shift_dir .eq. 2) then ! in +y
-        !      v_ = maxw%shift_gamma * (v_ + BETA * gamma)
-        !    else if (maxw%shift_dir .eq. -2) then ! in -y
-        !      v_ = maxw%shift_gamma * (v_ - BETA * gamma)
-        !    else if (maxw%shift_dir .eq. 3) then ! in +z
-        !      w_ = maxw%shift_gamma * (w_ + BETA * gamma)
-        !    else if (maxw%shift_dir .eq. -3) then ! in -z
-        !      w_ = maxw%shift_gamma * (w_ - BETA * gamma)
-        !    else
-        !      call throwError('ERROR: unknown shift directions of maxwellian.')
-        !    end if
-        !    X8 = random(dseed)
-        !    gamma1 = sqrt(1.0 + u_**2 + v_**2 + w_**2)
-        !    if (0.5 * (gamma1 / gamma) / maxw%shift_gamma .gt. X8) then
-        !      flag1 = .true.
-        !    end if
   end subroutine generateFromMaxwellian
 
   subroutine deallocateMaxwellian(maxw)
@@ -202,7 +175,7 @@ contains
     integer                          :: num_part, n, s, spec_
     integer(kind=2)                  :: xi_, yi_, zi_
     real                             :: u_, v_, w_, dx_, dy_, dz_
-    real                             :: x_, y_, z_, rnd
+    real                             :: x_, y_, z_, rnd, num_part_r
     real                             :: x_glob, y_glob, z_glob
 
     procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
@@ -238,13 +211,23 @@ contains
     end if
     
     #ifndef threeD
-      num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&
-                            & * (fillregion%y_max - fillregion%y_min))
+      num_part_r = REAL(ndens_sp) * (fillregion%x_max - fillregion%x_min)&
+                                & * (fillregion%y_max - fillregion%y_min)
     #else 
-      num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&
-                            & * (fillregion%y_max - fillregion%y_min)&
-                            & * (fillregion%z_max - fillregion%z_min))
+      num_part_r = REAL(ndens_sp) * (fillregion%x_max - fillregion%x_min)&
+                                & * (fillregion%y_max - fillregion%y_min)&
+                                & * (fillregion%z_max - fillregion%z_min))
     #endif
+    if (num_part_r .lt. 10.0) then
+      if (num_part_r .ne. 0.0) then
+        num_part_r = poisson(num_part_r)
+      else
+        num_part_r = 0.0
+      end if
+    else
+      num_part_r = CEILING(num_part_r)
+    end if
+    num_part = INT(num_part_r)
 
     n = 0
     do while (n .lt. num_part)

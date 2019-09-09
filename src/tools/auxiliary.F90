@@ -247,15 +247,29 @@ contains
   	integer        :: I
   	real(dprec)    :: S2P31, S2P31M, SEED
   	DATA              S2P31M/2147483647.D0/,S2P31/2147483648.D0/
-
   	SEED = DSEED
-
   	SEED = DMOD(16807.D0*SEED,S2P31M)
   	random= SEED /S2P31
   	DSEED = SEED
-
   	return
   end function random
+
+  real function poisson(num)
+    implicit none
+    real, intent(in) :: num
+    real(kind=8)     :: Lps, pps
+    real             :: kps, ups
+    Lps = EXP(-REAL(num, 8))
+    kps = 0
+    pps = 1
+    do while (pps .ge. Lps)
+      kps = kps + 1
+      ups = random(dseed)
+      pps = pps * ups
+    end do
+    poisson = kps - 1
+    return
+  end function poisson
 
   subroutine initializeRandomSeed(rank)
     implicit none
