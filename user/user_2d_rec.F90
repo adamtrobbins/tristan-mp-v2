@@ -41,6 +41,7 @@ contains
     call getInput('problem', 'current_width', current_width)
     call getInput('problem', 'injector_sx', injector_sx)
     call getInput('problem', 'injector_betax', injector_betax)
+    cs_x = 0.5
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -53,7 +54,6 @@ contains
     else
       call throwError("ERROR: variable not present in `userSpatialDistribution()`")
     end if
-    return
     return
   end function userSpatialDistribution
 
@@ -68,9 +68,9 @@ contains
     nUP = 0.5 * ppc0
     nCS = nUP * nCS_over_nUP
 
-    back_region%x_min = REAL(0)
+    back_region%x_min = 0.0
     back_region%x_max = REAL(this_meshblock%ptr%sx)
-    back_region%y_min = REAL(0)
+    back_region%y_min = 0.0
     back_region%y_max = REAL(this_meshblock%ptr%sy)
 
     sx_glob = REAL(global_mesh%sx)
@@ -99,7 +99,6 @@ contains
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
-    cs_x = 0.5
     injector_x1 = injector_sx - 1.0e-5
     injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
     injector_reset_interval = INT(injector_sx / (injector_betax * CC))
@@ -109,9 +108,9 @@ contains
     do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
       i_glob = i + this_meshblock%ptr%x0
       x_glob = REAL(i_glob)
-      do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
-        by(i, j, k) = tanh((x_glob - cs_x * sx_glob) / current_width)
-      end do
+      !do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
+      by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
+      !end do
     end do
   end subroutine userInitFields
   !............................................................!
@@ -176,7 +175,7 @@ contains
                 do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp 
                   x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
                          & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-                  if ((x_glob .lt. old_x1) .or. (x_glob .gt. old_x2)) then
+                  if ((x_glob .le. old_x1) .or. (x_glob .gt. old_x2)) then
                     species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
                   end if
                 end do
@@ -219,19 +218,17 @@ contains
 
     if ((injector_i1_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx) .or.&
       & (injector_i2_glob .ge. this_meshblock%ptr%x0)) then
-
       ! reset fields left and right from the injectors
       sx_glob = REAL(global_mesh%sx)
       do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
         i_glob = i + this_meshblock%ptr%x0
         x_glob = REAL(i_glob)
-        if ((i_glob .le. injector_i1_glob) .or. (i_glob .ge. injector_i2_glob)) then
+        if ((i_glob .lt. injector_i1_glob) .or. (i_glob .gt. injector_i2_glob)) then
           ex(i, :, :) = 0.0; ey(i, :, :) = 0.0; ez(i, :, :) = 0.0
           bx(i, :, :) = 0.0; bz(i, :, :) = 0.0
           by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
         end if
       end do
-
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
