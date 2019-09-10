@@ -47,22 +47,27 @@ contains
     integer                       :: p
     integer                       :: ti, tj, tk
     integer, optional, intent(in) :: ind, proc
-    ti = xi / species(s)%tile_sx + 1
-    tj = yi / species(s)%tile_sy + 1
-    tk = zi / species(s)%tile_sz + 1
+    ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
+    tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
+    tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
+    ! ti = MAX(1, INT(CEILING((REAL(xi, 8) + REAL(dx, 8)) / REAL(species(s)%tile_sx, 8))))
+    ! tj = MAX(1, INT(CEILING((REAL(yi, 8) + REAL(dy, 8)) / REAL(species(s)%tile_sy, 8))))
+    !tk = MAX(1, INT(CEILING((REAL(zi, 8) + REAL(dz, 8)) / REAL(species(s)%tile_sz, 8))))
     #ifdef DEBUG
       if ((ti .gt. species(s)%tile_nx) .or. &
         & (tj .gt. species(s)%tile_ny) .or. &
         & (tk .gt. species(s)%tile_nz)) then
+        print *, mpi_rank, xi, yi, zi, ti, tj, tk
+        print *, species(s)%tile_nx, species(s)%tile_ny, species(s)%tile_nz
         call throwError('ERROR: wrong ti, tj, tk in `createParticle`')
       end if
       if ((xi .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
-        & (xi .gt. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
+        & (xi .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
         & (yi .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or. &
-        & (yi .gt. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
+        & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
         & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
-        & (zi .gt. species(s)%prtl_tile(ti, tj, tk)%z2)) then
-        print *, xi, yi, zi
+        & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
+        print *, xi, yi, zi, dx, dy, dz
         print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
                & species(s)%prtl_tile(ti, tj, tk)%x2,&
                & species(s)%prtl_tile(ti, tj, tk)%y1,&
@@ -70,6 +75,7 @@ contains
                & species(s)%prtl_tile(ti, tj, tk)%z1,&
                & species(s)%prtl_tile(ti, tj, tk)%z2
         print *, ti, tj, tk
+        print *, species(s)%tile_nx, species(s)%tile_ny, species(s)%tile_nz
         print *, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz
         call throwError('ERROR: wrong ti, tj, tk in `createParticle` according to x1,x2,etc')
       end if
