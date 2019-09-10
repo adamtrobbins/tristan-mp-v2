@@ -8,6 +8,7 @@ module m_mover
   use m_particles
   use m_fields
   use m_radiation
+  use m_userfile 
   implicit none
 contains
   subroutine moveParticles()
@@ -22,6 +23,8 @@ contains
     real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
     real                                  :: u_init, v_init, w_init, du_rad, dv_rad, dw_rad
     logical                               :: dummy_flag
+    real                                  :: ex_ext, ey_ext, ez_ext
+    real                                  :: bx_ext, by_ext, bz_ext
     
     #ifdef RADIATION
       dummy_flag = .true.
@@ -99,6 +102,16 @@ contains
                 call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
                                    & pt_xi(p), pt_yi(p), pt_zi(p),&
                                    & bx, by, bz, bx0, by0, bz0)
+                
+                if (external_fields) then
+                  call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
+                                        & REAL(pt_yi(p)) + pt_dy(p),&
+                                        & REAL(pt_zi(p)) + pt_dz(p),&
+                                        & ex_ext, ey_ext, ez_ext,&
+                                        & bx_ext, by_ext, bz_ext)
+                  ex0 = ex0 + ex_ext; ey0 = ey0 + ey_ext; ez0 = ez0 + ez_ext
+                  bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
+                end if
                 
                 #ifdef RADIATION
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0 

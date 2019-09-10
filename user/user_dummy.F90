@@ -99,6 +99,18 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+  
+  subroutine userExternalFields(xp, yp, zp,&
+                              & ex_ext, ey_ext, ez_ext,&
+                              & bx_ext, by_ext, bz_ext)
+    implicit none
+    real, intent(in)  :: xp, yp, zp
+    real, intent(out) :: ex_ext, ey_ext, ez_ext
+    real, intent(out) :: bx_ext, by_ext, bz_ext
+    ! some functions of xp, yp, zp
+    ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
+    bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
+  end subroutine userExternalFields
   !............................................................!
 
   !--- boundaries ---------------------------------------------!

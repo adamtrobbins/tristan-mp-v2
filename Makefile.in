@@ -34,18 +34,18 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)physics/radiation.F90 \
              $(SRC_DIR)physics/thermal_plasma.F90 \
              $(SRC_DIR)physics/powerlaw_plasma.F90 \
-             $(SRC_DIR)algorithms/particle_mover.F90 \
-             $(SRC_DIR)algorithms/field_solver.F90 \
-             $(SRC_DIR)algorithms/current_deposit.F90 \
              $(SRC_DIR)logistics/exchange_particles.F90 \
              $(SRC_DIR)logistics/exchange_fields.F90 \
              $(SRC_DIR)logistics/exchange_currents.F90 \
              $(SRC_DIR)logistics/exchange_array.F90 \
-             $(SRC_DIR)algorithms/filtering.F90 \
              $(SRC_DIR)io/write_output.F90 \
              $(SRC_DIR)io/write_history.F90 \
              $(SRC_DIR)io/read_input.F90 \
              $(addprefix $(USR_DIR), $(USER_FILE).F90) \
+             $(SRC_DIR)algorithms/particle_mover.F90 \
+             $(SRC_DIR)algorithms/field_solver.F90 \
+             $(SRC_DIR)algorithms/current_deposit.F90 \
+             $(SRC_DIR)algorithms/filtering.F90 \
              $(SRC_DIR)logistics/initialize.F90 \
              $(SRC_DIR)tristanmainloop.F90 \
              $(SRC_DIR)tristan.F90
