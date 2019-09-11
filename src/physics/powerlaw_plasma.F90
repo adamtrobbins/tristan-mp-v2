@@ -49,6 +49,17 @@ contains
     else
       dummy3_ = 0.0
     end if
+    
+    ! global to local coordinates
+    fill_region%x_min = MAX(0.0, fill_region%x_min - REAL(this_meshblock%ptr%x0))
+    fill_region%x_max = MIN(REAL(this_meshblock%ptr%sx),&
+                          & fill_region%x_max - REAL(this_meshblock%ptr%x0))
+    fill_region%y_min = MAX(0.0, fill_region%y_min - REAL(this_meshblock%ptr%y0))
+    fill_region%y_max = MIN(REAL(this_meshblock%ptr%sy),&
+                          & fill_region%y_max - REAL(this_meshblock%ptr%y0))
+    fill_region%z_min = MAX(0.0, fill_region%z_min - REAL(this_meshblock%ptr%z0))
+    fill_region%z_max = MIN(REAL(this_meshblock%ptr%sz),&
+                          & fill_region%z_max - REAL(this_meshblock%ptr%z0))
 
     #ifndef threeD
       num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&

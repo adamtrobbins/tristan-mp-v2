@@ -69,13 +69,13 @@ contains
     !     to ensure `B^2/2 = sigma T n me c^2`
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
-    fill_region%x_min = REAL(0)
-    fill_region%y_min = REAL(0)
-    fill_region%x_max = REAL(this_meshblock%ptr%sx)
-    fill_region%y_max = REAL(this_meshblock%ptr%sy)
-
     sx_glob = REAL(global_mesh%sx)
     sy_glob = REAL(global_mesh%sy)
+
+    fill_region%x_min = 0.0
+    fill_region%y_min = 0.0
+    fill_region%x_max = sx_glob
+    fill_region%y_max = sy_glob
 
     ! now filling region with plasma
     !     upstream:

@@ -59,10 +59,10 @@ contains
 
     nUP = 0.5 * ppc0
 
-    back_region%x_min = REAL(0)
-    back_region%x_max = REAL(this_meshblock%ptr%sx)
-    back_region%y_min = REAL(0)
-    back_region%y_max = REAL(this_meshblock%ptr%sy)
+    back_region%x_min = 0.0
+    back_region%x_max = global_mesh%sx
+    back_region%y_min = 0.0
+    back_region%y_max = global_mesh%sy
 
     kx = 2.0 * M_PI * REAL(nwaves) / REAL(global_mesh%sx)
 

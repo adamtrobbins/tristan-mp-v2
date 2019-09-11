@@ -67,10 +67,10 @@ contains
 
     nUP = 0.5 * ppc0
 
-    back_region%x_min = REAL(0)
-    back_region%x_max = REAL(this_meshblock%ptr%sx)
-    back_region%y_min = REAL(0)
-    back_region%y_max = REAL(this_meshblock%ptr%sy)
+    back_region%x_min = 0.0
+    back_region%y_min = 0.0
+    back_region%x_max = REAL(global_mesh%sx)
+    back_region%y_max = REAL(global_mesh%sy)
 
     call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
                                     & plaw_gmin, plaw_gmax, plaw_ind)
