@@ -73,8 +73,14 @@ contains
     
     back_region%x_min = 0.0
     back_region%y_min = 0.0
+    back_region%x_max = sx_glob * cs_x
+    back_region%y_max = sy_glob
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    back_region%x_min = sx_glob * cs_x
+    back_region%y_min = 0.0
     back_region%x_max = sx_glob
     back_region%y_max = sy_glob
+    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nUP, upstream_T)
 
     shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
     if (shift_beta .ge. 1) then
@@ -83,8 +89,7 @@ contains
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
-    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nCS, current_sheet_T,&
+    call fillRegionWithThermalPlasma(back_region, (/5, 6/), 2, nCS, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)

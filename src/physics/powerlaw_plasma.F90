@@ -14,13 +14,13 @@ module m_powerlawplasma
   !...............................................................!
 contains
 
-  subroutine fillRegionWithPowerlawPlasma(fillregion, fill_species, num_species, ndens_sp,&
+  subroutine fillRegionWithPowerlawPlasma(fill_region, fill_species, num_species, ndens_sp,&
                                         & plaw_gmin, plaw_gmax, plaw_ind,&
                                         & spat_distr_ptr,&
                                         & dummy1, dummy2, dummy3)
     implicit none
     ! assuming that the charges of all species given in `fill_species` add up to `0`
-    type(region), intent(in)         :: fillregion
+    type(region), intent(in)         :: fill_region
     integer, intent(in)              :: num_species
     integer, intent(in)              :: fill_species(num_species)
     real, intent(in)                 :: ndens_sp, plaw_gmin, plaw_gmax, plaw_ind
@@ -57,30 +57,32 @@ contains
     fill_region%y_min = MAX(0.0, fill_region%y_min - REAL(this_meshblock%ptr%y0))
     fill_region%y_max = MIN(REAL(this_meshblock%ptr%sy),&
                           & fill_region%y_max - REAL(this_meshblock%ptr%y0))
-    fill_region%z_min = MAX(0.0, fill_region%z_min - REAL(this_meshblock%ptr%z0))
-    fill_region%z_max = MIN(REAL(this_meshblock%ptr%sz),&
-                          & fill_region%z_max - REAL(this_meshblock%ptr%z0))
+    #ifdef threeD
+      fill_region%z_min = MAX(0.0, fill_region%z_min - REAL(this_meshblock%ptr%z0))
+      fill_region%z_max = MIN(REAL(this_meshblock%ptr%sz),&
+                            & fill_region%z_max - REAL(this_meshblock%ptr%z0))
+    #endif
 
     #ifndef threeD
-      num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&
-                            & * (fillregion%y_max - fillregion%y_min))
+      num_part = INT(ndens_sp * (fill_region%x_max - fill_region%x_min)&
+                            & * (fill_region%y_max - fill_region%y_min))
     #else 
-      num_part = INT(ndens_sp * (fillregion%x_max - fillregion%x_min)&
-                            & * (fillregion%y_max - fillregion%y_min)&
-                            & * (fillregion%z_max - fillregion%z_min))
+      num_part = INT(ndens_sp * (fill_region%x_max - fill_region%x_min)&
+                            & * (fill_region%y_max - fill_region%y_min)&
+                            & * (fill_region%z_max - fill_region%z_min))
     #endif
 
     n = 0
     do while (n .lt. num_part)
       ! generate coords for all species
       rnd = random(dseed)
-      x_ = fillregion%x_min + rnd * (fillregion%x_max - fillregion%x_min)
+      x_ = fill_region%x_min + rnd * (fill_region%x_max - fill_region%x_min)
       xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
       rnd = random(dseed)
-      y_ = fillregion%y_min + rnd * (fillregion%y_max - fillregion%y_min)
+      y_ = fill_region%y_min + rnd * (fill_region%y_max - fill_region%y_min)
       yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
       #ifdef threeD
-        z_ = fillregion%z_min + random(dseed) * (fillregion%z_max - fillregion%z_min)
+        z_ = fill_region%z_min + random(dseed) * (fill_region%z_max - fill_region%z_min)
         zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
       #else
         z_ = 0.5
