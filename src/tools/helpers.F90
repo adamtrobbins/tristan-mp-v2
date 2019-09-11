@@ -67,6 +67,54 @@ contains
     end if
   end function indToRnk
 
+  subroutine reassignNeighborsForAll()
+    implicit none
+    integer   :: rnk
+    integer   :: ind1, ind2, ind3
+    do rnk = 0, mpi_size - 1
+      do ind1 = -1, 1
+        do ind2 = -1, 1
+          do ind3 = -1, 1
+            call assignNeighbor(rnk, (/ ind1, ind2, ind3/))
+          end do
+        end do
+      end do
+    end do
+    call computeNumberOfNeighbors()
+  end subroutine reassignNeighborsForAll
+
+  subroutine assignNeighbor(rnk, inds1)
+    implicit none
+    integer, intent(in)       :: rnk, inds1(3)
+    integer                   :: rnk2, inds0(3)
+    inds0 = rnkToInd(rnk)
+    rnk2 = indToRnk([inds0(1) + inds1(1), inds0(2) + inds1(2), inds0(3) + inds1(3)])
+    if (rnk2 .eq. -1) then
+      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
+    else
+      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
+    end if
+  end subroutine assignNeighbor
+
+  subroutine computeNumberOfNeighbors()
+    integer   :: ind1, ind2, ind3
+    integer   :: cntr
+    cntr = 0
+    do ind1 = -1, 1
+      do ind2 = -1, 1
+        do ind3 = -1, 1
+          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+          #ifndef threeD
+            if (ind3 .ne. 0) cycle
+          #endif
+          if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+          cntr = cntr + 1
+        end do
+      end do
+    end do
+    sendrecv_neighbors = cntr
+  end subroutine computeNumberOfNeighbors
+
   subroutine computeDensity(s, reset)
     implicit none
     integer, intent(in)                   :: s

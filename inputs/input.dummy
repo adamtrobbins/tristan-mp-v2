@@ -111,3 +111,5 @@
   ch3           = 0
 
 <problem>
+
+  external_fields = 1           # apply external fields in the mover

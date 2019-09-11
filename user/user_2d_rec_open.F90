@@ -3,6 +3,7 @@
 module m_userfile
   use m_globalnamespace
   use m_aux
+  use m_helpers
   use m_readinput
   use m_domain
   use m_particles
@@ -15,10 +16,12 @@ module m_userfile
   real    :: nCS_over_nUP, current_width, upstream_T, cs_x
   real    :: injector_x1, injector_x2, injector_sx, injector_betax
   integer :: injector_reset_interval
+  integer :: boundary_open_interval
 
   private :: nCS_over_nUP, current_width, upstream_T, cs_x
   private :: injector_x1, injector_x2, injector_sx, injector_betax
   private :: injector_reset_interval
+  private :: boundary_open_interval
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -41,6 +44,7 @@ contains
     call getInput('problem', 'current_width', current_width)
     call getInput('problem', 'injector_sx', injector_sx)
     call getInput('problem', 'injector_betax', injector_betax)
+    call getInput('problem', 'open_y_after', boundary_open_interval, 0)
     cs_x = 0.5
   end subroutine userReadInput
 
@@ -241,6 +245,13 @@ contains
           by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
         end if
       end do
+    end if
+
+    if (step .eq. boundary_open_interval) then
+      if (boundary_y .ne. 0) then
+        boundary_y = 0
+        call reassignNeighborsForAll()
+      end if
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!

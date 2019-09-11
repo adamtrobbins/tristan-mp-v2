@@ -238,7 +238,7 @@ contains
   ! Reference: http://gcc.gnu.org/onlinedocs/gfortran/RANDOM_005fSEED.html
   !........................................................................!
 
-  real function random(DSEED)
+  real(dprec) function randomNum(DSEED)
     ! implicit none
     ! integer, intent(in) :: dseed
     ! call random_number(random)
@@ -248,10 +248,22 @@ contains
   	real(dprec)    :: S2P31, S2P31M, SEED
   	DATA              S2P31M/2147483647.D0/,S2P31/2147483648.D0/
   	SEED = DSEED
-  	SEED = DMOD(16807.D0*SEED,S2P31M)
-  	random= SEED /S2P31
+    SEED = DMOD(16807.D0*SEED,S2P31M)
+    randomNum = SEED / S2P31
   	DSEED = SEED
   	return
+  end function randomNum
+
+  real function random(DSEED)
+  	implicit none
+  	real(dprec)    :: DSEED
+    real           :: rnd
+    rnd = 1.0
+    do while(rnd .eq. 1.0)
+      rnd = randomNum(DSEED)
+    end do
+    random = rnd
+    return
   end function random
 
   real function poisson(num)

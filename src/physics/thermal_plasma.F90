@@ -232,14 +232,17 @@ contains
     n = 0
     do while (n .lt. num_part)
       ! generate coords for all species
-      x_ = fillregion%x_min + random(dseed) * (fillregion%x_max - fillregion%x_min)
-      xi_ = INT(x_, 2); dx_ = random(dseed)
-      y_ = fillregion%y_min + random(dseed) * (fillregion%y_max - fillregion%y_min)
-      yi_ = INT(y_, 2); dy_ = random(dseed)
+      rnd = random(dseed)
+      x_ = fillregion%x_min + rnd * (fillregion%x_max - fillregion%x_min)
+      xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
+      rnd = random(dseed)
+      y_ = fillregion%y_min + rnd * (fillregion%y_max - fillregion%y_min)
+      yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
       #ifdef threeD
         z_ = fillregion%z_min + random(dseed) * (fillregion%z_max - fillregion%z_min)
-        zi_ = INT(z_, 2); dz_ = random(dseed)
+        zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
       #else
+        z_ = 0.5
         zi_ = 0; dz_ = 0.5
       #endif
 

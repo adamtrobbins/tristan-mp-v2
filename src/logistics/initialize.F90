@@ -24,7 +24,7 @@ module m_initialize
            & initializeLB,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
-           & assignNeighbor, initializeSimulation, checkEverything
+           & initializeSimulation, checkEverything
   !...............................................................!
 contains
   ! initialize all the necessary arrays and variables
@@ -138,11 +138,13 @@ contains
   subroutine distributeMeshblocks()
     implicit none
     integer, dimension(3) :: ind, m
-    integer               :: rnk, ind1, ind2, ind3, cntr
+    integer               :: rnk
     m(1) = global_mesh%sx / sizex
     m(2) = global_mesh%sy / sizey
     m(3) = global_mesh%sz / sizez
     allocate(meshblocks(mpi_size))
+    if (.not. allocated(new_meshblocks)) allocate(new_meshblocks(mpi_size))
+    this_meshblock%ptr => meshblocks(mpi_rank + 1)
     do rnk = 0, mpi_size - 1
       ind = rnkToInd(rnk)
       meshblocks(rnk + 1)%rnk = rnk
@@ -153,49 +155,10 @@ contains
       meshblocks(rnk + 1)%x0 = ind(1) * m(1) + global_mesh%x0
       meshblocks(rnk + 1)%y0 = ind(2) * m(2) + global_mesh%y0
       meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
-
-      if (.not. allocated(new_meshblocks)) allocate(new_meshblocks(mpi_size))
-
-      ! assign neighbors
-      do ind1 = -1, 1
-        do ind2 = -1, 1
-          do ind3 = -1, 1
-            call assignNeighbor(rnk, (/ ind1, ind2, ind3/))
-          end do
-        end do
-      end do
-    end do
-    this_meshblock%ptr => meshblocks(mpi_rank + 1)
-
-    ! find the number of neighbors
-    cntr = 0
-    do ind1 = -1, 1
-      do ind2 = -1, 1
-        do ind3 = -1, 1
-          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifndef threeD
-            if (ind3 .ne. 0) cycle
-          #endif
-          if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
-          cntr = cntr + 1
-        end do
-      end do
-    end do
-    sendrecv_neighbors = cntr
+    end do      
+    ! assign all neighbors
+    call reassignNeighborsForAll()
   end subroutine distributeMeshblocks
-
-  subroutine assignNeighbor(rnk, inds1)
-    implicit none
-    integer, intent(in)       :: rnk, inds1(3)
-    integer                   :: rnk2, inds0(3)
-    inds0 = rnkToInd(rnk)
-    rnk2 = indToRnk([inds0(1) + inds1(1), inds0(2) + inds1(2), inds0(3) + inds1(3)])
-    if (rnk2 .eq. -1) then
-      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
-    else
-      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
-    end if
-  end subroutine assignNeighbor
 
   subroutine initializeLB()
     implicit none
@@ -330,6 +293,23 @@ contains
             species(s)%prtl_tile(ti, tj, tk)%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
             species(s)%prtl_tile(ti, tj, tk)%z1 = (tk - 1) * species(s)%tile_sz
             species(s)%prtl_tile(ti, tj, tk)%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
+            #ifdef DEBUG
+              if ((species(s)%prtl_tile(ti, tj, tk)%x1 .eq. 0) .and.&
+                & (species(s)%prtl_tile(ti, tj, tk)%x2 .eq. 0) .and.&
+                & (species(s)%prtl_tile(ti, tj, tk)%y1 .eq. 0) .and.&
+                & (species(s)%prtl_tile(ti, tj, tk)%y2 .eq. 0) .and.&
+                & (species(s)%prtl_tile(ti, tj, tk)%z1 .eq. 0) .and.&
+                & (species(s)%prtl_tile(ti, tj, tk)%z2 .eq. 0)) then
+                print *, ti, tj, tk
+                print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
+                 & species(s)%prtl_tile(ti, tj, tk)%x2,&
+                 & species(s)%prtl_tile(ti, tj, tk)%y1,&
+                 & species(s)%prtl_tile(ti, tj, tk)%y2,&
+                 & species(s)%prtl_tile(ti, tj, tk)%z1,&
+                 & species(s)%prtl_tile(ti, tj, tk)%z2             
+               call throwError('ERROR IN PRTLINIT')
+              end if
+            #endif
 
             call allocateParticles(species(s)%prtl_tile(ti, tj, tk),&
                                  & species(s)%prtl_tile(ti, tj, tk)%maxptl_sp)
@@ -494,6 +474,8 @@ contains
     allocate(sm_arr(0:this_meshblock%ptr%sx - 1,&
                   & 0:this_meshblock%ptr%sy - 1,&
                   & 0:this_meshblock%ptr%sz - 1))
+    
+    call getInput('problem', 'external_fields', external_fields, .false.)
   end subroutine initializeFields
   
   subroutine initializeRadiation()
