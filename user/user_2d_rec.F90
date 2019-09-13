@@ -220,7 +220,7 @@ contains
     back_region%y_min = 0.0
     back_region%y_max = REAL(global_mesh%sy)
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nUP, upstream_T)
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step)

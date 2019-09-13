@@ -91,6 +91,11 @@ contains
                                       & 'int  ', 'int  ',&
                                       & 'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real '/)
+      do s = 1, nspec
+        prtl_vars(n_prtl_vars + s) = 'dens' // STR(s)
+        prtl_var_types(n_prtl_vars + s) = 'real '
+      end do
+      n_prtl_vars = n_prtl_vars + nspec
     end if
 
     ! initialize field variables
@@ -99,11 +104,11 @@ contains
     n_fld_vars = n_fld_vars + 2 * nspec
     do s = 1, nspec
       ! hopefully less than 10 species
-      fld_vars(s) = 'dens' // STR(s) // ' '
+      fld_vars(s) = 'dens' // STR(s)
     end do
     do s = 1, nspec
       ! hopefully less than 10 species
-      fld_vars(nspec + s) = 'enrg' // STR(s) // ' '
+      fld_vars(nspec + s) = 'enrg' // STR(s)
     end do
     fld_vars(2 * nspec + 1 : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
                                            & 'bx   ', 'by   ', 'bz   ',&
@@ -383,7 +388,7 @@ contains
     character(len=7)                  :: dsetname
     integer(HID_T)                    :: file_id, dset_id(100), filespace(100), memspace, plist_id
     integer                           :: error, ierr
-    integer                           :: rnk, s, p, j, ln_, ti, tj, tk, temp, temp_int
+    integer                           :: rnk, s, dummy_s, p, j, ln_, ti, tj, tk, temp, temp_int
     integer                           :: dataset_rank = 1
     integer(HID_T)                    :: h5type
     integer(HSSIZE_T), dimension(1)   :: offsets
@@ -466,10 +471,10 @@ contains
       end do
 
       do p = 1, n_prtl_vars
-        ! dataset name `var_name` + `species #`
+        ! dataset name `var_name` + '_' + `species #`
         ln_ = len(trim(prtl_vars(p)))
-        dsetname(1 : ln_ + 1) = trim(prtl_vars(p)) // trim(STR(s))
-        dsetname(ln_ + 2 : 7) = ' '
+        dsetname(1 : ln_ + 3) = trim(prtl_vars(p)) // '_' // trim(STR(s))
+        dsetname(ln_ + 3 : 7) = ' '
         ! creating dataset for a given type
         if (trim(prtl_var_types(p)) .eq. 'int') then
           writing_intQ = .true.
@@ -495,6 +500,11 @@ contains
         else if (trim(prtl_var_types(p)) .eq. 'real') then
           writing_intQ = .false.
           h5type = H5T_NATIVE_REAL
+          if (prtl_vars(p)(1:4) .eq. 'dens') then
+            dummy_s = STRtoINT(prtl_vars(p)(5:5))
+            call computeDensity(dummy_s, reset=.true.) ! filled `lg_arr` with density of species `s`
+            call exchangeArray()
+          end if
           ! Create dataset
           allocate(temp_real_arr(npart_stride(s)))
           do j = 1, npart_stride(s)
@@ -579,7 +589,13 @@ contains
                                    & bx, by, bz, temp_real1, temp_real2, temp_real3)
                 temp_real_arr(j) = REAL(temp_real3 * B_norm, 4)
               case default
-                call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
+                if (prtl_vars(p)(1:4) .ne. 'dens') then
+                  call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
+                else
+                  temp_real_arr(j) = lg_arr(species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
+                                          & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
+                                          & species(s)%prtl_tile(ti, tj, tk)%zi(temp))
+                end if
             end select ! select variable 
           end do ! strided prtls
         else ! if unrecognized vartype

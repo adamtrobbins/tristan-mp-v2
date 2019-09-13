@@ -6,15 +6,15 @@ import os
 def getParticles(fname):
     with h5py.File(fname, 'r') as file:
         keys = list(file.keys())
-        species = np.unique([int(s) for s in ''.join(keys) if s.isdigit()])
+        species = np.unique([int(key.split('_')[1]) for key in keys])
         nspec = len(species)
-        variables = np.unique([''.join([i for i in k if not i.isdigit()]) for k in keys])
+        variables = np.unique([key.split('_')[0] for key in keys])
         nvars = len(variables)
         data = {}
         for s in range(nspec):
             data[str(s + 1)] = {}
             for i in range(nvars):
-                (data[str(s + 1)])[variables[i]] = file[variables[i] + str(s + 1)][:]
+                (data[str(s + 1)])[variables[i]] = file[variables[i] + '_' + str(s + 1)][:]
     return data
 
 def getFields(fname, nodes = False):
