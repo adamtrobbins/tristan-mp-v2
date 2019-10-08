@@ -89,6 +89,10 @@ contains
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
+    back_region%x_min = sx_glob * cs_x - 10 * current_width
+    back_region%x_max = sx_glob * cs_x + 10 * current_width
+    back_region%y_min = 0.0
+    back_region%y_max = sy_glob
     call fillRegionWithThermalPlasma(back_region, (/5, 6/), 2, nCS, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
