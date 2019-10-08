@@ -251,12 +251,22 @@ contains
       rnd = random(dseed)
       x_ = fill_xmin + rnd * (fill_xmax - fill_xmin)
       xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
+      if (xi_ .eq. this_meshblock%ptr%sx) then
+        xi_ = xi_ - 1; dx_ = dx_ + 1.0
+      end if
       rnd = random(dseed)
       y_ = fill_ymin + rnd * (fill_ymax - fill_ymin)
       yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
+      if (yi_ .eq. this_meshblock%ptr%sy) then
+        yi_ = yi_ - 1; dy_ = dy_ + 1.0
+      end if
       #ifdef threeD
-        z_ = fill_zmin + random(dseed) * (fill_zmax - fill_zmin)
+        rnd = random(dseed)
+        z_ = fill_zmin + rnd * (fill_zmax - fill_zmin)
         zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
+        if (zi_ .eq. this_meshblock%ptr%sz) then
+          zi_ = zi_ - 1; dz_ = dz_ + 1.0
+        end if
       #else
         z_ = 0.5
         zi_ = 0; dz_ = 0.5
