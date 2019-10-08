@@ -368,7 +368,7 @@ contains
 
       ! Write the dataset collectively
       call h5dwrite_f(dset_id(f), H5T_NATIVE_REAL, sm_arr(0 : n_i, 0 : n_j, 0 : n_k), global_dims, error, &
-                    & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = h5p_default_f)
+                    & file_space_id = filespace(f), mem_space_id = memspace, xfer_prp = plist_id)
 
       call h5dclose_f(dset_id(f), error)
       call h5sclose_f(filespace(f), error)
