@@ -122,8 +122,9 @@ contains
                   w_init = pt_w(p)
                 #endif
 
-                dummy_ = 0.5 * CCINV * q_over_m * B_norm
+                dummy_ = 0.5 * q_over_m * B_norm
                 ex0 = ex0 * dummy_; ey0 = ey0 * dummy_; ez0 = ez0 * dummy_
+                dummy_ = dummy_ * CCINV
                 bx0 = bx0 * dummy_; by0 = by0 * dummy_; bz0 = bz0 * dummy_
 
                 ! BORIS PUSHER >

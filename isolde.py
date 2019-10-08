@@ -6,15 +6,15 @@ import os
 def getParticles(fname):
     with h5py.File(fname, 'r') as file:
         keys = list(file.keys())
-        species = np.unique([int(s) for s in ''.join(keys) if s.isdigit()])
+        species = np.unique([int(key.split('_')[1]) for key in keys])
         nspec = len(species)
-        variables = np.unique([''.join([i for i in k if not i.isdigit()]) for k in keys])
+        variables = np.unique([key.split('_')[0] for key in keys])
         nvars = len(variables)
         data = {}
         for s in range(nspec):
             data[str(s + 1)] = {}
             for i in range(nvars):
-                (data[str(s + 1)])[variables[i]] = file[variables[i] + str(s + 1)][:]
+                (data[str(s + 1)])[variables[i]] = file[variables[i] + '_' + str(s + 1)][:]
     return data
 
 def getFields(fname, nodes = False):
@@ -102,6 +102,7 @@ def plot2DField(ax, x, y, field, rotate=False,
                 title='field', cmap='jet',
                 vmin=None, vmax=None,
                 scale='lin', region=[-np.inf, np.inf, -np.inf, np.inf],
+                cbar = True,
                 **kwargs):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
@@ -145,10 +146,11 @@ def plot2DField(ax, x, y, field, rotate=False,
         ax.set_ylabel(kwargs['ylabel'])
     else:
         ax.set_ylabel('y' if not rotate else 'x')
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="2%", pad=0.05)
+    if cbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="2%", pad=0.05)
+        plt.colorbar(im, cax=cax)
     ax.set_title(title)
-    plt.colorbar(im, cax=cax)
 
 def plot2DScatterParticles(ax, sx, sy, x_list, y_list,
                            label='particles', legend=True,

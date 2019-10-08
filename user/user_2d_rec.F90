@@ -68,13 +68,19 @@ contains
     nUP = 0.5 * ppc0
     nCS = nUP * nCS_over_nUP
 
-    back_region%x_min = 0.0
-    back_region%x_max = REAL(this_meshblock%ptr%sx)
-    back_region%y_min = 0.0
-    back_region%y_max = REAL(this_meshblock%ptr%sy)
-
     sx_glob = REAL(global_mesh%sx)
     sy_glob = REAL(global_mesh%sy)
+    
+    back_region%x_min = 0.0
+    back_region%y_min = 0.0
+    back_region%x_max = sx_glob * cs_x
+    back_region%y_max = sy_glob
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    back_region%x_min = sx_glob * cs_x
+    back_region%y_min = 0.0
+    back_region%x_max = sx_glob
+    back_region%y_max = sy_glob
+    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nUP, upstream_T)
 
     shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
     if (shift_beta .ge. 1) then
@@ -83,8 +89,11 @@ contains
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
-    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nCS, current_sheet_T,&
+    back_region%x_min = sx_glob * cs_x - 10 * current_width
+    back_region%x_max = sx_glob * cs_x + 10 * current_width
+    back_region%y_min = 0.0
+    back_region%y_max = sy_glob
+    call fillRegionWithThermalPlasma(back_region, (/5, 6/), 2, nCS, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)
@@ -202,20 +211,20 @@ contains
     nUP = 0.5 * ppc0
     
     ! left injector
-    back_region%x_min = MAX(injector_x1 - REAL(this_meshblock%ptr%x0), 0.0)
-    back_region%x_max = MIN(old_x1 - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx))
+    back_region%x_min = injector_x1
+    back_region%x_max = old_x1
     back_region%y_min = 0.0
-    back_region%y_max = REAL(this_meshblock%ptr%sy)
+    back_region%y_max = REAL(global_mesh%sy)
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
 
     ! right injector
-    back_region%x_min = MAX(old_x2 - REAL(this_meshblock%ptr%x0), 0.0)
-    back_region%x_max = MIN(injector_x2 - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx))
+    back_region%x_min = old_x2
+    back_region%x_max = injector_x2
     back_region%y_min = 0.0
-    back_region%y_max = REAL(this_meshblock%ptr%sy)
+    back_region%y_max = REAL(global_mesh%sy)
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nUP, upstream_T)
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step)

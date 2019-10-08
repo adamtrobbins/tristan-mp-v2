@@ -159,13 +159,13 @@ contains
     if (allocated(maxw%beta_table)) deallocate(maxw%beta_table)
   end subroutine deallocateMaxwellian
 
-  subroutine fillRegionWithThermalPlasma(fillregion, fill_species, num_species, ndens_sp,&
+  subroutine fillRegionWithThermalPlasma(fill_region, fill_species, num_species, ndens_sp,&
                                        & temperature, shift_gamma, shift_dir,&
                                        & spat_distr_ptr,&
                                        & dummy1, dummy2, dummy3)
     implicit none
     ! assuming that the charges of all species given in `fill_species` add up to `0`
-    type(region), intent(in)         :: fillregion
+    type(region), intent(in)         :: fill_region
     integer, intent(in)              :: num_species
     integer, intent(in)              :: fill_species(num_species)
     real, intent(in)                 :: ndens_sp, temperature
@@ -174,6 +174,9 @@ contains
     type(maxwellian)                 :: fill_maxwellian
     integer                          :: num_part, n, s, spec_
     integer(kind=2)                  :: xi_, yi_, zi_
+    real                             :: fill_xmin, fill_xmax,&
+                                      & fill_ymin, fill_ymax,&
+                                      & fill_zmin, fill_zmax
     real                             :: u_, v_, w_, dx_, dy_, dz_
     real                             :: x_, y_, z_, rnd, num_part_r
     real                             :: x_glob, y_glob, z_glob
@@ -209,14 +212,27 @@ contains
     if (temperature .lt. 0.1) then
       call tabulateMaxwellian(fill_maxwellian, 2000)
     end if
+
+    ! global to local coordinates
+    fill_xmin = MAX(0.0, fill_region%x_min - REAL(this_meshblock%ptr%x0))
+    fill_xmax = MIN(REAL(this_meshblock%ptr%sx),&
+                          & fill_region%x_max - REAL(this_meshblock%ptr%x0))
+    fill_ymin = MAX(0.0, fill_region%y_min - REAL(this_meshblock%ptr%y0))
+    fill_ymax = MIN(REAL(this_meshblock%ptr%sy),&
+                          & fill_region%y_max - REAL(this_meshblock%ptr%y0))
+    #ifdef threeD
+      fill_zmin = MAX(0.0, fill_region%z_min - REAL(this_meshblock%ptr%z0))
+      fill_zmax = MIN(REAL(this_meshblock%ptr%sz),&
+                            & fill_region%z_max - REAL(this_meshblock%ptr%z0))
+    #endif
     
     #ifndef threeD
-      num_part_r = REAL(ndens_sp) * (fillregion%x_max - fillregion%x_min)&
-                                & * (fillregion%y_max - fillregion%y_min)
+      num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)&
+                                & * (fill_ymax - fill_ymin)
     #else 
-      num_part_r = REAL(ndens_sp) * (fillregion%x_max - fillregion%x_min)&
-                                & * (fillregion%y_max - fillregion%y_min)&
-                                & * (fillregion%z_max - fillregion%z_min))
+      num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)&
+                                & * (fill_ymax - fill_ymin)&
+                                & * (fill_zmax - fill_zmin))
     #endif
     if (num_part_r .lt. 10.0) then
       if (num_part_r .ne. 0.0) then
@@ -233,14 +249,24 @@ contains
     do while (n .lt. num_part)
       ! generate coords for all species
       rnd = random(dseed)
-      x_ = fillregion%x_min + rnd * (fillregion%x_max - fillregion%x_min)
+      x_ = fill_xmin + rnd * (fill_xmax - fill_xmin)
       xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
+      if (xi_ .eq. this_meshblock%ptr%sx) then
+        xi_ = xi_ - 1; dx_ = dx_ + 1.0
+      end if
       rnd = random(dseed)
-      y_ = fillregion%y_min + rnd * (fillregion%y_max - fillregion%y_min)
+      y_ = fill_ymin + rnd * (fill_ymax - fill_ymin)
       yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
+      if (yi_ .eq. this_meshblock%ptr%sy) then
+        yi_ = yi_ - 1; dy_ = dy_ + 1.0
+      end if
       #ifdef threeD
-        z_ = fillregion%z_min + random(dseed) * (fillregion%z_max - fillregion%z_min)
+        rnd = random(dseed)
+        z_ = fill_zmin + rnd * (fill_zmax - fill_zmin)
         zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
+        if (zi_ .eq. this_meshblock%ptr%sz) then
+          zi_ = zi_ - 1; dz_ = dz_ + 1.0
+        end if
       #else
         z_ = 0.5
         zi_ = 0; dz_ = 0.5
