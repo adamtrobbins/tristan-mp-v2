@@ -28,7 +28,8 @@ module m_writeoutput
              & writeSpectra_Binary
   #else
     private :: writeParticles_hdf5, writeFields_hdf5,&
-             & writeSpectra_hdf5, writeDomain_hdf5
+             & writeSpectra_hdf5, writeDomain_hdf5,&
+             & writeXDMF_hdf5
   #endif
   private :: initializeOutput
   !...............................................................!
@@ -168,7 +169,7 @@ contains
      call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
      glob_spectra(s,:) = recv_spec_int(:)
-     
+
      ! compute radiation spectra
      if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
        send_spec_real(:) = rad_spectra(s,:)
@@ -187,6 +188,74 @@ contains
   end subroutine initializeOutput
 
   #ifdef HDF5
+  subroutine writeXDMF_hdf5(step, time, ni, nj, nk)
+    implicit none
+    integer, intent(in)               :: step, time, ni, nj, nk
+    character(len=STR_MAX)            :: stepchar, filename
+    integer                           :: var
+
+    write(stepchar, "(i5.5)") step
+    filename = trim(output_dir_name) // '/flds.tot.' // trim(stepchar) // '.xdmf'
+
+    open (UNIT_xdmf, file=filename, status="replace", access="stream", form="formatted")
+    write (UNIT_xdmf, "(A)")&
+                           & '<?xml version="1.0" ?>'
+    write (UNIT_xdmf, "(A)")&
+                           & '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd">'
+    write (UNIT_xdmf, "(A)")&
+                           & '<Xdmf Version="2.0">'
+    write (UNIT_xdmf, "(A)")&
+                           & '  <Domain>'
+    write (UNIT_xdmf, "(A)")&
+                           & '    <Grid Name="domain" GridType="Uniform">'
+    write (UNIT_xdmf, "(A,A,A,I10,I10,I10,A)")&
+                           & '      <Topology TopologyType=',&
+                              & '"3DCoRectMesh"', ' Dimensions="', &
+                              & nk, nj, ni, '"/>'
+    write (UNIT_xdmf, "(A)")&
+                           & '      <Geometry GeometryType="ORIGIN_DXDYDZ">'
+    write (UNIT_xdmf, "(A,A)")&
+                           & '        <DataItem Format="XML" Dimensions="3"',&
+                              & ' NumberType="Float" Precision="4">'
+    write (UNIT_xdmf, "(A)")&
+                           & '          0.0 0.0 0.0'
+    write (UNIT_xdmf, "(A)")&
+                           & '        </DataItem>'
+    write (UNIT_xdmf, "(A,A)")&
+                           & '        <DataItem Format="XML" Dimensions="3"',&
+                              & ' NumberType="Float" Precision="4">'
+    write (UNIT_xdmf, "(A)")&
+                           & '          1.0 1.0 1.0'
+    write (UNIT_xdmf, "(A)")&
+                           & '        </DataItem>'
+    write (UNIT_xdmf, "(A)")&
+                           & '      </Geometry>'
+
+    do var = 1, n_fld_vars
+      write (UNIT_xdmf, "(A)")&
+                           & '      <Attribute Name="' // trim(fld_vars(var)) // '" Center="Node">'
+      write (UNIT_xdmf, "(A,I10,I10,I10,A)")&
+                           & '        <DataItem Format="HDF" Dimensions="',&
+                           & nk, nj, ni,&
+                           & '" NumberType="Float" Precision="4">'
+      write (UNIT_xdmf, "(A,A)")&
+                           & '          flds.tot.' // trim(stepchar) // ':/',&
+                           & trim(fld_vars(var))
+      write (UNIT_xdmf, "(A)")&
+                           & '        </DataItem>'
+      write (UNIT_xdmf, "(A)")&
+                           & '      </Attribute>'
+    end do
+
+    write (UNIT_xdmf, "(A)")&
+                           & '    </Grid>'
+    write (UNIT_xdmf, "(A)")&
+                           & '  </Domain>'
+    write (UNIT_xdmf, "(A)")&
+                           & '</Xdmf>'
+    close (UNIT_xdmf)
+  end subroutine writeXDMF_hdf5
+
   subroutine writeFields_hdf5(step, time)
     implicit none
     integer, intent(in)               :: step, time
@@ -257,6 +326,10 @@ contains
         glob_n_k = CEILING(REAL(global_mesh%sz) / REAL(output_istep))
         glob_n_k = MAX(1, glob_n_k)
       #endif
+    end if
+
+    if (mpi_rank .eq. 0) then
+      call writeXDMF_hdf5(step, time, glob_n_i, glob_n_j, glob_n_k)
     end if
 
     offsets(1) = offset_i
@@ -596,7 +669,7 @@ contains
                                           & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
                                           & species(s)%prtl_tile(ti, tj, tk)%zi(temp))
                 end if
-            end select ! select variable 
+            end select ! select variable
           end do ! strided prtls
         else ! if unrecognized vartype
           call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(prtl_var_types(p))//'`')
@@ -617,12 +690,12 @@ contains
         if (writing_intQ) then
           call h5dwrite_f(dset_id(p), h5type, temp_int_arr, global_dims, error,&
                         & file_space_id = filespace(p), mem_space_id = memspace,&
-                        & xfer_prp = h5p_default_f)
+                        & xfer_prp = plist_id)
           deallocate(temp_int_arr)
         else
           call h5dwrite_f(dset_id(p), h5type, temp_real_arr, global_dims, error,&
                         & file_space_id = filespace(p), mem_space_id = memspace,&
-                        & xfer_prp = h5p_default_f)
+                        & xfer_prp = plist_id)
           deallocate(temp_real_arr)
         end if
 
@@ -688,7 +761,7 @@ contains
         call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, glob_spectra(s,:), data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
-        
+
         if (allocated(glob_rad_spectra)) then
           ! writing bins:
           dsetname = 'er' // trim(STR(s))
