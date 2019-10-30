@@ -481,7 +481,8 @@ contains
   subroutine initializeRadiation()
     implicit none
     call getInput('radiation', 'gamma_c', rad_gamma_c, 10.0)
-    call getInput('radiation', 'gamma_rad', rad_gamma_rad, 10.0)
+    call getInput('radiation', 'gamma_syn', rad_gamma_syn, 10.0)
+    call getInput('radiation', 'gamma_ic', rad_gamma_ic, 10.0)
     call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
     call getInput('radiation', 'dens_limit', rad_dens_lim, 1e8)
     #ifdef EMIT

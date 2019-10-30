@@ -7,7 +7,7 @@ module m_radiation
   use m_particlelogistics
   implicit none
 
-  real              :: rad_gamma_c, rad_gamma_rad, rad_beta_rec
+  real              :: rad_gamma_c, rad_gamma_syn, rad_gamma_ic
   real              :: rad_dens_lim
   real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   integer           :: rad_photon_ind
@@ -15,10 +15,10 @@ module m_radiation
   !--- PRIVATE variables/functions -------------------------------!
   !...............................................................!
 contains
-  subroutine particleRadiate(s,&
-                           & u0, v0, w0, ui, vi, wi,&
-                           & dx, dy, dz, xi, yi, zi,&
-                           & bx, by, bz, ex, ey, ez)
+  subroutine particleRadiateSync(s,&
+                               & u0, v0, w0, ui, vi, wi,&
+                               & dx, dy, dz, xi, yi, zi,&
+                               & bx, by, bz, ex, ey, ez)
     implicit none
     real, intent(inout)           :: u0, v0, w0
     real, intent(in)              :: ui, vi, wi
@@ -38,7 +38,8 @@ contains
     integer :: spec_index
 
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
-    if ((g0 .gt. 1.5) .and. (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) then
+    if ((g0 .gt. 1.5) .and.&
+      & (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) then
       uci = 0.5 * (u0 + ui)
       vci = 0.5 * (v0 + vi)
       wci = 0.5 * (w0 + wi)
@@ -60,11 +61,11 @@ contains
       kappaR_y = (-bz * e_bar_x + bx * e_bar_z) + (ey * beta_dot_e)
       kappaR_z = (by * e_bar_x - bx * e_bar_y) + (ez * beta_dot_e)
       
-      tau_rad = (rad_beta_rec * betaci) * (rad_gamma_c / rad_gamma_rad)**2 *&
+      tau_rad = (rad_beta_rec * betaci) * (rad_gamma_c / rad_gamma_syn)**2 *&
               & (chiR * B_norm * CCINV)
       eph_rad = (gci / rad_gamma_c)**2 * chiR
 
-      dummy_ = B_norm * rad_beta_rec / (rad_gamma_rad**2 * CC)
+      dummy_ = B_norm * rad_beta_rec / (rad_gamma_syn**2 * CC)
 
       #ifndef EMIT
         u0 = u0 + dummy_ * (kappaR_x - chiR_sq * gci * uci)
@@ -102,5 +103,25 @@ contains
       end if
       rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_rad
     end if
-  end subroutine particleRadiate
+  end subroutine particleRadiateSync
+  
+  subroutine particleRadiateIC(s,&
+                             & u0, v0, w0, ui, vi, wi,&
+                             & dx, dy, dz, xi, yi, zi,&
+                             & bx, by, bz, ex, ey, ez)
+    implicit none
+    real, intent(inout)           :: u0, v0, w0
+    real, intent(in)              :: ui, vi, wi
+    real, intent(in)              :: bx, by, bz, ex, ey, ez
+    real, intent(in)              :: dx, dy, dz
+    integer(kind=2), intent(in)   :: xi, yi, zi
+    integer, intent(in)           :: s
+    real :: corr_
+
+    real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
+    real :: g_new, beta_new
+
+    real :: tau_rad, eph_rad, dummy_
+    integer :: spec_index
+  end subroutine particleRadiateIC
 end module m_radiation
