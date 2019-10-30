@@ -87,8 +87,8 @@
 <radiation>
 
   gamma_c       = 100           # `gamma_c` parameter (determines synchrotron peak energy)
-  gamma_rad     = 100           # `gamma_rad` parameter (determines cooling rate)
-  beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_rad`
+  gamma_syn     = 100           # `gamma_syn` parameter (determines cooling rate)
+  beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic`
   photon_ind    = 5             # index of species to which to emit photons
 
 <particles>
