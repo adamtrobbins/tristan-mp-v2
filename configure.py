@@ -137,9 +137,9 @@ if args['radiation'] != 'no':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
 
 if 'sync' in args['radiation']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCRAD '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCHROTRON '
 if 'ic' in args['radiation']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DICRAD '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DINVERSECOMPTON '
 
 if args['emit'] and args['radiation'] != 'no':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
