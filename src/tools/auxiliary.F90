@@ -266,6 +266,14 @@ contains
     return
   end function random
 
+  integer function randomInt(DSEED, amin, amax)
+    implicit none
+    real(dprec)         :: DSEED
+    integer, intent(in) :: amin, amax
+    randomInt = amin + INT((amax - amin) * random(dseed))
+    return
+  end function randomInt
+
   real function poisson(num)
     implicit none
     real, intent(in) :: num
