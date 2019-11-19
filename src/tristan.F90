@@ -10,7 +10,7 @@ program tristan
   implicit none
   !----- main code --------------------------
   integer :: num_couples, i
-  type(couple), allocatable, intent(out)  :: coupled_pairs
+  type(couple), allocatable :: coupled_pairs(:)
 
   call initializeAll()
 
