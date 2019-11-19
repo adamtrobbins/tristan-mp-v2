@@ -24,6 +24,7 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)objects/domain.F90 \
              $(SRC_DIR)objects/particles.F90 \
              $(SRC_DIR)objects/fields.F90 \
+						 $(SRC_DIR)tools/binary_coupling.F90 \
              $(SRC_DIR)tools/helpers.F90 \
              $(SRC_DIR)logistics/finalize.F90 \
              $(SRC_DIR)tools/error_handling.F90 \
