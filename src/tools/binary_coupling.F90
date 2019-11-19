@@ -56,7 +56,7 @@ contains
     type(spec_ind_pair), allocatable        :: set_1(:), set_2(:) ! set #1 and #2 saved as "tuples" of species and index
     logical                                 :: pairing_correctQ
     integer, intent(out)                    :: num_couples
-    type(couple), allocatable, intent(out)  :: coupled_pairs
+    type(couple), allocatable, intent(out)  :: coupled_pairs(:)
 
     ! computing number of particles in set #1
     do si = 1, n_sp_1
