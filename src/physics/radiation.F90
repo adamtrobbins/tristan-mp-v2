@@ -7,7 +7,7 @@ module m_radiation
   use m_particlelogistics
   implicit none
 
-  real              :: rad_gamma_c, rad_gamma_syn, rad_gamma_ic
+  real              :: rad_gamma_c, rad_gamma_syn, rad_gamma_ic, rad_beta_rec
   real              :: rad_dens_lim
   real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   integer           :: rad_photon_ind
@@ -43,11 +43,11 @@ contains
       uci = 0.5 * (u0 + ui)
       vci = 0.5 * (v0 + vi)
       wci = 0.5 * (w0 + wi)
-      
+
       gci = sqrt(1.0 + uci**2 + vci**2 + wci**2)
-      over_gci = 1.0 / gci 
+      over_gci = 1.0 / gci
       betaci = sqrt(1.0 - over_gci**2)
-      
+
       e_bar_x = ex + (vci * bz - wci * by) * over_gci
       e_bar_y = ey + (wci * bx - uci * bz) * over_gci
       e_bar_z = ez + (uci * by - vci * bx) * over_gci
@@ -60,7 +60,7 @@ contains
       kappaR_x = (bz * e_bar_y - by * e_bar_z) + (ex * beta_dot_e)
       kappaR_y = (-bz * e_bar_x + bx * e_bar_z) + (ey * beta_dot_e)
       kappaR_z = (by * e_bar_x - bx * e_bar_y) + (ez * beta_dot_e)
-      
+
       tau_rad = (rad_beta_rec * betaci) * (rad_gamma_c / rad_gamma_syn)**2 *&
               & (chiR * B_norm * CCINV)
       eph_rad = (gci / rad_gamma_c)**2 * chiR
@@ -87,7 +87,7 @@ contains
         w0 = kz * g_new * beta_new
         if (random(dseed) .lt. tau_rad) then
           call createParticle(rad_photon_ind, xi, yi, zi, dx, dy, dz,&
-                            & kx * eph_rad, ky * eph_rad, kz * eph_rad) 
+                            & kx * eph_rad, ky * eph_rad, kz * eph_rad)
         end if
       #endif
 
@@ -104,7 +104,7 @@ contains
       rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_rad
     end if
   end subroutine particleRadiateSync
-  
+
   subroutine particleRadiateIC(s,&
                              & u0, v0, w0, ui, vi, wi,&
                              & dx, dy, dz, xi, yi, zi,&
