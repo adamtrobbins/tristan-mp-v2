@@ -17,8 +17,8 @@ module m_bincoupling
     ! object that contains two particles ...
     !     ... given by their species and index ...
     !     ... on a single tile
-    type(spec_ind_par) :: part_1
-    type(spec_ind_par) :: part_2
+    type(spec_ind_pair) :: part_1
+    type(spec_ind_pair) :: part_2
   end type
 
   !--- PRIVATE functions -----------------------------------------!
