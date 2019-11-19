@@ -33,7 +33,7 @@ contains
     type(spec_ind_pair)                 :: temp
     integer                             :: i, j
     do i = 1, set_size - 1
-      j = randomInt(dseed, i, set_size)
+      j = randomInt(dseed, i, set_size + 1)
       temp = set(i)
       set(i) = set(j)
       set(j) = temp
