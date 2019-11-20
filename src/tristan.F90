@@ -16,7 +16,7 @@ program tristan
 
   call coupleParticlesOnTile(1, 1, 1,&
                            & (/1/), 1,&
-                           & (/2, 1/), 1,&
+                           & (/2, 1/), 2,&
                            & coupled_pairs, num_couples)
 
   if (this_meshblock%ptr%rnk .eq. 0) then
