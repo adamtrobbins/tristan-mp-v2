@@ -84,7 +84,6 @@ contains
 
     if (same_setsQ) then ! if two sets are exactly the same (e.g. gamma+gamma)
       ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
-      print *, 'SAME SET PAIRING'
       ! computing number of particles in the set
       do si = 1, n_sp_1
         s = sp_arr_1(si)
@@ -112,7 +111,6 @@ contains
       end do
     else ! if two sets have no common elements (e.g. compton scattering)
       ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
-      print *, 'DIFFERENT SET PAIRING'
       ! computing number of particles in set #1
       do si = 1, n_sp_1
         s = sp_arr_1(si)
