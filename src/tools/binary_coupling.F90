@@ -23,9 +23,40 @@ module m_bincoupling
   end type
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: shuffleSet
   !...............................................................!
 contains
+  ! to treat certain species equivalently ...
+  !   ... we convert them into a "set" of `spec_ind_pair` objects
+  subroutine prtlToSet(ti, tj, tk,&
+                     & sp_arr, n_sp,&
+                     & set, set_size)
+    implicit none
+    integer, intent(in)                           :: ti, tj, tk
+    integer, intent(in)                           :: n_sp ! # of species in set
+    integer, intent(in)                           :: sp_arr(n_sp)
+    integer, intent(out)                          :: set_size
+    type(spec_ind_pair), allocatable, intent(out) :: set(:)
+    integer                                       :: s, si, i, p
+
+    ! computing number of particles in the set
+    set_size = 0
+    do si = 1, n_sp
+      s = sp_arr(si)
+      set_size = set_size + species(s)%prtl_tile(ti, tj, tk)%npart_sp
+    end do
+    allocate(set(set_size))
+    ! assigning particles in the set
+    i = 1
+    do si = 1, n_sp
+      s = sp_arr(si)
+      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+        set(i)%spec = s
+        set(i)%index = p
+        i = i + 1
+      end do
+    end do
+  end subroutine prtlToSet
+
   ! Knuth's algorithm to randomly shuffle a set
   subroutine shuffleSet(set, set_size)
     implicit none
@@ -39,6 +70,7 @@ contains
       set(i) = set(j)
       set(j) = temp
     end do
+    allocate(set(set_sz))
   end subroutine shuffleSet
 
   ! this routine pairs particles in two sets #1 and #2 randomly
@@ -83,23 +115,8 @@ contains
     end if
 
     if (same_setsQ) then ! if two sets are exactly the same (e.g. gamma+gamma)
-      ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
-      ! computing number of particles in the set
-      do si = 1, n_sp_1
-        s = sp_arr_1(si)
-        num_1 = num_1 + species(s)%prtl_tile(ti, tj, tk)%npart_sp
-      end do
-      ! assigning particles in the set
-      allocate(set_1(num_1))
-      i = 1
-      do si = 1, n_sp_1
-        s = sp_arr_1(si)
-        do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-          set_1(i)%spec = s
-          set_1(i)%index = p
-          i = i + 1
-        end do
-      end do
+      ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
       ! shuffle the set
       call shuffleSet(set_1, num_1)
       num_couples = INT(num_1 / 2)
@@ -109,40 +126,11 @@ contains
         coupled_pairs(i)%part_1 = set_1(i)
         coupled_pairs(i)%part_2 = set_1(num_1 - i + 1)
       end do
+      ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     else ! if two sets have no common elements (e.g. compton scattering)
-      ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
-      ! computing number of particles in set #1
-      do si = 1, n_sp_1
-        s = sp_arr_1(si)
-        num_1 = num_1 + species(s)%prtl_tile(ti, tj, tk)%npart_sp
-      end do
-      ! computing number of particles in set #2
-      do si = 1, n_sp_2
-        s = sp_arr_2(si)
-        num_2 = num_2 + species(s)%prtl_tile(ti, tj, tk)%npart_sp
-      end do
-      ! assigning particles in set #1
-      allocate(set_1(num_1))
-      i = 1
-      do si = 1, n_sp_1
-        s = sp_arr_1(si)
-        do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-          set_1(i)%spec = s
-          set_1(i)%index = p
-          i = i + 1
-        end do
-      end do
-      ! assigning particles in set #2
-      allocate(set_2(num_2))
-      i = 1
-      do si = 1, n_sp_2
-        s = sp_arr_2(si)
-        do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-          set_2(i)%spec = s
-          set_2(i)%index = p
-          i = i + 1
-        end do
-      end do
+      ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
+      call prtlToSet(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2)
       ! now we can simply work with `set_1` and `set_2`
       num_couples = min(num_1, num_2)
       if ((num_1 .eq. 1) .and. (num_2 .eq. 1)) then
@@ -181,6 +169,7 @@ contains
           coupled_pairs(i)%part_2 = set_2(i)
         end do
       end if
+      ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     end if
 
     if (allocated(set_1)) deallocate(set_1)
