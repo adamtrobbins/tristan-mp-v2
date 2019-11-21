@@ -50,9 +50,6 @@ contains
     ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
     tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
     tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
-    ! ti = MAX(1, INT(CEILING((REAL(xi, 8) + REAL(dx, 8)) / REAL(species(s)%tile_sx, 8))))
-    ! tj = MAX(1, INT(CEILING((REAL(yi, 8) + REAL(dy, 8)) / REAL(species(s)%tile_sy, 8))))
-    !tk = MAX(1, INT(CEILING((REAL(zi, 8) + REAL(dz, 8)) / REAL(species(s)%tile_sz, 8))))
     #ifdef DEBUG
       if ((ti .gt. species(s)%tile_nx) .or. &
         & (tj .gt. species(s)%tile_ny) .or. &
