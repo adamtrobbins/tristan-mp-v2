@@ -10,7 +10,7 @@ module m_radiation
   real              :: rad_gamma_c, rad_gamma_syn, rad_gamma_ic, rad_beta_rec
   real              :: rad_dens_lim
   real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
-  integer           :: rad_photon_ind
+  integer           :: rad_photon_sp
 
   !--- PRIVATE variables/functions -------------------------------!
   !...............................................................!
@@ -86,7 +86,7 @@ contains
         v0 = ky * g_new * beta_new
         w0 = kz * g_new * beta_new
         if (random(dseed) .lt. tau_rad) then
-          call createParticle(rad_photon_ind, xi, yi, zi, dx, dy, dz,&
+          call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
                             & kx * eph_rad, ky * eph_rad, kz * eph_rad)
         end if
       #endif
