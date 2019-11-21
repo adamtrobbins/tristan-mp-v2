@@ -6,25 +6,33 @@ module m_particles
 
   type :: particle_tile
     integer                                     :: npart_sp, maxptl_sp
+    ! tile boundaries in local coordinates
     integer                                     :: x1, x2, y1, y2, z1, z2
     integer(kind=2), allocatable, dimension(:)  :: xi, yi, zi
     real, allocatable, dimension(:)             :: dx, dy, dz
     real, allocatable, dimension(:)             :: u, v, w
     integer, allocatable, dimension(:)          :: ind, proc
     !dir$ attributes align: 64 :: xi, yi, zi, dx, dy, dz, u, v, w, ind, proc
+    ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
 
   type :: particle_species
     integer     :: cntr_sp
     real        :: m_sp, ch_sp
-    #ifdef RADIATION
-      logical     :: cool_sp
-    #endif
     ! sizes and boundaries of the tiles in each direction
     integer     :: tile_sx, tile_sy, tile_sz
     ! numbers of the tiles in each direction
     integer     :: tile_nx, tile_ny, tile_nz
     type (particle_tile), allocatable, dimension(:,:,:) :: prtl_tile
+
+    ! extra physics properties
+    #ifdef RADIATION
+      logical     :: cool_sp
+    #endif
+
+    #ifdef BWPAIRPRODUCTION
+      integer     :: bw_sp
+    #endif
   end type particle_species
 
   ! particle types for exchange between processors />
@@ -58,5 +66,5 @@ module m_particles
   #ifdef MPI
     integer                                        :: myMPI_ENROUTE
   #endif
-  
+
 end module m_particles
