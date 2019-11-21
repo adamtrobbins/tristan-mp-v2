@@ -68,13 +68,13 @@
   start_z      = 0
 
 <static_load_balancing>
-  
-  in_x         = 1
+
+  in_x         = 0
   sx_min       = 10
-  
+
   in_y         = 0
   sy_min       = 10
-  
+
   in_z         = 0
   sz_min       = 10
 
@@ -83,14 +83,6 @@
   ppc0          = 10
   sigma         = 4
   c_omp         = 10
-
-<radiation>
-
-  gamma_c       = 10            # `gamma_c` parameter (determines synchrotron peak energy)
-  gamma_syn     = 5             # `gamma_syn` parameter (determines the cooling rate)
-  beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic`
-  photon_ind    = 3             # index of species to which to emit photons
-  dens_limit    = 100           # density limit on the cooled region
 
 <particles>
 
@@ -105,10 +97,27 @@
   m2            = 1
   ch2           = 1
   cool2         = 0             # turn ON/OFF cooling for this species
-  
+
   maxptl3       = 1e6           # max number of particles per core
   m3            = 0
   ch3           = 0
+  bw3           = 1             # turn ON/OFF BW process on these particles
+
+<radiation>
+
+  gamma_c       = 10            # `gamma_c` parameter (determines photon peak energy)
+  gamma_syn     = 5             # `gamma_syn` parameter (determines the synchrotron cooling rate)
+  gamma_ic      = 5             # `gamma_ic` parameter (determines the IC cooling rate)
+  beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic`
+  photon_sp     = 3             # emit photons to species #...
+  dens_limit    = 100           # density limit on the cooled region
+
+<bw_pp>
+
+  tau_BW        = 0.0001        # fiducial Breit-Wheeler cross section
+  interval      = 10            # perform BW once every `interval` timestep
+  electron_sp   = 1             # save produced electrons to species #...
+  positron_sp   = 1             # save produced positrons to species #...
 
 <problem>
 
