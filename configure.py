@@ -72,15 +72,26 @@ parser.add_argument('-slb',
                     default=False,
                     help='enable static load balancing')
 
+# extra physics
 parser.add_argument('--radiation',
                     default='no',
                     choices=rad_choices,
                     help='choose radiation mechanism')
 
-parser.add_argument('-emit', 
-                    action='store_true', 
-                    default=False, 
+parser.add_argument('-emit',
+                    action='store_true',
+                    default=False,
                     help='enable photon emission')
+
+parser.add_argument('-qed',
+                    action='store_true',
+                    default=False,
+                    help='enable QED step')
+
+parser.add_argument('-bwpp',
+                    action='store_true',
+                    default=False,
+                    help='enable Breit-Wheeler pair production')
 
 args = vars(parser.parse_args())
 
@@ -133,6 +144,7 @@ if args['slb']:
     args['alb'] = False
     makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
+# extra physics
 if args['radiation'] != 'no':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
 
@@ -143,6 +155,12 @@ if 'ic' in args['radiation']:
 
 if args['emit'] and args['radiation'] != 'no':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
+
+if args['qed']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DQED '
+
+if args['bwpp']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
@@ -155,15 +173,28 @@ with open(makefile_output, 'w') as current_file:
   current_file.write(makefile_template)
 
 # Finish with diagnostic output
+print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
 print('  Userfile:                ' + args['user'])
+
+print('DOMAIN .......................................................................')
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
+print('  # of ghost zones:        ' + str(args['nghosts']))
+print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+
+print('PHYSICS ......................................................................')
 print('  Cooling:                 ' + args['radiation'])
 print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
-print('  # of ghost zones:        ' + str(args['nghosts']))
+print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
+print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
+
+print('TECHNICAL ....................................................................')
+
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
 print('  IFPORT mkdir:            ' + ('ON' if args['ifport'] else 'OFF'))
-print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+
+print('==============================================================================')
+
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
     + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'])
