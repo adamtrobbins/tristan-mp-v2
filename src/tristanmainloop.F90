@@ -15,6 +15,11 @@ module m_mainloop
   use m_filtering
   use m_userfile
   use m_errors
+
+  ! extra physics
+  #ifdef QED
+    use m_qedphysics
+  #endif
   implicit none
 
   integer       :: timestep
@@ -24,6 +29,9 @@ module m_mainloop
                  & t_outputstep, t_fldexchstep,&
                  & t_prtlexchxtep, t_fldslvrstep,&
                  & t_usrfuncs
+  #ifdef QED
+    real (kind=8) :: t_qedstep
+  #endif
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -36,6 +44,9 @@ module m_mainloop
            & t_outputstep, t_fldexchstep,&
            & t_prtlexchxtep, t_fldslvrstep,&
            & t_usrfuncs
+  #ifdef QED
+    private :: t_qedstep
+  #endif
   !...............................................................!
 contains
   subroutine mainloop()
@@ -52,6 +63,10 @@ contains
     t_outputstep = 0;     t_fldexchstep = 0
     t_prtlexchxtep = 0;   t_fldslvrstep = 0
     t_usrfuncs = 0
+
+    #ifdef QED
+      t_qedstep = 0
+    #endif
 
     do timestep = 0, final_timestep
         t_fullstep = MPI_WTIME()
@@ -83,6 +98,16 @@ contains
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       call exchangeFields(.false., .true.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
+      !.................................................
+
+      !-------------------------------------------------
+      ! QED business
+      #ifdef QED
+          t_qedstep = MPI_WTIME() - t_qedstep
+        call QEDstep(timestep)
+        call clearGhostParticles()
+          t_qedstep = MPI_WTIME() - t_qedstep
+      #endif
       !.................................................
 
       !-------------------------------------------------
@@ -207,6 +232,10 @@ contains
                                    & dt_prtlexchxtep(:), dt_fldslvrstep(:),&
                                    & dt_usrfuncs(:)
 
+    #ifdef QED
+      real(kind=8), allocatable     :: dt_qedstep(:)
+    #endif
+
     ! full # of particles for each species
     allocate(nprt_sp(nspec), nprt_sp_global(nspec, mpi_size))
     nprt_sp(:) = 0
@@ -258,6 +287,13 @@ contains
                   & dt_usrfuncs, 1, MPI_REAL8,&
                   & 0, MPI_COMM_WORLD, ierr)
 
+    #ifdef QED
+      allocate(dt_qedstep(mpi_size))
+      call MPI_GATHER(t_qedstep, 1, MPI_REAL8,&
+                    & dt_qedstep, 1, MPI_REAL8,&
+                    & 0, MPI_COMM_WORLD, ierr)
+    #endif
+
     if (mpi_rank .eq. 0) then
       fullstep = SUM(dt_fullstep) * 1000 / mpi_size
       call printReport(.true., "timestep: " // STR(tstep))
@@ -270,6 +306,11 @@ contains
       call printTime(dt_fldslvrstep, "  fld_solver: ", fullstep)
       call printTime(dt_usrfuncs, "  usr_funcs: ", fullstep)
       call printTime(dt_outputstep, "  output_step: ", fullstep)
+
+      #ifdef QED
+        call printTime(dt_qedstep, "  qed_step: ", fullstep)
+      #endif
+
       do s = 1, nspec
         if (s .ne. nspec) then
           call printNpart(nprt_sp_global(s, :),&
@@ -287,6 +328,10 @@ contains
     deallocate(dt_outputstep, dt_fldexchstep)
     deallocate(dt_prtlexchxtep, dt_fldslvrstep)
     deallocate(dt_usrfuncs)
+
+    #ifdef QED
+      deallocate(dt_qedstep)
+    #endif
   end subroutine makeReport
 
 end module m_mainloop
