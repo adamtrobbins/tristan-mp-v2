@@ -7,8 +7,13 @@ module m_mover
   use m_domain
   use m_particles
   use m_fields
-  use m_radiation
-  use m_userfile 
+  use m_userfile
+
+  ! extra physics
+  #ifdef RADIATION
+    use m_radiation
+  #endif
+
   implicit none
 contains
   subroutine moveParticles()
@@ -25,7 +30,7 @@ contains
     logical                               :: dummy_flag
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
-    
+
     #ifdef RADIATION
       dummy_flag = .true.
       do s = 1, nspec
@@ -102,7 +107,7 @@ contains
                 call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
                                    & pt_xi(p), pt_yi(p), pt_zi(p),&
                                    & bx, by, bz, bx0, by0, bz0)
-                
+
                 if (external_fields) then
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
                                         & REAL(pt_yi(p)) + pt_dy(p),&
@@ -112,10 +117,10 @@ contains
                   ex0 = ex0 + ex_ext; ey0 = ey0 + ey_ext; ez0 = ez0 + ez_ext
                   bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
                 end if
-                
+
                 #ifdef RADIATION
-                  ex_rad = ex0; ey_rad = ey0; ez_rad = ez0 
-                  bx_rad = bx0; by_rad = by0; bz_rad = bz0 
+                  ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
+                  bx_rad = bx0; by_rad = by0; bz_rad = bz0
 
                   u_init = pt_u(p)
                   v_init = pt_v(p)
@@ -132,7 +137,7 @@ contains
                 u0 = CC * pt_u(p) + ex0
                 v0 = CC * pt_v(p) + ey0
                 w0 = CC * pt_w(p) + ez0
-                
+
                 ! first half magnetic rotation:
                 g_temp = CC / sqrt(CC**2 + u0**2 + v0**2 + w0**2)
 
@@ -144,12 +149,12 @@ contains
                 v1 = (v0 + w0 * bx0 - u0 * bz0) * dummy_
                 w1 = (w0 + u0 * by0 - v0 * bx0) * dummy_
                 ! second half magnetic rotation + half acceleration:
-                
+
                 u0 = u0 + v1 * bz0 - w1 * by0 + ex0
                 v0 = v0 + w1 * bx0 - u1 * bz0 + ey0
                 w0 = w0 + u1 * by0 - v1 * bx0 + ez0
                 ! </ BORIS PUSHER
-                
+
                 pt_u(p) = u0 * CCINV
                 pt_v(p) = v0 * CCINV
                 pt_w(p) = w0 * CCINV
@@ -174,7 +179,7 @@ contains
                   #endif
                 #endif
                 ! </ RADIATION
-                
+
                 ! move particle
                 g_temp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
                 over_g_temp = 1.0 / g_temp
