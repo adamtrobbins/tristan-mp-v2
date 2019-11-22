@@ -1,5 +1,7 @@
 #include "../defs.F90"
 
+#ifdef RADIATION
+
 module m_radiation
   use m_globalnamespace
   use m_aux
@@ -125,3 +127,5 @@ contains
     integer :: spec_index
   end subroutine particleRadiateIC
 end module m_radiation
+
+#endif
