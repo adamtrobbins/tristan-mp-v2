@@ -578,6 +578,7 @@ contains
       implicit none
       call getInput('bw_pp', 'tau_BW', BW_tau)
       call getInput('bw_pp', 'interval', BW_interval, 1)
+      call getInput('bw_pp', 'algorithm', BW_algorithm)
       call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
       call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
     end subroutine initializeBWPairProduction
