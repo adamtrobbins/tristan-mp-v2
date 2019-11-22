@@ -308,7 +308,7 @@ contains
       #endif
 
       #ifdef BWPAIRPRODUCTION
-        write (var_name, "(A4,I1)") "bw", s
+        write (var_name, "(A2,I1)") "bw", s
         call getInput('particles', var_name, species(s)%bw_sp, 0)
         if ((species(s)%bw_sp .ne. 0) .and.&
           & ((species(s)%ch_sp .ne. 0) .or. (species(s)%m_sp .ne. 0))) then
