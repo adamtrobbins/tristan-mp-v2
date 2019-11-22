@@ -140,61 +140,29 @@ contains
 
     dz_ = 0.5; zi_ = 0
 
-    call globalToLocalCoords(x1_g, y1_g, 0.0,&
-                           & x1_l, y1_l, rnd)
-    call globalToLocalCoords(x2_g, y2_g, 0.0,&
-                           & x2_l, y2_l, rnd)
+    do i = 1, ph_ndot
+      rnd = random(dseed)
+      thet = 2 * M_PI * rnd
+      u_ = cos(thet) * ph_energy
+      v_ = sin(thet) * ph_energy
+      w_ = 0.0
 
-    if (((x1_l .ge. 0) .and. (x1_l .lt. this_meshblock%ptr%sx)) .and.&
-      & ((y1_l .ge. 0) .and. (y1_l .lt. this_meshblock%ptr%sy))) then
+      x_ = x1_g + u_ * (random(dseed) - 0.5) * 2
+      y_ = y1_g + v_ * (random(dseed) - 0.5) * 2
 
-      do i = 1, ph_ndot
-        rnd = random(dseed)
-        thet = 2 * M_PI * rnd
-        u_ = cos(thet) * ph_energy
-        v_ = sin(thet) * ph_energy
-        w_ = 0.0
+      call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_)
 
-        x_ = x1_l + u_ * (random(dseed) - 0.5) * 2
-        y_ = y1_l + v_ * (random(dseed) - 0.5) * 2
+      rnd = random(dseed)
+      thet = 2 * M_PI * rnd
+      u_ = cos(thet) * ph_energy
+      v_ = sin(thet) * ph_energy
+      w_ = 0.0
 
-        xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
-        if (xi_ .eq. this_meshblock%ptr%sx) then
-          xi_ = xi_ - 1; dx_ = dx_ + 1.0
-        end if
-        yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
-        if (yi_ .eq. this_meshblock%ptr%sy) then
-          yi_ = yi_ - 1; dy_ = dy_ + 1.0
-        end if
+      x_ = x2_g + u_ * (random(dseed) - 0.5) * 2
+      y_ = y2_g + v_ * (random(dseed) - 0.5) * 2
 
-        call createParticle(1, xi_, yi_, yi_, dx_, dy_, dz_, u_, v_, w_)
-      end do
-    end if
-
-    if (((x2_l .ge. 0) .and. (x2_l .lt. this_meshblock%ptr%sx)) .and.&
-      & ((y2_l .ge. 0) .and. (y2_l .lt. this_meshblock%ptr%sy))) then
-      do i = 1, ph_ndot
-        rnd = random(dseed)
-        thet = 2 * M_PI * rnd
-        u_ = cos(thet) * ph_energy
-        v_ = sin(thet) * ph_energy
-        w_ = 0.0
-
-        x_ = x2_l + u_ * (random(dseed) - 0.5) * 2
-        y_ = y2_l + v_ * (random(dseed) - 0.5) * 2
-
-        xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
-        if (xi_ .eq. this_meshblock%ptr%sx) then
-          xi_ = xi_ - 1; dx_ = dx_ + 1.0
-        end if
-        yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
-        if (yi_ .eq. this_meshblock%ptr%sy) then
-          yi_ = yi_ - 1; dy_ = dy_ + 1.0
-        end if
-
-        call createParticle(2, xi_, yi_, yi_, dx_, dy_, dz_, u_, v_, w_)
-      end do
-    end if
+      call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
+    end do
 
   end subroutine userParticleBoundaryConditions
 

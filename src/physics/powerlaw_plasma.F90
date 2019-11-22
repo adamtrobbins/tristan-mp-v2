@@ -57,14 +57,14 @@ contains
     ! global to local coordinates
     #ifndef threeD
       call globalToLocalCoords(fill_region%x_min, fill_region%y_min, 0.0,&
-                             & fill_xmin, fill_ymin, fill_zmin)
+                             & fill_xmin, fill_ymin, fill_zmin, adjustQ_ = .true.)
       call globalToLocalCoords(fill_region%x_max, fill_region%y_max, 0.0,&
-                             & fill_xmax, fill_ymax, fill_zmax)
+                             & fill_xmax, fill_ymax, fill_zmax, adjustQ_ = .true.)
     #else
       call globalToLocalCoords(fill_region%x_min, fill_region%y_min, fill_region%z_min,&
-                             & fill_xmin, fill_ymin, fill_zmin)
+                             & fill_xmin, fill_ymin, fill_zmin, adjustQ_ = .true.)
       call globalToLocalCoords(fill_region%x_max, fill_region%y_max, fill_region%z_max,&
-                             & fill_xmax, fill_ymax, fill_zmax)
+                             & fill_xmax, fill_ymax, fill_zmax, adjustQ_ = .true.)
     #endif
 
     #ifndef threeD
