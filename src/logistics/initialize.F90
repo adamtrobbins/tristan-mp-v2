@@ -33,8 +33,14 @@ module m_initialize
            & initializeLB,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
-           & initializeSimulation, checkEverything,&
-           & initializeRadiation, initializeBWPairProduction
+           & initializeSimulation, checkEverything
+  #ifdef RADIATION
+    private :: initializeRadiation
+  #endif
+
+  #ifdef BWPAIRPRODUCTION
+    private :: initializeBWPairProduction
+  #endif
   !...............................................................!
 contains
   ! initialize all the necessary arrays and variables
