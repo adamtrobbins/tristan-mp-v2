@@ -147,8 +147,8 @@ contains
       v_ = sin(thet) * ph_energy
       w_ = 0.0
 
-      x_ = x1_g + u_ * (random(dseed) - 0.5) * 2
-      y_ = y1_g + v_ * (random(dseed) - 0.5) * 2
+      x_ = x1_g + CC * u_ * (random(dseed) - 0.5) * 2 / ph_energy
+      y_ = y1_g + CC * v_ * (random(dseed) - 0.5) * 2 / ph_energy
 
       call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_)
 
@@ -158,8 +158,8 @@ contains
       v_ = sin(thet) * ph_energy
       w_ = 0.0
 
-      x_ = x2_g + u_ * (random(dseed) - 0.5) * 2
-      y_ = y2_g + v_ * (random(dseed) - 0.5) * 2
+      x_ = x2_g + CC * u_ * (random(dseed) - 0.5) * 2 / ph_energy
+      y_ = y2_g + CC * v_ * (random(dseed) - 0.5) * 2 / ph_energy
 
       call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
     end do
