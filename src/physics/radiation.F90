@@ -1,8 +1,8 @@
 #include "../defs.F90"
 
+module m_radiation
 #ifdef RADIATION
 
-module m_radiation
   use m_globalnamespace
   use m_aux
   use m_errors
@@ -126,6 +126,6 @@ contains
     real :: tau_rad, eph_rad, dummy_
     integer :: spec_index
   end subroutine particleRadiateIC
-end module m_radiation
 
 #endif
+end module m_radiation

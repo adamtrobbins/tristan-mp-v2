@@ -1,8 +1,8 @@
 #include "../defs.F90"
 
+module m_bwpairproduction
 #ifdef BWPAIRPRODUCTION
 
-module m_bwpairproduction
   use m_globalnamespace
   use m_aux
   use m_errors
@@ -303,6 +303,5 @@ contains
                                       & dx_new, dy_new, dz_new, 0.0, 0.0, 0.0)
   end subroutine PPfromTwoPhotons
 
-end module m_bwpairproduction
-
 #endif
+end module m_bwpairproduction

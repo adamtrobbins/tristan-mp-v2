@@ -1,8 +1,8 @@
 #include "../defs.F90"
 
+module m_qedphysics
 #ifdef QED
 
-module m_qedphysics
   use m_globalnamespace
   use m_bwpairproduction
   implicit none
@@ -18,6 +18,5 @@ contains
     end if
   end subroutine QEDstep
 
-end module m_qedphysics
-
 #endif
+end module m_qedphysics
