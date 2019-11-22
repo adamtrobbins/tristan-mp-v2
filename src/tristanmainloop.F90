@@ -103,7 +103,7 @@ contains
       !-------------------------------------------------
       ! QED business
       #ifdef QED
-          t_qedstep = MPI_WTIME() - t_qedstep
+          t_qedstep = MPI_WTIME()
         call QEDstep(timestep)
         call clearGhostParticles()
           t_qedstep = MPI_WTIME() - t_qedstep
