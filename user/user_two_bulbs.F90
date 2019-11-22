@@ -154,7 +154,7 @@ contains
 
       rnd = random(dseed)
       thet = M_PI * (rnd - 0.5)
-      u_ = cos(thet) * ph_energy
+      u_ = -cos(thet) * ph_energy
       v_ = sin(thet) * ph_energy
       w_ = 0.0
 
