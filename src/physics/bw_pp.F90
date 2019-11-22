@@ -13,6 +13,7 @@ module m_bwpairproduction
   ! BW parameters
   real    :: BW_tau
   integer :: BW_interval, BW_electron_sp, BW_positron_sp
+  integer :: BW_algorithm
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: bwOnTile_bin, bwOnTile_mc, PPfromTwoPhotons
@@ -45,12 +46,15 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            call bwOnTile_bin(ti, tj, tk,&
-                            & bw_species_1(1 : si_1), si_1,&
-                            & bw_species_2(1 : si_2), si_2)
-            ! call bwOnTile_mc(ti, tj, tk,&
-            !                & bw_species_1(1 : si_1), si_1,&
-            !                & bw_species_2(1 : si_2), si_2)
+            if (BW_algorithm .eq. 1) then
+              call bwOnTile_bin(ti, tj, tk,&
+                              & bw_species_1(1 : si_1), si_1,&
+                              & bw_species_2(1 : si_2), si_2)
+            else if (BW_algorithm .eq. 2) then
+              call bwOnTile_mc(ti, tj, tk,&
+                             & bw_species_1(1 : si_1), si_1,&
+                             & bw_species_2(1 : si_2), si_2)
+            end if
           end do
         end do
       end do
@@ -69,12 +73,15 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            call bwOnTile_bin(ti, tj, tk,&
-                            & bw_species_1(1 : si_1), si_1,&
-                            & n_sp_2 = 0)
-            ! call bwOnTile_mc(ti, tj, tk,&
-            !                & bw_species_1(1 : si_1), si_1,&
-            !                & n_sp_2 = 0)
+            if (BW_algorithm .eq. 1) then
+              call bwOnTile_bin(ti, tj, tk,&
+                              & bw_species_1(1 : si_1), si_1,&
+                              & n_sp_2 = 0)
+            else if (BW_algorithm .eq. 2) then
+              call bwOnTile_mc(ti, tj, tk,&
+                             & bw_species_1(1 : si_1), si_1,&
+                             & n_sp_2 = 0)
+            end if
           end do
         end do
       end do

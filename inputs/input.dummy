@@ -116,6 +116,7 @@
 
   tau_BW        = 0.0001        # fiducial Breit-Wheeler cross section
   interval      = 10            # perform BW once every `interval` timestep
+  algorithm     = 1             # 1 = binary collisions, 2 = MC pairing, 3 = hybrid
   electron_sp   = 1             # save produced electrons to species #...
   positron_sp   = 1             # save produced positrons to species #...
 
