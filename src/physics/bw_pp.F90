@@ -192,13 +192,17 @@ contains
     integer                       :: num_pairs, ph, s1, s2, p1, p2
     real                          :: rnd, P_12
     logical                       :: thresholdQ
+    integer                       :: num_1, num_2
 
     if (n_sp_2 .ne. 0) then
+      ! two separate BW groups
       call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
-                               & pairs_of_photons, num_pairs)
+                               & pairs_of_photons, num_pairs, num_1, num_2)
     else
+      ! one BW group
       call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_1, n_sp_1,&
-                               & pairs_of_photons, num_pairs)
+                               & pairs_of_photons, num_pairs, num_1)
+      num_2 = num_1
     end if
 
     do ph = 1, num_pairs
@@ -206,7 +210,7 @@ contains
       call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph),&
                                & P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
-      P_12 = P_12 * num_pairs * 2
+      P_12 = P_12 * num_2
       rnd = random(dseed)
       if ((rnd .le. P_12) .and. (thresholdQ)) then
         ! pair produce
