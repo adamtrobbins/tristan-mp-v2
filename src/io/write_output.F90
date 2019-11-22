@@ -794,8 +794,8 @@ contains
             call h5sclose_f(dspace_id, error)
             glob_rad_spectra(s,:) = 0.0
           end if
-        end do
-      #endif
+        #endif
+      end do
 
       ! Close the file
       call h5fclose_f(file_id, error)
