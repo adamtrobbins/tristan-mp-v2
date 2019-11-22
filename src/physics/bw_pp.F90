@@ -1,5 +1,7 @@
 #include "../defs.F90"
 
+#ifdef BWPAIRPRODUCTION
+
 module m_bwpairproduction
   use m_globalnamespace
   use m_aux
@@ -302,3 +304,5 @@ contains
   end subroutine PPfromTwoPhotons
 
 end module m_bwpairproduction
+
+#endif
