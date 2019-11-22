@@ -21,9 +21,9 @@ module m_userfile
 
   !--- PRIVATE variables -----------------------------------------!
   integer   :: ph_ndot
-  real      :: ph_energy
+  real      :: ph_energy, del_x1, del_x2
 
-  private   :: ph_ndot, ph_energy
+  private   :: ph_ndot, ph_energy, del_x1, del_x2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -44,6 +44,8 @@ contains
     implicit none
     call getInput('problem', 'ndot', ph_ndot)
     call getInput('problem', 'energy', ph_energy)
+    call getInput('problem', 'dx1', del_x1)
+    call getInput('problem', 'dx2', del_x2)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -135,8 +137,8 @@ contains
     real                          :: dx_, dy_, dz_, x_, y_
     integer(kind=2)               :: xi_, yi_, zi_
 
-    x1_g = global_mesh%sx * 0.33333; y1_g = global_mesh%sy * 0.5
-    x2_g = global_mesh%sx * 0.66667; y2_g = global_mesh%sy * 0.5
+    x1_g = global_mesh%sx * del_x1; y1_g = global_mesh%sy * 0.5
+    x2_g = global_mesh%sx * del_x2; y2_g = global_mesh%sy * 0.5
 
     dz_ = 0.5; zi_ = 0
 

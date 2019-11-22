@@ -92,3 +92,5 @@
 
   energy        = 5.0
   ndot          = 10.0
+  del_x1        = 0.25
+  del_x2        = 0.75
