@@ -91,8 +91,8 @@ contains
     dt_mean = SUM(dt_arr) * 1000 / mpi_size
     dt_max = MAXVAL(dt_arr) * 1000
     dt_min = MINVAL(dt_arr) * 1000
-    pcent_max = (dt_max - dt_mean) * 200 / (dt_max + dt_mean)
-    pcent_min = (dt_mean - dt_min) * 200 / (dt_mean + dt_min)
+    pcent_max = dt_max * 100 / dt_mean
+    pcent_min = dt_min * 100 / dt_mean
     if (present(fullstep)) then
       if (dt_mean / fullstep .lt. 1e-4) then
         dt_mean = 0; pcent_max = 0; pcent_min = 0
@@ -164,13 +164,13 @@ contains
     npart_mean = SUM(npart_arr) / mpi_size
     npart_max = MAXVAL(npart_arr)
     npart_min = MINVAL(npart_arr)
-    if ((npart_max + npart_mean) .ne. 0) then
-      pcent_max = (npart_max - npart_mean) * 200 / (npart_max + npart_mean)
+    if (npart_mean .ne. 0) then
+      pcent_max = npart_max * 100 / npart_mean
     else
       pcent_max = 0
     end if
-    if ((npart_mean + npart_min) .ne. 0) then
-      pcent_min = (npart_mean - npart_min) * 200 / (npart_mean + npart_min)
+    if (npart_mean .ne. 0) then
+      pcent_min = npart_min * 100 / npart_mean
     else
       pcent_min = 0
     end if
