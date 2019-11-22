@@ -239,8 +239,8 @@ contains
     ph_v1 = REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
     ph_w1 = REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
     ph_u2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
-    ph_v2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
-    ph_w2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
+    ph_v2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%v(p2), 8)
+    ph_w2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%w(p2), 8)
 
     E1 = sqrt((ph_u1)**2 + (ph_v1)**2 + (ph_w1)**2)
     E2 = sqrt((ph_u2)**2 + (ph_v2)**2 + (ph_w2)**2)
