@@ -125,7 +125,7 @@ contains
           P_1 = P_1 + P_12
           if ((P_1 .gt. rnd) .and. (thresholdQ)) then
             ! pair produce
-            call PPfromTwoPhotons(ti, tj, tk, pairs_of_photon)
+            call PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
             ! schedule particles for deletion
             species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
             species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
@@ -160,7 +160,7 @@ contains
           P_1 = P_1 + P_12
           if ((P_1 .gt. rnd) .and. (thresholdQ)) then
             ! pair produce
-            call PPfromTwoPhotons(ti, tj, tk, pairs_of_photon)
+            call PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
             ! schedule particles for deletion
             species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
             species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
@@ -196,7 +196,7 @@ contains
 
     do ph = 1, num_pairs
       ! compute P_12 for each pair of photons `pairs_of_photons(ph)`
-      call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
+      call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph),&
                                & P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
       P_12 = P_12 * num_pairs * 2
