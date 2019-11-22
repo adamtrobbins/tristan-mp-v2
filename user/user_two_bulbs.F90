@@ -192,7 +192,7 @@ contains
           yi_ = yi_ - 1; dy_ = dy_ + 1.0
         end if
 
-        call createParticle(2, xi_, yi_, yi, dx_, dy_, dz_, u_, v_, w_)
+        call createParticle(2, xi_, yi_, yi_, dx_, dy_, dz_, u_, v_, w_)
       end do
     end if
 
