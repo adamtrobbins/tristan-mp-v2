@@ -158,7 +158,7 @@ contains
       v_ = sin(thet) * ph_energy
       w_ = 0.0
 
-      x_ = x2_g + 10 * random(dseed) * cos(thet)
+      x_ = x2_g - 10 * random(dseed) * cos(thet)
       y_ = y2_g + 10 * random(dseed) * sin(thet)
 
       call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
