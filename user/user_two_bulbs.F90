@@ -135,31 +135,31 @@ contains
     real                          :: dx_, dy_, dz_, x_, y_
     integer(kind=2)               :: xi_, yi_, zi_
 
-    x1_g = global_mesh%sx * 0.25; y1_g = global_mesh%sy * 0.5
-    x2_g = global_mesh%sx * 0.75; y2_g = global_mesh%sy * 0.5
+    x1_g = global_mesh%sx * 0.33333; y1_g = global_mesh%sy * 0.5
+    x2_g = global_mesh%sx * 0.66667; y2_g = global_mesh%sy * 0.5
 
     dz_ = 0.5; zi_ = 0
 
     do i = 1, ph_ndot
       rnd = random(dseed)
-      thet = 2 * M_PI * rnd
+      thet = M_PI * (rnd - 0.5)
       u_ = cos(thet) * ph_energy
       v_ = sin(thet) * ph_energy
       w_ = 0.0
 
-      x_ = x1_g + CC * u_ * (random(dseed) - 0.5) * 2 / ph_energy
-      y_ = y1_g + CC * v_ * (random(dseed) - 0.5) * 2 / ph_energy
+      x_ = x1_g + 10 * random(dseed) * cos(thet)
+      y_ = y1_g + 10 * random(dseed) * sin(thet)
 
       call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_)
 
       rnd = random(dseed)
-      thet = 2 * M_PI * rnd
+      thet = M_PI * (rnd - 0.5)
       u_ = cos(thet) * ph_energy
       v_ = sin(thet) * ph_energy
       w_ = 0.0
 
-      x_ = x2_g + CC * u_ * (random(dseed) - 0.5) * 2 / ph_energy
-      y_ = y2_g + CC * v_ * (random(dseed) - 0.5) * 2 / ph_energy
+      x_ = x2_g + 10 * random(dseed) * cos(thet)
+      y_ = y2_g + 10 * random(dseed) * sin(thet)
 
       call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
     end do
