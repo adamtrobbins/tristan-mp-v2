@@ -108,17 +108,14 @@ contains
       ! two separate groups of photons interacting with each other
       if (random(dseed) .gt. 0.5) then ! shuffle sets for more randomness
         call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_1, set_size_1)
-        call shuffleSet(set_1, set_size_1)
-
         call prtlToSet(ti, tj, tk, sp_arr_2, n_sp_2, set_2, set_size_2)
-        call shuffleSet(set_2, set_size_2)
       else
         call prtlToSet(ti, tj, tk, sp_arr_2, n_sp_2, set_1, set_size_1)
-        call shuffleSet(set_1, set_size_1)
-
         call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_2, set_size_2)
-        call shuffleSet(set_2, set_size_2)
       end if
+
+      call shuffleSet(set_1, set_size_1)
+      call shuffleSet(set_2, set_size_2)
 
       do set_p_1 = 1, set_size_1
         s1 = set_1(set_p_1)%spec
@@ -204,9 +201,11 @@ contains
 
     if (n_sp_2 .ne. 0) then
       ! two separate BW groups
-      if (random(dseed) .gt. 0.5) then ! shuffle sets for more randomness
+      ! shuffle sets for more randomness
+      if (random(dseed) .gt. 0.5) then
         call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
                                  & pairs_of_photons, num_pairs, num_1, num_2)
+      else
         call coupleParticlesOnTile(ti, tj, tk, sp_arr_2, n_sp_2, sp_arr_1, n_sp_1,&
                                  & pairs_of_photons, num_pairs, num_1, num_2)
       end if
