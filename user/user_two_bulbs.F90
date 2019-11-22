@@ -128,17 +128,17 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
-    integer                       :: i, thet, rnd
-    real                          :: u_, v_, w_
+    integer                       :: i
+    real                          :: thet, rnd, u_, v_, w_
     real                          :: x1_g, y1_g, x2_g, y2_g
     real                          :: x1_l, y1_l, x2_l, y2_l
     real                          :: dx_, dy_, dz_, x_, y_
-    integer                       :: xi_, yi_, zi_
+    integer(kind=2)               :: xi_, yi_, zi_
 
     x1_g = global_mesh%sx * 0.25; y1_g = global_mesh%sy * 0.5
     x2_g = global_mesh%sx * 0.75; y2_g = global_mesh%sy * 0.5
 
-    dz_ = 0.5; zi = 0
+    dz_ = 0.5; zi_ = 0
 
     call globalToLocalCoords(x1_g, y1_g, 0.0,&
                            & x1_l, y1_l, rnd)
