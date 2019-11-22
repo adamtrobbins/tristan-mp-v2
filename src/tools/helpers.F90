@@ -46,6 +46,7 @@ contains
   subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax,&
                                  & x_, y_, z_, xi_, yi_, zi_, dx_, dy_, dz_)
     implicit none
+    real                          :: rnd
     real, intent(in)              :: xmin, xmax, ymin, ymax, zmin, zmax
     real, intent(out)             :: x_, y_, z_, dx_, dy_, dz_
     integer(kind=2), intent(out)  :: xi_, yi_, zi_
