@@ -78,7 +78,8 @@ contains
   subroutine coupleParticlesOnTile(ti, tj, tk,&
                                  & sp_arr_1, n_sp_1,&
                                  & sp_arr_2, n_sp_2,&
-                                 & coupled_pairs, num_couples)
+                                 & coupled_pairs, num_couples,&
+                                 & num_group_1, num_group_2)
     implicit none
     integer, intent(in)                     :: ti, tj, tk
     integer, intent(in)                     :: n_sp_1, n_sp_2 ! # of species in set #1 and #2
@@ -88,6 +89,7 @@ contains
     type(spec_ind_pair), allocatable        :: set_1(:), set_2(:) ! set #1 and #2 saved as "tuples" of species and index
     integer, intent(out)                    :: num_couples
     type(couple), allocatable, intent(out)  :: coupled_pairs(:)
+    integer, optional, intent(out)          :: num_group_1, num_group_2
 
     ! auxiliary variables
     integer                                 :: common_species
@@ -170,6 +172,9 @@ contains
       end if
       ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     end if
+
+    if (present(num_group_1)) num_group_1 = num_1
+    if (present(num_group_2)) num_group_2 = num_2
 
     if (allocated(set_1)) deallocate(set_1)
     if (allocated(set_2)) deallocate(set_2)
