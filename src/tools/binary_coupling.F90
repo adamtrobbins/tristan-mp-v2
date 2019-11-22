@@ -70,7 +70,7 @@ contains
       set(i) = set(j)
       set(j) = temp
     end do
-    allocate(set(set_sz))
+    allocate(set(set_size))
   end subroutine shuffleSet
 
   ! this routine pairs particles in two sets #1 and #2 randomly
