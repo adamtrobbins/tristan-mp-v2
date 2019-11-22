@@ -1,5 +1,10 @@
 #include "../src/defs.F90"
 
+! Configuration for this userfile:
+! ```
+!   $ python configure.py --nghosts=5 --user=user_two_bulbs -qed -bwpp
+! ```
+
 module m_userfile
   use m_globalnamespace
   use m_aux
