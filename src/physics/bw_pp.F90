@@ -68,9 +68,11 @@ contains
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
             call bwOnTile_bin(ti, tj, tk,&
-                            & bw_species_1(1 : si_1), si_1)
+                            & bw_species_1(1 : si_1), si_1,&
+                            & n_sp_2 = 0)
             ! call bwOnTile_mc(ti, tj, tk,&
-            !                & bw_species_1(1 : si_1), si_1)
+            !                & bw_species_1(1 : si_1), si_1,&
+            !                & n_sp_2 = 0)
           end do
         end do
       end do
@@ -84,7 +86,7 @@ contains
     integer, intent(in)                           :: ti, tj, tk
     integer, intent(in)                           :: n_sp_1 ! # of species in set
     integer, intent(in)                           :: sp_arr_1(n_sp_1)
-    integer, optional, intent(in)                 :: n_sp_2 ! # of species in set
+    integer, intent(in)                           :: n_sp_2 ! # of species in set
     integer, optional, intent(in)                 :: sp_arr_2(n_sp_2)
     type(spec_ind_pair), allocatable              :: set(:), set_1(:), set_2(:)
     integer                                       :: set_p_1, set_p_2, s1, s2, p1, p2
@@ -93,7 +95,7 @@ contains
     real                                          :: rnd, P_12, P_1
     logical                                       :: thresholdQ
 
-    if (present(n_sp_2)) then
+    if (n_sp_2 .ne. 0) then
       ! two separate groups of photons interacting with each other
       call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_1, set_size_1)
       call shuffleSet(set_1, set_size_1)
@@ -175,14 +177,14 @@ contains
     integer, intent(in)           :: ti, tj, tk
     integer, intent(in)           :: n_sp_1 ! # of species in set
     integer, intent(in)           :: sp_arr_1(n_sp_1)
-    integer, optional, intent(in) :: n_sp_2 ! # of species in set
+    integer, intent(in)           :: n_sp_2 ! # of species in set
     integer, optional, intent(in) :: sp_arr_2(n_sp_2)
     type(couple), allocatable     :: pairs_of_photons(:)
     integer                       :: num_pairs, ph, s1, s2, p1, p2
     real                          :: rnd, P_12
     logical                       :: thresholdQ
 
-    if (present(n_sp_2)) then
+    if (n_sp_2 .ne. 0) then
       call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
                                & pairs_of_photons, num_pairs)
     else
