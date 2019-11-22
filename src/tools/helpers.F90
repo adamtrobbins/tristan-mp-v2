@@ -30,17 +30,35 @@ contains
   end subroutine checkNpart
 
   subroutine globalToLocalCoords(x_glob, y_glob, z_glob,&
-                               & x_loc, y_loc, z_loc)
+                               & x_loc, y_loc, z_loc, adjustQ_)
     implicit none
-    real, intent(in)   :: x_glob, y_glob, z_glob
-    real, intent(out)  :: x_loc, y_loc, z_loc
-    x_loc = MAX(0.0, MIN(x_glob - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx)))
-    y_loc = MAX(0.0, MIN(y_glob - REAL(this_meshblock%ptr%y0), REAL(this_meshblock%ptr%sy)))
-    #ifdef threeD
-      z_loc = MAX(0.0, MIN(z_glob - REAL(this_meshblock%ptr%z0), REAL(this_meshblock%ptr%sz)))
-    #else
-      z_loc = z_glob
-    #endif
+    real, intent(in)              :: x_glob, y_glob, z_glob
+    real, intent(out)             :: x_loc, y_loc, z_loc
+    logical, optional, intent(in) :: adjustQ_
+    logical                       :: adjustQ
+    if (present(adjustQ_)) then
+      adjustQ = adjustQ_
+    else
+      adjustQ = .false.
+    end if
+
+    if (adjustQ) then
+      x_loc = MAX(0.0, MIN(x_glob - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx)))
+      y_loc = MAX(0.0, MIN(y_glob - REAL(this_meshblock%ptr%y0), REAL(this_meshblock%ptr%sy)))
+      #ifdef threeD
+        z_loc = MAX(0.0, MIN(z_glob - REAL(this_meshblock%ptr%z0), REAL(this_meshblock%ptr%sz)))
+      #else
+        z_loc = z_glob
+      #endif
+    else
+      x_loc = x_glob - REAL(this_meshblock%ptr%x0)
+      y_loc = y_glob - REAL(this_meshblock%ptr%y0)
+      #ifdef threeD
+        z_loc = z_glob - REAL(this_meshblock%ptr%z0)
+      #else
+        z_loc = z_glob
+      #endif
+    end if
   end subroutine globalToLocalCoords
 
   subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax,&
