@@ -185,14 +185,14 @@ contains
     dummy1 = trim(STR(npart_mean))
     sz = len(trim(dummy1))
     dummy(20 : 20 + sz - 1) = trim(dummy1)
-    dummy(36 : 36) = '+'
+    dummy(36 : 36) = '-'
 
-    dummy1 = trim(STR(pcent_max))
+    dummy1 = trim(STR(pcent_min))
     sz = len(trim(dummy1))
     dummy(37 : 37 + sz - 1) = trim(dummy1)
 
-    dummy(44 : 44) = '-'
-    dummy1 = trim(STR(pcent_min))
+    dummy(44 : 44) = '+'
+    dummy1 = trim(STR(pcent_max))
     sz = len(trim(dummy1))
     dummy(45 : 45 + sz - 1) = trim(dummy1)
 
