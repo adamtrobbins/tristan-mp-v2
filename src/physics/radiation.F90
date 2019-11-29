@@ -9,7 +9,7 @@ module m_radiation
   use m_particlelogistics
   implicit none
 
-  real              :: rad_gamma_c, rad_gamma_syn, rad_gamma_ic, rad_beta_rec
+  real              :: emit_gamma_syn, emit_gamma_ic, cool_gamma_syn, cool_gamma_ic, rad_beta_rec
   real              :: rad_dens_lim
   real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   integer           :: rad_photon_sp
@@ -31,17 +31,18 @@ contains
     real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
-    real :: g_new, beta_new
+    real :: over_p_abs
 
     real :: e_bar_x, e_bar_y, e_bar_z, e_bar_sq, beta_dot_e
     real :: chiR, chiR_sq, kappaR_x, kappaR_y, kappaR_z
-    real :: tau_rad, eph_rad, dummy_
+    real :: tau_emit, eph_emit, dummy_
 
     integer :: spec_index
 
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
     if ((g0 .gt. 1.5) .and.&
       & (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) then
+
       uci = 0.5 * (u0 + ui)
       vci = 0.5 * (v0 + vi)
       wci = 0.5 * (w0 + wi)
@@ -63,11 +64,11 @@ contains
       kappaR_y = (-bz * e_bar_x + bx * e_bar_z) + (ey * beta_dot_e)
       kappaR_z = (by * e_bar_x - bx * e_bar_y) + (ez * beta_dot_e)
 
-      tau_rad = (rad_beta_rec * betaci) * (rad_gamma_c / rad_gamma_syn)**2 *&
-              & (chiR * B_norm * CCINV)
-      eph_rad = (gci / rad_gamma_c)**2 * chiR
+      dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_syn**2
 
-      dummy_ = B_norm * rad_beta_rec / (rad_gamma_syn**2 * CC)
+      tau_emit = (rad_beta_rec * betaci) * (emit_gamma_syn / cool_gamma_syn)**2 *&
+                 & (chiR * B_norm * CCINV)
+      eph_emit = (gci / emit_gamma_syn)**2 * chiR
 
       #ifndef EMIT
         u0 = u0 + dummy_ * (kappaR_x - chiR_sq * gci * uci)
@@ -78,32 +79,29 @@ contains
         v0 = v0 + dummy_ * kappaR_y
         w0 = w0 + dummy_ * kappaR_z
 
-        g_new = sqrt(1.0 + u0**2 + v0**2 + w0**2)
-        g_new = g_new - tau_rad * eph_rad
-        beta_new = sqrt(1.0 - 1.0 / g_new**2)
-        over_gci = 1.0 / sqrt(u0**2 + v0**2 + w0**2)
-        kx = u0 * over_gci; ky = v0 * over_gci; kz = w0 * over_gci
+        over_p_abs = 1.0 / sqrt(u0**2 + v0**2 + w0**2)
+        kx = u0 * over_p_abs; ky = v0 * over_p_abs; kz = w0 * over_p_abs
+        u0 = u0 - tau_emit * kx * eph_emit
+        v0 = v0 - tau_emit * ky * eph_emit
+        w0 = w0 - tau_emit * kz * eph_emit
 
-        u0 = kx * g_new * beta_new
-        v0 = ky * g_new * beta_new
-        w0 = kz * g_new * beta_new
-        if (random(dseed) .lt. tau_rad) then
+        if (random(dseed) .lt. tau_emit) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
-                            & kx * eph_rad, ky * eph_rad, kz * eph_rad)
+                            & kx * eph_emit, ky * eph_emit, kz * eph_emit)
         end if
       #endif
 
-      eph_rad = log(eph_rad)
-      if (eph_rad .le. spec_min) then
+      eph_emit = log(eph_emit)
+      if (eph_emit .le. spec_min) then
         spec_index = 1
-      else if (eph_rad .ge. spec_max) then
+      else if (eph_emit .ge. spec_max) then
         spec_index = spec_num
       else
-        spec_index = INT(CEILING((eph_rad - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+        spec_index = INT(CEILING((eph_emit - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
         if (spec_index .lt. 1) spec_index = 1
         if (spec_index .gt. spec_num) spec_index = spec_num
       end if
-      rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_rad
+      rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_emit
     end if
   end subroutine particleRadiateSync
 
@@ -121,10 +119,58 @@ contains
     real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
-    real :: g_new, beta_new
+    real :: over_p_abs
 
-    real :: tau_rad, eph_rad, dummy_
+    real :: tau_emit, eph_emit, dummy_
     integer :: spec_index
+
+    g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
+    if ((g0 .gt. 1.5) .and.&
+      & (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) then
+
+      uci = 0.5 * (u0 + ui)
+      vci = 0.5 * (v0 + vi)
+      wci = 0.5 * (w0 + wi)
+
+      gci = sqrt(1.0 + uci**2 + vci**2 + wci**2)
+      over_gci = 1.0 / gci
+      betaci = sqrt(1.0 - over_gci**2)
+
+      dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_ic**2
+
+      tau_emit = rad_beta_rec * betaci * B_norm * CCINV * (emit_gamma_ic / cool_gamma_ic)**2
+      eph_emit = (gci / emit_gamma_ic)**2 
+
+      #ifndef EMIT
+        u0 = u0 - dummy_ * gci * uci
+        v0 = v0 - dummy_ * gci * vci
+        w0 = w0 - dummy_ * gci * wci
+      #else
+        over_p_abs = 1.0 / sqrt(u0**2 + v0**2 + w0**2)
+        kx = u0 * over_p_abs; ky = v0 * over_p_abs; kz = w0 * over_p_abs
+        u0 = u0 - tau_emit * kx * eph_emit
+        v0 = v0 - tau_emit * ky * eph_emit
+        w0 = w0 - tau_emit * kz * eph_emit
+
+        if (random(dseed) .lt. tau_emit) then
+          call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
+                            & kx * eph_emit, ky * eph_emit, kz * eph_emit)
+        end if
+      #endif
+
+      eph_emit = log(eph_emit)
+      if (eph_emit .le. spec_min) then
+        spec_index = 1
+      else if (eph_emit .ge. spec_max) then
+        spec_index = spec_num
+      else
+        spec_index = INT(CEILING((eph_emit - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+        if (spec_index .lt. 1) spec_index = 1
+        if (spec_index .gt. spec_num) spec_index = spec_num
+      end if
+      rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_emit
+    end if
+
   end subroutine particleRadiateIC
 
 #endif
