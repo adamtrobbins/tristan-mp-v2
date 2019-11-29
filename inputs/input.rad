@@ -4,18 +4,18 @@
 
 <node_configuration>
 
-  sizex         = 2              # number of cpus in x direction
-  sizey         = 2              # number of cpus in y direction
+  sizex         = 4              # number of cpus in x direction
+  sizey         = 4              # number of cpus in y direction
   sizez         = 1              # number of cpus in z direction
 
 <time>
 
-  last           = 1000          # last timestep
+  last          = 300000         # last timestep
 
 <grid>
 
-  mx0           = 64             # number of actual grid points in the x direction
-  my0           = 64             # number of actual grid points in the y direction
+  mx0           = 128            # number of actual grid points in the x direction
+  my0           = 128            # number of actual grid points in the y direction
   mz0           = 1              # ... (ignored for 2D simulations)
 
   boundary_x    = 1              # boundary in x: 1 = periodic, 0 = outflow
@@ -37,17 +37,17 @@
 
 <output>
 
-  start         = 0              # first output step
-  interval      = 10             # interval between output steps
+  start         = -39            # first output step
+  interval      = 40             # interval between output steps
   stride        = 100            # particle stride
   istep         = 4              # field downsampling
   flds_at_prtl  = 1              # save fields at particle position
 
-  history       = 0              # 0 = .false.; 1 = .true.
-  hst_interval  = 1
+  history       = 1              # 0 = .false.; 1 = .true.
+  hst_interval  = 40
 
   spec_min      = 1e-3           # `g - 1` for massive and `e` for massless
-  spec_max      = 1e1            # `g - 1` for massive and `e` for massless
+  spec_max      = 1e3            # `g - 1` for massive and `e` for massless
   spec_num      = 100            # number of energy bins
 
 <adaptive_load_balancing>
@@ -80,7 +80,7 @@
 
 <plasma>
 
-  ppc0          = 10
+  ppc0          = 16
   sigma         = 4
   c_omp         = 10
 
@@ -101,13 +101,13 @@
   maxptl3       = 1e6           # max number of particles per core
   m3            = 0
   ch3           = 0
-  bw3           = 1             # turn ON/OFF BW process on these particles
+  bw3           = 0             # turn ON/OFF BW process on these particles
 
 <radiation>
 
-  emit_gamma_syn = 10           # `emit_gamma_syn` parameter (determines synchrotron photon peak energy)
-  gamma_syn     = 5             # `gamma_syn` parameter (determines the synchrotron cooling rate)
-  gamma_ic      = 5             # `gamma_ic` parameter (determines the IC cooling rate)
+  emit_gamma_ic = 50.0          # `emit_gamma_ic` parameter (determines ic photon peak energy)
+  gamma_syn     = 0.0           # `gamma_syn` parameter (determines the synchrotron cooling rate)
+  gamma_ic      = 500.0         # `gamma_ic` parameter (determines the IC cooling rate)
   beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic`
   photon_sp     = 3             # emit photons to species #...
   dens_limit    = 100           # density limit on the cooled region
@@ -122,4 +122,8 @@
 
 <problem>
 
-  external_fields = 1           # apply external fields in the mover
+  plaw_ind        = -2.00
+  plaw_gmin       = 8.0
+  plaw_gmax       = 500.0
+
+
