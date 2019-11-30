@@ -31,7 +31,7 @@ contains
     real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
-    real :: over_p_abs
+    real :: over_pci
 
     real :: e_bar_x, e_bar_y, e_bar_z, e_bar_sq, beta_dot_e
     real :: chiR, chiR_sq, kappaR_x, kappaR_y, kappaR_z
@@ -79,8 +79,8 @@ contains
         v0 = v0 + dummy_ * kappaR_y
         w0 = w0 + dummy_ * kappaR_z
 
-        over_p_abs = 1.0 / sqrt(u0**2 + v0**2 + w0**2)
-        kx = u0 * over_p_abs; ky = v0 * over_p_abs; kz = w0 * over_p_abs
+        over_pci = 1.0 / sqrt(uci**2 + vci**2 + wci**2)
+        kx = uci * over_pci; ky = vci * over_pci; kz = wci * over_pci
         u0 = u0 - tau_emit * kx * eph_emit
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
@@ -119,7 +119,7 @@ contains
     real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
-    real :: over_p_abs
+    real :: over_pci
 
     real :: tau_emit, eph_emit, dummy_
     integer :: spec_index
@@ -146,8 +146,8 @@ contains
         v0 = v0 - dummy_ * gci * vci
         w0 = w0 - dummy_ * gci * wci
       #else
-        over_p_abs = 1.0 / sqrt(u0**2 + v0**2 + w0**2)
-        kx = u0 * over_p_abs; ky = v0 * over_p_abs; kz = w0 * over_p_abs
+        over_pci = 1.0 / sqrt(uci**2 + vci**2 + wci**2)
+        kx = uci * over_pci; ky = vci * over_pci; kz = wci * over_pci
         u0 = u0 - tau_emit * kx * eph_emit
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
