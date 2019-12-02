@@ -302,8 +302,8 @@ contains
       #ifdef RADIATION
         write (var_name, "(A4,I1)") "cool", s
         call getInput('particles', var_name, species(s)%cool_sp, .false.)
-        if ((species(s)%cool_sp) .and. (species(s)%ch_sp .eq. 0)) then
-          call throwError('Unable to cool `ch=0` particles.')
+        if ((species(s)%cool_sp) .and. (species(s)%m_sp .eq. 0)) then
+          call throwError('Unable to cool `m=0` particles.')
         end if
       #endif
 
