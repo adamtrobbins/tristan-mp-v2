@@ -81,7 +81,7 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
   end subroutine userInitFields
   !............................................................!
@@ -104,6 +104,18 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+  
+  subroutine userExternalFields(xp, yp, zp,&
+                              & ex_ext, ey_ext, ez_ext,&
+                              & bx_ext, by_ext, bz_ext)
+    implicit none
+    real, intent(in)  :: xp, yp, zp
+    real, intent(out) :: ex_ext, ey_ext, ez_ext
+    real, intent(out) :: bx_ext, by_ext, bz_ext
+    ! some functions of xp, yp, zp
+    ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
+    bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
+  end subroutine userExternalFields
   !............................................................!
 
   !--- boundaries ---------------------------------------------!

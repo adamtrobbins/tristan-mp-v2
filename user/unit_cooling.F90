@@ -58,11 +58,7 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-    if (mpi_rank .eq. 0) then
-      call createParticle(1, 20, 20, 0,&
-                           & 0.3, 0.5, 0.5,&
-                           & 2.0, 0.0, 2.0)
-    end if
+    call injectParticleGlobally(1, 50.0, 50.0, 0.5, 10.0, 0.0, 0.0)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -70,7 +66,7 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
@@ -104,6 +100,18 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+
+  subroutine userExternalFields(xp, yp, zp,&
+                              & ex_ext, ey_ext, ez_ext,&
+                              & bx_ext, by_ext, bz_ext)
+    implicit none
+    real, intent(in)  :: xp, yp, zp
+    real, intent(out) :: ex_ext, ey_ext, ez_ext
+    real, intent(out) :: bx_ext, by_ext, bz_ext
+    ! some functions of xp, yp, zp
+    ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
+    bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
+  end subroutine userExternalFields
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
