@@ -66,8 +66,7 @@ contains
 
       dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_syn**2
 
-      tau_emit = (rad_beta_rec * betaci) * (emit_gamma_syn / cool_gamma_syn)**2 *&
-                 & (chiR * B_norm * CCINV)
+      tau_emit = dummy_ * betaci * emit_gamma_syn**2 * chiR
       eph_emit = (gci / emit_gamma_syn)**2 * chiR
 
       #ifndef EMIT
@@ -119,7 +118,6 @@ contains
     real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
-    real :: over_pci
 
     real :: tau_emit, eph_emit, dummy_
     integer :: spec_index
@@ -138,16 +136,16 @@ contains
 
       dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_ic**2
 
-      tau_emit = rad_beta_rec * betaci * B_norm * CCINV * (emit_gamma_ic / cool_gamma_ic)**2
-      eph_emit = (gci / emit_gamma_ic)**2 
+      tau_emit = dummy_ * betaci * emit_gamma_ic**2 
+      eph_emit = (gci / emit_gamma_ic)**2
 
       #ifndef EMIT
         u0 = u0 - dummy_ * gci * uci
         v0 = v0 - dummy_ * gci * vci
         w0 = w0 - dummy_ * gci * wci
       #else
-        over_pci = 1.0 / sqrt(uci**2 + vci**2 + wci**2)
-        kx = uci * over_pci; ky = vci * over_pci; kz = wci * over_pci
+        over_gci = 1.0 / sqrt(uci**2 + vci**2 + wci**2)
+        kx = uci * over_gci; ky = vci * over_gci; kz = wci * over_gci
         u0 = u0 - tau_emit * kx * eph_emit
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
