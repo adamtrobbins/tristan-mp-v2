@@ -58,7 +58,7 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-    call injectParticleGlobally(1, 50.0, 50.0, 0.5, 10.0, 0.0, 0.0)
+    call injectParticleGlobally(1, 50.0, 50.0, 0.5, 7.8, -5.3, -2.2)
   end subroutine userInitParticles
 
   subroutine userInitFields()
