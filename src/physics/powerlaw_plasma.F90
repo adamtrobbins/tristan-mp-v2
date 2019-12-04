@@ -17,6 +17,7 @@ contains
 
   subroutine fillRegionWithPowerlawPlasma(fill_region, fill_species, num_species, ndens_sp,&
                                         & plaw_gmin, plaw_gmax, plaw_ind,&
+                                        & init_2dQ,&
                                         & spat_distr_ptr,&
                                         & dummy1, dummy2, dummy3)
     implicit none
@@ -33,6 +34,8 @@ contains
     real                             :: u_, v_, w_, dx_, dy_, dz_
     real                             :: x_, y_, z_, gam_, bet_, TH, ZT, rnd, num_part_r
     real                             :: x_glob, y_glob, z_glob
+    logical, optional                :: init_2dQ
+    logical                          :: init_2dQ_
 
     procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
     real, intent(in), optional                                     :: dummy1, dummy2, dummy3
@@ -52,6 +55,12 @@ contains
       dummy3_ = dummy3
     else
       dummy3_ = 0.0
+    end if
+
+    if (present(init_2dQ)) then
+      init_2dQ_ = init_2dQ
+    else
+      init_2dQ_ = .false.
     end if
 
     ! global to local coordinates
@@ -113,10 +122,19 @@ contains
                 & plaw_gmin**(plaw_ind+1))**(1.0/(plaw_ind+1.0))
           bet_ = sqrt(1.0 - 1.0 / gam_**2)
           !   generate random direction
-          TH = random(dseed) * 2.0 * M_PI; ZT = random(dseed) * 2.0 - 1.0
-          u_ = gam_ * bet_ * sqrt(1.0 - ZT**2) * cos(TH)
-          v_ = gam_ * bet_ * sqrt(1.0 - ZT**2) * sin(TH)
-          w_ = gam_ * bet_ * ZT
+          if (init_2dQ_) then
+            ! initialize momentum on 2d plane
+            TH = random(dseed) * 2.0 * M_PI
+            u_ = gam_ * bet_ * cos(TH)
+            v_ = gam_ * bet_ * sin(TH)
+            w_ = 0.0
+          else
+            ! initialize momentum in 3d
+            TH = random(dseed) * 2.0 * M_PI; ZT = random(dseed) * 2.0 - 1.0
+            u_ = gam_ * bet_ * sqrt(1.0 - ZT**2) * cos(TH)
+            v_ = gam_ * bet_ * sqrt(1.0 - ZT**2) * sin(TH)
+            w_ = gam_ * bet_ * ZT
+          end if
           call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_)
         end do
       end if
