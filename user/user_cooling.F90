@@ -73,7 +73,8 @@ contains
     back_region%y_max = REAL(global_mesh%sy)
 
     call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
-                                    & plaw_gmin, plaw_gmax, plaw_ind)
+                                    & plaw_gmin, plaw_gmax, plaw_ind,&
+                                    & init_2dQ = .true.)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -104,7 +105,7 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
-  
+
   subroutine userExternalFields(xp, yp, zp,&
                               & ex_ext, ey_ext, ez_ext,&
                               & bx_ext, by_ext, bz_ext)
