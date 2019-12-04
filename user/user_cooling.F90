@@ -82,7 +82,7 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
   end subroutine userInitFields
   !............................................................!
