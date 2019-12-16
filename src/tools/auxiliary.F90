@@ -309,4 +309,15 @@ contains
     ! deallocate(seed)
   end subroutine initializeRandomSeed
 
+  recursive function factorial(n) result(fact)
+    implicit none
+    integer             :: fact
+    integer, intent(in) :: n
+    if (n .eq. 0) then
+      fact = 1
+    else
+      fact = n * factorial(n - 1)
+    end if
+  end function factorial
+
 end module m_aux

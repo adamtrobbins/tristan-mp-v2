@@ -9,13 +9,84 @@ module m_filtering
   use m_exchangefields
   use m_exchangecurrents
 
-  !--- PRIVATE functions -----------------------------------------!
+  !--- PRIVATE variables/functions -------------------------------!
+  integer               :: nfilter_main, nfilter_sec
+  real, allocatable     :: window_main(:), window_sec(:)
+  
+  private :: nfilter_main, nfitler_sec
+
   private :: filterInX, filterInY, filterInAll
   #ifdef threeD
     private :: filterInZ
   #endif
   !...............................................................!
 contains
+  
+  subroutine computeWindowOfSizeN(window, N)
+    implicit none
+    ! this function basically computes ...
+    ! ... the nonzero elements of the following sparse matrix:
+    ! 
+    ! | a b 0 0 0 ... 0 0 0 0 0 |^N
+    ! | b a b 0 0 ... 0 0 0 0 0 |
+    ! | 0 b a b 0 ... 0 0 0 0 0 |
+    ! | 0 0 b a b ... 0 0 0 0 0 |
+    ! | 0 0 0 b a ... 0 0 0 0 0 |
+    ! | ...       ...       ... |
+    ! | 0 0 0 0 0 ... a b 0 0 0 |
+    ! | 0 0 0 0 0 ... b a b 0 0 |
+    ! | 0 0 0 0 0 ... 0 b a b 0 |
+    ! | 0 0 0 0 0 ... 0 0 b a b |
+    ! | 0 0 0 0 0 ... 0 0 0 b a |
+    ! 
+    ! where `a = 1/2` and `b = 1/4`
+    ! In simplest case when `N = 1` -> `window = (1/4, 1/2, 1/4)`
+    integer, intent(in) :: N
+    real, intent(inout) :: window(-N : N)
+    real                :: w_, coeff
+    integer             :: k, i, j
+    real                :: a, b
+    a = 0.5; b = 0.25
+
+    do k = -N, N
+      w_ = 0.0
+      do i = 0, N
+        do j = 0, N - i
+          if (N - i - 2 * j .eq. k) then
+            coeff = Factorial(N) / (Factorial(i) * Factorial(j) * Factorial(N - i - j))
+            w_ = w_ + coeff * a**i * b**(n - i)
+          end if
+        end do
+      end do
+      window(k) = w_
+    end do
+  end subroutine computeWindowOfSizeN
+
+  subroutine initializeFilters()
+    implicit none
+    integer :: n_
+    ! find the window sizes
+    if (nfilter .le. NGHOST) then
+      nfilter_main = nfilter
+      nfilter_sec = 0
+    else
+      n_ = INT(nfilter / NGHOST)
+      nfilter_main = NGHOST
+      nfilter_sec = nfilter - n_ * NGHOST
+    end if
+    ! allocate arrays to store the weights ...
+    ! ... & computing the window weights
+    if (nfilter_main .gt. 0) then
+      allocate(window_main(-nfilter_main : nfilter_main))
+      call computeWindowOfSizeN(window_main, nfilter_main)
+    end if
+    if (nfilter_sec .gt. 0) then
+      allocate(window_main(-nfilter_sec : nfilter_sec))
+      call computeWindowOfSizeN(window_sec, nfilter_sec)
+    end if
+  end subroutine initializeFilters
+
+  #ifndef FASTFILTERING
   subroutine filterCurrents()
     implicit none
     integer :: n_pass, iter
@@ -188,4 +259,9 @@ contains
       end do
     end subroutine
   #endif
+  
+  #else
+
+  #endif
+
 end module m_filtering
