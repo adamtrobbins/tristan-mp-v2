@@ -256,7 +256,7 @@ contains
     p1 = pair_of_photons%part_1%index
     s2 = pair_of_photons%part_2%spec
     p2 = pair_of_photons%part_2%index
-    
+
     ph1_u = REAL(species(s1)%prtl_tile(ti, tj, tk)%u(p1), 8)
     ph1_v = REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
     ph1_w = REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
@@ -266,7 +266,7 @@ contains
 
     eps1 = sqrt(ph1_u**2 + ph1_v**2 + ph1_w**2)
     eps2 = sqrt(ph2_u**2 + ph2_v**2 + ph2_w**2)
-    
+
     if (eps1 * eps2 .lt. 1.0) then
       thresholdQ = .false.
     else
@@ -291,33 +291,33 @@ contains
 
   subroutine LorentzBoost(beta_frame_x, beta_frame_y, beta_frame_z,&
                         & beta_frame_sq, gamma_frame,&
+                        & old_k_0,&
                         & old_k_x, old_k_y, old_k_z,&
                         & new_k_x, new_k_y, new_k_z)
     implicit none
     real(kind=8), intent(in)  :: beta_frame_x, beta_frame_y, beta_frame_z
     real(kind=8), intent(in)  :: beta_frame_sq, gamma_frame
-    real(kind=8), intent(in)  :: old_k_x, old_k_y, old_k_z
+    real(kind=8), intent(in)  :: old_k_x, old_k_y, old_k_z, old_k_0
     real(kind=8), intent(out) :: new_k_x, new_k_y, new_k_z
     real(kind=8)              :: gamma_frame_m1
 
     if (beta_frame_sq .gt. 0.0) then
       gamma_frame_m1 = gamma_frame - 1.0
-      new_k_x = -beta_frame_x * gamma_frame +&
+      new_k_x = -beta_frame_x * gamma_frame * old_k_0 +&
               & old_k_x * (1.0 + (beta_frame_x**2 / beta_frame_sq) * gamma_frame_m1) +&
               & old_k_y * (beta_frame_x * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
               & old_k_z * (beta_frame_x * beta_frame_z / beta_frame_sq) * gamma_frame_m1
-      new_k_y = -beta_frame_y * gamma_frame +&
+      new_k_y = -beta_frame_y * gamma_frame * old_k_0 +&
               & old_k_x * (beta_frame_y * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
               & old_k_y * (1.0 + (beta_frame_y**2 / beta_frame_sq) * gamma_frame_m1) +&
               & old_k_z * (beta_frame_y * beta_frame_z / beta_frame_sq) * gamma_frame_m1
-      new_k_z = -beta_frame_z * gamma_frame +&
+      new_k_z = -beta_frame_z * gamma_frame * old_k_0 +&
               & old_k_x * (beta_frame_z * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
               & old_k_y * (beta_frame_z * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
               & old_k_z * (1.0 + (beta_frame_z**2 / beta_frame_sq) * gamma_frame_m1)
     else
       new_k_x = old_k_x; new_k_y = old_k_y; new_k_z = old_k_z
     end if
-
   end subroutine LorentzBoost
 
   subroutine PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
@@ -401,7 +401,7 @@ contains
     ! Lorentz boost `k1` from lab to CoM frame
     call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
                     & beta_CM_sq, gamma_CM,&
-                    & k1_x, k1_y, k1_z,&
+                    & 1.0, k1_x, k1_y, k1_z,&
                     & k1_CM_x, k1_CM_y, k1_CM_z)
 
     k1_CM = sqrt(k1_CM_x**2 + k1_CM_y**2 + k1_CM_z**2)
@@ -458,11 +458,13 @@ contains
 
     call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
                     & beta_CM_sq, gamma_CM,&
+                    & gamma_prtl_CM,&
                     & prtl1_CM_u, prtl1_CM_v, prtl1_CM_w,&
                     & prtl1_u, prtl1_v, prtl1_w)
     ! same CoM 4-velocity with a "-" sign
     call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
                     & beta_CM_sq, gamma_CM,&
+                    & gamma_prtl_CM,&
                     & -prtl1_CM_u, -prtl1_CM_v, -prtl1_CM_w,&
                     & prtl2_u, prtl2_v, prtl2_w)
 
