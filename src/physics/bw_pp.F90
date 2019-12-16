@@ -407,7 +407,7 @@ contains
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! Define a basis in in CoM frame: `k1_CM`, `a_CM` and `b_CM`
-    if (k_vec_x .ne. 0.0) then
+    if (k1_CM_x .ne. 0.0) then
       a_CM_x = -k1_CM_y / k1_CM_x; a_CM_y = 1.0; a_CM_z = 0.0
       a_CM = sqrt(a_CM_x**2 + a_CM_y**2)
       a_CM_x = a_CM_x / a_CM; a_CM_y = a_CM_y / a_CM
