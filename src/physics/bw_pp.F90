@@ -17,6 +17,7 @@ module m_bwpairproduction
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: bwOnTile_bin, bwOnTile_mc, PPfromTwoPhotons
+  private :: generateRandomThetaBW, dSdO_BW
   !...............................................................!
 contains
   subroutine bwPairProduction()
@@ -289,6 +290,37 @@ contains
     end if
   end subroutine computeBWCrossSection
 
+  subroutine LorentzBoost(beta_frame_x, beta_frame_y, beta_frame_z,&
+                        & beta_frame_sq, gamma_frame,&
+                        & old_k_x, old_k_y, old_k_z,&
+                        & new_k_x, new_k_y, new_k_z)
+    implicit none
+    real(kind=8), intent(in)  :: beta_frame_x, beta_frame_y, beta_frame_z
+    real(kind=8), intent(in)  :: beta_frame_sq, gamma_frame
+    real(kind=8), intent(in)  :: old_k_x, old_k_y, old_k_z
+    real(kind=8), intent(out) :: new_k_x, new_k_y, new_k_z
+    real(kind=8)              :: gamma_frame_m1
+
+    if (beta_frame_sq .gt. 0.0) then
+      gamma_frame_m1 = gamma_frame - 1.0
+      new_k_x = -beta_frame_x * gamma_frame +&
+              & old_k_x * (1.0 + (beta_frame_x**2 / beta_frame_sq) * gamma_frame_m1) +&
+              & old_k_y * (beta_frame_x * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_z * (beta_frame_x * beta_frame_z / beta_frame_sq) * gamma_frame_m1
+      new_k_y = -beta_frame_y * gamma_frame +&
+              & old_k_x * (beta_frame_y * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_y * (1.0 + (beta_frame_y**2 / beta_frame_sq) * gamma_frame_m1) +&
+              & old_k_z * (beta_frame_y * beta_frame_z / beta_frame_sq) * gamma_frame_m1
+      new_k_z = -beta_frame_z * gamma_frame +&
+              & old_k_x * (beta_frame_z * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_y * (beta_frame_z * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_z * (1.0 + (beta_frame_z**2 / beta_frame_sq) * gamma_frame_m1)
+    else
+      new_k_x = old_k_x; new_k_y = old_k_y; new_k_z = old_k_z
+    end if
+
+  end subroutine LorentzBoost
+
   subroutine PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
     implicit none
     integer, intent(in)      :: ti, tj, tk
@@ -298,6 +330,21 @@ contains
     integer                  :: tile_x1, tile_x2, tile_y1, tile_y2, tile_z1, tile_z2
     integer(kind=2)          :: xi_new, yi_new, zi_new
 
+    real(kind=8)             :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w, eps1, eps2
+    real(kind=8)             :: k1_x, k1_y, k1_z, k2_x, k2_y, k2_z, cos_phi, SS
+    real(kind=8)             :: gamma_prtl_CM, beta_prtl_CM
+    real(kind=8)             :: prtl1_CM_u, prtl1_CM_v, prtl1_CM_w
+    real(kind=8)             :: beta_CM_x, beta_CM_y, beta_CM_z, beta_CM_sq, gamma_CM
+    real(kind=8)             :: k1_CM_x, k1_CM_y, k1_CM_z, k1_CM
+    real(kind=8)             :: a_CM_x, a_CM_y, a_CM_z, a_CM
+    real(kind=8)             :: b_CM_x, b_CM_y, b_CM_z, b_CM
+    real(kind=8)             :: rand_theta_CM, cos_rand_theta_CM, sin_rand_theta_CM
+    real(kind=8)             :: rand_phi_CM, cos_rand_phi_CM, sin_rand_phi_CM
+    real(kind=8)             :: p1_CM_x, p1_CM_y, p1_CM_z
+    real(kind=8)             :: prtl1_u, prtl1_v, prtl1_w
+    real(kind=8)             :: prtl2_u, prtl2_v, prtl2_w
+
+    ! preliminary stuff
     s1 = pair_of_photons%part_1%spec
     p1 = pair_of_photons%part_1%index
     s2 = pair_of_photons%part_2%spec
@@ -310,6 +357,113 @@ contains
     tile_z1 = species(s1)%prtl_tile(ti, tj, tk)%z1
     tile_z2 = species(s1)%prtl_tile(ti, tj, tk)%z2
 
+    ph1_u = REAL(species(s1)%prtl_tile(ti, tj, tk)%u(p1), 8)
+    ph1_v = REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
+    ph1_w = REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
+    ph2_u = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
+    ph2_v = REAL(species(s2)%prtl_tile(ti, tj, tk)%v(p2), 8)
+    ph2_w = REAL(species(s2)%prtl_tile(ti, tj, tk)%w(p2), 8)
+
+    ! k-vectors in lab frame
+    eps1 = sqrt(ph1_u**2 + ph1_v**2 + ph1_w**2)
+    eps2 = sqrt(ph2_u**2 + ph2_v**2 + ph2_w**2)
+    k1_x = ph1_u / eps1; k1_y = ph1_v / eps1; k1_z = ph1_w / eps1
+    k2_x = ph2_u / eps2; k2_y = ph2_v / eps1; k2_z = ph2_w / eps2
+
+    ! angle between photons in lab frame
+    cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
+    ! `S` parameter
+    SS = eps1 * eps2 * (1.0 - cos_phi) / 2.0
+    ! Lorentz-factor of electron/positron in CoM frame
+    gamma_prtl_CM = sqrt(SS)
+    beta_prtl_CM = sqrt(1.0 - 1.0 / SS)
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! 3-velocity of the CoM frame
+    beta_CM_x = (eps1 * k1_x + eps2 * k2_x) / (eps1 + eps2)
+    beta_CM_y = (eps1 * k1_y + eps2 * k2_y) / (eps1 + eps2)
+    beta_CM_z = (eps1 * k1_z + eps2 * k2_z) / (eps1 + eps2)
+    beta_CM_sq = beta_CM_x**2 + beta_CM_y**2 + beta_CM_z**2
+
+    #ifdef DEBUG
+      if (beta_CM_sq .ge. 1.0) then
+        call throwError('`beta_CM_sq` >= 1 in `PPfromTwoPhotons()`.')
+      end if
+    #endif
+
+    gamma_CM = 1.0 / sqrt(1.0 - beta_CM_sq)
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Lorentz boost `k1` from lab to CoM frame
+    call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
+                    & beta_CM_sq, gamma_CM,&
+                    & k1_x, k1_y, k1_z,&
+                    & k1_CM_x, k1_CM_y, k1_CM_z)
+
+    k1_CM = sqrt(k1_CM_x**2 + k1_CM_y**2 + k1_CM_z**2)
+    k1_CM_x = k1_CM_x / k1_CM
+    k1_CM_y = k1_CM_y / k1_CM
+    k1_CM_z = k1_CM_z / k1_CM
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Define a basis in in CoM frame: `k1_CM`, `a_CM` and `b_CM`
+    if (k_vec_x .ne. 0.0) then
+      a_CM_x = -k1_CM_y / k1_CM_x; a_CM_y = 1.0; a_CM_z = 0.0
+      a_CM = sqrt(a_CM_x**2 + a_CM_y**2)
+      a_CM_x = a_CM_x / a_CM; a_CM_y = a_CM_y / a_CM
+    else
+      a_CM_x = 1.0; a_CM_y = 0.0; a_CM_z = 0.0
+    end if
+    b_CM_x = a_CM_z * k1_CM_y - a_CM_y * k1_CM_z
+    b_CM_y = -a_CM_z * k1_CM_x + a_CM_x * k1_CM_z
+    b_CM_z = a_CM_y * k1_CM_x - a_CM_x * k1_CM_y
+    b_CM = sqrt(b_CM_x**2 + b_CM_y**2 + b_CM_z**2)
+    b_CM_x = b_CM_x / b_CM; b_CM_y = b_CM_y / b_CM; b_CM_z = b_CM_z / b_CM
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Generate random vector in the CoM frame ...
+    ! ... respecting the differential cross section ...
+    ! ... at angle `theta` w.r.t. `k1_CM`
+    call generateRandomThetaBW(rand_theta_CM, SS)
+    rand_phi_CM = 2.0 * M_PI * random(dseed)
+    cos_rand_theta_CM = cos(rand_theta_CM)
+    sin_rand_theta_CM = sin(rand_theta_CM)
+    cos_rand_phi_CM = cos(rand_phi_CM)
+    sin_rand_phi_CM = sin(rand_phi_CM)
+
+    p1_CM_x = k1_CM_x * cos_rand_theta_CM +&
+            & a_CM_x * sin_rand_theta_CM * cos_rand_phi_CM +&
+            & b_CM_x * sin_rand_theta_CM * sin_rand_phi_CM
+    p1_CM_y = k1_CM_y * cos_rand_theta_CM +&
+            & a_CM_y * sin_rand_theta_CM * cos_rand_phi_CM +&
+            & b_CM_y * sin_rand_theta_CM * sin_rand_phi_CM
+    p1_CM_z = k1_CM_z * cos_rand_theta_CM +&
+            & a_CM_z * sin_rand_theta_CM * cos_rand_phi_CM +&
+            & b_CM_z * sin_rand_theta_CM * sin_rand_phi_CM
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Lorentz boost of particle 4-velocity from CoM to lab frame
+    beta_CM_x = -beta_CM_x
+    beta_CM_y = -beta_CM_y
+    beta_CM_z = -beta_CM_z
+
+    ! electron/positron 4-velocity
+    prtl1_CM_u = gamma_prtl_CM * beta_prtl_CM * p1_CM_x
+    prtl1_CM_v = gamma_prtl_CM * beta_prtl_CM * p1_CM_y
+    prtl1_CM_w = gamma_prtl_CM * beta_prtl_CM * p1_CM_z
+
+    call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
+                    & beta_CM_sq, gamma_CM,&
+                    & prtl1_CM_u, prtl1_CM_v, prtl1_CM_w,&
+                    & prtl1_u, prtl1_v, prtl1_w)
+    ! same CoM 4-velocity with a "-" sign
+    call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
+                    & beta_CM_sq, gamma_CM,&
+                    & -prtl1_CM_u, -prtl1_CM_v, -prtl1_CM_w,&
+                    & prtl2_u, prtl2_v, prtl2_w)
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Create electron and positron with the generated momenta
     ! choose random coordinate on a tile
     call generateCoordInRegion(REAL(tile_x1), REAL(tile_x2),&
                              & REAL(tile_y1), REAL(tile_y2),&
@@ -320,10 +474,51 @@ contains
 
     ! create an electron/positron pair in the same location
     call createParticle(BW_electron_sp, xi_new, yi_new, zi_new,&
-                                      & dx_new, dy_new, dz_new, 0.0, 0.0, 0.0)
+                                      & dx_new, dy_new, dz_new,&
+                                      & REAL(prtl1_u, 4), REAL(prtl1_v, 4), REAL(prtl1_w, 4))
     call createParticle(BW_positron_sp, xi_new, yi_new, zi_new,&
-                                      & dx_new, dy_new, dz_new, 0.0, 0.0, 0.0)
+                                      & dx_new, dy_new, dz_new,&
+                                      & REAL(prtl2_u, 4), REAL(prtl2_v, 4), REAL(prtl2_w, 4))
   end subroutine PPfromTwoPhotons
+
+  subroutine generateRandomThetaBW(SS, theta_final)
+    implicit none
+    real(kind=8), intent(in)  :: SS
+    real(kind=8), intent(out) :: theta_final
+    real(kind=8)              :: rand_prob, rand_theta
+    integer                   :: iter
+    iter = 0
+    do while (.true.)
+      rand_prob = random(dseed)
+      rand_theta = M_PI * random(dseed)
+      if (rand_prob .le. dSdO_BW(SS, rand_theta)) then
+        exit
+      end if
+      iter = iter + 1
+      #ifdef DEBUG
+        if (iter .gt. 10000) then
+          call throwError('Too many iterations in `generateRandomThetaBW()`.')
+        end if
+      #endif
+    end do
+    theta_final = rand_theta
+  end subroutine generateRandomThetaBW
+
+  real function dSdO_BW(s, theta)
+    implicit none
+    real(kind=8), intent(in)  :: s, theta
+    real(dprec)               :: beta, beta2, beta4
+    real(dprec), intent(in) :: s, theta
+    real(dprec) :: beta, beta2, beta4
+    beta2 = 1.0 - 1.0 / s
+    beta4 = beta2**2
+    beta = sqrt(beta2)
+    dSdO_BW = (beta * (-8.0 - 8.0 * beta2 + 11.0 * beta4 -&
+            & 4.0 * beta2 * (-2.0 + beta2) * cos(2.0 * theta) +&
+            & beta4 * cos(4.0 * theta)) * sin(theta)) /&
+            & (4.0 * (-(beta * (-2.0 + beta2)) + (-3.0 + beta4) * asinh(beta / sqrt(1.0 - beta2))) *&
+            & (-2.0 + beta2 + beta2 * cos(2.0 * theta))**2)
+  end function dSdO_BW
 
 #endif
 end module m_bwpairproduction
