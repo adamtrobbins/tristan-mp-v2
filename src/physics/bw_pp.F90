@@ -401,7 +401,7 @@ contains
     ! Lorentz boost `k1` from lab to CoM frame
     call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
                     & beta_CM_sq, gamma_CM,&
-                    & 1.0, k1_x, k1_y, k1_z,&
+                    & REAL(1.0, 8), k1_x, k1_y, k1_z,&
                     & k1_CM_x, k1_CM_y, k1_CM_z)
 
     k1_CM = sqrt(k1_CM_x**2 + k1_CM_y**2 + k1_CM_z**2)
