@@ -247,9 +247,8 @@ contains
     real, intent(out)        :: P_12
     real(kind=8)             :: k1_x, k1_y, k1_z
     real(kind=8)             :: k2_x, k2_y, k2_z
-    real(kind=8)             :: cosphi, S, beta, beta2, fs
-    real(kind=8)             :: E1, E2
-    real(kind=8)             :: ph_u1, ph_v1, ph_w1, ph_u2, ph_v2, ph_w2
+    real(kind=8)             :: cos_phi, SS, beta, beta2, fs
+    real(kind=8)             :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w, eps1, eps2
     integer                  :: s1, s2, p1, p2
 
     ! "extract" photons
@@ -257,29 +256,29 @@ contains
     p1 = pair_of_photons%part_1%index
     s2 = pair_of_photons%part_2%spec
     p2 = pair_of_photons%part_2%index
+    
+    ph1_u = REAL(species(s1)%prtl_tile(ti, tj, tk)%u(p1), 8)
+    ph1_v = REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
+    ph1_w = REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
+    ph2_u = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
+    ph2_v = REAL(species(s2)%prtl_tile(ti, tj, tk)%v(p2), 8)
+    ph2_w = REAL(species(s2)%prtl_tile(ti, tj, tk)%w(p2), 8)
 
-    ph_u1 = REAL(species(s1)%prtl_tile(ti, tj, tk)%u(p1), 8)
-    ph_v1 = REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
-    ph_w1 = REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
-    ph_u2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
-    ph_v2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%v(p2), 8)
-    ph_w2 = REAL(species(s2)%prtl_tile(ti, tj, tk)%w(p2), 8)
-
-    E1 = sqrt((ph_u1)**2 + (ph_v1)**2 + (ph_w1)**2)
-    E2 = sqrt((ph_u2)**2 + (ph_v2)**2 + (ph_w2)**2)
-
-    if (E1 * E2 .lt. 1.0) then
+    eps1 = sqrt(ph1_u**2 + ph1_v**2 + ph1_w**2)
+    eps2 = sqrt(ph2_u**2 + ph2_v**2 + ph2_w**2)
+    
+    if (eps1 * eps2 .lt. 1.0) then
       thresholdQ = .false.
     else
       ! photon k-vectors
-      k1_x = ph_u1 / E1; k1_y = ph_v1 / E1; k1_z = ph_w1 / E1
-      k2_x = ph_u2 / E2; k2_y = ph_v2 / E2; k2_z = ph_w2 / E2
-      cosphi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
-      S = E1 * E2 * (1.0 - cosphi) * 0.5
-      thresholdQ = (S .gt. 1.0000001)
+      k1_x = ph1_u / eps1; k1_y = ph1_v / eps1; k1_z = ph1_w / eps1
+      k2_x = ph2_u / eps2; k2_y = ph2_v / eps2; k2_z = ph2_w / eps2
+      cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
+      SS = eps1 * eps2 * (1.0 - cos_phi) * 0.5
+      thresholdQ = (SS .gt. 1.0000001)
     end if
     if (thresholdQ) then
-      beta2 = 1.0 - 1.0 / S
+      beta2 = 1.0 - 1.0 / SS
       beta = sqrt(beta2)
       fs = (1.0 - beta2) *&
          & (-2.0 * beta * (2.0 - beta2) + (3.0 - beta2**2) *&
@@ -344,7 +343,7 @@ contains
     real(kind=8)             :: prtl1_u, prtl1_v, prtl1_w
     real(kind=8)             :: prtl2_u, prtl2_v, prtl2_w
 
-    ! preliminary stuff
+    ! "extracting" photons
     s1 = pair_of_photons%part_1%spec
     p1 = pair_of_photons%part_1%index
     s2 = pair_of_photons%part_2%spec
@@ -368,12 +367,17 @@ contains
     eps1 = sqrt(ph1_u**2 + ph1_v**2 + ph1_w**2)
     eps2 = sqrt(ph2_u**2 + ph2_v**2 + ph2_w**2)
     k1_x = ph1_u / eps1; k1_y = ph1_v / eps1; k1_z = ph1_w / eps1
-    k2_x = ph2_u / eps2; k2_y = ph2_v / eps1; k2_z = ph2_w / eps2
+    k2_x = ph2_u / eps2; k2_y = ph2_v / eps2; k2_z = ph2_w / eps2
 
     ! angle between photons in lab frame
     cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
     ! `S` parameter
-    SS = eps1 * eps2 * (1.0 - cos_phi) / 2.0
+    SS = eps1 * eps2 * (1.0 - cos_phi) * 0.5
+    #ifdef DEBUG
+      if (SS .le. 1.0) then
+        call throwError('`S` <= 1 when creating BW pairs.')
+      end if
+    #endif
     ! Lorentz-factor of electron/positron in CoM frame
     gamma_prtl_CM = sqrt(SS)
     beta_prtl_CM = sqrt(1.0 - 1.0 / SS)
@@ -424,7 +428,7 @@ contains
     ! Generate random vector in the CoM frame ...
     ! ... respecting the differential cross section ...
     ! ... at angle `theta` w.r.t. `k1_CM`
-    call generateRandomThetaBW(rand_theta_CM, SS)
+    call generateRandomThetaBW(SS, rand_theta_CM)
     rand_phi_CM = 2.0 * M_PI * random(dseed)
     cos_rand_theta_CM = cos(rand_theta_CM)
     sin_rand_theta_CM = sin(rand_theta_CM)

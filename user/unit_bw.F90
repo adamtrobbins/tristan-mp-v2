@@ -2,7 +2,7 @@
 
 ! Configuration for this userfile:
 ! ```
-!   $ python configure.py --nghosts=5 --user=user_two_bulbs -qed -bwpp
+!   $ python configure.py --nghosts=5 --user=unit_bw -qed -bwpp
 ! ```
 
 module m_userfile
@@ -20,10 +20,9 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  integer   :: ph_ndot, inject_interval
-  real      :: ph_energy, del_x1, del_x2
+  real      :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w
 
-  private   :: ph_ndot, ph_energy, del_x1, del_x2
+  private   :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -42,11 +41,12 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'ndot', ph_ndot)
-    call getInput('problem', 'energy', ph_energy)
-    call getInput('problem', 'dx1', del_x1)
-    call getInput('problem', 'dx2', del_x2)
-    call getInput('problem', 'inj_interval', inject_interval, 100000)
+    call getInput('problem', 'ph1_u', ph1_u)
+    call getInput('problem', 'ph1_v', ph1_v)
+    call getInput('problem', 'ph1_w', ph1_w)
+    call getInput('problem', 'ph2_u', ph2_u)
+    call getInput('problem', 'ph2_v', ph2_v)
+    call getInput('problem', 'ph2_w', ph2_w)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -72,6 +72,8 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
+    call injectParticleGlobally(1, 2.5, 2.5, 0.5, ph1_u, ph1_v, ph1_w)
+    call injectParticleGlobally(2, 2.5, 2.5, 0.5, ph2_u, ph2_v, ph2_w)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -131,43 +133,6 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
-    integer                       :: i
-    real                          :: thet, rnd, u_, v_, w_
-    real                          :: x1_g, y1_g, x2_g, y2_g
-    real                          :: x1_l, y1_l, x2_l, y2_l
-    real                          :: dx_, dy_, dz_, x_, y_
-    integer(kind=2)               :: xi_, yi_, zi_
-    
-    if (step .lt. inject_interval) then
-      x1_g = global_mesh%sx * del_x1; y1_g = global_mesh%sy * 0.5
-      x2_g = global_mesh%sx * del_x2; y2_g = global_mesh%sy * 0.5
-
-      dz_ = 0.5; zi_ = 0
-
-      do i = 1, ph_ndot
-        rnd = random(dseed)
-        thet = M_PI * (rnd - 0.5)
-        u_ = cos(thet) * ph_energy
-        v_ = sin(thet) * ph_energy
-        w_ = 0.0
-
-        x_ = x1_g + 10 * random(dseed) * cos(thet)
-        y_ = y1_g + 10 * random(dseed) * sin(thet)
-
-        call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_)
-
-        rnd = random(dseed)
-        thet = M_PI * (rnd - 0.5)
-        u_ = -cos(thet) * ph_energy
-        v_ = sin(thet) * ph_energy
-        w_ = 0.0
-
-        x_ = x2_g - 10 * random(dseed) * cos(thet)
-        y_ = y2_g + 10 * random(dseed) * sin(thet)
-
-        call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
-      end do
-    end if
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step)

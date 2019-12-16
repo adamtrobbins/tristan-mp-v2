@@ -4,22 +4,22 @@
 
 <node_configuration>
 
-  sizex         = 4              # number of cpus in x direction
-  sizey         = 4              # number of cpus in y direction
+  sizex         = 2              # number of cpus in x direction
+  sizey         = 2              # number of cpus in y direction
   sizez         = 1              # number of cpus in z direction
 
 <time>
 
-  last           = 1000          # last timestep
+  last           = 100           # last timestep
 
 <grid>
 
-  mx0           = 400            # number of actual grid points in the x direction
-  my0           = 400            # number of actual grid points in the y direction
+  mx0           = 10             # number of actual grid points in the x direction
+  my0           = 10             # number of actual grid points in the y direction
   mz0           = 1              # ... (ignored for 2D simulations)
 
-  boundary_x    = 0              # boundary in x: 1 = periodic, 0 = outflow
-  boundary_y    = 0              # boundary in y: 1 = periodic, 0 = outflow
+  boundary_x    = 1              # boundary in x: 1 = periodic, 0 = outflow
+  boundary_y    = 1              # boundary in y: 1 = periodic, 0 = outflow
   boundary_z    = 1              # boundary in z: 1 = periodic, 0 = outflow
 
   resize_tiles  = 0              # reallocate particle tiles if necessary
@@ -38,8 +38,8 @@
 <output>
 
   start         = 0              # first output step
-  interval      = 10             # interval between output steps
-  stride        = 10             # particle stride
+  interval      = 1              # interval between output steps
+  stride        = 1              # particle stride
   istep         = 1              # field downsampling
   flds_at_prtl  = 1              # save fields at particle position
 
@@ -83,15 +83,16 @@
 
 <bw_pp>
 
-  tau_BW        = 0.01          # fiducial Breit-Wheeler cross section
+  tau_BW        = 0.1           # fiducial Breit-Wheeler cross section
   interval      = 1             # perform BW once every `interval` timestep
   electron_sp   = 3             # save produced electrons to species #...
   positron_sp   = 4             # save produced positrons to species #...
 
 <problem>
 
-  inj_interval  = 1000.0
-  energy        = 5.0
-  ndot          = 10.0
-  dx1           = 0.25
-  dx2           = 0.75
+  ph1_u         = 1.5
+  ph1_v         = 2.5
+  ph1_w         = 0.0
+  ph2_u         = -1.5
+  ph2_v         = 1.2
+  ph2_w         = 0.0
