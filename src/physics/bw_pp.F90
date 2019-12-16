@@ -507,9 +507,7 @@ contains
   real function dSdO_BW(s, theta)
     implicit none
     real(kind=8), intent(in)  :: s, theta
-    real(dprec)               :: beta, beta2, beta4
-    real(dprec), intent(in) :: s, theta
-    real(dprec) :: beta, beta2, beta4
+    real(kind=8)              :: beta, beta2, beta4
     beta2 = 1.0 - 1.0 / s
     beta4 = beta2**2
     beta = sqrt(beta2)
