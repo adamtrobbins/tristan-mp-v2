@@ -108,11 +108,12 @@ args = vars(parser.parse_args())
 
 makefile_options = {}
 
-try:
+if (args['user']):
     makefile_options['USER_FILE'] = args['user']
-except:
+    makefile_options['USER_DIR'] = user_directory
+else:
     makefile_options['USER_FILE'] = args['unit']
-    args['user'] = args['unit']
+    makefile_options['USER_DIR'] = unit_directory
 
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
@@ -189,7 +190,7 @@ with open(makefile_output, 'w') as current_file:
 # Finish with diagnostic output
 print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
-print('  Userfile:                ' + args['user'])
+print('  Userfile:                ' + makefile_options['USER_FILE'])
 
 print('DOMAIN .......................................................................')
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
