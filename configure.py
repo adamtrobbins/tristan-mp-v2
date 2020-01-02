@@ -15,12 +15,21 @@ user_directory = 'user/'
 user_choices = glob.glob(user_directory + '*.F90')
 user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 
+unit_directory = 'unit/'
+unit_choices = glob.glob(unit_directory + '*.F90')
+unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
+
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 
-parser.add_argument('--user',
-                    default='user_default',
-                    choices=user_choices,
-                    help='select user file')
+user_group = parser.add_mutually_exclusive_group(required=True)
+user_group.add_argument('--user',
+                        default=None,
+                        choices=user_choices,
+                        help='select user file')
+user_group.add_argument('--unit',
+                        default=None,
+                        choices=unit_choices,
+                        help='select unit file')
 
 parser.add_argument('--nghosts',
                     action='store',
@@ -37,15 +46,15 @@ parser.add_argument('-ifport',
                     default=False,
                     help='enable IFPORT library (`mkdir` etc)')
 
-parser.add_argument('-mpi',
-                    action='store_true',
-                    default=False,
-                    help='enable mpi')
-
-parser.add_argument('-mpi08',
-                    action='store_true',
-                    default=False,
-                    help='enable mpi_f08')
+mpi_group = parser.add_mutually_exclusive_group()
+mpi_group.add_argument('-mpi',
+                       action='store_true',
+                       default=False,
+                       help='enable mpi')
+mpi_group.add_argument('-mpi08',
+                       action='store_true',
+                       default=False,
+                       help='enable mpi_f08')
 
 parser.add_argument('-intel',
                     action='store_true',
@@ -98,7 +107,11 @@ args = vars(parser.parse_args())
 # Step 2. Set definitions and Makefile options based on above arguments
 
 makefile_options = {}
-makefile_options['USER_FILE'] = args['user']
+
+try:
+    makefile_options['USER_FILE'] = args['user']
+except:
+    makefile_options['USER_FILE'] = args['unit']
 
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
@@ -166,11 +179,11 @@ makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
-  makefile_template = current_file.read()
+    makefile_template = current_file.read()
 for key,val in makefile_options.items():
-  makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
+    makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
 with open(makefile_output, 'w') as current_file:
-  current_file.write(makefile_template)
+    current_file.write(makefile_template)
 
 # Finish with diagnostic output
 print('==============================================================================')
