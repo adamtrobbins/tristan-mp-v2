@@ -68,7 +68,7 @@ contains
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     if (mpi_rank .eq. 0) then
-      jz(250,250,0) = 1.0
+      jz(250,10,0) = 1.0
     end if
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
