@@ -66,11 +66,9 @@ contains
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0;
+    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     if (mpi_rank .eq. 0) then
-      jz(:,:,:) = 1.0
-    else
-      jz(:,:,:) = 0.0
+      jz(10,10,0) = 1.0
     end if
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
