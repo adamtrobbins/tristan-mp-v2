@@ -12,7 +12,7 @@ PFLAGS := @PREPROCESSOR_FLAGS@
 
 # Preliminary definitions
 EXE_DIR := exec/
-USR_DIR := user/
+USR_DIR := @USER_DIR@
 SRC_DIR := src/
 PREC_SRC_DIR := src_/
 EXE_FILE := @EXE_NAME@
