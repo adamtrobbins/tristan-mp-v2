@@ -148,6 +148,7 @@ contains
       !-------------------------------------------------
       ! Depositing current: `j_s = rho_s * v_s`
         t_depositstep = MPI_WTIME()
+      ! FIXTHISBACK
       ! call depositCurrents()
         t_depositstep = MPI_WTIME() - t_depositstep
       !.................................................

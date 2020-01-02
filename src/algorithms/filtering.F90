@@ -213,6 +213,7 @@ contains
       call filterInX(jz, do_n_times)
       call exchangeCurrents(.true.)
 
+      ! FIXTHISBACK
       ! call filterInY(jx, do_n_times)
       ! call filterInY(jy, do_n_times)
       ! call filterInY(jz, do_n_times)
