@@ -28,9 +28,9 @@ contains
     subroutine computeWindowOfSizeN(window, N)
       implicit none
       ! this function basically computes ...
-      ! ... the nonzero elements of the following sparse matrix:
+      ! ... the nonzero elements of the following sparse matrix (raised to the N-th power):
       !
-      ! | a b 0 0 0 ... 0 0 0 0 0 |^N
+      ! | a b 0 0 0 ... 0 0 0 0 0 |**N
       ! | b a b 0 0 ... 0 0 0 0 0 |
       ! | 0 b a b 0 ... 0 0 0 0 0 |
       ! | 0 0 b a b ... 0 0 0 0 0 |
@@ -90,7 +90,7 @@ contains
         call computeWindowOfSizeN(window_main, filter_main_w)
       end if
       if (filter_sec_w .gt. 0) then
-        allocate(window_main(-filter_sec_w : filter_sec_w))
+        allocate(window_sec(-filter_sec_w : filter_sec_w))
         call computeWindowOfSizeN(window_sec, filter_sec_w)
       end if
     end subroutine initializeFilters
