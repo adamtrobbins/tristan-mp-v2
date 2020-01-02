@@ -112,6 +112,7 @@ try:
     makefile_options['USER_FILE'] = args['user']
 except:
     makefile_options['USER_FILE'] = args['unit']
+    args['user'] = args['unit']
 
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
