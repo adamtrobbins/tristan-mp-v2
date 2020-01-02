@@ -71,6 +71,7 @@ contains
       jz(:,:,:) = 1.0
     else
       jz(:,:,:) = 0.0
+    end if
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
