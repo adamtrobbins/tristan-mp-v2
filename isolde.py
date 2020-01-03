@@ -60,7 +60,7 @@ def parseReport(fname, nsteps = None, skip = 1):
         nsteps = 1e100
     import re
     def parseBlock(block, data, isfirst = False):
-        for line in block.split('\n')[1:]:
+        for line in block.split('\n')[2:]:
             routine = line.split(':', 1)[0].strip()
             if (routine != ''):
                 line1 = line.split(':', 1)[1]
@@ -83,20 +83,21 @@ def parseReport(fname, nsteps = None, skip = 1):
         isfirst = True
         ni = 0
         while line and (ni < nsteps):
-            while (line.strip() != '-------------------------------------------------------------------'):
+            while (line.strip()[0:10] != '-'*10):
                 line = file.readline()
             block = ""
             line = file.readline()
-            while (line.strip() != '...................................................................'):
+            while (line.strip()[0:10] != '.'*10):
                 block += line
                 line = file.readline()
+            print (block)
             if (ni % skip == 0):
                 parseBlock(block, data, isfirst = isfirst)
                 isfirst = False
                 data['t'] = np.append(data['t'], [ni])
             ni += 1
     return data
-
+    
 # easy plotting functions
 def plot2DField(ax, x, y, field, rotate=False,
                 title='field', cmap='jet',
