@@ -424,18 +424,14 @@ contains
               call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
               sm_arr(i1, j1, k1) = bz0 * B_norm
             case('jx')
-              ! FIXTHISBACK
-              ! call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              ! sm_arr(i1, j1, k1) = -jx0 * B_norm
-              sm_arr(i1, j1, k1) = jx(i, j, k)
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              sm_arr(i1, j1, k1) = -jx0 * B_norm
             case('jy')
-              ! call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              ! sm_arr(i1, j1, k1) = -jy0 * B_norm
-              sm_arr(i1, j1, k1) = jy(i, j, k)
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              sm_arr(i1, j1, k1) = -jy0 * B_norm
             case('jz')
-              ! call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              ! sm_arr(i1, j1, k1) = -jz0 * B_norm
-              sm_arr(i1, j1, k1) = jz(i, j, k)
+              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              sm_arr(i1, j1, k1) = -jz0 * B_norm
             case('xx')
               sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
             case('yy')
