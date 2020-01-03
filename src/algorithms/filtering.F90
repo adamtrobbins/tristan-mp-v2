@@ -150,20 +150,14 @@ contains
         do t_ = 0, window_size - 1
           filter_tmp(t_) = arr(t_ - NGHOST, j, k)
         end do
-        i = window_size - NGHOST
-        do while (i .le. this_meshblock%ptr%sx - 1 + NGHOST)
-          ! ! compute the reduced dot product ... /
-          ! dot_product_ = 0.0
-          ! k_ = -window_size
-          ! imin_ = MAX(i - window_size, -NGHOST)
-          ! imax_ = MIN(i + window_size, this_meshblock%ptr%sx - 1 + NGHOST)
-          ! do i_ = imin_, imax_
-          !   dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
-          !   k_ = k_ + 1
-          ! end do
-          ! ! ... /
-
-          do t_ = -1, window_size - 1
+        ! i = window_size - NGHOST
+        ! do while (i .le. this_meshblock%ptr%sx - 1 + NGHOST)
+        t_ = -1
+        do i = window_size - NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
+          if (t_ .gt. window_size - 1) then
+            t_ = -1
+          end if
+          ! do t_ = -1, window_size - 1
             ! compute the reduced dot product ... /
             dot_product_ = 0.0
             k_ = -window_size
@@ -180,8 +174,9 @@ contains
               filter_tmp(t_) = dot_product_
             end if
             arr(i - window_size, j, k) = filter_tmp(t_ + 1)
-            i = i + 1
-          end do
+            ! i = i + 1
+            t_ = t_ + 1
+          ! end do
         end do
       end do
     end subroutine
