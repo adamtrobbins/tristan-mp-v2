@@ -156,7 +156,8 @@ contains
       !-------------------------------------------------
       ! Exchanging currents
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeCurrents()
+      ! FIXTHISBACK
+      call exchangeCurrents(.true.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
