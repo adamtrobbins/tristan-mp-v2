@@ -16,10 +16,6 @@ module m_initialize
   use m_helpers
   use m_errors
 
-  #ifdef FASTFILTERING
-    use m_filtering
-  #endif
-
   ! extra physics
   #ifdef RADIATION
     use m_radiation
@@ -95,11 +91,6 @@ contains
 
     call initializePrtlExchange()
       call printDiag((mpi_rank .eq. 0), "initializePrtlExchange()", .true.)
-
-    #ifdef FASTFILTERING
-      call initializeFilters()
-        call printDiag((mpi_rank .eq. 0), "initializeFilters()", .true.)
-    #endif
 
     call initializeRandomSeed(mpi_rank)
       call printDiag((mpi_rank .eq. 0), "initializeRandomSeed()", .true.)

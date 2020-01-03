@@ -148,16 +148,14 @@ contains
       !-------------------------------------------------
       ! Depositing current: `j_s = rho_s * v_s`
         t_depositstep = MPI_WTIME()
-      ! FIXTHISBACK
-      ! call depositCurrents()
+      call depositCurrents()
         t_depositstep = MPI_WTIME() - t_depositstep
       !.................................................
 
       !-------------------------------------------------
       ! Exchanging currents
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      ! FIXTHISBACK
-      call exchangeCurrents(.true.)
+      call exchangeCurrents()
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -325,7 +323,7 @@ contains
       end do
 
       call printTimeFooter()
-      
+
       print *, ""
     end if
 
