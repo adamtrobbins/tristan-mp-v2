@@ -143,6 +143,7 @@ contains
       real, intent(in)    :: window(-window_size : window_size)
       real                :: filter_tmp(0 : window_size), dot_product_
       integer             :: i, j, k, t_, i_, k_
+      integer             :: imin_, imax_
 
       k = 0
       do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
@@ -154,10 +155,12 @@ contains
           ! compute the reduced dot product ... /
           dot_product_ = 0.0
           k_ = -window_size
-          do i_ = i - window_size, i + window_size
-            if ((i_ .ge. -NGHOST) .and. (i_ .le. this_meshblock%ptr%sx - 1 + NGHOST)) then
-              dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
-            end if
+          imin_ = MAX(i - window_size, -NGHOST)
+          imax_ = MIN(i + window_size, this_meshblock%ptr%sx - 1 + NGHOST)
+          do i_ = imin_, imax_
+            ! if ((i_ .ge. -NGHOST) .and. (i_ .le. this_meshblock%ptr%sx - 1 + NGHOST)) then
+            dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
+            ! end if
             k_ = k_ + 1
           end do
           ! ... /
@@ -168,10 +171,12 @@ contains
             ! compute the reduced dot product ... /
             dot_product_ = 0.0
             k_ = -window_size
-            do i_ = i - window_size, i + window_size
-              if ((i_ .ge. -NGHOST) .and. (i_ .le. this_meshblock%ptr%sx - 1 + NGHOST)) then
-                dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
-              end if
+            imin_ = MAX(i - window_size, -NGHOST)
+            imax_ = MIN(i + window_size, this_meshblock%ptr%sx - 1 + NGHOST)
+            do i_ = imin_, imax_
+              ! if ((i_ .ge. -NGHOST) .and. (i_ .le. this_meshblock%ptr%sx - 1 + NGHOST)) then
+              dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
+              ! end if
               k_ = k_ + 1
             end do
             ! ... /
