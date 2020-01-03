@@ -79,9 +79,14 @@ contains
         filter_sec_w = 0
       else
         ntimes_main = INT(nfilter / NGHOST)
-        ntimes_sec = 1
+        if (MOD(nfilter, NGHOST) .eq. 0) then
+          ntimes_sec = 0
+          filter_sec_w = 0
+        else
+          ntimes_sec = 1
+          filter_sec_w = nfilter - ntimes_main * NGHOST
+        end if
         filter_main_w = NGHOST
-        filter_sec_w = nfilter - ntimes_main * NGHOST
       end if
       ! allocate arrays to store the weights ...
       ! ... & compute the window weights
