@@ -97,13 +97,10 @@ contains
     ! printing timestep
     sz = len(trim("Timestep: " // STR(tstep)))
     do i = 1, 70
-      dummy(i : i) = ' '
+      dummy(i : i) = '.'
     end do
     dummy(1 : sz) = trim("Timestep: " // STR(tstep))
-    do i = 1, (66 - sz)
-      dummy = trim(dummy) // '.'
-    end do
-    dummy = trim(dummy) // '[OK]'
+    dummy(67:70) = '[OK]'
     print *, dummy(1:70)
 
     ! printing header
