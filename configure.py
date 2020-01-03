@@ -36,6 +36,12 @@ parser.add_argument('--nghosts',
                     default=3,
                     help='specify the # of ghost cells')
 
+parser.add_argument('-fastfiltering',
+                    action='store_true',
+                    default=False,
+                    help='enable fast filtering routine')
+
+
 parser.add_argument('-hdf5',
                     action='store_true',
                     default=False,
@@ -138,6 +144,9 @@ if args['debug'] and (not args['intel']):
 if args['debug'] and args['intel']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     makefile_options['COMPILER_FLAGS'] += '-traceback -qopenmp-simd -qopt-report=5 '
+
+if args['fastfiltering']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DFASTFILTERING '
 
 if args['intel']:
     makefile_options['MODULE'] = '-module '
