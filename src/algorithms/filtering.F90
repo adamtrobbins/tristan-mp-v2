@@ -152,35 +152,33 @@ contains
         end do
         i = window_size - NGHOST
         do while (i .le. this_meshblock%ptr%sx - 1 + NGHOST)
-          ! compute the reduced dot product ... /
-          dot_product_ = 0.0
-          k_ = -window_size
-          imin_ = MAX(i - window_size, -NGHOST)
-          imax_ = MIN(i + window_size, this_meshblock%ptr%sx - 1 + NGHOST)
-          do i_ = imin_, imax_
-            ! if ((i_ .ge. -NGHOST) .and. (i_ .le. this_meshblock%ptr%sx - 1 + NGHOST)) then
-            dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
-            ! end if
-            k_ = k_ + 1
-          end do
-          ! ... /
-          filter_tmp(window_size) = dot_product_
-          arr(i - window_size, j, k) = filter_tmp(0)
-          i = i + 1
-          do t_ = 0, window_size - 1
+          ! ! compute the reduced dot product ... /
+          ! dot_product_ = 0.0
+          ! k_ = -window_size
+          ! imin_ = MAX(i - window_size, -NGHOST)
+          ! imax_ = MIN(i + window_size, this_meshblock%ptr%sx - 1 + NGHOST)
+          ! do i_ = imin_, imax_
+          !   dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
+          !   k_ = k_ + 1
+          ! end do
+          ! ! ... /
+
+          do t_ = -1, window_size - 1
             ! compute the reduced dot product ... /
             dot_product_ = 0.0
             k_ = -window_size
             imin_ = MAX(i - window_size, -NGHOST)
             imax_ = MIN(i + window_size, this_meshblock%ptr%sx - 1 + NGHOST)
             do i_ = imin_, imax_
-              ! if ((i_ .ge. -NGHOST) .and. (i_ .le. this_meshblock%ptr%sx - 1 + NGHOST)) then
               dot_product_ = dot_product_ + arr(i_, j, k) * window(k_)
-              ! end if
               k_ = k_ + 1
             end do
             ! ... /
-            filter_tmp(t_) = dot_product_
+            if (t_ .eq. -1) then
+              filter_tmp(window_size) = dot_product_
+            else
+              filter_tmp(t_) = dot_product_
+            end if
             arr(i - window_size, j, k) = filter_tmp(t_ + 1)
             i = i + 1
           end do
