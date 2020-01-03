@@ -100,7 +100,7 @@ contains
       dummy(i : i) = '.'
     end do
     dummy(1 : sz) = trim("Timestep: " // STR(tstep))
-    dummy(67:70) = '[OK]'
+    dummy(62:67) = '[DONE]'
     print *, dummy(1:70)
 
     ! printing header
