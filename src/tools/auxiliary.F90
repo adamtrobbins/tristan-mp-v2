@@ -81,9 +81,9 @@ contains
 
   subroutine printTimeHeader(tstep)
     implicit none
-    integer, intent(in)           :: tstep
-    character(len=STR_MAX)        :: dummy
-    integer                       :: sz, i
+    integer, intent(in)    :: tstep
+    character(len=STR_MAX) :: dummy
+    integer                :: sz, i
 
     ! printing divider
     do i = 68, 70
@@ -116,8 +116,8 @@ contains
 
   subroutine printTimeFooter()
     implicit none
-    character(len=STR_MAX)        :: dummy
-    integer                       :: i
+    character(len=STR_MAX) :: dummy
+    integer                :: i
 
     do i = 68, 70
       dummy(i : i) = ' '
@@ -125,7 +125,7 @@ contains
     do i = 1, 67
       dummy(i : i) = '.'
     end do
-    print *, dummy1(1:70)
+    print *, dummy(1:70)
   end subroutine printTimeFooter
 
   subroutine printTime(dt_arr, msg, fullstep)
@@ -219,7 +219,6 @@ contains
     dummy(45 : 45 + sz - 1) = trim(dummy1)
 
     print *, dummy(1:70)
-
   end subroutine printNpart
 
   function intToStr(my_int) result(string)
