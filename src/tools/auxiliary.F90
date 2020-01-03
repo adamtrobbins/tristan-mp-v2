@@ -79,7 +79,56 @@ contains
     end if
   end subroutine printReport
 
-  subroutine printTime(dt_arr, msg, fullstep, is_first_row)
+  subroutine printTimeHeader(tstep)
+    implicit none
+    integer, intent(in)           :: tstep
+    character(len=STR_MAX)        :: dummy
+    integer                       :: sz, i
+
+    ! printing divider
+    do i = 68, 70
+      dummy(i : i) = ' '
+    end do
+    do i = 1, 67
+      dummy(i : i) = '-'
+    end do
+    print *, dummy(1:70)
+
+    ! printing timestep
+    sz = len(trim("Timestep: " // STR(tstep)))
+    do i = 1, 70
+      dummy(i : i) = ' '
+    end do
+    dummy(1 : sz) = trim("Timestep: " // STR(tstep))
+    do i = 1, (66 - sz)
+      dummy = trim(dummy) // '.'
+    end do
+    dummy = trim(dummy) // '[OK]'
+    print *, dummy(1:70)
+
+    ! printing header
+    do i = 1, 70
+      dummy(i : i) = ' '
+    end do
+    dummy(1:67) = '[ROUTINE]          [TIME, ms]      [MIN/MAX, %]       [FRACTION, %]'
+    print *, dummy(1:70)
+  end subroutine printTimeHeader
+
+  subroutine printTimeFooter()
+    implicit none
+    character(len=STR_MAX)        :: dummy
+    integer                       :: i
+
+    do i = 68, 70
+      dummy(i : i) = ' '
+    end do
+    do i = 1, 67
+      dummy(i : i) = '.'
+    end do
+    print *, dummy1(1:70)
+  end subroutine printTimeFooter
+
+  subroutine printTime(dt_arr, msg, fullstep)
     implicit none
     character(len=*), intent(in)          :: msg
     character(len=STR_MAX)                :: dummy, dummy1
@@ -87,7 +136,6 @@ contains
     real, optional, intent(in)            :: fullstep
     real                                  :: dt_mean, dt_max, dt_min
     integer                               :: pcent_max, pcent_min, sz, sz1, i
-    logical, optional, intent(in)         :: is_first_row
     dt_mean = SUM(dt_arr) * 1000 / mpi_size
     dt_max = MAXVAL(dt_arr) * 1000
     dt_min = MINVAL(dt_arr) * 1000
@@ -125,42 +173,16 @@ contains
       dummy(55 : 55 + sz1 - 1) = trim(dummy1)
     end if
 
-    if (present(is_first_row)) then
-      if (is_first_row) then
-        do i = 1, 70
-          dummy1(i : i) = ' '
-        end do
-        dummy1(1:67) = '-------------------------------------------------------------------'
-        print *, dummy1(1:70)
-        do i = 1, 70
-          dummy1(i : i) = ' '
-        end do
-        dummy1(1:67) = '[ROUTINE]          [TIME, ms]      [MIN/MAX, %]       [FRACTION, %]'
-        print *, dummy1(1:70)
-      end if
-    end if
-
     print *, dummy(1:70)
-
-    if (present(is_first_row)) then
-      if (.not. is_first_row) then
-        do i = 1, 70
-          dummy1(i : i) = ' '
-        end do
-        dummy1(1:67) = '...................................................................'
-        print *, dummy1(1:70)
-      end if
-    end if
   end subroutine printTime
 
-  subroutine printNpart(npart_arr, msg, is_first_row)
+  subroutine printNpart(npart_arr, msg)
     implicit none
     character(len=*), intent(in)          :: msg
     character(len=STR_MAX)                :: dummy, dummy1
     integer, intent(in)                   :: npart_arr(:)
     integer                               :: npart_mean, npart_max, npart_min
     integer                               :: pcent_max, pcent_min, sz, sz1, i
-    logical, optional, intent(in)         :: is_first_row
     npart_mean = SUM(npart_arr) / mpi_size
     npart_max = MAXVAL(npart_arr)
     npart_min = MINVAL(npart_arr)
@@ -198,15 +220,6 @@ contains
 
     print *, dummy(1:70)
 
-    if (present(is_first_row)) then
-      if (.not. is_first_row) then
-        do i = 1, 70
-          dummy1(i : i) = ' '
-        end do
-        dummy1(1:67) = '...................................................................'
-        print *, dummy1(1:70)
-      end if
-    end if
   end subroutine printNpart
 
   function intToStr(my_int) result(string)

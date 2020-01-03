@@ -298,8 +298,9 @@ contains
 
     if (mpi_rank .eq. 0) then
       fullstep = SUM(dt_fullstep) * 1000 / mpi_size
-      call printReport(.true., "timestep: " // STR(tstep))
-      call printTime(dt_fullstep, "Full_step: ", is_first_row = .true.)
+      call printTimeHeader(tstep)
+      ! call printReport(.true., "timestep: " // STR(tstep))
+      call printTime(dt_fullstep, "Full_step: ")
       call printTime(dt_movestep, "  move_step: ", fullstep)
       call printTime(dt_depositstep, "  deposit_step: ", fullstep)
       call printTime(dt_filterstep, "  filter_step: ", fullstep)
@@ -319,9 +320,12 @@ contains
                         & "  nprt " // trim(STR(s)) // " [core]: ")
         else
           call printNpart(nprt_sp_global(s, :),&
-                        & "  nprt " // trim(STR(s)) // " [core]: ", is_first_row = .false.)
+                        & "  nprt " // trim(STR(s)) // " [core]: ")
         end if
       end do
+
+      call printTimeFooter()
+      
       print *, ""
     end if
 
