@@ -96,7 +96,7 @@ contains
 
     ! printing timestep
     sz = len(trim("Timestep: " // STR(tstep)))
-    do i = 1, 70
+    do i = 1, 67
       dummy(i : i) = '.'
     end do
     dummy(1 : sz) = trim("Timestep: " // STR(tstep))
