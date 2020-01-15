@@ -59,7 +59,7 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real              :: shift_gamma, nUP, sx_glob, sy_glob
+    real              :: shift_gamma, nUP, sx_glob, sy_glob, sz_glob
     type(region)      :: back_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
@@ -72,7 +72,12 @@ contains
     back_region%y_min = 0.0
     back_region%x_max = sx_glob
     back_region%y_max = sy_glob
-
+    #ifdef threeD
+      sz_glob = REAL(global_mesh%sz)
+      back_region%z_min = 0.0
+      back_region%z_max = sz_glob
+    #endif
+    
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, backgr_T,&
