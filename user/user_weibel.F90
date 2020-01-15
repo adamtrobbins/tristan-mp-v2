@@ -59,8 +59,9 @@ contains
 
   subroutine userInitParticles()
     implicit none
+    real              :: shift_gamma, nUP, sx_glob, sy_glob
+    type(region)      :: back_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
-    real :: shift_gamma, nUP, sx_glob, sy_glob
     spat_distr_ptr => userSpatialDistribution
     nUP = 0.5 * ppc0
 
