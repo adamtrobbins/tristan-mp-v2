@@ -60,7 +60,7 @@ contains
   subroutine userInitParticles()
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
-    real :: shift_gamma
+    real :: shift_gamma, nUP, sx_glob, sy_glob
     spat_distr_ptr => userSpatialDistribution
     nUP = 0.5 * ppc0
 
