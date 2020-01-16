@@ -63,7 +63,7 @@ contains
     type(region)      :: back_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-    nUP = 0.5 * ppc0
+    nUP = 0.25 * ppc0
 
     sx_glob = REAL(global_mesh%sx)
     sy_glob = REAL(global_mesh%sy)
@@ -77,7 +77,7 @@ contains
       back_region%z_min = 0.0
       back_region%z_max = sz_glob
     #endif
-    
+
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
 
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, backgr_T,&
