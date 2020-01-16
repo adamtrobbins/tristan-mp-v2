@@ -88,7 +88,7 @@ parser.add_argument('-slb',
 
 # extra physics
 parser.add_argument('--radiation',
-                    default='no',
+                    default='OFF',
                     choices=rad_choices,
                     help='choose radiation mechanism')
 
