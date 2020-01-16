@@ -121,5 +121,3 @@
   positron_sp   = 1             # save produced positrons to species #...
 
 <problem>
-
-  external_fields = 1           # apply external fields in the mover

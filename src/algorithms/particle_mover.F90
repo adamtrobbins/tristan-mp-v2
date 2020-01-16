@@ -108,15 +108,15 @@ contains
                                    & pt_xi(p), pt_yi(p), pt_zi(p),&
                                    & bx, by, bz, bx0, by0, bz0)
 
-                ! if (external_fields) then
-                !   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
-                !                         & REAL(pt_yi(p)) + pt_dy(p),&
-                !                         & REAL(pt_zi(p)) + pt_dz(p),&
-                !                         & ex_ext, ey_ext, ez_ext,&
-                !                         & bx_ext, by_ext, bz_ext)
-                !   ex0 = ex0 + ex_ext; ey0 = ey0 + ey_ext; ez0 = ez0 + ez_ext
-                !   bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
-                ! end if
+                #ifdef EXTERNALFIELDS
+                  call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
+                                        & REAL(pt_yi(p)) + pt_dy(p),&
+                                        & REAL(pt_zi(p)) + pt_dz(p),&
+                                        & ex_ext, ey_ext, ez_ext,&
+                                        & bx_ext, by_ext, bz_ext)
+                  ex0 = ex0 + ex_ext; ey0 = ey0 + ey_ext; ez0 = ez0 + ez_ext
+                  bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
+                #endif
 
                 #ifdef RADIATION
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0

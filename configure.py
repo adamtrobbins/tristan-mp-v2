@@ -36,6 +36,11 @@ parser.add_argument('--nghosts',
                     default=3,
                     help='specify the # of ghost cells')
 
+parser.add_argument('-extfields',
+                    action='store_true',
+                    default=False,
+                    help='apply external fields')
+
 parser.add_argument('-hdf5',
                     action='store_true',
                     default=False,
@@ -119,6 +124,9 @@ makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
 
+if args['extfields']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '
+
 if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
     makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
@@ -198,6 +206,7 @@ print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 
 print('PHYSICS ......................................................................')
+print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
 print('  Cooling:                 ' + args['radiation'])
 print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
 print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
