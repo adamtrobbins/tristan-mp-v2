@@ -21,26 +21,16 @@ unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
 
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 
-user_group = parser.add_mutually_exclusive_group(required=True)
-user_group.add_argument('--user',
-                        default=None,
-                        choices=user_choices,
-                        help='select user file')
-user_group.add_argument('--unit',
-                        default=None,
-                        choices=unit_choices,
-                        help='select unit file')
-
-parser.add_argument('--nghosts',
-                    action='store',
-                    default=3,
-                    help='specify the # of ghost cells')
-
-parser.add_argument('-extfields',
+# system
+parser.add_argument('-perseus',
                     action='store_true',
                     default=False,
-                    help='apply external fields')
+                    help='Configure for `Perseus` cluster.')
 
+parser.add_argument('-intel',
+                    action='store_true',
+                    default=False,
+                    help='enable intel compiler')
 parser.add_argument('-hdf5',
                     action='store_true',
                     default=True,
@@ -61,10 +51,27 @@ mpi_group.add_argument('-mpi08',
                        default=False,
                        help='enable mpi_f08')
 
-parser.add_argument('-intel',
+# user file
+user_group = parser.add_mutually_exclusive_group(required=True)
+user_group.add_argument('--user',
+                        default=None,
+                        choices=user_choices,
+                        help='select user file')
+user_group.add_argument('--unit',
+                        default=None,
+                        choices=unit_choices,
+                        help='select unit file')
+
+# algorithms
+parser.add_argument('--nghosts',
+                    action='store',
+                    default=3,
+                    help='specify the # of ghost cells')
+
+parser.add_argument('-extfields',
                     action='store_true',
                     default=False,
-                    help='enable intel compiler')
+                    help='apply external fields')
 
 parser.add_argument('-debug',
                     action='store_true',
@@ -108,6 +115,15 @@ parser.add_argument('-bwpp',
                     help='enable Breit-Wheeler pair production')
 
 args = vars(parser.parse_args())
+
+# specific cluster:
+specific_cluster = False
+if args['perseus']:
+    specific_cluster = True
+    args['intel'] = True
+    args['mpi08'] = True
+    args['mpi'] = False
+    args['ifport'] = True
 
 # Step 2. Set definitions and Makefile options based on above arguments
 
@@ -198,6 +214,9 @@ with open(makefile_output, 'w') as current_file:
 # Finish with diagnostic output
 print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
+if (specific_cluster):
+    if (args['perseus']):
+        print('Cluster configurations:    `Perseus`' )
 print('  Userfile:                ' + makefile_options['USER_FILE'])
 
 print('DOMAIN .......................................................................')
