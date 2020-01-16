@@ -216,10 +216,10 @@ print('=========================================================================
 print('Your TRISTAN distribution has now been configured with the following options:')
 if (specific_cluster):
     if (args['perseus']):
-        print('Cluster configurations:    `Perseus`' )
-print('  Userfile:                ' + makefile_options['USER_FILE'])
+        print('  Cluster configurations:  `Perseus`' )
 
-print('DOMAIN .......................................................................')
+print('SETUP ........................................................................')
+print('  Userfile:                ' + makefile_options['USER_FILE'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
