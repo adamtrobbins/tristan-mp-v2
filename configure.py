@@ -235,7 +235,7 @@ print('TECHNICAL ...............................................................
 
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
-print('  MPI version:             ' + ('old' if !args['mpi08'] else 'MPI_08'))
+print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 
 print('==============================================================================')
