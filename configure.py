@@ -43,7 +43,7 @@ parser.add_argument('-extfields',
 
 parser.add_argument('-hdf5',
                     action='store_true',
-                    default=False,
+                    default=True,
                     help='enable HDF5 & use h5pfc compiler')
 
 parser.add_argument('-ifport',
