@@ -82,7 +82,7 @@ contains
     #else
       num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)&
                                 & * (fill_ymax - fill_ymin)&
-                                & * (fill_zmax - fill_zmin))
+                                & * (fill_zmax - fill_zmin)
     #endif
     if (num_part_r .lt. 10.0) then
       if (num_part_r .ne. 0.0) then
