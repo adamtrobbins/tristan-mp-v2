@@ -184,7 +184,7 @@ if args['slb']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
 # extra physics
-if args['radiation'] != 'no':
+if args['radiation'] != 'OFF':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
 
 if 'sync' in args['radiation']:
@@ -192,7 +192,7 @@ if 'sync' in args['radiation']:
 if 'ic' in args['radiation']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DINVERSECOMPTON '
 
-if args['emit'] and args['radiation'] != 'no':
+if args['emit'] and (args['radiation'] != 'OFF'):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
 
 if args['qed']:
