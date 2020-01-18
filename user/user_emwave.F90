@@ -51,22 +51,30 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    real :: kx, ky, ex_norm, ey_norm, exy_norm
+    real :: kx, ky, kz
+    real :: ex_norm, ey_norm, ez_norm, exyz_norm
+    real :: bx_norm, by_norm, bz_norm, bxyz_norm
 
     ex(:,:,:) = -1; ey(:,:,:) = -1; ez(:,:,:) = -1
     bx(:,:,:) = -1; by(:,:,:) = -1; bz(:,:,:) = -1
 
-    kx = 5; ky = 2
+    kx = 5; ky = 2; kz = 2
     kx = kx * 2 * M_PI / global_mesh%sx
     ky = ky * 2 * M_PI / global_mesh%sy
-    if (ky .ne. 0) then
-      ex_norm = 1; ey_norm = (-kx / ky)
-    else
-      ey_norm = 1; ex_norm = (-ky / kx)
-    end if
-    exy_norm = sqrt(ex_norm**2 + ey_norm**2)
-    ex_norm = ex_norm / exy_norm
-    ey_norm = ey_norm / exy_norm
+    kz = kz * 2 * M_PI / global_mesh%sz
+
+    ex_norm = 0; ey_norm = 2; ez_norm = -2;
+    bx_norm = -8; by_norm = 10; bz_norm = 10;
+
+    exyz_norm = sqrt(ex_norm**2 + ey_norm**2 + ez_norm**2)
+    ex_norm = ex_norm / exyz_norm
+    ey_norm = ey_norm / exyz_norm
+    ez_norm = ez_norm / exyz_norm
+
+    bxyz_norm = sqrt(bx_norm**2 + by_norm**2 + bz_norm**2)
+    bx_norm = bx_norm / bxyz_norm
+    by_norm = by_norm / bxyz_norm
+    bz_norm = bz_norm / bxyz_norm
 
     do i = 0, this_meshblock%ptr%sx - 1
       i_glob = i + this_meshblock%ptr%x0
@@ -74,12 +82,12 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          ex(i, j, k) = ex_norm * sin((i_glob) * kx + (j_glob - 0.5) * ky)
-          ey(i, j, k) = ey_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky)
-          ez(i, j, k) = 0
-          bx(i, j, k) = 0
-          by(i, j, k) = 0
-          bz(i, j, k) = sin((i_glob) * kx + (j_glob) * ky)
+          ex(i, j, k) = ex_norm * sin((i_glob) * kx       + (j_glob - 0.5) * ky + (k_glob - 0.5) * kz)
+          ey(i, j, k) = ey_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky       + (k_glob - 0.5) * kz)
+          ez(i, j, k) = ez_norm * sin((i_glob - 0.5) * kx + (j_glob - 0.5) * ky + (k_glob) * kz)
+          bx(i, j, k) = bx_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky       + (k_glob) * kz)
+          by(i, j, k) = by_norm * sin((i_glob) * kx       + (j_glob - 0.5) * ky + (k_glob) * kz)
+          bz(i, j, k) = bz_norm * sin((i_glob) * kx       + (j_glob) * ky       + (k_glob - 0.5) * kz)
         end do
       end do
     end do
