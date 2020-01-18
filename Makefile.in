@@ -70,7 +70,7 @@ dirs:
 	mkdir -p $(OBJ_DIR) $(EXE_DIR) $(PREC_SRC_DIR)
 
 precomp:
-	$(foreach fl, $(SRC_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=_.F90)));)
+	$(foreach fl, $(ALL_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=_.F90)));)
 
 $(EXECUTABLE):$(OBJ_FILES)
 	$(FC) $(FFLAGS) $(PFLAGS) -o $@ $(OBJ_FILES)
