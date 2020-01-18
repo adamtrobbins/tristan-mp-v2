@@ -114,12 +114,14 @@ contains
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
-  subroutine userParticleBoundaryConditions()
+  subroutine userParticleBoundaryConditions(step)
     implicit none
+    integer, optional, intent(in) :: step
   end subroutine userParticleBoundaryConditions
 
-  subroutine userFieldBoundaryConditions()
+  subroutine userFieldBoundaryConditions(step)
     implicit none
+    integer, optional, intent(in) :: step
   end subroutine userFieldBoundaryConditions
   !............................................................!
 end module m_userfile
