@@ -116,15 +116,6 @@ parser.add_argument('-bwpp',
 
 args = vars(parser.parse_args())
 
-# specific cluster:
-specific_cluster = False
-if args['perseus']:
-    specific_cluster = True
-    args['intel'] = True
-    args['mpi08'] = True
-    args['mpi'] = False
-    args['ifport'] = True
-
 # Step 2. Set definitions and Makefile options based on above arguments
 
 makefile_options = {}
@@ -139,6 +130,16 @@ else:
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
+
+# specific cluster:
+specific_cluster = False
+if args['perseus']:
+    specific_cluster = True
+    args['intel'] = True
+    args['mpi08'] = True
+    args['mpi'] = False
+    args['ifport'] = True
+    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 -qopt-streaming-stores auto '
 
 if args['extfields']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '

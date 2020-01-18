@@ -106,13 +106,13 @@ contains
             else
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
-              ! !$omp simd
+              !$omp simd
               !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                  t_total = MPI_WTIME() - t_total
-
-                  t_interp = MPI_WTIME() - t_interp
+                  ! t_total = MPI_WTIME() - t_total
+                  !
+                  ! t_interp = MPI_WTIME() - t_interp
 
                 ! call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
                 !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
@@ -123,7 +123,7 @@ contains
                 include "interp_efield.F90"
                 include "interp_bfield.F90"
 
-                  t_interp = MPI_WTIME() - t_interp
+                  ! t_interp = MPI_WTIME() - t_interp
 
                 #ifdef EXTERNALFIELDS
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
@@ -144,7 +144,7 @@ contains
                   w_init = pt_w(p)
                 #endif
 
-                  t_boris = MPI_WTIME() - t_boris
+                  ! t_boris = MPI_WTIME() - t_boris
 
                 dummy_ = 0.5 * q_over_m * B_norm
                 ex0 = ex0 * dummy_; ey0 = ey0 * dummy_; ez0 = ez0 * dummy_
@@ -178,7 +178,7 @@ contains
                 pt_v(p) = v0 * CCINV
                 pt_w(p) = w0 * CCINV
 
-                  t_boris = MPI_WTIME() - t_boris
+                  ! t_boris = MPI_WTIME() - t_boris
 
                 ! RADIATION >
                 #ifdef RADIATION
@@ -201,7 +201,7 @@ contains
                 #endif
                 ! </ RADIATION
 
-                  t_move = MPI_WTIME() - t_move
+                  ! t_move = MPI_WTIME() - t_move
 
                 ! move particle
                 g_temp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -230,9 +230,9 @@ contains
                   pt_dz(p) = pt_dz(p) - temp_r
                 #endif
 
-                  t_move = MPI_WTIME() - t_move
-
-                  t_total = MPI_WTIME() - t_total
+                  ! t_move = MPI_WTIME() - t_move
+                  !
+                  ! t_total = MPI_WTIME() - t_total
               end do
             end if
             pt_xi => null(); pt_yi => null(); pt_zi => null()
@@ -244,12 +244,12 @@ contains
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
 
-    if (mpi_rank .eq. 0) then
-      print *, "...TOTAL:", t_total
-      print *, "......interp:", t_interp
-      print *, "......boris:", t_boris
-      print *, "......move:", t_move
-    end if
+    ! if (mpi_rank .eq. 0) then
+    !   print *, "...TOTAL:", t_total
+    !   print *, "......interp:", t_interp
+    !   print *, "......boris:", t_boris
+    !   print *, "......move:", t_move
+    ! end if
 
   end subroutine moveParticles
 end module m_mover
