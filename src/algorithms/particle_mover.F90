@@ -31,6 +31,8 @@ contains
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
 
+    real                          :: c000, c100, c001, c101, c010, c110, c011, c111,&
+                                   & c00, c01, c10, c11, c0, c1
     real(kind=8)                          :: t_total, t_interp, t_boris, t_move
 
     #ifdef RADIATION
@@ -112,12 +114,14 @@ contains
 
                   t_interp = MPI_WTIME() - t_interp
 
-                call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & ex, ey, ez, ex0, ey0, ez0)
+                ! call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
+                !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
+                !                    & ex, ey, ez, ex0, ey0, ez0)
                 call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
                                    & pt_xi(p), pt_yi(p), pt_zi(p),&
                                    & bx, by, bz, bx0, by0, bz0)
+                include "interp_efield.F90"
+                ! include "interp_bfield.F90"
 
                   t_interp = MPI_WTIME() - t_interp
 
