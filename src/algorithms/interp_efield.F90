@@ -1,0 +1,25 @@
+c000 = 0.5 * (ex(pt_xi(p), pt_yi(p), pt_zi(p)) + ex(  pt_xi(p) - 1, pt_yi(p), pt_zi(p)))
+c100 = 0.5 * (ex(pt_xi(p), pt_yi(p), pt_zi(p)) + ex(  pt_xi(p) + 1, pt_yi(p), pt_zi(p)))
+c010 = 0.5 * (ex(pt_xi(p),  pt_yi(p) + 1, pt_zi(p)) + ex(  pt_xi(p) - 1,  pt_yi(p) + 1, pt_zi(p)))
+c110 = 0.5 * (ex(pt_xi(p),  pt_yi(p) + 1, pt_zi(p)) + ex(  pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p)))
+c00 = c000 * (1 - pt_dx(p)) + c100 * pt_dx(p)
+c10 = c010 * (1 - pt_dx(p)) + c110 * pt_dx(p)
+ex0 = c00 * (1 - pt_dy(p)) + c10 * pt_dy(p)
+
+! f_y
+c000 = 0.5 * (ey(pt_xi(p), pt_yi(p), pt_zi(p)) + ey( pt_xi(p),  pt_yi(p) - 1, pt_zi(p)))
+c100 = 0.5 * (ey( pt_xi(p) + 1, pt_yi(p), pt_zi(p)) + ey(pt_xi(p) + 1,  pt_yi(p) - 1, pt_zi(p)))
+c010 = 0.5 * (ey(pt_xi(p), pt_yi(p), pt_zi(p)) + ey( pt_xi(p),  pt_yi(p) + 1, pt_zi(p)))
+c110 = 0.5 * (ey( pt_xi(p) + 1, pt_yi(p), pt_zi(p)) + ey(pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p)))
+c00 = c000 * (1 - pt_dx(p)) + c100 * pt_dx(p)
+c10 = c010 * (1 - pt_dx(p)) + c110 * pt_dx(p)
+ey0 = c00 * (1 - pt_dy(p)) + c10 * pt_dy(p)
+
+! f_z
+c000 = ez(pt_xi(p), pt_yi(p), pt_zi(p))
+c100 = ez( pt_xi(p) + 1, pt_yi(p), pt_zi(p))
+c010 = ez(pt_xi(p),  pt_yi(p) + 1, pt_zi(p))
+c110 = ez( pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p))
+c00 = c000 * (1 - pt_dx(p)) + c100 * pt_dx(p)
+c10 = c010 * (1 - pt_dx(p)) + c110 * pt_dx(p)
+ez0 = c00 * (1 - pt_dy(p)) + c10 * pt_dy(p)
