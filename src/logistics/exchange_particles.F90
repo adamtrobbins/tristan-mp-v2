@@ -115,7 +115,7 @@ contains
             #endif
             if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
             cntr = cntr + 1
-            mpi_sendtag = 100 * (mpi_rank + 1) + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+            mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
 
             ! post non-blocking send requests
             mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
@@ -208,7 +208,7 @@ contains
               end if
 
               mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-              mpi_recvtag = 100 * (mpi_recvfrom + 1) + (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
+              mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
 
               if (.not. mpi_recvflags(cntr)) then
                 quit_loop = .false.
@@ -258,7 +258,7 @@ contains
     ! DEP_PRT [particle-dependent]
     call createParticle(spec_id, enroute%xi, enroute%yi, enroute%zi, &
                                & enroute%dx, enroute%dy, enroute%dz, &
-                               & enroute%u, enroute%v, enroute%w, & 
+                               & enroute%u, enroute%v, enroute%w, &
                                & enroute%ind, enroute%proc)
   end subroutine copyFromEnroute
 
