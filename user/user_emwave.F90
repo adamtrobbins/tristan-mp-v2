@@ -95,8 +95,9 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
-  subroutine userDriveParticles()
+  subroutine userDriveParticles(step)
     implicit none
+    integer, optional, intent(in) :: step
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
