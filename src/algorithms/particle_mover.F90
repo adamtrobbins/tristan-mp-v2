@@ -117,11 +117,11 @@ contains
                 ! call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
                 !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
                 !                    & ex, ey, ez, ex0, ey0, ez0)
-                call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & bx, by, bz, bx0, by0, bz0)
+                ! call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
+                !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
+                !                    & bx, by, bz, bx0, by0, bz0)
                 include "interp_efield.F90"
-                ! include "interp_bfield.F90"
+                include "interp_bfield.F90"
 
                   t_interp = MPI_WTIME() - t_interp
 
