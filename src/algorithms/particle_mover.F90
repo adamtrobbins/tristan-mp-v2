@@ -48,11 +48,6 @@ contains
       call exchangeArray()
     #endif
 
-    t_total = 0;
-    t_interp = 0;
-    t_boris = 0;
-    t_move = 0;
-
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
