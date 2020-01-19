@@ -35,7 +35,7 @@ contains
 
     real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                            & c00, c01, c10, c11, c0, c1
-    integer                               :: iy, iz, lind
+    integer                               :: iy, iz, lind, lind1
     real                                  :: ex1, ey1, ez1, bx1, by1, bz1
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
@@ -119,7 +119,8 @@ contains
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
                 #ifndef threeD
-                  lind = (NGHOST + 1 + pt_xi(p)) + (NGHOST + pt_yi(p) + 1) * iy
+                  lind1 = (NGHOST + 1 + pt_xi(p)) + (NGHOST + pt_yi(p) + 1) * iy
+                  lind = lind1 - NGHOST
                 #else
                   lind = pt_xi(p) + (pt_yi(p) - 1) * iy + (pt_zi(p) - 1) * iz
                 #endif
@@ -138,9 +139,9 @@ contains
                     print *, "Inline interp of `E` not working properly"
                     print *, ex1, ey1, ez1
                     print *, ex0, ey0, ez0
-                    print *, 'lind', ex(pt_xi(p), pt_yi(p), pt_zi(p)), ex(lind, 1, 1), pt_ex(lind)
-                    print *, 'lind+1', ex(pt_xi(p)+1, pt_yi(p), pt_zi(p)), ex(lind+1, 1, 1), pt_ex(lind+1)
-                    print *, 'lind+iy', ex(pt_xi(p), pt_yi(p)+1, pt_zi(p)), ex(lind+iy, 1, 1), pt_ex(lind+iy)
+                    print *, 'lind', ex(pt_xi(p), pt_yi(p), pt_zi(p)), ex(lind, -NGHOST, 0), pt_ex(lind1)
+                    print *, 'lind+1', ex(pt_xi(p)+1, pt_yi(p), pt_zi(p)), ex(lind+1, -NGHOST, 0), pt_ex(lind1+1)
+                    print *, 'lind+iy', ex(pt_xi(p), pt_yi(p)+1, pt_zi(p)), ex(lind+iy, -NGHOST, 0), pt_ex(lind1+iy)
                     ! stop
                   end if
 
