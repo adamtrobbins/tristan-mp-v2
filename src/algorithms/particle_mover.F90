@@ -23,6 +23,8 @@ contains
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:)
+    real, pointer, contiguous             :: pt_ex(:,:,:), pt_ey(:,:,:), pt_ez(:,:,:),&
+                                           & pt_bx(:,:,:), pt_by(:,:,:), pt_bz(:,:,:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_
     real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
@@ -53,6 +55,9 @@ contains
     t_interp = 0;
     t_boris = 0;
     t_move = 0;
+
+    pt_ex => ex; pt_ey => ey; pt_ez => ez
+    pt_bx => bx; pt_by => by; pt_bz => bz
 
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
@@ -247,6 +252,9 @@ contains
       end do ! ti
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
+
+    pt_ex => null(); pt_ey => null(); pt_ez => null()
+    pt_bx => null(); pt_by => null(); pt_bz => null()
 
     ! if (mpi_rank .eq. 0) then
     !   print *, "...TOTAL:", t_total
