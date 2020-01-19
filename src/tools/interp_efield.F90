@@ -1,5 +1,6 @@
-! #ifndef threeD
-  ! linear indices used isntead of 3d
+! linear indices used isntead of 3d
+
+#ifndef threeD
   !e_x
   c000 = 0.5 * (ex(lind, -NGHOST, 0) + ex(lind - 1, -NGHOST, 0))
   c100 = 0.5 * (ex(lind, -NGHOST, 0) + ex(lind + 1, -NGHOST, 0))
@@ -26,6 +27,55 @@
   c00 = c000 * (1 - pt_dx(p)) + c100 * pt_dx(p)
   c10 = c010 * (1 - pt_dx(p)) + c110 * pt_dx(p)
   ez0 = c00 * (1 - pt_dy(p)) + c10 * pt_dy(p)
-! #else
-!
-! #endif
+#else
+  !e_x
+  c000 = 0.5 * (ex(lind, -NGHOST, -NGHOST) + ex(lind - 1, -NGHOST, -NGHOST))
+  c100 = 0.5 * (ex(lind, -NGHOST, -NGHOST) + ex(lind + 1, -NGHOST, -NGHOST))
+  c010 = 0.5 * (ex(lind + iy, -NGHOST, -NGHOST) + ex(lind - 1 + iy, -NGHOST, -NGHOST))
+  c110 = 0.5 * (ex(lind + iy, -NGHOST, -NGHOST) + ex(lind + 1 + iy, -NGHOST, -NGHOST))
+  c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
+  c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
+  c0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
+  c001 = 0.5 * (ex(lind + iz, -NGHOST, -NGHOST) + ex(lind - 1 + iz, -NGHOST, -NGHOST))
+  c101 = 0.5 * (ex(lind + iz, -NGHOST, -NGHOST) + ex(lind + 1 + iz, -NGHOST, -NGHOST))
+  c011 = 0.5 * (ex(lind + iy + iz, -NGHOST, -NGHOST) + ex(lind - 1 + iy + iz, -NGHOST, -NGHOST))
+  c111 = 0.5 * (ex(lind + iy + iz, -NGHOST, -NGHOST) + ex(lind + 1 + iy + iz, -NGHOST, -NGHOST))
+  c01 = c001 * (1.0 - pt_dx(p)) + c101 * pt_dx(p)
+  c11 = c011 * (1.0 - pt_dx(p)) + c111 * pt_dx(p)
+  c1 = c01 * (1.0 - pt_dy(p)) + c11 * pt_dy(p)
+  ex0 = c0 * (1.0 - pt_dz(p)) + c1 * pt_dz(p)
+
+  !e_y
+  c000 = 0.5 * (ey(lind, -NGHOST, -NGHOST) + ey(lind - iy, -NGHOST, -NGHOST))
+  c100 = 0.5 * (ey(lind + 1, -NGHOST, -NGHOST) + ey(lind + 1 - iy, -NGHOST, -NGHOST))
+  c010 = 0.5 * (ey(lind, -NGHOST, -NGHOST) + ey( lind + iy, -NGHOST, -NGHOST))
+  c110 = 0.5 * (ey(lind + 1, -NGHOST, -NGHOST) + ey(lind + 1 + iy, -NGHOST, -NGHOST))
+  c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
+  c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
+  c0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
+  c001 = 0.5 * (ey(lind + iz, -NGHOST, -NGHOST) + ey(lind - iy + iz, -NGHOST, -NGHOST))
+  c101 = 0.5 * (ey(lind + 1 + iz, -NGHOST, -NGHOST) + ey(lind + 1 - iy + iz, -NGHOST, -NGHOST))
+  c011 = 0.5 * (ey(lind + iz, -NGHOST, -NGHOST) + ey( lind + iy + iz, -NGHOST, -NGHOST))
+  c111 = 0.5 * (ey(lind + 1 + iz, -NGHOST, -NGHOST) + ey(lind + 1 + iy + iz, -NGHOST, -NGHOST))
+  c01 = c001 * (1.0 - pt_dx(p)) + c101 * pt_dx(p)
+  c11 = c011 * (1.0 - pt_dx(p)) + c111 * pt_dx(p)
+  c1 = c01 * (1.0 - pt_dy(p)) + c11 * pt_dy(p)
+  ey0 = c0 * (1.0 - pt_dz(p)) + c1 * pt_dz(p)
+
+  !e_z
+  c000 = 0.5 * (ez(lind, -NGHOST, -NGHOST) + ez(lind - iz, -NGHOST, -NGHOST))
+  c100 = 0.5 * (ez(lind + 1, -NGHOST, -NGHOST) + ez(lind + 1 - iz, -NGHOST, -NGHOST))
+  c010 = 0.5 * (ez(lind + iy, -NGHOST, -NGHOST) + ez(lind + iy - iz, -NGHOST, -NGHOST))
+  c110 = 0.5 * (ez(lind + 1 + iy, -NGHOST, -NGHOST) + ez(lind + 1 + iy - iz, -NGHOST, -NGHOST))
+  c001 = 0.5 * (ez(lind, -NGHOST, -NGHOST) + ez( lind + iz, -NGHOST, -NGHOST))
+  c101 = 0.5 * (ez(lind + 1, -NGHOST, -NGHOST) + ez(lind + 1 + iz, -NGHOST, -NGHOST))
+  c011 = 0.5 * (ez(lind + iy, -NGHOST, -NGHOST) + ez( lind + iy + iz, -NGHOST, -NGHOST))
+  c111 = 0.5 * (ez(lind + 1 + iy, -NGHOST, -NGHOST) + ez(lind + 1 + iy + iz, -NGHOST, -NGHOST))
+  c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
+  c01 = c001 * (1.0 - pt_dx(p)) + c101 * pt_dx(p)
+  c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
+  c11 = c011 * (1.0 - pt_dx(p)) + c111 * pt_dx(p)
+  c0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
+  c1 = c01 * (1.0 - pt_dy(p)) + c11 * pt_dy(p)
+  ez0 = c0 * (1.0 - pt_dz(p)) + c1 * pt_dz(p)
+#endif
