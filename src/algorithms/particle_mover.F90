@@ -129,6 +129,9 @@ contains
                     print *, "Inline interp of `E` not working properly"
                     print *, ex1, ey1, ez1
                     print *, ex0, ey0, ez0
+                    print *, 'lind', ex(pt_xi(p), pt_yi(p), pt_zi(p)), ex(lind, 1, 1)
+                    print *, 'lind+1', ex(pt_xi(p)+1, pt_yi(p), pt_zi(p)), ex(lind+1, 1, 1)
+                    print *, 'lind+iy', ex(pt_xi(p), pt_yi(p)+1, pt_zi(p)), ex(lind+iy, 1, 1)
                     stop
                   end if
 
