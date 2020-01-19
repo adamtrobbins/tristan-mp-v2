@@ -144,12 +144,12 @@ contains
                     stop
                   end if
 
-                  if ((bx1 .ne. bx0) .or. (by1 .ne. by0) .or. (bz1 .ne. bz0)) then
-                    print *, "Inline interp of `B` not working properly"
-                    print *, bx1, by1, bz1
-                    print *, bx0, by0, bz0
-                    stop
-                  end if
+                  ! if ((bx1 .ne. bx0) .or. (by1 .ne. by0) .or. (bz1 .ne. bz0)) then
+                  !   print *, "Inline interp of `B` not working properly"
+                  !   print *, bx1, by1, bz1
+                  !   print *, bx0, by0, bz0
+                  !   stop
+                  ! end if
                 #endif
 
 
@@ -261,6 +261,8 @@ contains
       end do ! ti
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
+
+    stop;
 
     pt_ex => null()
     pt_ey => null()
