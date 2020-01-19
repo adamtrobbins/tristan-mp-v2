@@ -38,8 +38,8 @@ contains
     integer                               :: iy, iz, lind, lind1
     real                                  :: ex1, ey1, ez1, bx1, by1, bz1
 
-    iy = this_meshblock%ptr%sx + 2 * NGHOST - 1
-    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST - 1)
+    iy = this_meshblock%ptr%sx + 2 * NGHOST
+    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
 
     pt_ex(1:iz) => ex
     pt_ey(1:iz) => ey
@@ -119,7 +119,7 @@ contains
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
                 #ifndef threeD
-                  lind1 = (NGHOST + 1 + pt_xi(p)) + (NGHOST + pt_yi(p) + 1) * iy
+                  lind1 = (NGHOST + pt_xi(p)) + (NGHOST + pt_yi(p)) * iy
                   lind = lind1 - NGHOST
                 #else
                   lind = pt_xi(p) + (pt_yi(p) - 1) * iy + (pt_zi(p) - 1) * iz
