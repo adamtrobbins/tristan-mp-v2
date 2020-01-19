@@ -11,7 +11,7 @@ module m_fields
   use m_globalnamespace
   implicit none
 
-  real, allocatable     :: ex(:,:,:), ey(:,:,:), ez(:,:,:),&
+  real, target, allocatable     :: ex(:,:,:), ey(:,:,:), ez(:,:,:),&
                          & bx(:,:,:), by(:,:,:), bz(:,:,:)
   real, allocatable     :: jx(:,:,:), jy(:,:,:), jz(:,:,:)
   real, allocatable     :: recv_fld(:), send_fld(:)
