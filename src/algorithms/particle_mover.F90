@@ -34,6 +34,7 @@ contains
     real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                            & c00, c01, c10, c11, c0, c1
     integer                               :: mx, lind
+    integer                               :: lind_P_O, lind_P_M, lind_M_O, lind_P_P, lind_M_P, lind_O_P, lind_M_M
 
     mx = this_meshblock%ptr%sx
 
@@ -108,6 +109,14 @@ contains
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
                 lind = pt_xi(p) + (pt_yi(p) - 1) * mx
+                lind_P_O = lind + 1
+                lind_M_O = lind - 1
+                lind_O_P = lind + mx
+                lind_P_P = lind_O_P + 1
+                lind_P_M = lind_P_O - mx
+                lind_M_P = lind_O_P - 1
+                lind_M_M = lind_M_O - mx
+
                 include "interp_efield.F90"
                 include "interp_bfield.F90"
 
