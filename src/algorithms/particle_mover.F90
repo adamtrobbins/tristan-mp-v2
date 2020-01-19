@@ -119,7 +119,7 @@ contains
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
                 #ifndef threeD
-                  lind = NGHOST + pt_xi(p) + (pt_yi(p) - 1) * iy
+                  lind = (NGHOST + 1 + pt_xi(p)) + (NGHOST + pt_yi(p) + 1) * iy
                 #else
                   lind = pt_xi(p) + (pt_yi(p) - 1) * iy + (pt_zi(p) - 1) * iz
                 #endif
