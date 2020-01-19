@@ -404,7 +404,7 @@ contains
   subroutine interpFromFaces(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
-    !$omp declare simd(interpFromFaces)
+    !$omp declare simd(interpFromFaces) uniform(fx, fy, fz, intfx, intfy, intfz)
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz
