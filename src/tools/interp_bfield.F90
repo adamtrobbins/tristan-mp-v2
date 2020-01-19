@@ -29,7 +29,7 @@
 ! c10 = c010 * (1 - pt_dx(p)) + c110 * pt_dx(p)
 ! bz0 = c00 * (1 - pt_dy(p)) + c10 * pt_dy(p)
 
-bx0 = 0.5 * ((1.0 - pt_dy(p)) * ((1.0 - pt_dx(p)) * (bx(lind,1,1) + bx(lind-mx,1,1))) +&
+bx0 = 0.5 * ((1.0 - pt_dy(p)) * ((1.0 - pt_dx(p)) * (bx(lind,1,1) + bx(lind-mx,1,1)) +&
         & pt_dx(p) * (bx(lind+1,1,1) + bx(lind+1-mx,1,1))) +&
         & pt_dy(p) * ((1.0 - pt_dx(p)) * (bx(lind,1,1) + bx(lind + mx,1,1)) +&
         & pt_dx(p) * (bx(lind+1,1,1) + bx(lind+1+mx,1,1))))
@@ -42,6 +42,6 @@ bz0 = 0.25 * ((1.0 - pt_dy(p)) * (((1.0 - pt_dx(p)) * (bz(lind-1,1,1) + bz(lind,
         & bz(lind-1-mx,1,1) + bz(lind-mx,1,1))) +&
         & pt_dx(p) * (bz(lind,1,1) + bz(lind+1,1,1) + bz(lind-mx,1,1) +&
           & bz(lind+1-mx,1,1))) +&
-        & pt_dy(p) * (-((-1 + pt_dx(p)) * bz(lind-1,1,1)) + bz(lind,1,1) + pt_dx(p) * bz(lind+1,1,1) +&
+        & pt_dy(p) * (((1.0 - pt_dx(p)) * bz(lind-1,1,1)) + bz(lind,1,1) + pt_dx(p) * bz(lind+1,1,1) +&
           & bz(lind-1+mx,1,1) - pt_dx(p) * bz(lind-1+mx,1,1) + bz(lind+mx,1,1) +&
           & pt_dx(p) * bz(lind+1+mx,1,1)))
