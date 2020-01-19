@@ -29,7 +29,7 @@ ex0 = 0.5 * (&
         & (1.0 - pt_dy(p)) *&
           & ((1.0 - pt_dx(p)) * ex(lind-1,1,1) + ex(lind,1,1) + pt_dx(p) * ex(1 + lind,1,1)) +&
         & pt_dy(p) *&
-          & ((1.0 - pt_dx(p)) * ex(lind-1+mx,1,1) + ex(lind+mx,1,1) + dx*ex(1 + lind + mx,1,1))&
+          & ((1.0 - pt_dx(p)) * ex(lind-1+mx,1,1) + ex(lind+mx,1,1) + pt_dx(p)*ex(1 + lind + mx,1,1))&
       & )
 
 ey0 = 0.5 * (&

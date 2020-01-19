@@ -34,7 +34,7 @@ bx0 = 0.5 * ((1.0 - pt_dy(p)) * ((1.0 - pt_dx(p)) * (bx(lind,1,1) + bx(lind-mx,1
         & pt_dy(p) * ((1.0 - pt_dx(p)) * (bx(lind,1,1) + bx(lind + mx,1,1)) +&
         & pt_dx(p) * (bx(lind+1,1,1) + bx(lind+1+mx,1,1))))
 
-by0 = 0.5 * ((1.0 - pt_dy(p)) * ((1.0 - pt_dx(p)) * by(,1,1) - by(lind,1,1) - pt_dx(p)*by(lind+1,1,1)) +&
+by0 = 0.5 * ((1.0 - pt_dy(p)) * ((1.0 - pt_dx(p)) * by(lind-1,1,1) - by(lind,1,1) - pt_dx(p)*by(lind+1,1,1)) +&
         & pt_dy(p) * (((1.0 - pt_dx(p)) * by(lind-1+mx,1,1)) + by(lind+mx,1,1) +&
         & pt_dx(p) * by(lind+1+mx,1,1)))
 
