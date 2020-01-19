@@ -53,8 +53,8 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)tristanmainloop.F90 \
              $(SRC_DIR)tristan.F90
 
-INCL_FILES := $(SRC_DIR)algorithms/interp_efield.F90 \
-							$(SRC_DIR)algorithms/interp_bfield.F90
+INCL_FILES := $(SRC_DIR)tools/interp_efield.F90 \
+							$(SRC_DIR)tools/interp_bfield.F90
 
 PREC_SRC_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(SRC_FILES:.F90=_.F90)))
 PREC_INCL_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(INCL_FILES:.F90=.F90)))
