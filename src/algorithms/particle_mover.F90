@@ -34,6 +34,7 @@ contains
     real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                            & c00, c01, c10, c11, c0, c1
     integer                               :: iy, iz, lind
+    real                                  :: ex1, ey1, ez1, bx1, by1, bz1
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
     iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
