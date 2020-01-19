@@ -38,8 +38,8 @@ contains
     integer                               :: iy, iz, lind, lind1
     real                                  :: ex1, ey1, ez1, bx1, by1, bz1
 
-    iy = this_meshblock%ptr%sx + 2 * NGHOST
-    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
+    iy = this_meshblock%ptr%sx + 2 * NGHOST - 1
+    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST - 1)
 
     pt_ex(1:iz) => ex
     pt_ey(1:iz) => ey
