@@ -84,9 +84,9 @@ contains
       else
         ey_norm = 1; ex_norm = (-ky / kx)
       end if
-      exy_norm = sqrt(ex_norm**2 + ey_norm**2)
-      ex_norm = ex_norm / exy_norm
-      ey_norm = ey_norm / exy_norm
+      exyz_norm = sqrt(ex_norm**2 + ey_norm**2)
+      ex_norm = ex_norm / exyz_norm
+      ey_norm = ey_norm / exyz_norm
 
       do i = 0, this_meshblock%ptr%sx - 1
         i_glob = i + this_meshblock%ptr%x0
