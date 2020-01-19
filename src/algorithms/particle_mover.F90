@@ -31,11 +31,12 @@ contains
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
 
-    ! real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
-    !                                        & c00, c01, c10, c11, c0, c1
-    integer                               :: mx, lind
+    real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
+                                           & c00, c01, c10, c11, c0, c1
+    integer                               :: iy, iz, lind
 
-    mx = this_meshblock%ptr%sx
+    iy = this_meshblock%ptr%sx + 2 * NGHOST
+    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
 
     #ifdef RADIATION
       dummy_flag = .true.
@@ -107,9 +108,37 @@ contains
               !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                lind = pt_xi(p) + (pt_yi(p) - 1) * mx
+                #ifndef threeD
+                  lind = pt_xi(p) + (pt_yi(p) - 1) * iy
+                #else
+                  lind = pt_xi(p) + (pt_yi(p) - 1) * iy + (pt_zi(p) - 1) * iz
+                #endif
                 include "interp_efield.F90"
                 include "interp_bfield.F90"
+
+                #ifdef DEBUG
+                  call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
+                                     & pt_xi(p), pt_yi(p), pt_zi(p),&
+                                     & ex, ey, ez, ex1, ey1, ez1)
+                  call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
+                                     & pt_xi(p), pt_yi(p), pt_zi(p),&
+                                     & bx, by, bz, bx1, by1, bz1)
+
+                  if ((ex1 .ne. ex0) .or. (ey1 .ne. ey0) .or. (ez1 .ne. ez0)) then
+                    print *, "Inline interp of `E` not working properly"
+                    print *, ex1, ey1, ez1
+                    print *, ex0, ey0, ez0
+                    stop
+                  end if
+
+                  if ((bx1 .ne. bx0) .or. (by1 .ne. by0) .or. (bz1 .ne. bz0)) then
+                    print *, "Inline interp of `B` not working properly"
+                    print *, bx1, by1, bz1
+                    print *, bx0, by0, bz0
+                    stop
+                  end if
+                #endif
+
 
                 #ifdef EXTERNALFIELDS
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
