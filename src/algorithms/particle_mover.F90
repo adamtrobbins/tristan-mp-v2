@@ -23,8 +23,6 @@ contains
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:)
-    real, pointer, contiguous             :: pt_ex(:), pt_ey(:), pt_ez(:),&
-                                           & pt_bx(:), pt_by(:), pt_bz(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_
     real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
@@ -40,13 +38,6 @@ contains
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
     iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
-
-    pt_ex(1:iz) => ex
-    pt_ey(1:iz) => ey
-    pt_ez(1:iz) => ez
-    pt_bx(1:iz) => bx
-    pt_by(1:iz) => by
-    pt_bz(1:iz) => bz
 
     #ifdef RADIATION
       dummy_flag = .true.
@@ -119,10 +110,9 @@ contains
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
                 #ifndef threeD
-                  lind1 = (NGHOST + pt_xi(p)) + (NGHOST + pt_yi(p)) * iy
-                  lind = lind1 - NGHOST
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
                 #else
-                  lind = pt_xi(p) + (pt_yi(p) - 1) * iy + (pt_zi(p) - 1) * iz
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
                 #endif
                 include "interp_efield.F90"
                 include "interp_bfield.F90"
@@ -139,18 +129,15 @@ contains
                     print *, "Inline interp of `E` not working properly"
                     print *, ex1, ey1, ez1
                     print *, ex0, ey0, ez0
-                    print *, 'lind', ex(pt_xi(p), pt_yi(p), pt_zi(p)), ex(lind, -NGHOST, 0), pt_ex(lind1)
-                    print *, 'lind+1', ex(pt_xi(p)+1, pt_yi(p), pt_zi(p)), ex(lind+1, -NGHOST, 0), pt_ex(lind1+1)
-                    print *, 'lind+iy', ex(pt_xi(p), pt_yi(p)+1, pt_zi(p)), ex(lind+iy, -NGHOST, 0), pt_ex(lind1+iy)
-                    ! stop
+                    stop
                   end if
 
-                  ! if ((bx1 .ne. bx0) .or. (by1 .ne. by0) .or. (bz1 .ne. bz0)) then
-                  !   print *, "Inline interp of `B` not working properly"
-                  !   print *, bx1, by1, bz1
-                  !   print *, bx0, by0, bz0
-                  !   stop
-                  ! end if
+                  if ((bx1 .ne. bx0) .or. (by1 .ne. by0) .or. (bz1 .ne. bz0)) then
+                    print *, "Inline interp of `B` not working properly"
+                    print *, bx1, by1, bz1
+                    print *, bx0, by0, bz1
+                    stop
+                  end if
                 #endif
 
 
@@ -262,15 +249,6 @@ contains
       end do ! ti
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
-
-    stop;
-
-    pt_ex => null()
-    pt_ey => null()
-    pt_ez => null()
-    pt_bx => null()
-    pt_by => null()
-    pt_bz => null()
 
   end subroutine moveParticles
 end module m_mover
