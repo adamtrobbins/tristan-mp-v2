@@ -31,10 +31,9 @@ contains
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
 
-    real                          :: c000, c100, c001, c101, c010, c110, c011, c111,&
-                                   & c00, c01, c10, c11, c0, c1
-    real(kind=8)                          :: t_total, t_interp, t_boris, t_move
-    integer :: mx, lind
+    real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
+                                           & c00, c01, c10, c11, c0, c1
+    integer                               :: mx, lind
 
     mx = this_meshblock%ptr%sx
 
@@ -111,24 +110,11 @@ contains
               q_over_m = species(s)%ch_sp / species(s)%m_sp
               !$omp simd
               !dir$ vector aligned
-              !dir$ forceinline
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                  ! t_total = MPI_WTIME() - t_total
-                  !
-                  ! t_interp = MPI_WTIME() - t_interp
-
-                call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & ex, ey, ez, ex0, ey0, ez0)
-                call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & bx, by, bz, bx0, by0, bz0)
-                ! lind = pt_xi(p) + (pt_yi(p) - 1) * mx
-                ! include "interp_efield.F90"
-                ! include "interp_bfield.F90"
-
-                  ! t_interp = MPI_WTIME() - t_interp
+                lind = pt_xi(p) + (pt_yi(p) - 1) * mx
+                include "interp_efield.F90"
+                include "interp_bfield.F90"
 
                 #ifdef EXTERNALFIELDS
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
@@ -148,8 +134,6 @@ contains
                   v_init = pt_v(p)
                   w_init = pt_w(p)
                 #endif
-
-                  ! t_boris = MPI_WTIME() - t_boris
 
                 dummy_ = 0.5 * q_over_m * B_norm
                 ex0 = ex0 * dummy_; ey0 = ey0 * dummy_; ez0 = ez0 * dummy_
@@ -183,8 +167,6 @@ contains
                 pt_v(p) = v0 * CCINV
                 pt_w(p) = w0 * CCINV
 
-                  ! t_boris = MPI_WTIME() - t_boris
-
                 ! RADIATION >
                 #ifdef RADIATION
                   #ifdef SYNCHROTRON
@@ -205,8 +187,6 @@ contains
                   #endif
                 #endif
                 ! </ RADIATION
-
-                  ! t_move = MPI_WTIME() - t_move
 
                 ! move particle
                 g_temp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -234,10 +214,6 @@ contains
                   pt_zi(p) = pt_zi(p) + temp_i
                   pt_dz(p) = pt_dz(p) - temp_r
                 #endif
-
-                  ! t_move = MPI_WTIME() - t_move
-                  !
-                  ! t_total = MPI_WTIME() - t_total
               end do
             end if
             pt_xi => null(); pt_yi => null(); pt_zi => null()
@@ -248,13 +224,6 @@ contains
       end do ! ti
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
-
-    ! if (mpi_rank .eq. 0) then
-    !   print *, "...TOTAL:", t_total
-    !   print *, "......interp:", t_interp
-    !   print *, "......boris:", t_boris
-    !   print *, "......move:", t_move
-    ! end if
 
   end subroutine moveParticles
 end module m_mover
