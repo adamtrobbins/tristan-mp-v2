@@ -34,6 +34,7 @@ contains
     real                          :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                    & c00, c01, c10, c11, c0, c1
     real(kind=8)                          :: t_total, t_interp, t_boris, t_move
+    integer :: mx = this_meshblock%ptr%sx, lind
 
     #ifdef RADIATION
       dummy_flag = .true.
@@ -74,7 +75,7 @@ contains
                 cycle
               end if
               ! routine for massless particles
-              ! !$omp simd
+              !$omp simd
               !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 ! move particle
@@ -120,6 +121,7 @@ contains
                 ! call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
                 !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
                 !                    & bx, by, bz, bx0, by0, bz0)
+                lind = pt_xi(p) + (pt_yi(p) - 1) * mx
                 include "interp_efield.F90"
                 include "interp_bfield.F90"
 
