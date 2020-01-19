@@ -141,7 +141,7 @@ contains
                     print *, 'lind', ex(pt_xi(p), pt_yi(p), pt_zi(p)), ex(lind, 1, 1), pt_ex(lind)
                     print *, 'lind+1', ex(pt_xi(p)+1, pt_yi(p), pt_zi(p)), ex(lind+1, 1, 1), pt_ex(lind+1)
                     print *, 'lind+iy', ex(pt_xi(p), pt_yi(p)+1, pt_zi(p)), ex(lind+iy, 1, 1), pt_ex(lind+iy)
-                    stop
+                    ! stop
                   end if
 
                   ! if ((bx1 .ne. bx0) .or. (by1 .ne. by0) .or. (bz1 .ne. bz0)) then
