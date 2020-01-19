@@ -34,7 +34,9 @@ contains
     real                          :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                    & c00, c01, c10, c11, c0, c1
     real(kind=8)                          :: t_total, t_interp, t_boris, t_move
-    integer :: mx = this_meshblock%ptr%sx, lind
+    integer :: mx, lind
+
+    mx = this_meshblock%ptr%sx
 
     #ifdef RADIATION
       dummy_flag = .true.
