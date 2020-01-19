@@ -109,7 +109,7 @@ contains
             else
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
-              !$omp simd
+              ! !$omp simd
               !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
