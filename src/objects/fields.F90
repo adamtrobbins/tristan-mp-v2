@@ -13,6 +13,7 @@ module m_fields
 
   real, allocatable     :: ex(:,:,:), ey(:,:,:), ez(:,:,:),&
                          & bx(:,:,:), by(:,:,:), bz(:,:,:)
+  !dir$ attributes align: 64 :: ex, ey, ez, bx, by, bz
   real, allocatable     :: jx(:,:,:), jy(:,:,:), jz(:,:,:)
   real, allocatable     :: recv_fld(:), send_fld(:)
   integer               :: sendrecv_buffsz, sendrecv_offsetsz
