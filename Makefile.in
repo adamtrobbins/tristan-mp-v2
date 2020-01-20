@@ -53,7 +53,11 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)tristanmainloop.F90 \
              $(SRC_DIR)tristan.F90
 
+INCL_FILES := $(SRC_DIR)tools/interp_efield.F90 \
+							$(SRC_DIR)tools/interp_bfield.F90
+
 PREC_SRC_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(SRC_FILES:.F90=_.F90)))
+PREC_INCL_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(INCL_FILES:.F90=.F90)))
 
 OBJ_DIR := obj/
 OBJ_FILES := $(addprefix $(OBJ_DIR), $(notdir $(PREC_SRC_FILES:.F90=.o)))
@@ -68,6 +72,7 @@ dirs:
 
 precomp:
 	$(foreach fl, $(SRC_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=_.F90)));)
+	$(foreach fl, $(INCL_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=.F90)));)
 
 $(EXECUTABLE):$(OBJ_FILES)
 	$(FC) $(FFLAGS) $(PFLAGS) -o $@ $(OBJ_FILES)

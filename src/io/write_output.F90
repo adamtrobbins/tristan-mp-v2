@@ -144,8 +144,6 @@ contains
      do ti = 1, species(s)%tile_nx
        do tj = 1, species(s)%tile_ny
          do tk = 1, species(s)%tile_nz
-           ! !$omp simd
-           ! !dir$ vector aligned
            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
@@ -490,8 +488,6 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            !$omp simd
-            !dir$ vector aligned
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
                 npart_stride(s) = npart_stride(s) + 1
@@ -535,8 +531,6 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            !$omp simd
-            !dir$ vector aligned
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
                 stride_indices_arr(j) = p

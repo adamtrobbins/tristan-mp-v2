@@ -30,6 +30,12 @@ contains
     logical                               :: dummy_flag
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
+    real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
+                                           & c00, c01, c10, c11, c0, c1
+    integer                               :: iy, iz, lind
+
+    iy = this_meshblock%ptr%sx + 2 * NGHOST
+    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
 
     #ifdef RADIATION
       dummy_flag = .true.
@@ -65,8 +71,8 @@ contains
                 cycle
               end if
               ! routine for massless particles
-              ! !$omp simd
-              ! !dir$ vector aligned
+              !$omp simd
+              !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 ! move particle
                 over_e_temp = 1.0 / sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -97,18 +103,27 @@ contains
             else
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
-              ! !$omp simd
-              ! !dir$ vector aligned
+              #if !defined(RADIATION) && !defined(EXTERNALFIELDS)
+              !$omp simd
+              !dir$ vector aligned
+              #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & ex, ey, ez, ex0, ey0, ez0)
-                call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & bx, by, bz, bx0, by0, bz0)
+                #ifndef threeD
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
+                #else
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
+                #endif
+                include "interp_efield.F90"
+                include "interp_bfield.F90"
+                ! call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
+                !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
+                !                    & ex, ey, ez, ex0, ey0, ez0)
+                ! call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
+                !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
+                !                    & bx, by, bz, bx0, by0, bz0)
 
-                if (external_fields) then
+                #ifdef EXTERNALFIELDS
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
                                         & REAL(pt_yi(p)) + pt_dy(p),&
                                         & REAL(pt_zi(p)) + pt_dz(p),&
@@ -116,7 +131,7 @@ contains
                                         & bx_ext, by_ext, bz_ext)
                   ex0 = ex0 + ex_ext; ey0 = ey0 + ey_ext; ez0 = ez0 + ez_ext
                   bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
-                end if
+                #endif
 
                 #ifdef RADIATION
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
@@ -216,5 +231,6 @@ contains
       end do ! ti
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
+
   end subroutine moveParticles
 end module m_mover

@@ -513,8 +513,6 @@ contains
     allocate(sm_arr(0:this_meshblock%ptr%sx - 1,&
                   & 0:this_meshblock%ptr%sy - 1,&
                   & 0:this_meshblock%ptr%sz - 1))
-
-    call getInput('problem', 'external_fields', external_fields, .false.)
   end subroutine initializeFields
 
   subroutine firstRankInitialize()
