@@ -32,7 +32,7 @@ contains
     real                                  :: bx_ext, by_ext, bz_ext
     real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                            & c00, c01, c10, c11, c0, c1
-    integer                               :: iy, iz, lind, lind
+    integer                               :: iy, iz, lind
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
     iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
