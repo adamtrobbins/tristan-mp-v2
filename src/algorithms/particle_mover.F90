@@ -105,23 +105,17 @@ contains
             else
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
-              ! !$omp simd
-              ! !dir$ vector aligned
+              !$omp simd
+              !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                ! #ifndef threeD
-                !   lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
-                ! #else
-                !   lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
-                ! #endif
-                ! include "interp_efield.F90"
-                ! include "interp_bfield.F90"
-                call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & ex, ey, ez, ex0, ey0, ez0)
-                call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & bx, by, bz, bx0, by0, bz0)
+                #ifndef threeD
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
+                #else
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
+                #endif
+                include "interp_efield.F90"
+                include "interp_bfield.F90"
 
                 #ifdef DEBUG
                   call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
