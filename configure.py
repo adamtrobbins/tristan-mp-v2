@@ -162,11 +162,11 @@ if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 if args['debug'] and args['intel']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-    makefile_options['COMPILER_FLAGS'] += '-traceback -qopenmp-simd -qopt-report=5 '
+    makefile_options['COMPILER_FLAGS'] += '-traceback '
 
 if args['intel']:
     makefile_options['MODULE'] = '-module '
-    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo '
+    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 '
 else:
     makefile_options['MODULE'] = '-J '
 
