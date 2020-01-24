@@ -71,7 +71,7 @@ contains
                 cycle
               end if
               ! routine for massless particles
-              !$omp simd
+              !$omp simd private(over_e_temp, temp_r, temp_i)
               !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 ! move particle
@@ -104,7 +104,11 @@ contains
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
               #if !defined(RADIATION) && !defined(EXTERNALFIELDS)
-              !$omp simd
+              !$omp simd private(lind, dummy_, g_temp, over_g_temp,&
+              !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
+              !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
+              !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
+              !$omp  c00, c01, c10, c11, c0, c1)
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
