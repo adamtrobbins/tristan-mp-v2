@@ -4,9 +4,9 @@
 
 <node_configuration>
 
-  sizex         = 4              # number of cpus in x direction
-  sizey         = 4              # number of cpus in y direction
-  sizez         = 1              # number of cpus in z direction
+  sizex         = 2              # number of cpus in x direction
+  sizey         = 2              # number of cpus in y direction
+  sizez         = 2              # number of cpus in z direction
 
 <time>
 
@@ -14,20 +14,20 @@
 
 <grid>
 
-  mx0           = 400            # number of actual grid points in the x direction
-  my0           = 400            # number of actual grid points in the y direction
-  mz0           = 1              # ... (ignored for 2D simulations)
+  mx0           = 100            # number of actual grid points in the x direction
+  my0           = 100            # number of actual grid points in the y direction
+  mz0           = 100            # ... (ignored for 2D simulations)
 
-  boundary_x    = 0              # boundary in x: 1 = periodic, 0 = outflow
-  boundary_y    = 0              # boundary in y: 1 = periodic, 0 = outflow
+  boundary_x    = 1              # boundary in x: 1 = periodic, 0 = outflow
+  boundary_y    = 1              # boundary in y: 1 = periodic, 0 = outflow
   boundary_z    = 1              # boundary in z: 1 = periodic, 0 = outflow
 
   resize_tiles  = 0              # reallocate particle tiles if necessary
   min_tile_nprt = 1000           # min # of allocated particles per tile
 
-  tileX         = 5              # tile dimension in x
-  tileY         = 5              # tile dimension in y
-  tileZ         = 1              # tile dimension in z
+  tileX         = 5             # tile dimension in x
+  tileY         = 5             # tile dimension in y
+  tileZ         = 5             # tile dimension in z
 
 <algorithm>
 
@@ -52,7 +52,7 @@
 
 <plasma>
 
-  ppc0          = 10
+  ppc0          = 5
   sigma         = 4
   c_omp         = 10
 
@@ -71,11 +71,11 @@
   bw2           = 2
 
   maxptl3       = 1e6           # max number of particles per core
-  m3            = 1
+  m3            = 0
   ch3           = -1
 
   maxptl4       = 1e6           # max number of particles per core
-  m4            = 1
+  m4            = 0
   ch4           = 1
 
 
@@ -91,8 +91,5 @@
 
 <problem>
 
-  inj_interval  = 1000.0
-  energy        = 5.0
-  ndot          = 10.0
-  dx1           = 0.25
-  dx2           = 0.75
+  ph_e1         = 1             # energy of the first photon population
+  ph_e2         = 1             # energy of the second photon population

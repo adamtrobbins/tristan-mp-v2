@@ -137,7 +137,7 @@ contains
 
       dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_ic**2
 
-      tau_emit = dummy_ * betaci * emit_gamma_ic**2 
+      tau_emit = dummy_ * betaci * emit_gamma_ic**2
       eph_emit = (gci / emit_gamma_ic)**2
 
       #ifndef EMIT
