@@ -8,3 +8,4 @@ restart/
 Makefile
 __pycache__
 vis/
+.sync-config.cson
