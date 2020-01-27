@@ -430,12 +430,12 @@ contains
     ! new type for myMPI_ENROUTE
     !   BY DEFAULT:
     !     # of blockcounts = 3:
-    !       3 x integer2  [xi, yi, zi]
+    !       4 x integer2  [weight, xi, yi, zi]
     !       6 x real      [dx, dy, dz, u, v, w]
     !       2 x integer   [ind, proc]
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
-    blockcounts(0) = 3
+    blockcounts(0) = 4
     oldtypes(0) = MPI_INTEGER2
     blockcounts(1) = 6
     oldtypes(1) = MPI_REAL

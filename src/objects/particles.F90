@@ -5,6 +5,7 @@ module m_particles
   implicit none
 
   type :: particle_tile
+    ! DEP_PRT [particle-dependent]
     integer                                     :: npart_sp, maxptl_sp
     ! tile boundaries in local coordinates
     integer                                     :: x1, x2, y1, y2, z1, z2
@@ -12,7 +13,8 @@ module m_particles
     real, allocatable, dimension(:)             :: dx, dy, dz
     real, allocatable, dimension(:)             :: u, v, w
     integer, allocatable, dimension(:)          :: ind, proc
-    !dir$ attributes align: 64 :: xi, yi, zi, dx, dy, dz, u, v, w, ind, proc
+    integer(kind=2), allocatable, dimension(:)  :: weight
+    !dir$ attributes align: 64 :: xi, yi, zi, dx, dy, dz, u, v, w, ind, proc, weight
     ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
 
@@ -37,7 +39,8 @@ module m_particles
 
   ! particle types for exchange between processors />
   type :: prtl_enroute
-    integer(kind=2)   :: xi, yi, zi
+    ! DEP_PRT [particle-dependent]
+    integer(kind=2)   :: weight, xi, yi, zi
     real              :: dx, dy, dz
     real              :: u, v, w
     integer           :: ind, proc
