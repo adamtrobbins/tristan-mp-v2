@@ -1,6 +1,7 @@
 #include "../defs.F90"
 
 module m_bincoupling
+  ! DEP_PRT [particle-dependent]
   use m_globalnamespace
   use m_aux
   use m_domain

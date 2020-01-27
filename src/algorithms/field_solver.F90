@@ -8,7 +8,7 @@ module m_fldsolver
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: lambdaAbsorb 
+  private :: lambdaAbsorb
   !...............................................................!
 contains
   subroutine advanceBHalfstep()
