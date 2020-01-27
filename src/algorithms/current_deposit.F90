@@ -9,9 +9,10 @@ module m_currentdeposit
   implicit none
 contains
   subroutine depositCurrents()
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer :: s, p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:)
     real                                  :: xr, yr, zr, x1, y1, z1, x2, y2, z2
@@ -20,7 +21,7 @@ contains
     integer(kind=2)                       :: i1p1, i2p1, j1p1, j2p1, k1p1, k2p1
     real                                  :: Wx1, Wy1, Wz1, Wx2, Wy2, Wz2
     real                                  :: onemWx1, onemWy1, onemWz1, onemWx2, onemWy2, onemWz2
-    real                                  :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2
+    real                                  :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2, prtl_weight
 
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
@@ -40,6 +41,8 @@ contains
             pt_u => species(s)%prtl_tile(ti, tj, tk)%u
             pt_v => species(s)%prtl_tile(ti, tj, tk)%v
             pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
             temp_charge = species(s)%ch_sp * unit_ch / B_norm
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -65,8 +68,13 @@ contains
                 onemWx2 = 1 - Wx2;            onemWy2 = 1 - Wy2
 
                 ! deposit with a "-" sign
-                Fx1 = -temp_charge * (xr - x1); Fy1 = -temp_charge * (yr - y1);  Fz1 = -temp_charge * (zr - z1)
-                Fx2 = -temp_charge * (x2 - xr); Fy2 = -temp_charge * (y2 - yr);  Fz2 = -temp_charge * (z2 - zr)
+                prtl_weight = REAL(pt_wei(p))
+                Fx1 = -temp_charge * (xr - x1) * prtl_weight
+                Fy1 = -temp_charge * (yr - y1) * prtl_weight
+                Fz1 = -temp_charge * (zr - z1) * prtl_weight
+                Fx2 = -temp_charge * (x2 - xr) * prtl_weight
+                Fy2 = -temp_charge * (y2 - yr) * prtl_weight
+                Fz2 = -temp_charge * (z2 - zr) * prtl_weight
 
                 jx(i1  , j1  , k1) = jx(i1  , j1  , k1) + Fx1 * onemWy1
                 jx(i1  , j1p1, k1) = jx(i1  , j1p1, k1) + Fx1 * Wy1
@@ -110,8 +118,13 @@ contains
                 onemWx2 = 1 - Wx2; onemWy2 = 1 - Wy2; onemWz2 = 1 - Wz2
 
                 ! deposit with a "-" sign
-                Fx1 = -temp_charge * (xr - x1); Fy1 = -temp_charge * (yr - y1); Fz1 = -temp_charge * (zr - z1)
-                Fx2 = -temp_charge * (x2 - xr); Fy2 = -temp_charge * (y2 - yr); Fz2 = -temp_charge * (z2 - zr)
+                prtl_weight = REAL(pt_wei(p))
+                Fx1 = -temp_charge * (xr - x1) * prtl_weight
+                Fy1 = -temp_charge * (yr - y1) * prtl_weight
+                Fz1 = -temp_charge * (zr - z1) * prtl_weight
+                Fx2 = -temp_charge * (x2 - xr) * prtl_weight
+                Fy2 = -temp_charge * (y2 - yr) * prtl_weight
+                Fz2 = -temp_charge * (z2 - zr) * prtl_weight
 
                 jx(i1  , j1  , k1  ) = jx(i1  , j1  , k1  ) + Fx1 * onemWy1 * onemWz1
                 jx(i1  , j1p1, k1  ) = jx(i1  , j1p1, k1  ) + Fx1 * Wy1 * onemWz1
@@ -147,6 +160,7 @@ contains
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
             pt_u => null(); pt_v => null(); pt_w => null()
+            pt_wei => null()
           end do
         end do
       end do
