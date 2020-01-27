@@ -21,11 +21,11 @@ contains
     implicit none
     integer                               :: s, p, temp_i, ti, tj, tk
     real                                  :: g_temp, over_g_temp, over_e_temp, temp_r
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
-    real                                  :: u0, v0, w0, u1, v1, w1, dummy_, prtl_weight
+    real                                  :: u0, v0, w0, u1, v1, w1, dummy_
     real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
     real                                  :: u_init, v_init, w_init, du_rad, dv_rad, dw_rad
     logical                               :: dummy_flag
@@ -64,8 +64,6 @@ contains
             pt_u => species(s)%prtl_tile(ti, tj, tk)%u
             pt_v => species(s)%prtl_tile(ti, tj, tk)%v
             pt_w => species(s)%prtl_tile(ti, tj, tk)%w
-
-            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
             if (species(s)%m_sp .eq. 0) then
               if (species(s)%ch_sp .ne. 0) then
@@ -149,8 +147,7 @@ contains
                   w_init = pt_w(p)
                 #endif
 
-                prtl_weight = REAL(pt_wei(p))
-                dummy_ = 0.5 * q_over_m * B_norm * prtl_weight
+                dummy_ = 0.5 * q_over_m * B_norm
                 ex0 = ex0 * dummy_; ey0 = ey0 * dummy_; ez0 = ez0 * dummy_
                 dummy_ = dummy_ * CCINV
                 bx0 = bx0 * dummy_; by0 = by0 * dummy_; bz0 = bz0 * dummy_
@@ -234,7 +231,6 @@ contains
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
             pt_u => null(); pt_v => null(); pt_w => null()
-            pt_wei => null()
           end do ! tk
         end do ! tj
       end do ! ti
