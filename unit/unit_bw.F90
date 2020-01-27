@@ -1,21 +1,28 @@
 #include "../src/defs.F90"
 
+! Configuration for this userfile:
+! ```
+!   $ python configure.py --nghosts=5 --user=unit_bw -qed -bwpp
+! ```
+
 module m_userfile
   use m_globalnamespace
   use m_aux
+  use m_helpers
   use m_readinput
   use m_domain
   use m_particles
   use m_fields
-  use m_powerlawplasma
+  use m_thermalplasma
   use m_particlelogistics
   implicit none
 
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: plaw_ind, plaw_gmin, plaw_gmax
-  private   :: plaw_ind, plaw_gmin, plaw_gmax
+  real      :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w
+
+  private   :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -34,9 +41,12 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'plaw_ind', plaw_ind)
-    call getInput('problem', 'plaw_gmin', plaw_gmin)
-    call getInput('problem', 'plaw_gmax', plaw_gmax)
+    call getInput('problem', 'ph1_u', ph1_u)
+    call getInput('problem', 'ph1_v', ph1_v)
+    call getInput('problem', 'ph1_w', ph1_w)
+    call getInput('problem', 'ph2_u', ph2_u)
+    call getInput('problem', 'ph2_v', ph2_v)
+    call getInput('problem', 'ph2_w', ph2_w)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -60,21 +70,10 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real                :: nUP
-    type(region)        :: back_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-
-    nUP = 0.5 * ppc0
-
-    back_region%x_min = 0.0
-    back_region%y_min = 0.0
-    back_region%x_max = REAL(global_mesh%sx)
-    back_region%y_max = REAL(global_mesh%sy)
-
-    call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
-                                    & plaw_gmin, plaw_gmax, plaw_ind,&
-                                    & init_2dQ = .true.)
+    call injectParticleGlobally(1, 2.5, 2.5, 0.5, ph1_u, ph1_v, ph1_w)
+    call injectParticleGlobally(2, 2.5, 2.5, 0.5, ph2_u, ph2_v, ph2_w)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -82,8 +81,19 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ! ... dummy loop ...
+    ! do i = 0, this_meshblock%ptr%sx - 1
+    !   i_glob = i + this_meshblock%ptr%x0
+    !   do j = 0, this_meshblock%ptr%sy - 1
+    !     j_glob = j + this_meshblock%ptr%y0
+    !     do k = 0, this_meshblock%ptr%sz - 1
+    !       k_glob = k + this_meshblock%ptr%z0
+    !       ...
+    !     end do
+    !   end do
+    ! end do
   end subroutine userInitFields
   !............................................................!
 

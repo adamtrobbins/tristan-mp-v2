@@ -12,10 +12,19 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
-  use m_radiation
   use m_userfile
   use m_helpers
   use m_errors
+
+  ! extra physics
+  #ifdef RADIATION
+    use m_radiation
+  #endif
+
+  #ifdef BWPAIRPRODUCTION
+    use m_bwpairproduction
+  #endif
+
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -25,6 +34,13 @@ module m_initialize
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & initializeSimulation, checkEverything
+  #ifdef RADIATION
+    private :: initializeRadiation
+  #endif
+
+  #ifdef BWPAIRPRODUCTION
+    private :: initializeBWPairProduction
+  #endif
   !...............................................................!
 contains
   ! initialize all the necessary arrays and variables
@@ -39,7 +55,7 @@ contains
 
     call distributeMeshblocks()
       call printDiag((mpi_rank .eq. 0), "distributeMeshblocks()", .true.)
-    
+
     call initializeLB()
       call printDiag((mpi_rank .eq. 0), "initializeLB()", .true.)
 
@@ -52,7 +68,7 @@ contains
       call printDiag((mpi_rank .eq. 0), "initializeSimulation()", .true.)
 
     call initializeOutput()
-      call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)  
+      call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
 
     ! ADD possibility to define output function in userfile
     ! ADD hst file?
@@ -66,6 +82,11 @@ contains
     #ifdef RADIATION
       call initializeRadiation()
         call printDiag((mpi_rank .eq. 0), "initializeRadiation()", .true.)
+    #endif
+
+    #ifdef BWPAIRPRODUCTION
+      call initializeBWPairProduction()
+        call printDiag((mpi_rank .eq. 0), "initializeBWPairProduction()", .true.)
     #endif
 
     call initializePrtlExchange()
@@ -87,7 +108,7 @@ contains
 
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
-  
+
   subroutine initializeCommunications()
     implicit none
     integer :: ierr
@@ -155,7 +176,7 @@ contains
       meshblocks(rnk + 1)%x0 = ind(1) * m(1) + global_mesh%x0
       meshblocks(rnk + 1)%y0 = ind(2) * m(2) + global_mesh%y0
       meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
-    end do      
+    end do
     ! assign all neighbors
     call reassignNeighborsForAll()
   end subroutine distributeMeshblocks
@@ -163,7 +184,7 @@ contains
   subroutine initializeLB()
     implicit none
     ! initializing static LB variables
-    call getInput('static_load_balancing', 'in_x', slb_x, .false.) 
+    call getInput('static_load_balancing', 'in_x', slb_x, .false.)
     call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
     call getInput('static_load_balancing', 'in_y', slb_y, .false.)
     call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
@@ -174,7 +195,7 @@ contains
       slb_z = .false.
       slb_szmin = -1
     #endif
-    
+
     ! initializing adaptive LB variables
     call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
     call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
@@ -276,10 +297,28 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
+
+      ! extra physics properties
       #ifdef RADIATION
         write (var_name, "(A4,I1)") "cool", s
         call getInput('particles', var_name, species(s)%cool_sp, .false.)
+        if ((species(s)%cool_sp) .and. (species(s)%m_sp .eq. 0)) then
+          call throwError('Unable to cool `m=0` particles.')
+        end if
       #endif
+
+      #ifdef BWPAIRPRODUCTION
+        write (var_name, "(A2,I1)") "bw", s
+        call getInput('particles', var_name, species(s)%bw_sp, 0)
+        if ((species(s)%bw_sp .ne. 0) .and.&
+          & ((species(s)%ch_sp .ne. 0) .or. (species(s)%m_sp .ne. 0))) then
+          call throwError('`ch != 0` or `m != 0` particles cannot pair-produce via BW.')
+        end if
+        if ((species(s)%bw_sp .gt. 2)) then
+          call throwError('only two BW photon populations are allowed.')
+        end if
+      #endif
+
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
@@ -306,7 +345,7 @@ contains
                  & species(s)%prtl_tile(ti, tj, tk)%y1,&
                  & species(s)%prtl_tile(ti, tj, tk)%y2,&
                  & species(s)%prtl_tile(ti, tj, tk)%z1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%z2             
+                 & species(s)%prtl_tile(ti, tj, tk)%z2
                call throwError('ERROR IN PRTLINIT')
               end if
             #endif
@@ -474,30 +513,7 @@ contains
     allocate(sm_arr(0:this_meshblock%ptr%sx - 1,&
                   & 0:this_meshblock%ptr%sy - 1,&
                   & 0:this_meshblock%ptr%sz - 1))
-    
-    call getInput('problem', 'external_fields', external_fields, .false.)
   end subroutine initializeFields
-  
-  subroutine initializeRadiation()
-    implicit none
-    call getInput('radiation', 'gamma_c', rad_gamma_c, 10.0)
-    call getInput('radiation', 'gamma_rad', rad_gamma_rad, 10.0)
-    call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
-    call getInput('radiation', 'dens_limit', rad_dens_lim, 1e8)
-    #ifdef EMIT
-      call getInput('radiation', 'photon_ind', rad_photon_ind, 3)
-      if ((nspec .lt. rad_photon_ind) .or.&
-        & (species(rad_photon_ind)%ch_sp .ne. 0) .or.&
-        & (species(rad_photon_ind)%m_sp .ne. 0)) then
-        call throwError('Wrong choice of `photon_ind`.') 
-      end if 
-    #endif
-
-    if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, spec_num))
-    if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, spec_num))
-    rad_spectra(:, :) = 0.0
-    glob_rad_spectra(:, :) = 0.0
-  end subroutine initializeRadiation
 
   subroutine firstRankInitialize()
     ! create output/restart directories
@@ -529,4 +545,42 @@ contains
       end if
     #endif
   end subroutine checkEverything
+
+  ! extra physics
+  #ifdef RADIATION
+    subroutine initializeRadiation()
+      implicit none
+      call getInput('radiation', 'emit_gamma_syn', emit_gamma_syn, 10.0)
+      call getInput('radiation', 'emit_gamma_ic', emit_gamma_ic, 10.0)
+      call getInput('radiation', 'gamma_syn', cool_gamma_syn, 10.0)
+      call getInput('radiation', 'gamma_ic', cool_gamma_ic, 10.0)
+      call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
+      call getInput('radiation', 'dens_limit', rad_dens_lim, 1e8)
+      #ifdef EMIT
+        call getInput('radiation', 'photon_sp', rad_photon_sp, 3)
+        if ((nspec .lt. rad_photon_sp) .or.&
+          & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
+          & (species(rad_photon_sp)%m_sp .ne. 0)) then
+          call throwError('Wrong choice of `photon_sp`.')
+        end if
+      #endif
+
+      if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, spec_num))
+      if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, spec_num))
+      rad_spectra(:, :) = 0.0
+      glob_rad_spectra(:, :) = 0.0
+    end subroutine initializeRadiation
+  #endif
+
+  #ifdef BWPAIRPRODUCTION
+    subroutine initializeBWPairProduction()
+      implicit none
+      call getInput('bw_pp', 'tau_BW', BW_tau)
+      call getInput('bw_pp', 'interval', BW_interval, 1)
+      call getInput('bw_pp', 'algorithm', BW_algorithm)
+      call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
+      call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
+    end subroutine initializeBWPairProduction
+  #endif
+
 end module m_initialize

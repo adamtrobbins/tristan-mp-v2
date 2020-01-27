@@ -2,6 +2,7 @@
 
 module m_helpers
   use m_globalnamespace
+  use m_aux
   use m_domain
   use m_particles
   use m_fields
@@ -27,6 +28,71 @@ contains
       end if
     end do
   end subroutine checkNpart
+
+  subroutine globalToLocalCoords(x_glob, y_glob, z_glob,&
+                               & x_loc, y_loc, z_loc, adjustQ_)
+    implicit none
+    real, intent(in)              :: x_glob, y_glob, z_glob
+    real, intent(out)             :: x_loc, y_loc, z_loc
+    logical, optional, intent(in) :: adjustQ_
+    logical                       :: adjustQ
+    if (present(adjustQ_)) then
+      adjustQ = adjustQ_
+    else
+      adjustQ = .false.
+    end if
+
+    if (adjustQ) then
+      x_loc = MAX(0.0, MIN(x_glob - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx)))
+      y_loc = MAX(0.0, MIN(y_glob - REAL(this_meshblock%ptr%y0), REAL(this_meshblock%ptr%sy)))
+      #ifdef threeD
+        z_loc = MAX(0.0, MIN(z_glob - REAL(this_meshblock%ptr%z0), REAL(this_meshblock%ptr%sz)))
+      #else
+        z_loc = z_glob
+      #endif
+    else
+      x_loc = x_glob - REAL(this_meshblock%ptr%x0)
+      y_loc = y_glob - REAL(this_meshblock%ptr%y0)
+      #ifdef threeD
+        z_loc = z_glob - REAL(this_meshblock%ptr%z0)
+      #else
+        z_loc = z_glob
+      #endif
+    end if
+  end subroutine globalToLocalCoords
+
+  subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax,&
+                                 & x_, y_, z_, xi_, yi_, zi_, dx_, dy_, dz_)
+    implicit none
+    real                          :: rnd
+    real, intent(in)              :: xmin, xmax, ymin, ymax, zmin, zmax
+    real, intent(out)             :: x_, y_, z_, dx_, dy_, dz_
+    integer(kind=2), intent(out)  :: xi_, yi_, zi_
+
+    rnd = random(dseed)
+    x_ = xmin + rnd * (xmax - xmin)
+    xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
+    if (xi_ .eq. this_meshblock%ptr%sx) then
+      xi_ = xi_ - 1; dx_ = dx_ + 1.0
+    end if
+    rnd = random(dseed)
+    y_ = ymin + rnd * (ymax - ymin)
+    yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
+    if (yi_ .eq. this_meshblock%ptr%sy) then
+      yi_ = yi_ - 1; dy_ = dy_ + 1.0
+    end if
+    #ifdef threeD
+      rnd = random(dseed)
+      z_ = zmin + rnd * (zmax - zmin)
+      zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
+      if (zi_ .eq. this_meshblock%ptr%sz) then
+        zi_ = zi_ - 1; dz_ = dz_ + 1.0
+      end if
+    #else
+      z_ = 0.5
+      zi_ = 0; dz_ = 0.5
+    #endif
+  end subroutine
 
   function rnkToInd(rnk)
     implicit none
@@ -142,20 +208,20 @@ contains
           ! FIX1 vectorize/align
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
-            
+
             i1 = max(i - ds, -NGHOST)
-            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1) 
-            
+            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1)
+
             j1 = max(j - ds, -NGHOST)
-            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1) 
+            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1)
 
             #ifndef threeD
               k1 = 0; k2 = 0
             #else
               k1 = max(k - ds, -NGHOST)
-              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1) 
+              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1)
             #endif
-            
+
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
@@ -163,14 +229,14 @@ contains
                 end do
               end do
             end do
-             
+
           end do
           pt_xi => null(); pt_yi => null(); pt_zi => null()
         end do
       end do
     end do
   end subroutine computeDensity
-  
+
   subroutine computeEnergy(s, reset)
     implicit none
     integer, intent(in)                   :: s
@@ -216,20 +282,20 @@ contains
             else
               energy = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
             end if
-            
+
             i1 = max(i - ds, -NGHOST)
-            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1) 
-            
+            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1)
+
             j1 = max(j - ds, -NGHOST)
-            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1) 
+            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1)
 
             #ifndef threeD
               k1 = 0; k2 = 0
             #else
               k1 = max(k - ds, -NGHOST)
-              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1) 
+              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1)
             #endif
-            
+
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
@@ -237,7 +303,7 @@ contains
                 end do
               end do
             end do
-             
+
           end do
           pt_xi => null(); pt_yi => null(); pt_zi => null()
           pt_u => null(); pt_v => null(); pt_w => null()
@@ -249,7 +315,6 @@ contains
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
-    !$omp declare simd(interpFromEdges)
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz
@@ -338,7 +403,6 @@ contains
   subroutine interpFromFaces(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
-    !$omp declare simd(interpFromFaces)
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz

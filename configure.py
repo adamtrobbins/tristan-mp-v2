@@ -15,21 +15,25 @@ user_directory = 'user/'
 user_choices = glob.glob(user_directory + '*.F90')
 user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 
+unit_directory = 'unit/'
+unit_choices = glob.glob(unit_directory + '*.F90')
+unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
+
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 
-parser.add_argument('--user',
-                    default='user_default',
-                    choices=user_choices,
-                    help='select user file')
-
-parser.add_argument('--nghosts',
-                    action='store',
-                    default=3,
-                    help='specify the # of ghost cells')
-
-parser.add_argument('-hdf5',
+# system
+parser.add_argument('-perseus',
                     action='store_true',
                     default=False,
+                    help='Configure for `Perseus` cluster.')
+
+parser.add_argument('-intel',
+                    action='store_true',
+                    default=False,
+                    help='enable intel compiler')
+parser.add_argument('-hdf5',
+                    action='store_true',
+                    default=True,
                     help='enable HDF5 & use h5pfc compiler')
 
 parser.add_argument('-ifport',
@@ -37,20 +41,37 @@ parser.add_argument('-ifport',
                     default=False,
                     help='enable IFPORT library (`mkdir` etc)')
 
-parser.add_argument('-mpi',
-                    action='store_true',
-                    default=False,
-                    help='enable mpi')
+mpi_group = parser.add_mutually_exclusive_group()
+mpi_group.add_argument('-mpi',
+                       action='store_true',
+                       default=False,
+                       help='enable mpi')
+mpi_group.add_argument('-mpi08',
+                       action='store_true',
+                       default=False,
+                       help='enable mpi_f08')
 
-parser.add_argument('-mpi08',
-                    action='store_true',
-                    default=False,
-                    help='enable mpi_f08')
+# user file
+user_group = parser.add_mutually_exclusive_group(required=True)
+user_group.add_argument('--user',
+                        default=None,
+                        choices=user_choices,
+                        help='select user file')
+user_group.add_argument('--unit',
+                        default=None,
+                        choices=unit_choices,
+                        help='select unit file')
 
-parser.add_argument('-intel',
+# algorithms
+parser.add_argument('--nghosts',
+                    action='store',
+                    default=3,
+                    help='specify the # of ghost cells')
+
+parser.add_argument('-extfields',
                     action='store_true',
                     default=False,
-                    help='enable intel compiler')
+                    help='apply external fields')
 
 parser.add_argument('-debug',
                     action='store_true',
@@ -72,26 +93,56 @@ parser.add_argument('-slb',
                     default=False,
                     help='enable static load balancing')
 
+# extra physics
 parser.add_argument('--radiation',
-                    default='no',
+                    default='OFF',
                     choices=rad_choices,
                     help='choose radiation mechanism')
 
-parser.add_argument('-emit', 
-                    action='store_true', 
-                    default=False, 
+parser.add_argument('-emit',
+                    action='store_true',
+                    default=False,
                     help='enable photon emission')
+
+parser.add_argument('-qed',
+                    action='store_true',
+                    default=False,
+                    help='enable QED step')
+
+parser.add_argument('-bwpp',
+                    action='store_true',
+                    default=False,
+                    help='enable Breit-Wheeler pair production')
 
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
 
 makefile_options = {}
-makefile_options['USER_FILE'] = args['user']
+
+if (args['user']):
+    makefile_options['USER_FILE'] = args['user']
+    makefile_options['USER_DIR'] = user_directory
+else:
+    makefile_options['USER_FILE'] = args['unit']
+    makefile_options['USER_DIR'] = unit_directory
 
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
+
+# specific cluster:
+specific_cluster = False
+if args['perseus']:
+    specific_cluster = True
+    args['intel'] = True
+    args['mpi08'] = True
+    args['mpi'] = False
+    args['ifport'] = True
+    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 -qopt-streaming-stores auto '
+
+if args['extfields']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '
 
 if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
@@ -111,11 +162,11 @@ if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 if args['debug'] and args['intel']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-    makefile_options['COMPILER_FLAGS'] += '-traceback -qopenmp-simd -qopt-report=5 '
+    makefile_options['COMPILER_FLAGS'] += '-traceback '
 
 if args['intel']:
     makefile_options['MODULE'] = '-module '
-    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo '
+    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 '
 else:
     makefile_options['MODULE'] = '-J '
 
@@ -133,37 +184,62 @@ if args['slb']:
     args['alb'] = False
     makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
-if args['radiation'] != 'no':
+# extra physics
+if args['radiation'] != 'OFF':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
 
 if 'sync' in args['radiation']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCRAD '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCHROTRON '
 if 'ic' in args['radiation']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DICRAD '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DINVERSECOMPTON '
 
-if args['emit'] and args['radiation'] != 'no':
+if args['emit'] and (args['radiation'] != 'OFF'):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
+
+if args['qed']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DQED '
+
+if args['bwpp']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
-  makefile_template = current_file.read()
+    makefile_template = current_file.read()
 for key,val in makefile_options.items():
-  makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
+    makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
 with open(makefile_output, 'w') as current_file:
-  current_file.write(makefile_template)
+    current_file.write(makefile_template)
 
 # Finish with diagnostic output
+print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
-print('  Userfile:                ' + args['user'])
+if (specific_cluster):
+    if (args['perseus']):
+        print('  Cluster configurations:  `Perseus`' )
+
+print('SETUP ........................................................................')
+print('  Userfile:                ' + makefile_options['USER_FILE'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
+print('  # of ghost zones:        ' + str(args['nghosts']))
+print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+
+print('PHYSICS ......................................................................')
+print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
 print('  Cooling:                 ' + args['radiation'])
 print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
-print('  # of ghost zones:        ' + str(args['nghosts']))
+print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
+print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
+
+print('TECHNICAL ....................................................................')
+
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
-print('  IFPORT mkdir:            ' + ('ON' if args['ifport'] else 'OFF'))
-print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
+print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
+
+print('==============================================================================')
+
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] \
     + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'])

@@ -9,7 +9,7 @@ module m_filtering
   use m_exchangefields
   use m_exchangecurrents
 
-  !--- PRIVATE functions -----------------------------------------!
+  !--- PRIVATE variables/functions -------------------------------!
   private :: filterInX, filterInY, filterInAll
   #ifdef threeD
     private :: filterInZ

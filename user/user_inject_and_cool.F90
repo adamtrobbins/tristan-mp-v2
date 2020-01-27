@@ -14,8 +14,10 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: plaw_ind, plaw_gmin, plaw_gmax
-  private   :: plaw_ind, plaw_gmin, plaw_gmax
+  real      :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
+  private   :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
+  logical   :: perp_only
+  private   :: perp_only
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -37,6 +39,12 @@ contains
     call getInput('problem', 'plaw_ind', plaw_ind)
     call getInput('problem', 'plaw_gmin', plaw_gmin)
     call getInput('problem', 'plaw_gmax', plaw_gmax)
+    call getInput('problem', 'inject_rate', inject_rate)
+    call getInput('problem', 'perp_only', perp_only, .false.)
+    n_inject = 0.0
+    ! convert injection rate normalized to n0*omega_p to
+    ! tristan units:
+    inject_rate = inject_rate * ppc0 * CC / c_omp
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -74,7 +82,7 @@ contains
 
     call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
                                     & plaw_gmin, plaw_gmax, plaw_ind,&
-                                    & init_2dQ = .true.)
+                                    & init_2dQ = perp_only)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -119,10 +127,32 @@ contains
   end subroutine userExternalFields
   !............................................................!
 
-  !--- boundaries ---------------------------------------------!
+  !--- boundaries (used here to inject particles over whole domain) ---!
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
+    type(region)        :: back_region
+    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    spat_distr_ptr => userSpatialDistribution
+
+    n_inject = n_inject + 0.5 * inject_rate
+
+    ! check if injection threshold is met (if not postpone injection): 
+    if ( n_inject .gt. 0.2 ) then
+
+            back_region%x_min = 0.0
+            back_region%y_min = 0.0
+            back_region%x_max = REAL(global_mesh%sx)
+            back_region%y_max = REAL(global_mesh%sy)
+
+            call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, n_inject,&
+                                            & plaw_gmin, plaw_gmax, plaw_ind,&
+                                            & init_2dQ = perp_only)
+            ! reset injection density counter:
+            n_inject = 0.0
+
+    endif
+
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step)

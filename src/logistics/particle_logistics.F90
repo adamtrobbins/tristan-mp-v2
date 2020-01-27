@@ -3,6 +3,7 @@
 module m_particlelogistics
   use m_globalnamespace
   use m_aux
+  use m_helpers
   use m_errors
   use m_domain
   use m_particles
@@ -50,9 +51,6 @@ contains
     ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
     tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
     tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
-    ! ti = MAX(1, INT(CEILING((REAL(xi, 8) + REAL(dx, 8)) / REAL(species(s)%tile_sx, 8))))
-    ! tj = MAX(1, INT(CEILING((REAL(yi, 8) + REAL(dy, 8)) / REAL(species(s)%tile_sy, 8))))
-    !tk = MAX(1, INT(CEILING((REAL(zi, 8) + REAL(dz, 8)) / REAL(species(s)%tile_sz, 8))))
     #ifdef DEBUG
       if ((ti .gt. species(s)%tile_nx) .or. &
         & (tj .gt. species(s)%tile_ny) .or. &
@@ -157,7 +155,6 @@ contains
         end do
       end do
     end do
-
   end subroutine checkTileSizes
 
   subroutine reallocTileSize(tile, increase_flag)
@@ -269,4 +266,33 @@ contains
     end do ! s
     call printDiag((mpi_rank .eq. 0), "clearGhostParticles()", .true.)
   end subroutine clearGhostParticles
+
+  subroutine injectParticleGlobally(s, x_glob, y_glob, z_glob, u, v, w)
+    implicit none
+    integer, intent(in) :: s
+    real, intent(in)    :: x_glob, y_glob, z_glob
+    real, intent(in)    :: u, v, w
+    real                :: x_loc, y_loc, z_loc
+    real                :: dx_, dy_, dz_
+    integer(kind=2)     :: xi_, yi_, zi_
+
+    ! convert local to global
+    call globalToLocalCoords(x_glob, y_glob, z_glob,&
+                           & x_loc, y_loc, z_loc)
+
+    x_loc = x_loc + TINYXYZ
+    y_loc = y_loc + TINYXYZ
+    z_loc = z_loc + TINYXYZ
+    ! check if the coordinate is within the current MPI domain
+    if ((x_loc .ge. 0.0) .and. (x_loc .lt. REAL(this_meshblock%ptr%sx)) .and.&
+      & (y_loc .ge. 0.0) .and. (y_loc .lt. REAL(this_meshblock%ptr%sy)) .and.&
+      & (z_loc .ge. 0.0) .and. (z_loc .lt. REAL(this_meshblock%ptr%sz))) then
+      ! transform coordinates
+      xi_ = INT(FLOOR(x_loc), 2); dx_ = x_loc - FLOOR(x_loc)
+      yi_ = INT(FLOOR(y_loc), 2); dy_ = y_loc - FLOOR(y_loc)
+      zi_ = INT(FLOOR(z_loc), 2); dz_ = z_loc - FLOOR(z_loc)
+
+      call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w)
+    end if
+  end subroutine
 end module m_particlelogistics

@@ -12,7 +12,7 @@ PFLAGS := @PREPROCESSOR_FLAGS@
 
 # Preliminary definitions
 EXE_DIR := exec/
-USR_DIR := user/
+USR_DIR := @USER_DIR@
 SRC_DIR := src/
 PREC_SRC_DIR := src_/
 EXE_FILE := @EXE_NAME@
@@ -27,13 +27,16 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)tools/helpers.F90 \
              $(SRC_DIR)logistics/finalize.F90 \
              $(SRC_DIR)tools/error_handling.F90 \
+						 $(SRC_DIR)tools/binary_coupling.F90 \
              $(SRC_DIR)logistics/particle_logistics.F90 \
              $(SRC_DIR)load_balancing/static_lb.F90 \
              $(SRC_DIR)load_balancing/adaptive_lb.F90 \
              $(SRC_DIR)load_balancing/loadbalancing.F90 \
+						 $(SRC_DIR)physics/bw_pp.F90 \
              $(SRC_DIR)physics/radiation.F90 \
              $(SRC_DIR)physics/thermal_plasma.F90 \
              $(SRC_DIR)physics/powerlaw_plasma.F90 \
+						 $(SRC_DIR)physics/qed_physics.F90 \
              $(SRC_DIR)logistics/exchange_particles.F90 \
              $(SRC_DIR)logistics/exchange_fields.F90 \
              $(SRC_DIR)logistics/exchange_currents.F90 \
@@ -50,7 +53,11 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)tristanmainloop.F90 \
              $(SRC_DIR)tristan.F90
 
+INCL_FILES := $(SRC_DIR)tools/interp_efield.F90 \
+							$(SRC_DIR)tools/interp_bfield.F90
+
 PREC_SRC_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(SRC_FILES:.F90=_.F90)))
+PREC_INCL_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(INCL_FILES:.F90=.F90)))
 
 OBJ_DIR := obj/
 OBJ_FILES := $(addprefix $(OBJ_DIR), $(notdir $(PREC_SRC_FILES:.F90=.o)))
@@ -65,6 +72,7 @@ dirs:
 
 precomp:
 	$(foreach fl, $(SRC_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=_.F90)));)
+	$(foreach fl, $(INCL_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=.F90)));)
 
 $(EXECUTABLE):$(OBJ_FILES)
 	$(FC) $(FFLAGS) $(PFLAGS) -o $@ $(OBJ_FILES)

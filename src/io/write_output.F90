@@ -10,9 +10,18 @@ module m_writeoutput
   use m_domain
   use m_particles
   use m_fields
-  use m_radiation
   use m_helpers
   use m_exchangearray
+
+  ! extra physics
+  #ifdef RADIATION
+    use m_radiation
+  #endif
+
+  #ifdef BWPAIRPRODUCTION
+    use m_bwpairproduction
+  #endif
+
   implicit none
 
   integer                 :: output_start, output_interval, output_stride, output_istep
@@ -135,8 +144,6 @@ contains
      do ti = 1, species(s)%tile_nx
        do tj = 1, species(s)%tile_ny
          do tk = 1, species(s)%tile_nz
-           ! !$omp simd
-           ! !dir$ vector aligned
            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
@@ -165,19 +172,21 @@ contains
 
     ! send to root rank
     do s = 1, nspec
-     send_spec_int(:) = spectra(s,:)
-     call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
-                   & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-     glob_spectra(s,:) = recv_spec_int(:)
+      send_spec_int(:) = spectra(s,:)
+      call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
+                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+      glob_spectra(s,:) = recv_spec_int(:)
 
-     ! compute radiation spectra
-     if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
-       send_spec_real(:) = rad_spectra(s,:)
-       call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
-                     & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-       glob_rad_spectra(s,:) = recv_spec_real(:)
-       rad_spectra(s,:) = 0.0
-      end if
+      #ifdef RADIATION
+        ! compute radiation spectra
+        if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+          send_spec_real(:) = rad_spectra(s,:)
+          call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
+                        & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+          glob_rad_spectra(s,:) = recv_spec_real(:)
+          rad_spectra(s,:) = 0.0
+        end if
+      #endif
     end do
 
     if (allocated(spectra)) deallocate(spectra)
@@ -479,8 +488,6 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            !$omp simd
-            !dir$ vector aligned
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
                 npart_stride(s) = npart_stride(s) + 1
@@ -524,8 +531,6 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            !$omp simd
-            !dir$ vector aligned
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
                 stride_indices_arr(j) = p
@@ -762,26 +767,28 @@ contains
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
 
-        if (allocated(glob_rad_spectra)) then
-          ! writing bins:
-          dsetname = 'er' // trim(STR(s))
-          call h5screate_simple_f(datarank, data_dims, dspace_id, error)
-          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
-                         & dset_id, error)
-          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
-          call h5dclose_f(dset_id, error)
-          call h5sclose_f(dspace_id, error)
+        #ifdef RADIATION
+          if (allocated(glob_rad_spectra)) then
+            ! writing bins:
+            dsetname = 'er' // trim(STR(s))
+            call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+            call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                           & dset_id, error)
+            call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, data_dims, error)
+            call h5dclose_f(dset_id, error)
+            call h5sclose_f(dspace_id, error)
 
-          ! writing spectra:
-          dsetname = 'nr' // trim(STR(s))
-          call h5screate_simple_f(datarank, data_dims, dspace_id, error)
-          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
-                         & dset_id, error)
-          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(s,:), data_dims, error)
-          call h5dclose_f(dset_id, error)
-          call h5sclose_f(dspace_id, error)
-          glob_rad_spectra(s,:) = 0.0
-        end if
+            ! writing spectra:
+            dsetname = 'nr' // trim(STR(s))
+            call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+            call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                           & dset_id, error)
+            call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(s,:), data_dims, error)
+            call h5dclose_f(dset_id, error)
+            call h5sclose_f(dspace_id, error)
+            glob_rad_spectra(s,:) = 0.0
+          end if
+        #endif
       end do
 
       ! Close the file

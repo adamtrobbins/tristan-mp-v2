@@ -57,10 +57,10 @@ def getDomains(fname):
 
 def parseReport(fname, nsteps = None, skip = 1):
     if (not nsteps):
-        nsteps = 1e100
+        nsteps = 1e6
     import re
     def parseBlock(block, data, isfirst = False):
-        for line in block.split('\n')[1:]:
+        for line in block.split('\n')[2:]:
             routine = line.split(':', 1)[0].strip()
             if (routine != ''):
                 line1 = line.split(':', 1)[1]
@@ -83,14 +83,15 @@ def parseReport(fname, nsteps = None, skip = 1):
         isfirst = True
         ni = 0
         while line and (ni < nsteps):
-            while (line.strip() != '-------------------------------------------------------------------'):
+
+            while (line.strip()[0:10] != '-'*10) and line:
                 line = file.readline()
             block = ""
             line = file.readline()
-            while (line.strip() != '...................................................................'):
+            while (line.strip()[0:10] != '.'*10) and line:
                 block += line
                 line = file.readline()
-            if (ni % skip == 0):
+            if (ni % skip == 0) and line:
                 parseBlock(block, data, isfirst = isfirst)
                 isfirst = False
                 data['t'] = np.append(data['t'], [ni])
@@ -102,7 +103,7 @@ def plot2DField(ax, x, y, field, rotate=False,
                 title='field', cmap='jet',
                 vmin=None, vmax=None,
                 scale='lin', region=[-np.inf, np.inf, -np.inf, np.inf],
-                cbar = True,
+                cbar = '2%', cbar_pad=0.05,
                 **kwargs):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
@@ -124,7 +125,7 @@ def plot2DField(ax, x, y, field, rotate=False,
     if not vmax:
         vmax = field.max()
     if scale == 'lin':
-      norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax) 
+      norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     elif scale == 'log':
       vmax = max(vmax, 1e-10)
       norm = mpl.colors.LogNorm(vmin=max(vmin, vmax/1e10), vmax=vmax)
@@ -134,7 +135,7 @@ def plot2DField(ax, x, y, field, rotate=False,
                                  linthresh=kwargs['lth'],
                                  linscale=kwargs['lsc'])
 
-    im = ax.imshow(field, norm=norm, 
+    im = ax.imshow(field, norm=norm,
                    cmap=cmap, origin='lower',
                    extent=(x.min(), x.max(), y.min(), y.max()))
 
@@ -146,21 +147,20 @@ def plot2DField(ax, x, y, field, rotate=False,
         ax.set_ylabel(kwargs['ylabel'])
     else:
         ax.set_ylabel('y' if not rotate else 'x')
-    if cbar:
+    if cbar is not None:
         divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="2%", pad=0.05)
+        cax = divider.append_axes("right", size=cbar, pad=cbar_pad)
         plt.colorbar(im, cax=cax)
     ax.set_title(title)
 
-def plot2DScatterParticles(ax, sx, sy, x_list, y_list,
+
+def plot2DScatterParticles(ax, x_list, y_list,
                            label='particles', legend=True,
                            color='black', **kwargs):
-    ax.scatter(x_list, y_list, c=color, label=label)
+    ax.scatter(x_list, y_list, c=color, label=label, **kwargs)
     ax.set_aspect(1)
     if legend:
         ax.legend()
-    ax.set_xlim(0, sx - 1)
-    ax.set_ylim(0, sy - 1)
 
 def plot2DDomains(ax, domain_data,
                   color='red', **kwargs):

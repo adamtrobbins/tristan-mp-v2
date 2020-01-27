@@ -53,7 +53,7 @@ contains
           cntr = cntr + 1
 
           mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-          mpi_sendtag = 100 * (mpi_rank + 1) + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+          mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
 
           ! highlight the region to send and save to `send_fld`
           if (.not. fill_ghosts) then
@@ -157,7 +157,7 @@ contains
             end if
 
             mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-            mpi_recvtag = 100 * (mpi_recvfrom + 1) + (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
+            mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
 
             if (.not. mpi_recvflags(cntr)) then
               quit_loop = .false.

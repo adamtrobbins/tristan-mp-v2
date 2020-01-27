@@ -7,8 +7,13 @@ module m_mover
   use m_domain
   use m_particles
   use m_fields
-  use m_radiation
-  use m_userfile 
+  use m_userfile
+
+  ! extra physics
+  #ifdef RADIATION
+    use m_radiation
+  #endif
+
   implicit none
 contains
   subroutine moveParticles()
@@ -25,7 +30,13 @@ contains
     logical                               :: dummy_flag
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
-    
+    real                                  :: c000, c100, c001, c101, c010, c110, c011, c111,&
+                                           & c00, c01, c10, c11, c0, c1
+    integer                               :: iy, iz, lind
+
+    iy = this_meshblock%ptr%sx + 2 * NGHOST
+    iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
+
     #ifdef RADIATION
       dummy_flag = .true.
       do s = 1, nspec
@@ -60,8 +71,8 @@ contains
                 cycle
               end if
               ! routine for massless particles
-              ! !$omp simd
-              ! !dir$ vector aligned
+              !$omp simd private(over_e_temp, temp_r, temp_i)
+              !dir$ vector aligned
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                 ! move particle
                 over_e_temp = 1.0 / sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -92,18 +103,31 @@ contains
             else
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
-              ! !$omp simd
-              ! !dir$ vector aligned
+              #if !defined(RADIATION) && !defined(EXTERNALFIELDS)
+              !$omp simd private(lind, dummy_, g_temp, over_g_temp,&
+              !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
+              !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
+              !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
+              !$omp  c00, c01, c10, c11, c0, c1)
+              !dir$ vector aligned
+              #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & ex, ey, ez, ex0, ey0, ez0)
-                call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
-                                   & pt_xi(p), pt_yi(p), pt_zi(p),&
-                                   & bx, by, bz, bx0, by0, bz0)
-                
-                if (external_fields) then
+                #ifndef threeD
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
+                #else
+                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
+                #endif
+                include "interp_efield.F90"
+                include "interp_bfield.F90"
+                ! call interpFromEdges(pt_dx(p), pt_dy(p), pt_dz(p),&
+                !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
+                !                    & ex, ey, ez, ex0, ey0, ez0)
+                ! call interpFromFaces(pt_dx(p), pt_dy(p), pt_dz(p),&
+                !                    & pt_xi(p), pt_yi(p), pt_zi(p),&
+                !                    & bx, by, bz, bx0, by0, bz0)
+
+                #ifdef EXTERNALFIELDS
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&
                                         & REAL(pt_yi(p)) + pt_dy(p),&
                                         & REAL(pt_zi(p)) + pt_dz(p),&
@@ -111,11 +135,11 @@ contains
                                         & bx_ext, by_ext, bz_ext)
                   ex0 = ex0 + ex_ext; ey0 = ey0 + ey_ext; ez0 = ez0 + ez_ext
                   bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
-                end if
-                
+                #endif
+
                 #ifdef RADIATION
-                  ex_rad = ex0; ey_rad = ey0; ez_rad = ez0 
-                  bx_rad = bx0; by_rad = by0; bz_rad = bz0 
+                  ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
+                  bx_rad = bx0; by_rad = by0; bz_rad = bz0
 
                   u_init = pt_u(p)
                   v_init = pt_v(p)
@@ -132,7 +156,7 @@ contains
                 u0 = CC * pt_u(p) + ex0
                 v0 = CC * pt_v(p) + ey0
                 w0 = CC * pt_w(p) + ez0
-                
+
                 ! first half magnetic rotation:
                 g_temp = CC / sqrt(CC**2 + u0**2 + v0**2 + w0**2)
 
@@ -144,27 +168,37 @@ contains
                 v1 = (v0 + w0 * bx0 - u0 * bz0) * dummy_
                 w1 = (w0 + u0 * by0 - v0 * bx0) * dummy_
                 ! second half magnetic rotation + half acceleration:
-                
+
                 u0 = u0 + v1 * bz0 - w1 * by0 + ex0
                 v0 = v0 + w1 * bx0 - u1 * bz0 + ey0
                 w0 = w0 + u1 * by0 - v1 * bx0 + ez0
                 ! </ BORIS PUSHER
-                
+
                 pt_u(p) = u0 * CCINV
                 pt_v(p) = v0 * CCINV
                 pt_w(p) = w0 * CCINV
 
                 ! RADIATION >
                 #ifdef RADIATION
-                  if (species(s)%cool_sp) then
-                    call particleRadiate(s,&
-                                       & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                       & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                       & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
-                  end if
+                  #ifdef SYNCHROTRON
+                    if (species(s)%cool_sp) then
+                     call particleRadiateSync(s,&
+                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
+                                            & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
+                                            & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                    end if
+                  #endif
+                  #ifdef INVERSECOMPTON
+                    if (species(s)%cool_sp) then
+                     call particleRadiateIC(s,&
+                                          & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
+                                          & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
+                                          & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                    end if
+                  #endif
                 #endif
                 ! </ RADIATION
-                
+
                 ! move particle
                 g_temp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
                 over_g_temp = 1.0 / g_temp
@@ -201,5 +235,6 @@ contains
       end do ! ti
     end do ! species
     call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
+
   end subroutine moveParticles
 end module m_mover

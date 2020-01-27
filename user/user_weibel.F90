@@ -11,8 +11,11 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-  !--- PRIVATE variables -----------------------------------------!
+  procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
+  !--- PRIVATE variables -----------------------------------------!
+  real      :: backgr_T, shift_beta
+  private   :: backgr_T, shift_beta
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -25,11 +28,14 @@ contains
     call userReadInput()
     call userInitParticles()
     call userInitFields()
+    user_slb_load_ptr => userSLBload
   end subroutine userInitialize
 
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    call getInput('problem', 'backgr_T', backgr_T)
+    call getInput('problem', 'shift_beta', shift_beta)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -41,12 +47,23 @@ contains
     return
   end function
 
+  function userSLBload(x_glob, y_glob, z_glob,&
+                     & dummy1, dummy2, dummy3)
+    real :: userSLBload
+    ! global coordinates
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    ! global box dimensions
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    return
+  end function
+
   subroutine userInitParticles()
     implicit none
-    real              :: sx_glob, sy_glob, sz_glob
+    real              :: shift_gamma, nUP, sx_glob, sy_glob, sz_glob
     type(region)      :: back_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
+    nUP = 0.25 * ppc0
 
     sx_glob = REAL(global_mesh%sx)
     sy_glob = REAL(global_mesh%sy)
@@ -61,86 +78,32 @@ contains
       back_region%z_max = sz_glob
     #endif
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, 0.5*ppc0, 0.1)
+    shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
+
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, backgr_T,&
+                                   & shift_gamma = shift_gamma, shift_dir = 1)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, backgr_T,&
+                                   & shift_gamma = shift_gamma, shift_dir = -1)
   end subroutine userInitParticles
 
   subroutine userInitFields()
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    real :: kx, ky, kz
-    real :: ex_norm, ey_norm, ez_norm, exyz_norm
-    real :: bx_norm, by_norm, bz_norm, bxyz_norm
-
-    ex(:,:,:) = -1; ey(:,:,:) = -1; ez(:,:,:) = -1
-    bx(:,:,:) = -1; by(:,:,:) = -1; bz(:,:,:) = -1
-
-    #ifndef threeD
-      kx = 5; ky = 2
-      kx = kx * 2 * M_PI / global_mesh%sx
-      ky = ky * 2 * M_PI / global_mesh%sy
-      if (ky .ne. 0) then
-        ex_norm = 1; ey_norm = (-kx / ky)
-      else
-        ey_norm = 1; ex_norm = (-ky / kx)
-      end if
-      exyz_norm = sqrt(ex_norm**2 + ey_norm**2)
-      ex_norm = ex_norm / exyz_norm
-      ey_norm = ey_norm / exyz_norm
-
-      do i = 0, this_meshblock%ptr%sx - 1
-        i_glob = i + this_meshblock%ptr%x0
-        do j = 0, this_meshblock%ptr%sy - 1
-          j_glob = j + this_meshblock%ptr%y0
-          do k = 0, this_meshblock%ptr%sz - 1
-            k_glob = k + this_meshblock%ptr%z0
-            ex(i, j, k) = ex_norm * sin((i_glob) * kx + (j_glob - 0.5) * ky)
-            ey(i, j, k) = ey_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky)
-            ez(i, j, k) = 0
-            bx(i, j, k) = 0
-            by(i, j, k) = 0
-            bz(i, j, k) = sin((i_glob) * kx + (j_glob) * ky)
-          end do
-        end do
-      end do
-
-    #else
-
-      kx = 5; ky = 2; kz = 2
-      kx = kx * 2 * M_PI / global_mesh%sx
-      ky = ky * 2 * M_PI / global_mesh%sy
-      kz = kz * 2 * M_PI / global_mesh%sz
-
-      ex_norm = 0; ey_norm = 2; ez_norm = -2;
-      bx_norm = -8; by_norm = 10; bz_norm = 10;
-
-      exyz_norm = sqrt(ex_norm**2 + ey_norm**2 + ez_norm**2)
-      ex_norm = ex_norm / exyz_norm
-      ey_norm = ey_norm / exyz_norm
-      ez_norm = ez_norm / exyz_norm
-
-      bxyz_norm = sqrt(bx_norm**2 + by_norm**2 + bz_norm**2)
-      bx_norm = bx_norm / bxyz_norm
-      by_norm = by_norm / bxyz_norm
-      bz_norm = bz_norm / bxyz_norm
-
-      do i = 0, this_meshblock%ptr%sx - 1
-        i_glob = i + this_meshblock%ptr%x0
-        do j = 0, this_meshblock%ptr%sy - 1
-          j_glob = j + this_meshblock%ptr%y0
-          do k = 0, this_meshblock%ptr%sz - 1
-            k_glob = k + this_meshblock%ptr%z0
-            ex(i, j, k) = ex_norm * sin((i_glob) * kx       + (j_glob - 0.5) * ky + (k_glob - 0.5) * kz)
-            ey(i, j, k) = ey_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky       + (k_glob - 0.5) * kz)
-            ez(i, j, k) = ez_norm * sin((i_glob - 0.5) * kx + (j_glob - 0.5) * ky + (k_glob) * kz)
-            bx(i, j, k) = bx_norm * sin((i_glob - 0.5) * kx + (j_glob) * ky       + (k_glob) * kz)
-            by(i, j, k) = by_norm * sin((i_glob) * kx       + (j_glob - 0.5) * ky + (k_glob) * kz)
-            bz(i, j, k) = bz_norm * sin((i_glob) * kx       + (j_glob) * ky       + (k_glob - 0.5) * kz)
-          end do
-        end do
-      end do
-
-    #endif
+    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
+    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ! ... dummy loop ...
+    ! do i = 0, this_meshblock%ptr%sx - 1
+    !   i_glob = i + this_meshblock%ptr%x0
+    !   do j = 0, this_meshblock%ptr%sy - 1
+    !     j_glob = j + this_meshblock%ptr%y0
+    !     do k = 0, this_meshblock%ptr%sz - 1
+    !       k_glob = k + this_meshblock%ptr%z0
+    !       ...
+    !     end do
+    !   end do
+    ! end do
   end subroutine userInitFields
   !............................................................!
 
@@ -162,6 +125,18 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+
+  subroutine userExternalFields(xp, yp, zp,&
+                              & ex_ext, ey_ext, ez_ext,&
+                              & bx_ext, by_ext, bz_ext)
+    implicit none
+    real, intent(in)  :: xp, yp, zp
+    real, intent(out) :: ex_ext, ey_ext, ez_ext
+    real, intent(out) :: bx_ext, by_ext, bz_ext
+    ! some functions of xp, yp, zp
+    ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
+    bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
+  end subroutine userExternalFields
   !............................................................!
 
   !--- boundaries ---------------------------------------------!

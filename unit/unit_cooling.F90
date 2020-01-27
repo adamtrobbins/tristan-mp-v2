@@ -7,15 +7,14 @@ module m_userfile
   use m_domain
   use m_particles
   use m_fields
-  use m_powerlawplasma
+  use m_thermalplasma
   use m_particlelogistics
   implicit none
 
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: plaw_ind, plaw_gmin, plaw_gmax
-  private   :: plaw_ind, plaw_gmin, plaw_gmax
+
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -34,9 +33,6 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'plaw_ind', plaw_ind)
-    call getInput('problem', 'plaw_gmin', plaw_gmin)
-    call getInput('problem', 'plaw_gmax', plaw_gmax)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -60,21 +56,9 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real                :: nUP
-    type(region)        :: back_region
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-
-    nUP = 0.5 * ppc0
-
-    back_region%x_min = 0.0
-    back_region%y_min = 0.0
-    back_region%x_max = REAL(global_mesh%sx)
-    back_region%y_max = REAL(global_mesh%sy)
-
-    call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
-                                    & plaw_gmin, plaw_gmax, plaw_ind,&
-                                    & init_2dQ = .true.)
+    call injectParticleGlobally(1, 50.0, 50.0, 0.5, 7.8, -5.3, -2.2)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -82,8 +66,19 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ! ... dummy loop ...
+    ! do i = 0, this_meshblock%ptr%sx - 1
+    !   i_glob = i + this_meshblock%ptr%x0
+    !   do j = 0, this_meshblock%ptr%sy - 1
+    !     j_glob = j + this_meshblock%ptr%y0
+    !     do k = 0, this_meshblock%ptr%sz - 1
+    !       k_glob = k + this_meshblock%ptr%z0
+    !       ...
+    !     end do
+    !   end do
+    ! end do
   end subroutine userInitFields
   !............................................................!
 

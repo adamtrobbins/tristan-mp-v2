@@ -7,15 +7,13 @@ module m_userfile
   use m_domain
   use m_particles
   use m_fields
-  use m_powerlawplasma
+  use m_thermalplasma
   use m_particlelogistics
   implicit none
 
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: plaw_ind, plaw_gmin, plaw_gmax
-  private   :: plaw_ind, plaw_gmin, plaw_gmax
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -34,9 +32,6 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'plaw_ind', plaw_ind)
-    call getInput('problem', 'plaw_gmin', plaw_gmin)
-    call getInput('problem', 'plaw_gmax', plaw_gmax)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -72,9 +67,7 @@ contains
     back_region%x_max = REAL(global_mesh%sx)
     back_region%y_max = REAL(global_mesh%sy)
 
-    call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
-                                    & plaw_gmin, plaw_gmax, plaw_ind,&
-                                    & init_2dQ = .true.)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, 0.1)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -82,7 +75,7 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
   end subroutine userInitFields
   !............................................................!

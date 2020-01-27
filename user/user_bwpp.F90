@@ -1,8 +1,14 @@
 #include "../src/defs.F90"
 
+! Configuration for this userfile:
+! ```
+!   $ python configure.py --nghosts=5 --user=user_two_bulbs -qed -bwpp
+! ```
+
 module m_userfile
   use m_globalnamespace
   use m_aux
+  use m_helpers
   use m_readinput
   use m_domain
   use m_particles
@@ -14,7 +20,9 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
+  real      :: ph_energy_1, ph_energy_2
 
+  private   :: ph_energy_1, ph_energy_2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -33,6 +41,8 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    call getInput('problem', 'ph_e1', ph_energy_1)
+    call getInput('problem', 'ph_e2', ph_energy_2)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -56,13 +66,38 @@ contains
 
   subroutine userInitParticles()
     implicit none
+    real            :: xg, yg, zg, kx, ky, kz, U_, TH_
+    integer         :: ntot, n
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-    if (mpi_rank .eq. 0) then
-      call createParticle(1, 20, 20, 0,&
-                           & 0.3, 0.5, 0.5,&
-                           & 2.0, 0.0, 2.0)
-    end if
+
+    ntot = (global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0) / 2
+
+    do n = 1, ntot
+      xg = random(dseed) * (global_mesh%sx)
+      yg = random(dseed) * (global_mesh%sy)
+      zg = random(dseed) * (global_mesh%sz)
+
+      U_ = 2 * (random(dseed) - 0.5)
+      TH_ = 2 * M_PI * random(dseed)
+      kx = ph_energy_1 * sqrt(1 - U_**2) * cos(TH_)
+      ky = ph_energy_1 * sqrt(1 - U_**2) * sin(TH_)
+      kz = ph_energy_1 * U_
+      call injectParticleGlobally(1, xg, yg, zg, kx, ky, kz)
+    end do
+
+    do n = 1, ntot
+      xg = random(dseed) * (global_mesh%sx)
+      yg = random(dseed) * (global_mesh%sy)
+      zg = random(dseed) * (global_mesh%sz)
+
+      U_ = 2 * (random(dseed) - 0.5)
+      TH_ = 2 * M_PI * random(dseed)
+      kx = ph_energy_2 * sqrt(1 - U_**2) * cos(TH_)
+      ky = ph_energy_2 * sqrt(1 - U_**2) * sin(TH_)
+      kz = ph_energy_2 * U_
+      call injectParticleGlobally(2, xg, yg, zg, kx, ky, kz)
+    end do
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -70,7 +105,7 @@ contains
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
@@ -104,12 +139,31 @@ contains
     !   end do
     ! end do
   end subroutine userDriveParticles
+
+  subroutine userExternalFields(xp, yp, zp,&
+                              & ex_ext, ey_ext, ez_ext,&
+                              & bx_ext, by_ext, bz_ext)
+    implicit none
+    real, intent(in)  :: xp, yp, zp
+    real, intent(out) :: ex_ext, ey_ext, ez_ext
+    real, intent(out) :: bx_ext, by_ext, bz_ext
+    ! some functions of xp, yp, zp
+    ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
+    bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
+  end subroutine userExternalFields
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
+    integer                       :: i
+    real                          :: thet, rnd, u_, v_, w_
+    real                          :: x1_g, y1_g, x2_g, y2_g
+    real                          :: x1_l, y1_l, x2_l, y2_l
+    real                          :: dx_, dy_, dz_, x_, y_
+    integer(kind=2)               :: xi_, yi_, zi_
+
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step)
