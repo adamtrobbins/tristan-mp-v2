@@ -238,6 +238,7 @@ contains
     implicit none
     integer, intent(in)               :: spec_id, prtl_id, ti, tj, tk
     type(prtl_enroute), intent(inout) :: enroute
+    enroute%weight = species(spec_id)%prtl_tile(ti, tj, tk)%weight(prtl_id)
     enroute%xi = species(spec_id)%prtl_tile(ti, tj, tk)%xi(prtl_id)
     enroute%yi = species(spec_id)%prtl_tile(ti, tj, tk)%yi(prtl_id)
     enroute%zi = species(spec_id)%prtl_tile(ti, tj, tk)%zi(prtl_id)
@@ -259,7 +260,7 @@ contains
     call createParticle(spec_id, enroute%xi, enroute%yi, enroute%zi, &
                                & enroute%dx, enroute%dy, enroute%dz, &
                                & enroute%u, enroute%v, enroute%w, &
-                               & enroute%ind, enroute%proc)
+                               & enroute%ind, enroute%proc, enroute%weight)
   end subroutine copyFromEnroute
 
   subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
@@ -276,7 +277,8 @@ contains
                          & species(s)%prtl_tile(ti, tj, tk)%v(p),&
                          & species(s)%prtl_tile(ti, tj, tk)%w(p),&
                          & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%proc(p))
+                         & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
+                         & species(s)%prtl_tile(ti, tj, tk)%weight(p))
     ! schedule particle for deletion
     species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
   end subroutine
