@@ -82,23 +82,23 @@ contains
     real, allocatable, dimension(:)       :: send_spec_real, recv_spec_real
     ! initialize particle variables
     if (.not. flds_at_prtl) then
-      n_prtl_vars = 8
+      n_prtl_vars = 9
       prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
                                  & 'u    ', 'v    ', 'w    ',&
-                                 & 'ind  ', 'proc '/)
+                                 & 'wei  ', 'ind  ', 'proc '/)
       prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real ',&
-                                      & 'int  ', 'int  '/)
+                                      & 'int  ', 'int  ', 'int  '/)
     else
-      n_prtl_vars = 14
+      n_prtl_vars = 15
       prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
                                  & 'u    ', 'v    ', 'w    ',&
-                                 & 'ind  ', 'proc ',&
+                                 & 'wei  ', 'ind  ', 'proc ',&
                                  & 'ex   ', 'ey   ', 'ez   ',&
                                  & 'bx   ', 'by   ', 'bz   '/)
       prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real ',&
-                                      & 'int  ', 'int  ',&
+                                      & 'int  ', 'int  ', 'int  ',&
                                       & 'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real '/)
       do s = 1, nspec
@@ -163,7 +163,7 @@ contains
                if (spec_index .lt. 1) spec_index = 1
                if (spec_index .gt. spec_num) spec_index = spec_num
              end if
-             spectra(s, spec_index) = spectra(s, spec_index) + 1
+             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
            end do
          end do
        end do
@@ -565,6 +565,9 @@ contains
             tj = stride_tj_arr(j)
             tk = stride_tk_arr(j)
             select case (trim(prtl_vars(p))) ! select integer variable
+              case('wei')
+                temp_int = INT(species(s)%prtl_tile(ti, tj, tk)%weight(temp))
+                temp_int_arr(j) = temp_int
               case('ind')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
                 temp_int_arr(j) = temp_int

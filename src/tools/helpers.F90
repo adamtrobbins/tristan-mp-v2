@@ -182,11 +182,12 @@ contains
   end subroutine computeNumberOfNeighbors
 
   subroutine computeDensity(s, reset)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds
     integer :: pow
@@ -205,7 +206,7 @@ contains
           pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
           pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
           pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
-          ! FIX1 vectorize/align
+          pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
 
@@ -225,24 +226,25 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + 1.0 / (2 * ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + REAL(pt_wei(p)) / (2 * ds + 1.0)**pow
                 end do
               end do
             end do
 
           end do
-          pt_xi => null(); pt_yi => null(); pt_zi => null()
+          pt_xi => null(); pt_yi => null(); pt_zi => null(); pt_wei => null()
         end do
       end do
     end do
   end subroutine computeDensity
 
   subroutine computeEnergy(s, reset)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
     real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:)
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds
@@ -271,10 +273,10 @@ contains
           pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
           pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
           pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+          pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
           pt_u => species(s)%prtl_tile(ti, tj, tk)%u
           pt_v => species(s)%prtl_tile(ti, tj, tk)%v
           pt_w => species(s)%prtl_tile(ti, tj, tk)%w
-          ! FIX1 vectorize/align
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
             if (massive) then
@@ -299,7 +301,7 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy / (2 * ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy * REAL(pt_wei(p)) / (2 * ds + 1.0)**pow
                 end do
               end do
             end do
@@ -307,6 +309,7 @@ contains
           end do
           pt_xi => null(); pt_yi => null(); pt_zi => null()
           pt_u => null(); pt_v => null(); pt_w => null()
+          pt_wei => null()
         end do
       end do
     end do
