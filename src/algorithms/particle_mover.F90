@@ -21,7 +21,7 @@ contains
     implicit none
     integer                               :: s, p, temp_i, ti, tj, tk
     real                                  :: g_temp, over_g_temp, over_e_temp, temp_r
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
@@ -64,6 +64,8 @@ contains
             pt_u => species(s)%prtl_tile(ti, tj, tk)%u
             pt_v => species(s)%prtl_tile(ti, tj, tk)%v
             pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
             if (species(s)%m_sp .eq. 0) then
               if (species(s)%ch_sp .ne. 0) then
@@ -183,18 +185,20 @@ contains
                 #ifdef RADIATION
                   #ifdef SYNCHROTRON
                     if (species(s)%cool_sp) then
-                     call particleRadiateSync(s,&
-                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                            & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                            & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                      call particleRadiateSync(s,&
+                                             & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
+                                             & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
+                                             & pt_wei(p),&
+                                             & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
                     end if
                   #endif
                   #ifdef INVERSECOMPTON
                     if (species(s)%cool_sp) then
-                     call particleRadiateIC(s,&
-                                          & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                          & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                          & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                      call particleRadiateIC(s,&
+                                           & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
+                                           & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
+                                           & pt_wei(p),&
+                                           & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
                     end if
                   #endif
                 #endif
@@ -231,6 +235,7 @@ contains
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
             pt_u => null(); pt_v => null(); pt_w => null()
+            pt_wei => null()
           end do ! tk
         end do ! tj
       end do ! ti
