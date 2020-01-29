@@ -20,6 +20,7 @@ contains
   subroutine particleRadiateSync(s,&
                                & u0, v0, w0, ui, vi, wi,&
                                & dx, dy, dz, xi, yi, zi,&
+                               & weight,&
                                & bx, by, bz, ex, ey, ez)
     implicit none
     real, intent(inout)           :: u0, v0, w0
@@ -27,8 +28,8 @@ contains
     real, intent(in)              :: bx, by, bz, ex, ey, ez
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
+    integer(kind=2), intent(in)   :: weight
     integer, intent(in)           :: s
-    real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
 
@@ -86,7 +87,7 @@ contains
 
         if (random(dseed) .lt. tau_emit) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
-                            & kx * eph_emit, ky * eph_emit, kz * eph_emit)
+                            & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight=weight)
         end if
       #endif
 
@@ -107,6 +108,7 @@ contains
   subroutine particleRadiateIC(s,&
                              & u0, v0, w0, ui, vi, wi,&
                              & dx, dy, dz, xi, yi, zi,&
+                             & weight,&
                              & bx, by, bz, ex, ey, ez)
     implicit none
     real, intent(inout)           :: u0, v0, w0
@@ -114,8 +116,8 @@ contains
     real, intent(in)              :: bx, by, bz, ex, ey, ez
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
+    integer(kind=2), intent(in)   :: weight
     integer, intent(in)           :: s
-    real :: corr_
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
 
@@ -153,7 +155,7 @@ contains
 
         if (random(dseed) .lt. tau_emit) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
-                            & kx * eph_emit, ky * eph_emit, kz * eph_emit)
+                            & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight=weight)
         end if
       #endif
 
