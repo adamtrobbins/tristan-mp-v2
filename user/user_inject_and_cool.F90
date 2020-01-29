@@ -137,20 +137,18 @@ contains
 
     n_inject = n_inject + 0.5 * inject_rate
 
-    ! check if injection threshold is met (if not postpone injection): 
+    ! check if injection threshold is met (if not postpone injection):
     if ( n_inject .gt. 0.2 ) then
+      back_region%x_min = 0.0
+      back_region%y_min = 0.0
+      back_region%x_max = REAL(global_mesh%sx)
+      back_region%y_max = REAL(global_mesh%sy)
 
-            back_region%x_min = 0.0
-            back_region%y_min = 0.0
-            back_region%x_max = REAL(global_mesh%sx)
-            back_region%y_max = REAL(global_mesh%sy)
-
-            call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, n_inject,&
-                                            & plaw_gmin, plaw_gmax, plaw_ind,&
-                                            & init_2dQ = perp_only)
-            ! reset injection density counter:
-            n_inject = 0.0
-
+      call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, n_inject,&
+                                      & plaw_gmin, plaw_gmax, plaw_ind,&
+                                      & init_2dQ = perp_only)
+      ! reset injection density counter:
+      n_inject = 0.0
     endif
 
   end subroutine userParticleBoundaryConditions
