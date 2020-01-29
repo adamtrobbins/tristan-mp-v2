@@ -20,10 +20,10 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  integer   :: ph_ndot, inject_interval
+  integer   :: ph_ndot1, ph_ndot2, inject_interval, wei_1, wei_2
   real      :: ph_energy, del_x1, del_x2
 
-  private   :: ph_ndot, ph_energy, del_x1, del_x2
+  private   :: ph_ndot1, ph_ndot2, ph_energy, del_x1, del_x2, wei_1, wei_2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -42,10 +42,13 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'ndot', ph_ndot)
+    call getInput('problem', 'ndot1', ph_ndot1)
+    call getInput('problem', 'ndot2', ph_ndot2)
     call getInput('problem', 'energy', ph_energy)
     call getInput('problem', 'dx1', del_x1)
     call getInput('problem', 'dx2', del_x2)
+    call getInput('problem', 'wei1', wei_1)
+    call getInput('problem', 'wei2', wei_2)
     call getInput('problem', 'inj_interval', inject_interval, 100000)
   end subroutine userReadInput
 
@@ -137,14 +140,14 @@ contains
     real                          :: x1_l, y1_l, x2_l, y2_l
     real                          :: dx_, dy_, dz_, x_, y_
     integer(kind=2)               :: xi_, yi_, zi_
-    
+
     if (step .lt. inject_interval) then
       x1_g = global_mesh%sx * del_x1; y1_g = global_mesh%sy * 0.5
       x2_g = global_mesh%sx * del_x2; y2_g = global_mesh%sy * 0.5
 
       dz_ = 0.5; zi_ = 0
 
-      do i = 1, ph_ndot
+      do i = 1, ph_ndot1
         rnd = random(dseed)
         thet = M_PI * (rnd - 0.5)
         u_ = cos(thet) * ph_energy
@@ -153,9 +156,10 @@ contains
 
         x_ = x1_g + 10 * random(dseed) * cos(thet)
         y_ = y1_g + 10 * random(dseed) * sin(thet)
+        call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_, weight = wei_1)
+      end do
 
-        call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_)
-
+      do i = 1, ph_ndot2
         rnd = random(dseed)
         thet = M_PI * (rnd - 0.5)
         u_ = -cos(thet) * ph_energy
@@ -164,8 +168,7 @@ contains
 
         x_ = x2_g - 10 * random(dseed) * cos(thet)
         y_ = y2_g + 10 * random(dseed) * sin(thet)
-
-        call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
+        call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_, weight = wei_2)
       end do
     end if
   end subroutine userParticleBoundaryConditions
