@@ -207,8 +207,9 @@ makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + '
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
     makefile_template = current_file.read()
-for key,val in makefile_options.items():
+for key, val in makefile_options.items():
     makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
+makefile_template = re.sub('# Template for ', '# ', makefile_template)
 with open(makefile_output, 'w') as current_file:
     current_file.write(makefile_template)
 
