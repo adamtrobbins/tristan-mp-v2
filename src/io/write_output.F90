@@ -32,10 +32,7 @@ module m_writeoutput
 
 
   !--- PRIVATE functions -----------------------------------------!
-  #ifndef HDF5
-    private :: writeParticles_Binary, writeFields_Binary,&
-             & writeSpectra_Binary
-  #else
+  #ifdef HDF5
     private :: writeParticles_hdf5, writeFields_hdf5,&
              & writeSpectra_hdf5, writeDomain_hdf5,&
              & writeXDMF_hdf5

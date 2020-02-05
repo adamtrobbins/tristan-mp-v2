@@ -33,7 +33,7 @@ parser.add_argument('-intel',
                     help='enable intel compiler')
 parser.add_argument('-hdf5',
                     action='store_true',
-                    default=True,
+                    default=False,
                     help='enable HDF5 & use h5pfc compiler')
 
 parser.add_argument('-ifport',
@@ -139,11 +139,9 @@ if args['perseus']:
     args['mpi08'] = True
     args['mpi'] = False
     args['ifport'] = True
-    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 -qopt-streaming-stores auto '
+    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
 
-if args['extfields']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '
-
+# compilation command
 if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
     makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
@@ -152,23 +150,29 @@ else:
         makefile_options['COMPILER_COMMAND'] += 'gfortran '
     else:
         makefile_options['COMPILER_COMMAND'] += 'mpif90 '
+if args['ifport']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 
+# mpi version
 if args['mpi']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
 elif args['mpi08']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI08 '
 
+# debug
 if args['debug'] and (not args['intel']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 if args['debug'] and args['intel']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     makefile_options['COMPILER_FLAGS'] += '-traceback '
 
+# compilar (+ vectorization etc)
 if args['intel']:
     makefile_options['MODULE'] = '-module '
-    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 '
+    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -xHost -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
 else:
     makefile_options['MODULE'] = '-J '
+    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
 
 if args['3d']:
     makefile_options['EXE_NAME'] = 'tristan-mp3d'
@@ -176,8 +180,7 @@ if args['3d']:
 else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
 
-if args['ifport']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
+# load balancing
 if args['alb'] and (not args['slb']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
 if args['slb']:
@@ -185,6 +188,9 @@ if args['slb']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
 # extra physics
+if args['extfields']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '
+
 if args['radiation'] != 'OFF':
     makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
 
@@ -235,6 +241,7 @@ print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 
+print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc'))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
 print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
