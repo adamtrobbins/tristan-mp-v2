@@ -29,11 +29,19 @@ module m_particles
 
     ! extra physics properties
     #ifdef RADIATION
+      ! `true/false` - either apply cooling to species or not
       logical     :: cool_sp
     #endif
 
     #ifdef BWPAIRPRODUCTION
+      ! `0` means species does not participate in BW process
+      ! `1` and `2` would be separate BW groups
       integer     :: bw_sp
+    #endif
+
+    #ifdef DOWNSAMPLING
+    ! `true/false` - either downsample species or not
+      logical     :: dwn_sp
     #endif
   end type particle_species
 
