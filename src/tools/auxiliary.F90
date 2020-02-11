@@ -318,6 +318,38 @@ contains
     ! deallocate(seed)
   end subroutine initializeRandomSeed
 
+  subroutine log_normal(n_bins, lognorm)
+    integer, intent(in)               :: n_bins
+    real, allocatable, intent(inout)  :: lognorm(:)
+    real                              :: x, y, z, sum
+    integer                           :: i
+
+    allocate(lognorm(n_bins))
+    sum = 0.0
+    do i = 1, n_bins
+        x = random(dseed)
+        y = random(dseed)
+        z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
+        z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
+        lognorm(i) = z
+        sum = sum + z
+    end do
+    ! this ensures lognorm(max) = 1/
+    ! lognorm(1) = lognorm(1) / sum
+    ! do i = 2, n_bins
+    !     lognorm(i) = lognorm(i) / sum + lognorm(i - 1)
+    ! end do
+    ! /this ensures lognorm(max) = 1
+
+    ! this allows having lognorm(max) != 1/
+    !   in this case bins are not fixed in upper limit
+    lognorm(1) = lognorm(1) / (n_bins + 1.)
+    do i = 2, n_bins
+        lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
+    end do
+    ! /this allows having lognorm(max) != 1
+  end subroutine log_normal
+
   recursive function factorial(n) result(fact)
     implicit none
     integer             :: fact
