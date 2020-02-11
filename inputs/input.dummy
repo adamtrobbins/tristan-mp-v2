@@ -102,6 +102,16 @@
   m3            = 0
   ch3           = 0
   bw3           = 1             # turn ON/OFF BW process on these particles
+  dwn3          = 1             # enable/disable particle downsampling
+
+<downsampling>
+
+  # particle downsampling (merging) parameters
+  interval      = 10
+  angular_bins  = 5             # number of angular bins (theta/phi)
+  energy_bins   = 5             # number of log energy bins
+  energy_min    = 1e-1          # min energy of merged particle
+  energy_max    = 1e1           # max energy of merged particle
 
 <radiation>
 
