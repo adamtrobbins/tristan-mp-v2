@@ -33,13 +33,20 @@ contains
   subroutine downsampleParticles()
     implicit none
     integer :: s, ti, tj, tk
+    integer :: bin_limit
+
+    ! if # of particles on a tile is less than this limit...
+    ! ... the algorithm won't be downsampling
+    bin_limit = int(sqrt(2 * n_energy_bins * n_angular_bins**2))
 
     do s = 1, nspec
       if (species(s)%dwn_sp) then
         do ti = 1, species(s)%tile_nx
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
-              call downsampleOnTile(s, ti, tj, tk)
+              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. bin_limit) then
+                call downsampleOnTile(s, ti, tj, tk)
+              end if
             end do
           end do
         end do
@@ -67,6 +74,7 @@ contains
           npart = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
           do p_ind = 1, npart
             p = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
+            ! for testing purposes
             species(s)%prtl_tile(ti, tj, tk)%ind = p_ind + 100 * ph_b + 100**2 * e_b
           end do
         end do
