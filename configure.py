@@ -83,6 +83,11 @@ parser.add_argument('-3d',
                     default=False,
                     help='enable 3d')
 
+parser.add_argument('-dwn',
+                    action='store_true',
+                    default=False,
+                    help='enable particle downsampling')
+
 parser.add_argument('-alb',
                     action='store_true',
                     default=False,
@@ -180,7 +185,9 @@ if args['3d']:
 else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
 
-# load balancing
+# extra algorithms
+if args['dwn']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DDOWNSAMPLING '
 if args['alb'] and (not args['slb']):
     makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
 if args['slb']:
@@ -231,6 +238,7 @@ print('  Userfile:                ' + makefile_options['USER_FILE'])
 print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
