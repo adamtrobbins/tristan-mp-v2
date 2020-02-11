@@ -16,6 +16,11 @@ module m_initialize
   use m_helpers
   use m_errors
 
+  #ifdef DOWNSAMPLING
+    use m_momentumbinning
+    use m_particledownsampling
+  #endif
+
   ! extra physics
   #ifdef RADIATION
     use m_radiation
@@ -36,6 +41,10 @@ module m_initialize
            & initializeSimulation, checkEverything
   #ifdef RADIATION
     private :: initializeRadiation
+  #endif
+
+  #ifdef DOWNSAMPLING
+    private :: initializeDownsampling
   #endif
 
   #ifdef BWPAIRPRODUCTION
@@ -82,6 +91,11 @@ contains
     #ifdef RADIATION
       call initializeRadiation()
         call printDiag((mpi_rank .eq. 0), "initializeRadiation()", .true.)
+    #endif
+
+    #ifdef DOWNSAMPLING
+      call initializeDownsampling()
+        call printDiag((mpi_rank .eq. 0), "initializeDownsampling()", .true.)
     #endif
 
     #ifdef BWPAIRPRODUCTION
@@ -297,6 +311,11 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
+
+      #ifdef DOWNSAMPLING
+        write (var_name, "(A3,I1)") "dwn", s
+        call getInput('particles', var_name, species(s)%dwn_sp, .false.)
+      #endif
 
       ! extra physics properties
       #ifdef RADIATION
@@ -545,6 +564,18 @@ contains
       end if
     #endif
   end subroutine checkEverything
+
+  #ifdef DOWNSAMPLING
+    subroutine initializeDownsampling()
+      implicit none
+      call getInput('downsampling', 'interval', dwn_interval, 1)
+      call getInput('downsampling', 'angular_bins', n_angular_bins, 5)
+      call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
+      call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
+      call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
+      call initializeBinning()
+    end subroutine initializeDownsampling
+  #endif
 
   ! extra physics
   #ifdef RADIATION
