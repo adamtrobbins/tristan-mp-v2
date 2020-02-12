@@ -44,7 +44,7 @@ contains
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
               if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. bin_limit) then
-                call downsampleOnTile(s, ti, tj, tk)
+                call downsampleOnTile(species(s)%prtl_tile(ti, tj, tk))
               end if
             end do
           end do
@@ -54,21 +54,24 @@ contains
 
   end subroutine downsampleParticles
 
-  subroutine downsampleOnTile(s, ti, tj, tk)
+  subroutine downsampleOnTile(tile)
     implicit none
-    integer, intent(in)             :: s, ti, tj, tk
-    integer                         :: energy_ind, theta_ind, phi_ind
-    type(momentumBin), allocatable  :: momentum_bins(:)
-    call initializeMomentumBins(momentum_bins, species(s)%prtl_tile(ti, tj, tk)%npart_sp)
-    call binParticlesOnTile(momentum_bins, species(s)%prtl_tile(ti, tj, tk))
-    ! call downsampleBinnedParticles(s, ti, tj, tk)
+    type(particle_tile), intent(inout)  :: tile
+    integer                             :: energy_ind, theta_ind, phi_ind
+    type(momentumBin), allocatable      :: momentum_bins(:)
+
+    call initializeMomentumBins(momentum_bins, tile%npart_sp)
+    call binParticlesOnTile(momentum_bins, tile)
+    call downsampleBinnedParticles(tile)
   end subroutine downsampleOnTile
 
-  subroutine downsampleBinnedParticles(s, ti, tj, tk)
+  subroutine downsampleBinnedParticles(momentum_bins, tile)
     implicit none
-    integer, intent(in) :: s, ti, tj, tk
-    integer             :: e_b, th_b, ph_b, p_ind, p, npart
-    real                :: en, u, v, w, theta, phi
+    type(particle_tile), intent(inout)          :: tile
+    type(momentumBin), allocatable, intent(in)  :: momentum_bins(:)
+    integer, intent(in)                         :: s, ti, tj, tk
+    integer                                     :: e_b, th_b, ph_b, p_ind, p, npart
+    real                                        :: en, u, v, w, theta, phi
 
     do e_b = 0, n_energy_bins - 1
       do th_b = 0, momentum_bins(e_b)%n_theta_bins
@@ -77,11 +80,11 @@ contains
           do p_ind = 1, npart
             p = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
             ! for testing purposes
-            species(s)%prtl_tile(ti, tj, tk)%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
+            tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
             #ifdef DEBUG
-              u = species(s)%prtl_tile(ti, tj, tk)%u(p)
-              v = species(s)%prtl_tile(ti, tj, tk)%v(p)
-              w = species(s)%prtl_tile(ti, tj, tk)%w(p)
+              u = tile%u(p)
+              v = tile%v(p)
+              w = tile%w(p)
               en = sqrt(u**2 + v**2 + w**2)
               u = u / en; v = v / en; w = w / en
               theta = asin(w)
