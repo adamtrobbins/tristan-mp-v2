@@ -86,7 +86,7 @@ contains
                 call throwError('Something went terribly wrong during the binning.')
               end if
             #endif
-            tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
+            tile%ind(p) = ph_b + 100 * th_b + 100**2 * e_b
             #ifdef DEBUG
               u = tile%u(p)
               v = tile%v(p)
