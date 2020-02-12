@@ -73,8 +73,8 @@ contains
     real                                        :: en, u, v, w, theta, phi
 
     do e_b = 0, n_energy_bins - 1
-      do th_b = 0, momentum_bins(e_b)%n_theta_bins
-        do ph_b = 0, momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins
+      do th_b = 0, momentum_bins(e_b)%n_theta_bins + 1
+        do ph_b = 0, momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins - 1
           npart = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
           do p_ind = 1, npart
             p = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
