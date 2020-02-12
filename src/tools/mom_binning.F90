@@ -135,7 +135,7 @@ contains
       th_ind = 0
     else if (u_theta .gt. 0.5 * M_PI - momentum_bin%th0_bin) then
       ! if on the northern pole bin
-      th_ind = n_th_bins + 1
+      th_ind = momentum_bin%n_theta_bins + 1
     else
       th_ind = INT((u_theta + 0.5 * M_PI - momentum_bin%th0_bin) / d_theta) + 1
       #ifdef DEBUG
@@ -146,14 +146,14 @@ contains
     end if
   end subroutine findThetaBin
 
-  subroutine findPhiBin(momentum_bin, u_phi, ph_bin)
+  subroutine findPhiBin(theta_bin, u_phi, ph_bin)
     implicit none
-    type(thetaBin), intent(in)  :: momentum_bin
+    type(thetaBin), intent(in)  :: theta_bin
     real, intent(in)            :: u_phi
     integer, intent(out)        :: ph_bin
-    ph_bin = INT(u_phi * momentum_bin%n_phi_bins / (2 * M_PI))
+    ph_bin = INT(u_phi * theta_bin%n_phi_bins / (2 * M_PI))
     #ifdef DEBUG
-      if ((ph_bin .lt. 0) .or. (ph_bin .ge. n_ph_bins)) then
+      if ((ph_bin .lt. 0) .or. (ph_bin .ge. theta_bin%n_phi_bins)) then
         call throwError('Something is wrong in `findPhiBin()`')
       end if
     #endif
