@@ -70,8 +70,8 @@ contains
     integer :: dummy_int
 
     ! FIX: this is for photons only
-    type(momentumBin), intent(inout)    :: momentum_bins
-    type(particle_tile), intent(in)     :: tile
+    type(momentumBin), allocatable, intent(inout) :: momentum_bins
+    type(particle_tile), intent(in)               :: tile
 
     do p = 1, tile%npart_sp
       prtl_ux = tile%u(p); prtl_uy = tile%v(p); prtl_uz = tile%w(p)
