@@ -77,7 +77,7 @@ contains
     end do
     print *, ""
 
-    do phi_ind = 0, momentum_bins(0)%theta_bins(2)%n_phi_bins
+    do phi_ind = 0, momentum_bins(0)%theta_bins(2)%n_phi_bins - 1
       print *, 'PH', momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%phi_min,&
                    & momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%phi_max,&
                    & momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%npart
