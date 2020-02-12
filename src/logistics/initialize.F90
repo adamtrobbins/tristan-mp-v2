@@ -573,7 +573,6 @@ contains
       call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
       call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
-      call initializeBinning()
     end subroutine initializeDownsampling
   #endif
 
