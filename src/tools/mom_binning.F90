@@ -234,16 +234,13 @@ contains
     type(thetaBin), intent(inout)           :: theta_bin
     integer, intent(in)                     :: nparts_in_tile
     integer                                 :: ph_b
-    real                                    :: d_phi, d_phi_0
-
-    ! size of `phi` bins in the equatorial plane
-    d_phi_0 = M_PI / momentum_bin%n_theta_bins
+    real                                    :: d_phi
 
     ! `phi` bins go from `0 -> n_ph_bins - 1`...
     ! ... with `n_ph_bins` bins overall
     allocate(theta_bin%phi_bins(0 : theta_bin%n_phi_bins - 1))
     if (abs(theta_bin%theta_mid) .ne. M_PI * 0.5) then
-      d_phi = d_phi_0 / cos(theta_bin%theta_mid)
+      d_phi = 2 * M_PI / REAL(theta_bin%n_phi_bins)
     else
       d_phi = 2 * M_PI
     end if
@@ -254,21 +251,6 @@ contains
       allocate(theta_bin%phi_bins(ph_b)%indices(nparts_in_tile))
     end do
   end subroutine initializePhiBins
-
-  ! subroutine deinitializeEnergyBins()
-  !   implicit none
-  !   integer :: e_b, th_b, ph_b
-  !   do e_b = 0, n_energy_bins - 1
-  !     do th_b = 0, energy_bins(e_b)%n_theta_bins
-  !       do ph_b = 0, energy_bins(e_b)%theta_bins(th_b)%n_phi_bins
-  !         deallocate(energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices)
-  !       end do
-  !       deallocate(energy_bins(e_b)%theta_bins(th_b)%phi_bins)
-  !     end do
-  !     deallocate(energy_bins(e_b)%theta_bins)
-  !   end do
-  !   deallocate(energy_bins)
-  ! end subroutine deinitializeEnergyBins
 
 #endif
 end module m_momentumbinning
