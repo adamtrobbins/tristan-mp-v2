@@ -67,19 +67,45 @@ contains
   subroutine downsampleBinnedParticles(s, ti, tj, tk)
     implicit none
     integer, intent(in) :: s, ti, tj, tk
-    ! integer             :: e_b, th_b, ph_b, p_ind, p, npart
-    ! do e_b = 0, n_energy_bins - 1
-    !   do th_b = 0, energy_bins(e_b)%n_theta_bins
-    !     do ph_b = 0, energy_bins(e_b)%theta_bins(th_b)%n_phi_bins
-    !       npart = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
-    !       do p_ind = 1, npart
-    !         p = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
-    !         ! for testing purposes
-    !         species(s)%prtl_tile(ti, tj, tk)%ind = p_ind + 100 * ph_b + 100**2 * e_b
-    !       end do
-    !     end do
-    !   end do
-    ! end do
+    integer             :: e_b, th_b, ph_b, p_ind, p, npart
+    real                :: en, u, v, w, theta, phi
+
+    do e_b = 0, n_energy_bins - 1
+      do th_b = 0, momentum_bins(e_b)%n_theta_bins
+        do ph_b = 0, momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins
+          npart = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
+          do p_ind = 1, npart
+            p = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
+            ! for testing purposes
+            species(s)%prtl_tile(ti, tj, tk)%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
+            #ifdef DEBUG
+              u = species(s)%prtl_tile(ti, tj, tk)%u(p)
+              v = species(s)%prtl_tile(ti, tj, tk)%v(p)
+              w = species(s)%prtl_tile(ti, tj, tk)%w(p)
+              en = sqrt(u**2 + v**2 + w**2)
+              u = u / en; v = v / en; w = w / en
+              theta = asin(w)
+              phi = atan2(v, u)
+              if (phi .lt. 0) phi = phi + 2 * M_PI
+              if ((en .ge. momentum_bins(e_b)%e_max) .or.&
+                & (en .lt. momentum_bins(e_b)%e_min) .or.&
+                & (theta .ge. momentum_bins(e_b)%theta_bins(th_b)%theta_max) .or.&
+                & (theta .lt. momentum_bins(e_b)%theta_bins(th_b)%theta_min) .or.&
+                & (phi .ge. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min) .or.&
+                & (phi .lt. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max)) then
+                print *, en, theta, phi
+                print *, momentum_bins(e_b)%e_min, momentum_bins(e_b)%e_max
+                print *, momentum_bins(e_b)%theta_bins(th_b)%theta_min,&
+                       & momentum_bins(e_b)%theta_bins(th_b)%theta_max
+                print *, momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min,&
+                       & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max
+                call throwError('Something went wrong during particle binning.')
+              end if
+            #endif
+          end do
+        end do
+      end do
+    end do
   end subroutine downsampleBinnedParticles
 
 #endif
