@@ -104,6 +104,7 @@ contains
 
   subroutine findEnergyBin(energy, en_ind)
     implicit none
+    real, intent(in)      :: energy
     integer, intent(out)  :: en_ind
     integer               :: e_b
     do e_b = 0, n_energy_bins - 1
@@ -199,7 +200,7 @@ contains
     th_bins(0)%theta_min = -0.5 * M_PI
     th_bins(0)%theta_max = -0.5 * M_PI + th0_bin
     th_bins(0)%n_phi_bins = 1
-    call initializePhiBins(th_bins(0)%phi_bins,&
+    call initializePhiBins(th_bins(0)%phi_bins, n_th_bins,&
                          & th_bins(0)%n_phi_bins, -0.5 * M_PI,&
                          & nparts_in_tile)
     ! intermediate `theta` bins
@@ -208,7 +209,7 @@ contains
       th_bins(th_b)%theta_max = -0.5 * M_PI + th0_bin + d_theta * th_b
       theta_mid = 0.5 * (th_bins(th_b)%theta_min + th_bins(th_b)%theta_max)
       th_bins(th_b)%n_phi_bins = 2 * n_th_bins * cos(theta_mid)
-      call initializePhiBins(th_bins(th_b)%phi_bins,&
+      call initializePhiBins(th_bins(th_b)%phi_bins, n_th_bins,&
                            & th_bins(th_b)%n_phi_bins, theta_mid,&
                            & nparts_in_tile)
     end do
@@ -216,20 +217,20 @@ contains
     th_bins(n_th_bins + 1)%theta_min = -0.5 * M_PI - th0_bin
     th_bins(n_th_bins + 1)%theta_max = -0.5 * M_PI
     th_bins(n_th_bins + 1)%n_phi_bins = 1
-    call initializePhiBins(th_bins(n_th_bins + 1)%phi_bins,&
+    call initializePhiBins(th_bins(n_th_bins + 1)%phi_bins, n_th_bins,&
                          & th_bins(n_th_bins + 1)%n_phi_bins, 0.5 * M_PI,&
                          & nparts_in_tile)
   end subroutine initializeThetaBins
 
-  subroutine initializePhiBins(ph_bins, n_ph_bins, th_mid, nparts_in_tile)
+  subroutine initializePhiBins(ph_bins, n_th_bins, n_ph_bins, th_mid, nparts_in_tile)
     implicit none
     type(phi_bin), allocatable, intent(out) :: ph_bins(:)
-    integer, intent(in)                     :: n_ph_bins, nparts_in_tile
+    integer, intent(in)                     :: n_th_bins, n_ph_bins, nparts_in_tile
     real, intent(in)                        :: th_mid
     integer                                 :: ph_b
     real                                    :: d_phi, d_phi_0
 
-    ! number of `phi` bins in the equatorial plane
+    ! size of `phi` bins in the equatorial plane
     d_phi_0 = M_PI / n_th_bins
 
     ! `phi` bins go from `0 -> n_ph_bins - 1`...
@@ -260,7 +261,7 @@ contains
       end do
       deallocate(energy_bins(e_b)%theta_bins)
     end do
-    deallocate(energy_bins(e_b))
+    deallocate(energy_bins)
   end subroutine deinitializeEnergyBins
 
 #endif
