@@ -189,7 +189,7 @@ contains
 
   subroutine initializeThetaBins(momentum_bin, nparts_in_tile)
     implicit none
-    type(momentumBin), intent(out)              :: momentum_bin
+    type(momentumBin), intent(inout)            :: momentum_bin
     integer, intent(in)                         :: nparts_in_tile
     real                                        :: d_theta
     integer                                     :: th_b, ph_b, dummy4
