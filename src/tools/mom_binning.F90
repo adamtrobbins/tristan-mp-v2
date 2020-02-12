@@ -55,7 +55,7 @@ module m_momentumbinning
   real                            :: dwn_energy_min, dwn_energy_max
 
   !--- PRIVATE variables/functions -------------------------------!
-  ! private :: findEnergyBin, findThetaBin, findPhiBin
+  private :: findEnergyBin, findThetaBin, findPhiBin
   private :: initializeThetaBins, initializePhiBins
   !...............................................................!
 contains
@@ -84,9 +84,9 @@ contains
         u_theta = asin(prtl_uz)
         u_phi = atan2(prtl_uy, prtl_ux)
         if (u_phi .lt. 0) u_phi = u_phi + 2 * M_PI
-        call findEnergyBin(momentum_bins, prtl_energy, energy_ind)
+        call findEnergyBin(momentum_bins,&
+                        & prtl_energy, energy_ind)
         call findThetaBin(momentum_bins(energy_ind),&
-                        & momentum_bins(energy_ind)%theta_bins,&
                         & u_theta, theta_ind)
         dummy_int = momentum_bins(energy_ind)%theta_bins(theta_ind)%n_phi_bins
         call findPhiBin(momentum_bins(energy_ind)%theta_bins(theta_ind),&
