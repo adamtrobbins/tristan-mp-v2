@@ -81,7 +81,7 @@ contains
             ! for testing purposes
             tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
             #ifdef DEBUG
-              if (p .gt. tile%npart_sp) then
+              if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
                 call throwError('Something went terribly wrong during the binning.')
               end if
 
@@ -99,7 +99,7 @@ contains
                 & (theta .lt. momentum_bins(e_b)%theta_bins(th_b)%theta_min) .or.&
                 & (phi .ge. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max) .or.&
                 & (phi .lt. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min)) then
-                print *, en, theta, phi, u, v, w
+                print *, p, npart, en, theta, phi, u, v, w
                 print *, momentum_bins(e_b)%e_min, momentum_bins(e_b)%e_max
                 print *, momentum_bins(e_b)%theta_bins(th_b)%theta_min,&
                        & momentum_bins(e_b)%theta_bins(th_b)%theta_max
