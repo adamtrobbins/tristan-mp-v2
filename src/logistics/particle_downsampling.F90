@@ -36,7 +36,7 @@ contains
 
     ! if # of particles on a tile is less than this limit...
     ! ... the algorithm won't be downsampling
-    bin_limit = int(sqrt(2.0 * n_energy_bins * n_angular_bins**2))
+    bin_limit = INT(sqrt(2.0 * n_energy_bins * n_angular_bins**2))
 
     do s = 1, nspec
       if (species(s)%dwn_sp) then
@@ -56,11 +56,36 @@ contains
 
   subroutine downsampleOnTile(s, ti, tj, tk)
     implicit none
-    integer, intent(in) :: s, ti, tj, tk
-    ! particles are now binned into `energy_bins`
-    call binParticlesOnTile(species(s)%prtl_tile(ti, tj, tk))
-    call downsampleBinnedParticles(s, ti, tj, tk)
-    call deinitializeEnergyBins()
+    integer, intent(in)             :: s, ti, tj, tk
+    integer                         :: energy_ind, theta_ind, phi_ind
+    type(momentumBin), allocatable  :: momentum_bins(:)
+    call initializeMomentumBins(momentum_bins, species(s)%prtl_tile(ti, tj, tk)%npart_sp)
+
+    do energy_ind = 0, n_energy_bins - 1
+      print *, 'E', momentum_bins(energy_ind)%e_min,&
+                  & momentum_bins(energy_ind)%e_max,&
+                  & momentum_bins(energy_ind)%th0_bin,&
+                  & momentum_bins(energy_ind)%n_theta_bins
+    end do
+
+    do theta_ind = 0, n_angular_bins + 1
+      print *, 'TH', momentum_bins(0)%theta_bins(theta_ind)%theta_min,&
+                   & momentum_bins(0)%theta_bins(theta_ind)%theta_max,&
+                   & momentum_bins(0)%theta_bins(theta_ind)%theta_mid,&
+                   & momentum_bins(0)%theta_bins(theta_ind)%n_phi_bins
+    end do
+
+    do phi_ind = 0, momentum_bins(0)%theta_bins(1)%n_phi_bins
+      print *, 'PH', momentum_bins(0)%theta_bins(1)%phi_bins(phi_ind)%phi_min,&
+                   & momentum_bins(0)%theta_bins(1)%phi_bins(phi_ind)%phi_max,&
+                   & momentum_bins(0)%theta_bins(1)%phi_bins(phi_ind)%npart
+    end do
+
+    stop
+
+    ! particles are binned into `energy_bins`
+    ! call binParticlesOnTile(species(s)%prtl_tile(ti, tj, tk))
+    ! call downsampleBinnedParticles(s, ti, tj, tk)
   end subroutine downsampleOnTile
 
   subroutine downsampleBinnedParticles(s, ti, tj, tk)
