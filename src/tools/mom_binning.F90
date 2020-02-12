@@ -218,7 +218,7 @@ contains
         dummy1 = -0.5 * M_PI + momentum_bin%th0_bin + d_theta * (th_b - 1)
         dummy2 = -0.5 * M_PI + momentum_bin%th0_bin + d_theta * th_b
         dummy3 = 0.5 * (dummy1 + dummy2)
-        dummy4 = INT(2 * momentum_bin%n_theta_bins * cos(momentum_bin%theta_bins(th_b)%theta_mid))
+        dummy4 = INT(2 * momentum_bin%n_theta_bins * cos(dummy3))
       end if
       momentum_bin%theta_bins(th_b)%theta_min = dummy1
       momentum_bin%theta_bins(th_b)%theta_max = dummy2
