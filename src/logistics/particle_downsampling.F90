@@ -79,14 +79,15 @@ contains
           do p_ind = 1, npart
             p = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
             ! for testing purposes
-            tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
             #ifdef DEBUG
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
                 print *, p, tile%npart_sp, npart
                 call printBins(momentum_bins, e_b, th_b, ph_b)
                 call throwError('Something went terribly wrong during the binning.')
               end if
-
+            #endif
+            tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
+            #ifdef DEBUG
               u = tile%u(p)
               v = tile%v(p)
               w = tile%w(p)
