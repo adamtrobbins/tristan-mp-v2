@@ -60,103 +60,104 @@ module m_momentumbinning
   !...............................................................!
 contains
 
-  ! subroutine binParticlesOnTile(tile)
-  !   implicit none
-  !   integer :: p
-  !   integer :: energy_ind, theta_ind, phi_ind
-  !   real    :: UUx, UUy, UUz, EE
-  !   real    :: log10_e_max, log10_e_min
-  !   real    :: u_theta, u_phi
-  !   integer :: dummy_int
-  !
-  !   ! FIX: this is for photons only
-  !
-  !   type(particle_tile), intent(in) :: tile
-  !
-  !   do p = 1, tile%npart_sp
-  !     UUx = tile%u(p); UUy = tile%v(p); UUz = tile%w(p)
-  !     EE = sqrt(UUx**2 + UUy**2 + UUz**2)
-  !     UUx = UUx / EE; UUy = UUy / EE; UUz = UUz / EE
-  !     if ((EE .ge. energy_bins(0)%e_min) .and.&
-  !       & (EE .lt. energy_bins(n_energy_bins - 1)%e_max)) then
-  !       u_theta = asin(UUz)
-  !       u_phi = atan2(UUy, UUx)
-  !       if (u_phi .lt. 0) u_phi = u_phi + 2 * M_PI
-  !       call findEnergyBin(EE, energy_ind)
-  !       call findThetaBin(u_theta,&
-  !                       & energy_bins(energy_ind)%n_theta_bins,&
-  !                       & theta_ind)
-  !       dummy_int = energy_bins(energy_ind)%theta_bins(theta_ind)%n_phi_bins
-  !       call findPhiBin(u_phi,&
-  !                     & dummy_int,&
-  !                     & phi_ind)
-  !
-  !       dummy_int =&
-  !           & energy_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart
-  !       energy_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%&
-  !                                 &indices(dummy_int) = p
-  !       energy_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart = dummy_int + 1
-  !     end if
-  !   end do
-  ! end subroutine binParticlesOnTile
-  !
-  ! ! - - - finding bins - - - - - - - - - - - - - - - - - - - - - - - -
-  ! subroutine findEnergyBin(energy, en_ind)
-  !   implicit none
-  !   real, intent(in)      :: energy
-  !   integer, intent(out)  :: en_ind
-  !   integer               :: e_b
-  !   en_ind = -1
-  !   do e_b = 0, n_energy_bins - 1
-  !     if ((energy .lt. energy_bins(e_b)%e_max) .and.&
-  !        &(energy .ge. energy_bins(e_b)%e_min))then
-  !       en_ind = e_b
-  !       exit
-  !     end if
-  !   end do
-  !   #ifdef DEBUG
-  !     if ((en_ind .lt. 0) .or. (en_ind .ge. n_energy_bins)) then
-  !       call throwError('Something is wrong in `findEnergyBin()`')
-  !     end if
-  !   #endif
-  ! end subroutine findEnergyBin
-  !
-  ! subroutine findThetaBin(u_theta, n_th_bins, th_ind)
-  !   implicit none
-  !   real, intent(in)      :: u_theta
-  !   integer, intent(in)   :: n_th_bins
-  !   integer, intent(out)  :: th_ind
-  !   real                  :: d_theta
-  !
-  !   d_theta = (M_PI - 2 * th0_bin) / n_th_bins
-  !   if (u_theta .le. -0.5 * M_PI + th0_bin) then
-  !     ! if on the southern pole bin
-  !     th_ind = 0
-  !   else if (u_theta .gt. 0.5 * M_PI - th0_bin) then
-  !     ! if on the northern pole bin
-  !     th_ind = n_th_bins + 1
-  !   else
-  !     th_ind = INT((u_theta + 0.5 * M_PI - th0_bin) / d_theta) + 1
-  !     #ifdef DEBUG
-  !       if ((th_ind .gt. n_th_bins) .or. (th_ind .le. 0)) then
-  !         call throwError('Something is wrong in `findThetaBin()`')
-  !       end if
-  !     #endif
-  !   end if
-  ! end subroutine findThetaBin
-  !
-  ! subroutine findPhiBin(u_phi, n_ph_bins, ph_bin)
-  !   implicit none
-  !   real, intent(in)      :: u_phi
-  !   integer, intent(in)   :: n_ph_bins
-  !   integer, intent(out)  :: ph_bin
-  !   ph_bin = INT(u_phi * n_ph_bins / (2 * M_PI))
-  !   #ifdef DEBUG
-  !     if ((ph_bin .lt. 0) .or. (ph_bin .ge. n_ph_bins)) then
-  !       call throwError('Something is wrong in `findPhiBin()`')
-  !     end if
-  !   #endif
-  ! end subroutine findPhiBin
+  subroutine binParticlesOnTile(momentum_bins, tile)
+    implicit none
+    integer :: p
+    integer :: energy_ind, theta_ind, phi_ind
+    real    :: prtl_ux, prtl_uy, prtl_uz, prtl_energy
+    real    :: log10_e_max, log10_e_min
+    real    :: u_theta, u_phi
+    integer :: dummy_int
+
+    ! FIX: this is for photons only
+    type(momentumBin), intent(inout)    :: momentum_bins
+    type(particle_tile), intent(in)     :: tile
+
+    do p = 1, tile%npart_sp
+      prtl_ux = tile%u(p); prtl_uy = tile%v(p); prtl_uz = tile%w(p)
+      prtl_energy = sqrt(prtl_ux**2 + prtl_uy**2 + prtl_uz**2)
+      prtl_ux = prtl_ux / prtl_energy
+      prtl_uy = prtl_uy / prtl_energy
+      prtl_uz = prtl_uz / prtl_energy
+      if ((prtl_energy .ge. momentum_bins(0)%e_min) .and.&
+        & (prtl_energy .lt. momentum_bins(n_energy_bins - 1)%e_max)) then
+        u_theta = asin(prtl_uz)
+        u_phi = atan2(prtl_uy, prtl_ux)
+        if (u_phi .lt. 0) u_phi = u_phi + 2 * M_PI
+        call findEnergyBin(momentum_bins, prtl_energy, energy_ind)
+        call findThetaBin(momentum_bins(energy_ind),&
+                        & momentum_bins(energy_ind)%theta_bins,&
+                        & u_theta, theta_ind)
+        dummy_int = momentum_bins(energy_ind)%theta_bins(theta_ind)%n_phi_bins
+        call findPhiBin(momentum_bins(energy_ind)%theta_bins(theta_ind),&
+                      & u_phi, phi_ind)
+        dummy_int =&
+            & momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart
+        momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%&
+                                  &indices(dummy_int) = p
+        momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart = dummy_int + 1
+      end if
+    end do
+  end subroutine binParticlesOnTile
+
+  ! - - - finding bins - - - - - - - - - - - - - - - - - - - - - - - -
+  subroutine findEnergyBin(momentum_bins, energy, en_ind)
+    implicit none
+    type(momentumBin), intent(in), allocatable  :: momentum_bins(:)
+    real, intent(in)                            :: energy
+    integer, intent(out)                        :: en_ind
+    integer                                     :: e_b
+    en_ind = -1
+    do e_b = 0, n_energy_bins - 1
+      if ((energy .lt. momentum_bins(e_b)%e_max) .and.&
+         &(energy .ge. momentum_bins(e_b)%e_min))then
+        en_ind = e_b
+        exit
+      end if
+    end do
+    #ifdef DEBUG
+      if ((en_ind .lt. 0) .or. (en_ind .ge. n_energy_bins)) then
+        call throwError('Something is wrong in `findEnergyBin()`')
+      end if
+    #endif
+  end subroutine findEnergyBin
+
+  subroutine findThetaBin(momentum_bin, u_theta, th_ind)
+    implicit none
+    type(momentumBin), intent(in) :: momentum_bin
+    real, intent(in)              :: u_theta
+    integer, intent(out)          :: th_ind
+    real                          :: d_theta
+
+    d_theta = (M_PI - 2 * momentum_bin%th0_bin) / momentum_bin%n_theta_bins
+    if (u_theta .le. -0.5 * M_PI + momentum_bin%th0_bin) then
+      ! if on the southern pole bin
+      th_ind = 0
+    else if (u_theta .gt. 0.5 * M_PI - momentum_bin%th0_bin) then
+      ! if on the northern pole bin
+      th_ind = n_th_bins + 1
+    else
+      th_ind = INT((u_theta + 0.5 * M_PI - momentum_bin%th0_bin) / d_theta) + 1
+      #ifdef DEBUG
+        if ((th_ind .gt. momentum_bin%n_theta_bins) .or. (th_ind .le. 0)) then
+          call throwError('Something is wrong in `findThetaBin()`')
+        end if
+      #endif
+    end if
+  end subroutine findThetaBin
+
+  subroutine findPhiBin(momentum_bin, u_phi, ph_bin)
+    implicit none
+    type(thetaBin), intent(in)  :: momentum_bin
+    real, intent(in)            :: u_phi
+    integer, intent(out)        :: ph_bin
+    ph_bin = INT(u_phi * momentum_bin%n_phi_bins / (2 * M_PI))
+    #ifdef DEBUG
+      if ((ph_bin .lt. 0) .or. (ph_bin .ge. n_ph_bins)) then
+        call throwError('Something is wrong in `findPhiBin()`')
+      end if
+    #endif
+  end subroutine findPhiBin
 
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
   subroutine initializeMomentumBins(momentum_bins, nparts_in_tile)
