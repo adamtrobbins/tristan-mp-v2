@@ -56,7 +56,8 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real      :: th, ph, rnd
+    real      :: th, rnd
+    real      :: x_, y_, u_, v_, w_
     integer   :: i
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
