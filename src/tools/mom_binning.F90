@@ -224,14 +224,14 @@ contains
       momentum_bin%theta_bins(th_b)%theta_max = dummy2
       momentum_bin%theta_bins(th_b)%theta_mid = dummy3
       momentum_bin%theta_bins(th_b)%n_phi_bins = dummy4
-      ! call initializePhiBins(momentum_bin, momentum_bin%theta_bins(th_b), nparts_in_tile)
+      call initializePhiBins(momentum_bin, momentum_bin%theta_bins(th_b), nparts_in_tile)
     end do
   end subroutine initializeThetaBins
 
   subroutine initializePhiBins(momentum_bin, theta_bin, nparts_in_tile)
     implicit none
     type(momentumBin), intent(inout)        :: momentum_bin
-    type(thetaBin), intent(out)             :: theta_bin
+    type(thetaBin), intent(inout)           :: theta_bin
     integer, intent(in)                     :: nparts_in_tile
     integer                                 :: ph_b
     real                                    :: d_phi, d_phi_0
