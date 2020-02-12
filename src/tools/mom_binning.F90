@@ -185,7 +185,7 @@ contains
     end do
   end subroutine initializeMomentumBins
 
-  subroutine initializeThetaBins(momentum_bin, npart_in_tile)
+  subroutine initializeThetaBins(momentum_bin, nparts_in_tile)
     implicit none
     type(momentumBin), intent(out)              :: momentum_bin
     integer, intent(in)                         :: nparts_in_tile
