@@ -93,14 +93,17 @@ contains
                 & (en .lt. momentum_bins(e_b)%e_min) .or.&
                 & (theta .ge. momentum_bins(e_b)%theta_bins(th_b)%theta_max) .or.&
                 & (theta .lt. momentum_bins(e_b)%theta_bins(th_b)%theta_min) .or.&
-                & (phi .ge. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min) .or.&
-                & (phi .lt. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max)) then
-                print *, en, theta, phi
+                & (phi .ge. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max) .or.&
+                & (phi .lt. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min)) then
+                print *, en, theta, phi, u, v, w
                 print *, momentum_bins(e_b)%e_min, momentum_bins(e_b)%e_max
                 print *, momentum_bins(e_b)%theta_bins(th_b)%theta_min,&
                        & momentum_bins(e_b)%theta_bins(th_b)%theta_max
                 print *, momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min,&
                        & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max
+
+                print *, ">>>>>>"
+                call printBins(momentum_bins)
                 call throwError('Something went wrong during particle binning.')
               end if
             #endif
@@ -109,6 +112,33 @@ contains
       end do
     end do
   end subroutine downsampleBinnedParticles
+
+  subroutine printBins(momentum_bins)
+    implicit none
+    type(momentumBin), allocatable, intent(in)  :: momentum_bins(:)
+    integer                                     :: energy_ind, theta_ind, phi_ind
+
+    do energy_ind = 0, n_energy_bins - 1
+      print *, 'E', momentum_bins(energy_ind)%e_min,&
+                  & momentum_bins(energy_ind)%e_max,&
+                  & momentum_bins(energy_ind)%th0_bin,&
+                  & momentum_bins(energy_ind)%n_theta_bins
+    end do
+    print *, ""
+    do theta_ind = 0, n_angular_bins + 1
+      print *, 'TH', momentum_bins(0)%theta_bins(theta_ind)%theta_min,&
+                   & momentum_bins(0)%theta_bins(theta_ind)%theta_max,&
+                   & momentum_bins(0)%theta_bins(theta_ind)%theta_mid,&
+                   & momentum_bins(0)%theta_bins(theta_ind)%n_phi_bins
+    end do
+    print *, ""
+    do phi_ind = 0, momentum_bins(0)%theta_bins(2)%n_phi_bins - 1
+      print *, 'PH', momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%phi_min,&
+                   & momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%phi_max,&
+                   & momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%npart
+    end do
+
+  end subroutine printBins
 
 #endif
 end module m_particledownsampling
