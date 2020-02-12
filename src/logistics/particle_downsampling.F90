@@ -91,19 +91,19 @@ contains
   subroutine downsampleBinnedParticles(s, ti, tj, tk)
     implicit none
     integer, intent(in) :: s, ti, tj, tk
-    integer             :: e_b, th_b, ph_b, p_ind, p, npart
-    do e_b = 0, n_energy_bins - 1
-      do th_b = 0, energy_bins(e_b)%n_theta_bins
-        do ph_b = 0, energy_bins(e_b)%theta_bins(th_b)%n_phi_bins
-          npart = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
-          do p_ind = 1, npart
-            p = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
-            ! for testing purposes
-            species(s)%prtl_tile(ti, tj, tk)%ind = p_ind + 100 * ph_b + 100**2 * e_b
-          end do
-        end do
-      end do
-    end do
+    ! integer             :: e_b, th_b, ph_b, p_ind, p, npart
+    ! do e_b = 0, n_energy_bins - 1
+    !   do th_b = 0, energy_bins(e_b)%n_theta_bins
+    !     do ph_b = 0, energy_bins(e_b)%theta_bins(th_b)%n_phi_bins
+    !       npart = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
+    !       do p_ind = 1, npart
+    !         p = energy_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
+    !         ! for testing purposes
+    !         species(s)%prtl_tile(ti, tj, tk)%ind = p_ind + 100 * ph_b + 100**2 * e_b
+    !       end do
+    !     end do
+    !   end do
+    ! end do
   end subroutine downsampleBinnedParticles
 
 #endif
