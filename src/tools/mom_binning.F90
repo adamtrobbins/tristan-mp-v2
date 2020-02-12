@@ -62,16 +62,16 @@ contains
 
   subroutine binParticlesOnTile(momentum_bins, tile)
     implicit none
+    ! FIX: this is for photons only
+    type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
+    type(particle_tile), intent(in)               :: tile
+
     integer :: p
     integer :: energy_ind, theta_ind, phi_ind
     real    :: prtl_ux, prtl_uy, prtl_uz, prtl_energy
     real    :: log10_e_max, log10_e_min
     real    :: u_theta, u_phi
     integer :: dummy_int
-
-    ! FIX: this is for photons only
-    type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
-    type(particle_tile), intent(in)               :: tile
 
     do p = 1, tile%npart_sp
       prtl_ux = tile%u(p); prtl_uy = tile%v(p); prtl_uz = tile%w(p)
@@ -93,9 +93,9 @@ contains
                       & u_phi, phi_ind)
         dummy_int =&
             & momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart
+        momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart = dummy_int + 1
         momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%&
                                   &indices(dummy_int) = p
-        momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart = dummy_int + 1
       end if
     end do
   end subroutine binParticlesOnTile
