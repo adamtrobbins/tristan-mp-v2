@@ -69,7 +69,6 @@ contains
     implicit none
     type(particle_tile), intent(inout)          :: tile
     type(momentumBin), allocatable, intent(in)  :: momentum_bins(:)
-    integer, intent(in)                         :: s, ti, tj, tk
     integer                                     :: e_b, th_b, ph_b, p_ind, p, npart
     real                                        :: en, u, v, w, theta, phi
 
