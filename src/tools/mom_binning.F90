@@ -95,7 +95,7 @@ contains
             & momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart
         momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%npart = dummy_int + 1
         momentum_bins(energy_ind)%theta_bins(theta_ind)%phi_bins(phi_ind)%&
-                                  &indices(dummy_int) = p
+                                  &indices(dummy_int + 1) = p
       end if
     end do
   end subroutine binParticlesOnTile
