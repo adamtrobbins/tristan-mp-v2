@@ -55,7 +55,7 @@ module m_momentumbinning
   real                            :: dwn_energy_min, dwn_energy_max
 
   !--- PRIVATE variables/functions -------------------------------!
-  private :: findEnergyBin, findThetaBin, findPhiBin
+  ! private :: findEnergyBin, findThetaBin, findPhiBin
   private :: initializeThetaBins, initializePhiBins
   !...............................................................!
 contains
@@ -193,20 +193,20 @@ contains
     integer                                     :: th_b, ph_b, dummy4
     real                                        :: dummy1, dummy2, dummy3
 
-    ! bins go from `0 -> n_th_bins + 1`...
-    ! ... with `n_th_bins + 2` bins overall
-    allocate(momentum_bin%theta_bins(0 : momentum_bin%n_th_bins + 1))
+    ! bins go from `0 -> n_theta_bins + 1`...
+    ! ... with `n_theta_bins + 2` bins overall
+    allocate(momentum_bin%theta_bins(0 : momentum_bin%n_theta_bins + 1))
 
-    d_theta = (M_PI - 2 * momentum_bin%th0_bin) / momentum_bin%n_th_bins
+    d_theta = (M_PI - 2 * momentum_bin%th0_bin) / momentum_bin%n_theta_bins
 
-    do th_b = 0, n_th_bins + 1
+    do th_b = 0, momentum_bin%n_theta_bins + 1
       if (th_b .eq. 0) then
         ! south polar bin
         dummy1 = -0.5 * M_PI
         dummy2 = -0.5 * M_PI + momentum_bin%th0_bin
         dummy3 = -0.5 * M_PI
         dummy4 = 1
-      else if (th_b .eq. n_th_bins + 1) then
+      else if (th_b .eq. momentum_bin%n_theta_bins + 1) then
         ! north polar bin
         dummy1 = 0.5 * M_PI - momentum_bin%th0_bin
         dummy2 = 0.5 * M_PI
@@ -216,7 +216,7 @@ contains
         dummy1 = -0.5 * M_PI + momentum_bin%th0_bin + d_theta * (th_b - 1)
         dummy2 = -0.5 * M_PI + momentum_bin%th0_bin + d_theta * th_b
         dummy3 = 0.5 * (dummy1 + dummy2)
-        dummy4 = INT(2 * momentum_bin%n_th_bins * cos(momentum_bin%theta_bins(th_b)%theta_mid))
+        dummy4 = INT(2 * momentum_bin%n_theta_bins * cos(momentum_bin%theta_bins(th_b)%theta_mid))
       end if
       momentum_bin%theta_bins(th_b)%theta_min = dummy1
       momentum_bin%theta_bins(th_b)%theta_max = dummy2
@@ -235,7 +235,7 @@ contains
     real                                    :: d_phi, d_phi_0
 
     ! size of `phi` bins in the equatorial plane
-    d_phi_0 = M_PI / momentum_bin%n_th_bins
+    d_phi_0 = M_PI / momentum_bin%n_theta_bins
 
     ! `phi` bins go from `0 -> n_ph_bins - 1`...
     ! ... with `n_ph_bins` bins overall
