@@ -178,7 +178,9 @@ contains
     allocate(momentum_bins(0 : n_energy_bins - 1))
     do e_b = 0, n_energy_bins - 1
       momentum_bins(e_b)%e_min = (e_min + (e_max - e_min) * lognorm(e_b))
+      print *, 'daaaa', momentum_bins(e_b)%e_min
       momentum_bins(e_b)%e_max = (e_min + (e_max - e_min) * lognorm(e_b + 1))
+      print *, 'daaaa', momentum_bins(e_b)%e_max
       momentum_bins(e_b)%th0_bin = 0.5 * M_PI / n_angular_bins
       momentum_bins(e_b)%n_theta_bins = n_angular_bins
       call initializeThetaBins(momentum_bins(e_b), nparts_in_tile)
