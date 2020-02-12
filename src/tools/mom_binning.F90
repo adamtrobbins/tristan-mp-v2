@@ -133,7 +133,7 @@ contains
     else
       th_ind = INT((u_theta + 0.5 * M_PI - th0_bin) / d_theta) + 1
       #ifdef DEBUG
-        if ((th_ind .ge. n_th_bins) .or. (th_ind .le. 0)) then
+        if ((th_ind .gt. n_th_bins) .or. (th_ind .le. 0)) then
           call throwError('Something is wrong in `findThetaBin()`')
         end if
       #endif
