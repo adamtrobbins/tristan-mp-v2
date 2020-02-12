@@ -62,7 +62,7 @@ contains
 
     call initializeMomentumBins(momentum_bins, tile%npart_sp)
     call binParticlesOnTile(momentum_bins, tile)
-    call downsampleBinnedParticles(tile)
+    call downsampleBinnedParticles(momentum_bins, tile)
   end subroutine downsampleOnTile
 
   subroutine downsampleBinnedParticles(momentum_bins, tile)
