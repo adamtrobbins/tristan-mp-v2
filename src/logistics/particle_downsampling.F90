@@ -123,28 +123,21 @@ contains
     implicit none
     type(momentumBin), allocatable, intent(in)  :: momentum_bins(:)
     integer, intent(in)                         :: e_b, th_b, ph_b
-    
-    print *, 'INDICSE', e_b, th_b, ph_b
 
-    do energy_ind = 0, n_energy_bins - 1
-      print *, 'E', momentum_bins(e_b)%e_min,&
-                  & momentum_bins(e_b)%e_max,&
-                  & momentum_bins(e_b)%th0_bin,&
-                  & momentum_bins(e_b)%n_theta_bins
-    end do
+    print *, 'INDICSE', e_b, th_b, ph_b
+    print *, 'E', momentum_bins(e_b)%e_min,&
+                & momentum_bins(e_b)%e_max,&
+                & momentum_bins(e_b)%th0_bin,&
+                & momentum_bins(e_b)%n_theta_bins
     print *, ""
-    do theta_ind = 0, n_angular_bins + 1
-      print *, 'TH', momentum_bins(e_b)%theta_bins(th_b)%theta_min,&
-                   & momentum_bins(e_b)%theta_bins(th_b)%theta_max,&
-                   & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
-                   & momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins
-    end do
+    print *, 'TH', momentum_bins(e_b)%theta_bins(th_b)%theta_min,&
+                 & momentum_bins(e_b)%theta_bins(th_b)%theta_max,&
+                 & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
+                 & momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins
     print *, ""
-    do phi_ind = 0, momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins - 1
-      print *, 'PH', momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min,&
-                   & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max,&
-                   & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
-    end do
+    print *, 'PH', momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min,&
+                 & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max,&
+                 & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
 
   end subroutine printBins
 
