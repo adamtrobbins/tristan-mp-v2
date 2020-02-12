@@ -183,7 +183,7 @@ contains
       print *, 'daaaa', momentum_bins(e_b)%e_max
       momentum_bins(e_b)%th0_bin = 0.5 * M_PI / n_angular_bins
       momentum_bins(e_b)%n_theta_bins = n_angular_bins
-      ! call initializeThetaBins(momentum_bins(e_b), nparts_in_tile)
+      call initializeThetaBins(momentum_bins(e_b), nparts_in_tile)
     end do
   end subroutine initializeMomentumBins
 
@@ -224,7 +224,7 @@ contains
       momentum_bin%theta_bins(th_b)%theta_max = dummy2
       momentum_bin%theta_bins(th_b)%theta_mid = dummy3
       momentum_bin%theta_bins(th_b)%n_phi_bins = dummy4
-      call initializePhiBins(momentum_bin, momentum_bin%theta_bins(th_b), nparts_in_tile)
+      ! call initializePhiBins(momentum_bin, momentum_bin%theta_bins(th_b), nparts_in_tile)
     end do
   end subroutine initializeThetaBins
 
