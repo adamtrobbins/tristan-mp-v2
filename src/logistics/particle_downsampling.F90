@@ -124,7 +124,7 @@ contains
     type(momentumBin), allocatable, intent(in)  :: momentum_bins(:)
     integer, intent(in)                         :: e_b, th_b, ph_b
 
-    print *, 'INDICSE', e_b, th_b, ph_b
+    print *, 'INDICES', e_b, th_b, ph_b
     print *, 'E', momentum_bins(e_b)%e_min,&
                 & momentum_bins(e_b)%e_max,&
                 & momentum_bins(e_b)%th0_bin,&
