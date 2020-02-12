@@ -60,8 +60,8 @@ contains
     integer                         :: energy_ind, theta_ind, phi_ind
     type(momentumBin), allocatable  :: momentum_bins(:)
     call initializeMomentumBins(momentum_bins, species(s)%prtl_tile(ti, tj, tk)%npart_sp)
-    call binParticlesOnTile(species(s)%prtl_tile(ti, tj, tk))
-    call downsampleBinnedParticles(s, ti, tj, tk)
+    call binParticlesOnTile(momentum_bins, species(s)%prtl_tile(ti, tj, tk))
+    ! call downsampleBinnedParticles(s, ti, tj, tk)
   end subroutine downsampleOnTile
 
   subroutine downsampleBinnedParticles(s, ti, tj, tk)
