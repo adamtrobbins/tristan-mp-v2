@@ -82,6 +82,7 @@ contains
             tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
             #ifdef DEBUG
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
+                print *, p, tile%npart_sp, npart
                 call throwError('Something went terribly wrong during the binning.')
               end if
 
