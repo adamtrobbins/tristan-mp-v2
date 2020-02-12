@@ -13,7 +13,6 @@ module m_particledownsampling
   use m_momentumbinning
   implicit none
 
-  real              :: dwn_interval
   integer           :: dwn_interval
 
   !--- PRIVATE variables/functions -------------------------------!
@@ -37,7 +36,7 @@ contains
 
     ! if # of particles on a tile is less than this limit...
     ! ... the algorithm won't be downsampling
-    bin_limit = int(sqrt(2 * n_energy_bins * n_angular_bins**2))
+    bin_limit = int(sqrt(2.0 * n_energy_bins * n_angular_bins**2))
 
     do s = 1, nspec
       if (species(s)%dwn_sp) then
@@ -60,7 +59,7 @@ contains
     integer, intent(in) :: s, ti, tj, tk
     ! particles are now binned into `energy_bins`
     call binParticlesOnTile(species(s)%prtl_tile(ti, tj, tk))
-    call downsampleBinnedParticles()
+    call downsampleBinnedParticles(s, ti, tj, tk)
     call deinitializeEnergyBins()
   end subroutine downsampleOnTile
 
