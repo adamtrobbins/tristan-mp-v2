@@ -60,34 +60,8 @@ contains
     integer                         :: energy_ind, theta_ind, phi_ind
     type(momentumBin), allocatable  :: momentum_bins(:)
     call initializeMomentumBins(momentum_bins, species(s)%prtl_tile(ti, tj, tk)%npart_sp)
-
-    do energy_ind = 0, n_energy_bins - 1
-      print *, 'E', momentum_bins(energy_ind)%e_min,&
-                  & momentum_bins(energy_ind)%e_max,&
-                  & momentum_bins(energy_ind)%th0_bin,&
-                  & momentum_bins(energy_ind)%n_theta_bins
-    end do
-    print *, ""
-
-    do theta_ind = 0, n_angular_bins + 1
-      print *, 'TH', momentum_bins(0)%theta_bins(theta_ind)%theta_min,&
-                   & momentum_bins(0)%theta_bins(theta_ind)%theta_max,&
-                   & momentum_bins(0)%theta_bins(theta_ind)%theta_mid,&
-                   & momentum_bins(0)%theta_bins(theta_ind)%n_phi_bins
-    end do
-    print *, ""
-
-    do phi_ind = 0, momentum_bins(0)%theta_bins(2)%n_phi_bins - 1
-      print *, 'PH', momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%phi_min,&
-                   & momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%phi_max,&
-                   & momentum_bins(0)%theta_bins(2)%phi_bins(phi_ind)%npart
-    end do
-
-    stop
-
-    ! particles are binned into `energy_bins`
-    ! call binParticlesOnTile(species(s)%prtl_tile(ti, tj, tk))
-    ! call downsampleBinnedParticles(s, ti, tj, tk)
+    call binParticlesOnTile(species(s)%prtl_tile(ti, tj, tk))
+    call downsampleBinnedParticles(s, ti, tj, tk)
   end subroutine downsampleOnTile
 
   subroutine downsampleBinnedParticles(s, ti, tj, tk)
