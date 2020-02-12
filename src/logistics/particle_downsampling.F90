@@ -81,6 +81,10 @@ contains
             ! for testing purposes
             tile%ind(p) = p_ind + 100 * ph_b + 100**2 * e_b
             #ifdef DEBUG
+              if (p .gt. tile%npart_sp) then
+                call throwError('Something went terribly wrong during the binning.')
+              end if
+
               u = tile%u(p)
               v = tile%v(p)
               w = tile%w(p)
