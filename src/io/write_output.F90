@@ -28,7 +28,7 @@ module m_writeoutput
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   integer, allocatable, dimension(:,:) :: glob_spectra
-  logical                 :: flds_at_prtl
+  logical                 :: flds_at_prtl, write_xdmf
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -56,13 +56,13 @@ contains
     step = output_index
     #ifdef HDF5
       call writeParticles_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
       call writeFields_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
       call writeSpectra_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
       call writeDomain_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
     #endif
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
@@ -334,7 +334,7 @@ contains
       #endif
     end if
 
-    if (mpi_rank .eq. 0) then
+    if ((mpi_rank .eq. 0) .and. write_xdmf) then
       call writeXDMF_hdf5(step, time, glob_n_i, glob_n_j, glob_n_k)
     end if
 
