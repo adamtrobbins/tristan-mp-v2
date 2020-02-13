@@ -7,6 +7,8 @@ module m_particles
   type :: particle_tile
     ! DEP_PRT [particle-dependent]
     integer                                     :: npart_sp, maxptl_sp
+    ! species index for a given tile
+    integer                                     :: spec
     ! tile boundaries in local coordinates
     integer                                     :: x1, x2, y1, y2, z1, z2
     integer(kind=2), allocatable, dimension(:)  :: xi, yi, zi

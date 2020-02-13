@@ -100,11 +100,7 @@ contains
     if (present(ind) .and. present(proc)) then
       ! moving particle from one tile/meshblock to another
       species(s)%prtl_tile(ti, tj, tk)%ind(p) = ind
-      #ifdef DEBUG
-        species(s)%prtl_tile(ti, tj, tk)%proc(p) = mpi_rank
-      #else
-        species(s)%prtl_tile(ti, tj, tk)%proc(p) = proc
-      #endif
+      species(s)%prtl_tile(ti, tj, tk)%proc(p) = proc
     else
       ! create a very new particle
       species(s)%prtl_tile(ti, tj, tk)%ind(p) = species(s)%cntr_sp
@@ -301,10 +297,7 @@ contains
       weight_ = INT(1, 2)
     end if
 
-    ! convert local to global
-    call globalToLocalCoords(x_glob, y_glob, z_glob,&
-                           & x_loc, y_loc, z_loc)
-
+    call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc)
     x_loc = x_loc + TINYXYZ
     y_loc = y_loc + TINYXYZ
     z_loc = z_loc + TINYXYZ
@@ -313,11 +306,35 @@ contains
       & (y_loc .ge. 0.0) .and. (y_loc .lt. REAL(this_meshblock%ptr%sy)) .and.&
       & (z_loc .ge. 0.0) .and. (z_loc .lt. REAL(this_meshblock%ptr%sz))) then
       ! transform coordinates
-      xi_ = INT(FLOOR(x_loc), 2); dx_ = x_loc - FLOOR(x_loc)
-      yi_ = INT(FLOOR(y_loc), 2); dy_ = y_loc - FLOOR(y_loc)
-      zi_ = INT(FLOOR(z_loc), 2); dz_ = z_loc - FLOOR(z_loc)
-      
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi_, yi_, zi_, dx_, dy_, dz_)
       call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w, weight=weight_)
     end if
   end subroutine
+
+  subroutine injectParticleLocally(s, x_loc, y_loc, z_loc,&
+                                 & u, v, w, ind, proc, weight)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in)                   :: s
+    real, intent(in)                      :: x_loc, y_loc, z_loc, u, v, w
+    integer, optional, intent(in)         :: ind, proc
+    integer(kind=2), optional, intent(in) :: weight
+    integer(kind=2)                       :: xi, yi, zi
+    real                                  :: dx, dy, dz
+
+    call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+    if (present(ind) .and. present(proc) .and. present(weight)) then
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+                        & ind=ind, proc=proc, weight=weight)
+    else if (present(ind) .and. present(proc)) then
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+                        & ind=ind, proc=proc)
+    else if (present(weight)) then
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+                        & weight=weight)
+    else
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w)
+    end if
+
+  end subroutine injectParticleLocally
 end module m_particlelogistics

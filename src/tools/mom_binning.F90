@@ -21,7 +21,7 @@ module m_momentumbinning
   ! ... which further contains `phi`-bins
   type :: phiBin
     ! left and right bounds of the sub-bin (for debugging)
-    real                 :: phi_min, phi_max
+    real                 :: phi_min, phi_max, phi_mid
     ! number of particles in the sub-bin
     integer              :: npart
     ! particle indices in this sub-bin
@@ -246,6 +246,7 @@ contains
     do ph_b = 0, theta_bin%n_phi_bins - 1
       theta_bin%phi_bins(ph_b)%phi_min = d_phi * ph_b
       theta_bin%phi_bins(ph_b)%phi_max = d_phi * (ph_b + 1)
+      theta_bin%phi_bins(ph_b)%phi_mid = d_phi * (ph_b + 0.5)
       theta_bin%phi_bins(ph_b)%npart = 0
       allocate(theta_bin%phi_bins(ph_b)%indices(nparts_in_tile))
     end do
