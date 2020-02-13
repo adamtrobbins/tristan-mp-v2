@@ -55,6 +55,9 @@ contains
     tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
     tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
     #ifdef DEBUG
+      if ((s .le. 0) .or. (s .gt. nspec)) then
+        call throwError('Wrong species in `createParticle`.')
+      end if
       if ((ti .gt. species(s)%tile_nx) .or. &
         & (tj .gt. species(s)%tile_ny) .or. &
         & (tk .gt. species(s)%tile_nz)) then
