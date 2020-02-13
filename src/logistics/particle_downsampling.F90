@@ -18,7 +18,7 @@ module m_particledownsampling
     ! total momentum components and energy of the group
     real                  :: tot_px, tot_py, tot_pz, tot_en
     ! total weight of the group
-    integer               :: tot_wei
+    integer(kind=2)       :: tot_wei
     ! indices of particles on a tile contained in the group
     integer, allocatable  :: indices(:)
     ! size of the group
@@ -82,11 +82,11 @@ contains
 
   subroutine downsampleAllBins(momentum_bins, tile)
     implicit none
-    type(particle_tile), intent(inout)          :: tile
-    type(momentumBin), allocatable, intent(in)  :: momentum_bins(:)
-    integer                                     :: e_b, th_b, ph_b, p_ind, p, npart
+    type(particle_tile), intent(inout)            :: tile
+    type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
+    integer                                       :: e_b, th_b, ph_b, p_ind, p, npart
     #ifdef DEBUG
-      real                                      :: en, u, v, w, theta, phi
+      real                                        :: en, u, v, w, theta, phi
     #endif
 
     ! loop through all the bins...
@@ -152,7 +152,7 @@ contains
     group%indices(:) = -1
     group%size = 0
     group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
-    group%tot_en = 0.0; group%tot_wei = 0
+    group%tot_en = 0.0; group%tot_wei = 0_2
 
     group%bin_px = cos(theta_mid) * cos(phi_mid)
     group%bin_px = cos(theta_mid) * sin(phi_mid)
@@ -162,10 +162,10 @@ contains
 
     p_ind = 1
     do while (p_ind .le. npart)
-      p = indices(p_ind)
+      p = group%indices(p_ind)
       if (REAL(tile%weight(p)) .gt. sqrt(REAL(dwn_maxweight))) then
         ! particle to heavy to merge
-        indices(p_ind) = indices(npart)
+        group%indices(p_ind) = group%indices(npart)
         npart = npart - 1
         cycle
       else
@@ -191,7 +191,7 @@ contains
           group%indices(:) = -1
           group%size = 0
           group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
-          group%tot_en = 0.0; group%tot_wei = 0
+          group%tot_en = 0.0; group%tot_wei = 0_2
         end if
       end if
     end do
@@ -203,11 +203,14 @@ contains
     implicit none
     type(particleDwnGroup), intent(in)  :: group
     type(particle_tile), intent(inout)  :: tile
-    integer       :: wA, wB, p, p_ind, s
-    real          :: pxA, pxB, pyA, pyB, pzA, pzB, xA, yA, xB, yB, rnd
-    real          :: pA, pB, enA, enB, tot_p, cos_th, sin_th
-    real          :: temp1_x, temp1_y, temp1_z, temp1
-    real          :: temp2_x, temp2_y, temp2_z, temp2
+    integer(kind=2) :: wA, wB
+    integer         :: p, p_ind, s
+    real            :: pxA, pxB, pyA, pyB, pzA, pzB, rnd
+    real            :: dxA, dyA, dzA, dxB, dyB, dzB
+    integer(kind=2) :: xAi, yAi, zAi, xBi, yBi, zBi
+    real            :: pA, pB, enA, enB, tot_p, cos_th, sin_th
+    real            :: temp1_x, temp1_y, temp1_z, temp1
+    real            :: temp2_x, temp2_y, temp2_z, temp2
 
     ! FIX: this is for photons only
 
@@ -236,8 +239,8 @@ contains
     tot_p = sqrt(group%tot_px**2 + group%tot_py**2 + group%tot_pz**2)
 
     ! new weights
-    wA = INT(FLOOR(group%tot_wei / 2.0))
-    wB = INT(CEILING(group%tot_wei / 2.0))
+    wA = INT(FLOOR(group%tot_wei / 2.0), 2)
+    wB = INT(CEILING(group%tot_wei / 2.0), 2)
 
     ! new energies & momenta (magnitudes)
     enA = group%tot_en / (2.0 * wA)
@@ -251,18 +254,18 @@ contains
     sin_th = sqrt(1.0 - cos_th**2)
 
     ! new momenta
-    pxA = (tot_px / tot_p) * cos_th * pA +& ! parallel component
+    pxA = (group%tot_px / tot_p) * cos_th * pA +& ! parallel component
         & (temp2_x / temp2) * sin_th * pA   ! perp component
-    pyA = (tot_py / tot_p) * cos_th * pA +&
+    pyA = (group%tot_py / tot_p) * cos_th * pA +&
         & (temp2_y / temp2) * sin_th * pA
-    pzA = (tot_pz / tot_p) * cos_th * pA +&
+    pzA = (group%tot_pz / tot_p) * cos_th * pA +&
         & (temp2_z / temp2) * sin_th * pA
 
-    pxB = (tot_px / tot_p) * cos_th * pB -& ! parallel component
+    pxB = (group%tot_px / tot_p) * cos_th * pB -& ! parallel component
         & (temp2_x / temp2) * sin_th * pB   ! perp component
-    pyB = (tot_py / tot_p) * cos_th * pB -&
+    pyB = (group%tot_py / tot_p) * cos_th * pB -&
         & (temp2_y / temp2) * sin_th * pB
-    pzB = (tot_pz / tot_p) * cos_th * pB -&
+    pzB = (group%tot_pz / tot_p) * cos_th * pB -&
         & (temp2_z / temp2) * sin_th * pB
 
     #ifdef DEBUG
@@ -291,18 +294,18 @@ contains
     ! take two random particles to position the new ones
     p_ind = INT((random(dseed) * group%size + 1))
     p = group%indices(p_ind)
-    xA = tile%x(p)
-    yA = tile%y(p)
-    zA = tile%z(p)
+    xAi = tile%xi(p); dxA = tile%dx(p)
+    yAi = tile%yi(p); dyA = tile%dy(p)
+    zAi = tile%zi(p); dzA = tile%dz(p)
 
     p = p_ind
     do while (p .eq. p_ind)
       p = INT((random(dseed) * group%size + 1))
     end do
     p = group%indices(p)
-    xB = tile%x(p)
-    yB = tile%y(p)
-    zB = tile%z(p)
+    xBi = tile%xi(p); dxB = tile%dx(p)
+    yBi = tile%yi(p); dyB = tile%dy(p)
+    zBi = tile%zi(p); dzB = tile%dz(p)
 
     ! "nullify" merged particles
     do p_ind = 1, group%size
@@ -312,8 +315,8 @@ contains
 
     ! inject new particles
     s = tile%spec
-    call injectParticleLocally(s, xA, yA, zA, pxA, pyA, pzA, weight=wA)
-    call injectParticleLocally(s, xB, yB, zB, pxB, pyB, pzB, weight=wB)
+    call createParticle(s, xAi, yAi, zAi, dxA, dyA, dzA, pxA, pyA, pzA, weight=wA)
+    call createParticle(s, xBi, yBi, zBi, dxB, dyB, dzB, pxB, pyB, pzB, weight=wB)
   end subroutine mergeParticlesInGroup
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
