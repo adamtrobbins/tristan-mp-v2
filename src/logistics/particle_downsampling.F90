@@ -77,7 +77,7 @@ contains
 
     call initializeMomentumBins(momentum_bins, tile%npart_sp)
     call binParticlesOnTile(momentum_bins, tile)
-    call downsampleBinnedParticles(momentum_bins, tile)
+    call downsampleAllBins(momentum_bins, tile)
   end subroutine downsampleOnTile
 
   subroutine downsampleAllBins(momentum_bins, tile)
@@ -99,7 +99,7 @@ contains
             do p_ind = 1, npart
               p = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
-                call throwError('Wrong index in `downsampleBinnedParticles()`.')
+                call throwError('Wrong index in `downsampleAllBins()`.')
               end if
               u = tile%u(p)
               v = tile%v(p)
@@ -121,7 +121,7 @@ contains
                        & momentum_bins(e_b)%theta_bins(th_b)%theta_max
                 print *, momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min,&
                        & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max
-                call throwError('Wrong binning in `downsampleBinnedParticles()`.')
+                call throwError('Wrong binning in `downsampleAllBins()`.')
               end if
               ! tile%ind(p) = ph_b + 100 * th_b + 100**2 * e_b
             end do
