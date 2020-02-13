@@ -341,6 +341,7 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
+            species(s)%prtl_tile(ti, tj, tk)%spec = s
             species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = maxptl_ / &
                               & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
             species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
@@ -569,6 +570,7 @@ contains
     subroutine initializeDownsampling()
       implicit none
       call getInput('downsampling', 'interval', dwn_interval, 1)
+      call getInput('downsampling', 'max_weight', dwn_maxweight, 100)
       call getInput('downsampling', 'angular_bins', n_angular_bins, 5)
       call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)

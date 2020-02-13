@@ -61,6 +61,18 @@ contains
     end if
   end subroutine globalToLocalCoords
 
+  subroutine localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                  & xi, yi, zi, dx, dy, dz)
+    implicit none
+    real, intent(in)              :: x_loc, y_loc, z_loc
+    real, intent(out)             :: dx, dy, dz
+    integer(kind=2), intent(out)  :: xi, yi, zi
+
+    xi = INT(FLOOR(x_loc), 2); dx = x_loc - FLOOR(x_loc)
+    yi = INT(FLOOR(y_loc), 2); dy = y_loc - FLOOR(y_loc)
+    zi = INT(FLOOR(z_loc), 2); dz = z_loc - FLOOR(z_loc)
+  end subroutine localToCellBasedCoords
+
   subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax,&
                                  & x_, y_, z_, xi_, yi_, zi_, dx_, dy_, dz_)
     implicit none

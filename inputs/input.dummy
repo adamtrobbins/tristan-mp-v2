@@ -108,6 +108,7 @@
 
   # particle downsampling (merging) parameters
   interval      = 10
+  max_weight    = 100           # maximum weight of merging particles
   angular_bins  = 5             # number of angular bins (theta/phi)
   energy_bins   = 5             # number of log energy bins
   energy_min    = 1e-1          # min energy of merged particle
