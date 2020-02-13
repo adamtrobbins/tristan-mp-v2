@@ -169,8 +169,6 @@ contains
         npart = npart - 1
         cycle
       else
-        p_ind = p_ind + 1
-
         group%tot_wei = group%tot_wei + tile%weight(p)
         group%tot_px = group%tot_px + tile%weight(p) * tile%u(p)
         group%tot_py = group%tot_py + tile%weight(p) * tile%v(p)
@@ -181,7 +179,7 @@ contains
         group%indices(group%size + 1) = p
         group%size = group%size + 1
 
-        if (group%tot_wei .ge. dwn_maxweight) then
+        if ((group%tot_wei .ge. dwn_maxweight) .or. (p_ind .eq. npart)) then
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
@@ -193,6 +191,8 @@ contains
           group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
           group%tot_en = 0.0; group%tot_wei = 0_2
         end if
+
+        p_ind = p_ind + 1
       end if
     end do
   end subroutine downsampleBin
