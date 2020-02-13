@@ -274,6 +274,7 @@ contains
         call throwError('Weight is not conserved in `mergeParticlesInGroup()`')
       end if
       if (pxA + pxB .ne. group%tot_px) then
+        print *, pxA, pxB, pxA + pxB, group%tot_px, cos_th
         call throwError('Px is not conserved in `mergeParticlesInGroup()`')
       end if
       if (pyA + pyB .ne. group%tot_py) then
