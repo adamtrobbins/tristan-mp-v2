@@ -27,7 +27,7 @@ module m_particledownsampling
     real                  :: bin_px, bin_py, bin_pz
   end type particleDwnGroup
 
-  integer           :: dwn_interval, dwn_maxweight
+  integer           :: dwn_start, dwn_interval, dwn_maxweight
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: downsampleParticles, downsampleOnTile,&
@@ -38,7 +38,8 @@ contains
   subroutine downsamplingStep(timestep)
     implicit none
     integer, intent(in) :: timestep
-    if (modulo(timestep, dwn_interval) .eq. 0) then
+    if ((timestep .ge. dwn_start) .and.&
+      & (modulo(timestep, dwn_interval) .eq. 0)) then
       call downsampleParticles()
     end if
     call printDiag((mpi_rank .eq. 0), "downsamplingStep()", .true.)
@@ -123,7 +124,6 @@ contains
                        & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max
                 call throwError('Wrong binning in `downsampleAllBins()`.')
               end if
-              tile%ind(p) = ph_b + 100 * th_b + 100**2 * e_b
             end do
           #endif
           call downsampleBin(tile,&
@@ -273,21 +273,20 @@ contains
       if (wA + wB .ne. group%tot_wei) then
         call throwError('Weight is not conserved in `mergeParticlesInGroup()`')
       end if
-      if (pxA + pxB .ne. group%tot_px) then
-        print *, pxA, pxB, pxA + pxB, group%tot_px, cos_th
+      if (.not. numbersAreClose(pxA * wA + pxB * wB, group%tot_px)) then
         call throwError('Px is not conserved in `mergeParticlesInGroup()`')
       end if
-      if (pyA + pyB .ne. group%tot_py) then
-        call throwError('Px is not conserved in `mergeParticlesInGroup()`')
+      if (.not. numbersAreClose(pyA * wA + pyB * wB, group%tot_py)) then
+        call throwError('Py is not conserved in `mergeParticlesInGroup()`')
       end if
-      if (pzA + pzB .ne. group%tot_pz) then
-        call throwError('Px is not conserved in `mergeParticlesInGroup()`')
+      if (.not. numbersAreClose(pzA * wA + pzB * wB, group%tot_pz)) then
+        call throwError('Pz is not conserved in `mergeParticlesInGroup()`')
       end if
-      if (enA + enB .ne. group%tot_en) then
+      if (.not. numbersAreClose(enA * wA + enB * wB, group%tot_en)) then
         call throwError('Energy is not conserved in `mergeParticlesInGroup()`')
       end if
-      if ((pxA**2 + pyA**2 + pzA**2 .ne. pA**2) .or.&
-        & (pxB**2 + pyB**2 + pzB**2 .ne. pB**2)) then
+      if ((.not. numbersAreClose(pxA**2 + pyA**2 + pzA**2, pA**2)) .or.&
+        & (.not. numbersAreClose(pxB**2 + pyB**2 + pzB**2, pB**2))) then
         call throwError('Wrong momenta projections in `mergeParticlesInGroup()`')
       end if
     #endif
