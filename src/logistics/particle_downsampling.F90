@@ -162,10 +162,10 @@ contains
 
     p_ind = 1
     do while (p_ind .le. npart)
-      p = group%indices(p_ind)
+      p = indices(p_ind)
       if (REAL(tile%weight(p)) .gt. sqrt(REAL(dwn_maxweight))) then
         ! particle to heavy to merge
-        group%indices(p_ind) = group%indices(npart)
+        indices(p_ind) = indices(npart)
         npart = npart - 1
         cycle
       else
