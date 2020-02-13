@@ -250,6 +250,7 @@ contains
     spec_max = log(spec_max)
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
+    call getInput('output', 'write_xdmf', write_xdmf, .true.)
 
     #ifdef HDF5
 
