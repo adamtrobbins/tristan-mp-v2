@@ -127,8 +127,8 @@ contains
             end do
           #endif
           call downsampleBin(tile,&
-                      & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,
-                      & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,
+                      & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
+                      & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
                       & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices, npart)
         end do
       end do
