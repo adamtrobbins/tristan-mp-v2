@@ -60,11 +60,12 @@ module m_momentumbinning
   !...............................................................!
 contains
 
-  subroutine binParticlesOnTile(momentum_bins, tile)
+  subroutine binParticlesOnTile(momentum_bins, tile, ax1, ax2, ang)
     implicit none
     ! FIX: this is for photons only
     type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
     type(particle_tile), intent(in)               :: tile
+    real, intent(in)                              :: ax1, ax2, ang
 
     integer :: p
     integer :: energy_ind, theta_ind, phi_ind
@@ -75,6 +76,8 @@ contains
 
     do p = 1, tile%npart_sp
       prtl_ux = tile%u(p); prtl_uy = tile%v(p); prtl_uz = tile%w(p)
+      ! rotation (not really random, because axis and angles are passed)
+      call rotateRandomlyIn3D(prtl_ux, prtl_uy, prtl_uz, ax1, ax2, ang)
       prtl_energy = sqrt(prtl_ux**2 + prtl_uy**2 + prtl_uz**2)
       prtl_ux = prtl_ux / prtl_energy
       prtl_uy = prtl_uy / prtl_energy

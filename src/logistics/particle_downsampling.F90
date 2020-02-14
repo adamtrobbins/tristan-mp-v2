@@ -75,17 +75,23 @@ contains
     type(particle_tile), intent(inout)  :: tile
     integer                             :: energy_ind, theta_ind, phi_ind
     type(momentumBin), allocatable      :: momentum_bins(:)
+    real                                :: rot_ax_1, rot_ax_2, rot_ang
+    ! generate a random rotation axis and a random rotation angle for a tile
+    rot_ax_1 = random(dseed)
+    rot_ax_2 = random(dseed)
+    rot_ang = random(dseed)
 
     call initializeMomentumBins(momentum_bins, tile%npart_sp)
-    call binParticlesOnTile(momentum_bins, tile)
-    call downsampleAllBins(momentum_bins, tile)
+    call binParticlesOnTile(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
+    call downsampleAllBins(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
   end subroutine downsampleOnTile
 
-  subroutine downsampleAllBins(momentum_bins, tile)
+  subroutine downsampleAllBins(momentum_bins, tile, ax1, ax2, ang)
     implicit none
     type(particle_tile), intent(inout)            :: tile
     type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
     integer                                       :: e_b, th_b, ph_b, p_ind, p, npart
+    real, intent(in)                              :: ax1, ax2, ang
     #ifdef DEBUG
       real                                        :: en, u, v, w, theta, phi
     #endif
@@ -102,34 +108,13 @@ contains
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
                 call throwError('Wrong index in `downsampleAllBins()`.')
               end if
-              u = tile%u(p)
-              v = tile%v(p)
-              w = tile%w(p)
-              en = sqrt(u**2 + v**2 + w**2)
-              u = u / en; v = v / en; w = w / en
-              theta = asin(w)
-              phi = atan2(v, u)
-              if (phi .lt. 0) phi = phi + 2 * M_PI
-              if ((en .ge. momentum_bins(e_b)%e_max) .or.&
-                & (en .lt. momentum_bins(e_b)%e_min) .or.&
-                & (theta .ge. momentum_bins(e_b)%theta_bins(th_b)%theta_max) .or.&
-                & (theta .lt. momentum_bins(e_b)%theta_bins(th_b)%theta_min) .or.&
-                & (phi .ge. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max) .or.&
-                & (phi .lt. momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min)) then
-                print *, p, npart, en, theta, phi, u, v, w
-                print *, momentum_bins(e_b)%e_min, momentum_bins(e_b)%e_max
-                print *, momentum_bins(e_b)%theta_bins(th_b)%theta_min,&
-                       & momentum_bins(e_b)%theta_bins(th_b)%theta_max
-                print *, momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_min,&
-                       & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_max
-                call throwError('Wrong binning in `downsampleAllBins()`.')
-              end if
             end do
           #endif
           call downsampleBin(tile,&
                       & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
                       & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
-                      & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices, npart)
+                      & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices, npart,&
+                      & ax1, ax2, ang)
         end do
       end do
     end do
@@ -138,12 +123,14 @@ contains
   ! on each bin we are forming groups of particles...
   ! ... with cumulative weights less than `dwn_maxweight`...
   ! ... and sending them to merge into separate routine
-  subroutine downsampleBin(tile, theta_mid, phi_mid, indices, npart)
+  subroutine downsampleBin(tile, theta_mid, phi_mid, indices, npart,&
+                         & ax1, ax2, ang)
     implicit none
     type(particle_tile), intent(inout)  :: tile
     integer, allocatable, intent(inout) :: indices(:)
     integer, intent(inout)              :: npart
     real, intent(in)                    :: theta_mid, phi_mid
+    real, intent(in)                    :: ax1, ax2, ang
     type(particleDwnGroup)              :: group
     integer       :: p_ind, p
     real          :: en
@@ -157,6 +144,10 @@ contains
     group%bin_px = cos(theta_mid) * cos(phi_mid)
     group%bin_px = cos(theta_mid) * sin(phi_mid)
     group%bin_pz = sin(theta_mid)
+    ! rotate the bin center back to match the binned particles ...
+    ! ... notice that angle is now `-ang` since we are rotating back
+    call rotateRandomlyIn3D(group%bin_px, group%bin_py, group%bin_pz,&
+                          & ax1, ax2, -ang)
 
     ! FIX: this is for photons only
 

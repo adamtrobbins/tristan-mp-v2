@@ -65,9 +65,11 @@ module m_particles
     type(enroute_array), dimension(-1:1,-1:1,-1:1)   :: get
   end type enroute_handler
   ! </ particle types for exchange between processors
-
-  type(particle_species), target, allocatable :: species(:)
-  integer                                      :: nspec
+  
+  ! main container for particles
+  type(particle_species), target, allocatable   :: species(:)
+  ! number of species
+  integer                                       :: nspec
 
   type(prtl_enroute), allocatable, dimension(:)    :: recv_enroute
   type(enroute_handler)                            :: enroute_bot
