@@ -108,13 +108,16 @@ contains
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
                 call throwError('Wrong index in `downsampleAllBins()`.')
               end if
+              ! tile%ind(p) = 100*100 * (e_b+1) + 100 * (th_b+1) + (ph_b+1)
             end do
           #endif
-          call downsampleBin(tile,&
-                      & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
-                      & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
-                      & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices, npart,&
-                      & ax1, ax2, ang)
+          if (npart .gt. 5) then
+            call downsampleBin(tile,&
+                        & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
+                        & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
+                        & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices, npart,&
+                        & ax1, ax2, ang)
+          end if
         end do
       end do
     end do
@@ -174,7 +177,7 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 2) then
+          if (group%size .gt. 5) then
             call mergeParticlesInGroup(group, tile)
           end if
           group%indices(:) = -1
