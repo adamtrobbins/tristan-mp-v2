@@ -205,7 +205,7 @@ contains
     fill_maxwellian%temperature = temperature
     fill_maxwellian%generated = .false.
     if (present(shift_gamma)) then
-      fill_maxwellian%shift_gamma = shift_gamma
+      fill_maxwellian%shift_gamma = abs(shift_gamma)
       fill_maxwellian%shift_flag = .true.
     else
       fill_maxwellian%shift_flag = .false.
