@@ -483,6 +483,9 @@ contains
     if (allocated(jx)) deallocate(jx)
     if (allocated(jy)) deallocate(jy)
     if (allocated(jz)) deallocate(jz)
+    if (allocated(jx_buff)) deallocate(jx_buff)
+    if (allocated(jy_buff)) deallocate(jy_buff)
+    if (allocated(jz_buff)) deallocate(jz_buff)
     allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
               & fldBoundZ))
@@ -510,6 +513,15 @@ contains
     allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
               & fldBoundZ))
+    allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                   & fldBoundZ))
+    allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                   & fldBoundZ))
+    allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                   & fldBoundZ))
 
     ! exchange fields
     ! 20 = max # of fields sent in each direction

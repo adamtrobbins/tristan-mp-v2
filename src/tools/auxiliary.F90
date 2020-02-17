@@ -396,7 +396,7 @@ contains
     sin_phi = sin(2.0 * M_PI * rnd3_)
     ! copy old values
     rx_ = rx; ry_ = ry; rz_ = rz
-    
+
     one_m_cos_phi = (1.0 - cos_phi)
 
     rx = (one_m_cos_phi * ux**2   + cos_phi)      * rx_ +&
@@ -411,5 +411,4 @@ contains
        & (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ +&
        & (one_m_cos_phi * uz**2   + cos_phi)      * rz_
   end subroutine rotateRandomlyIn3D
-
 end module m_aux
