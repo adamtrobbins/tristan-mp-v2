@@ -116,6 +116,9 @@ contains
         do s = 1, num_species
           ! generate momenta for every species individually
           spec_ = fill_species(s)
+          if ((spec_ .le. 0) .or. (spec_ .gt. nspec)) then
+            call throwError('Wrong species specified in fillRegionWithPowerlawPlasma.')
+          end if
           !   generate powerlaw gamma:
           rnd = random(dseed)
           gam_ = ((plaw_gmax**(plaw_ind+1) - plaw_gmin**(plaw_ind+1)) * rnd +&

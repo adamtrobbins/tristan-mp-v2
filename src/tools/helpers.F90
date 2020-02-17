@@ -8,6 +8,25 @@ module m_helpers
   use m_fields
   implicit none
 contains
+  logical function numbersAreClose(number1, number2)
+    implicit none
+    real, intent(in)  :: number1, number2
+    real              :: abs1, abs2
+    real              :: diff
+
+    abs1 = abs(number1); abs2 = abs(number2)
+    diff = abs(number1 - number2)
+
+    if (number1 .eq. number2) then
+      numbersAreClose = .true.
+    else if ((number1 .eq. 0.0) .or. (number2 .eq. 0.0) .or.&
+           & (abs1 + abs2 .lt. TINYREAL)) then
+      numbersAreClose = (diff .lt. TINYREAL)
+    else
+      numbersAreClose = (diff / (abs1 + abs2) .lt. 0.5 * TINYREAL)
+    end if
+  end function numbersAreClose
+
   subroutine checkNpart(msg)
     implicit none
     integer             :: ti, tj, tk, s, nprt

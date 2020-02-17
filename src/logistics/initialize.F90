@@ -250,6 +250,7 @@ contains
     spec_max = log(spec_max)
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
+    call getInput('output', 'write_xdmf', write_xdmf, .true.)
 
     #ifdef HDF5
 
@@ -315,6 +316,9 @@ contains
       #ifdef DOWNSAMPLING
         write (var_name, "(A3,I1)") "dwn", s
         call getInput('particles', var_name, species(s)%dwn_sp, .false.)
+        if ((species(s)%dwn_sp) .and. (species(s)%m_sp .ne. 0)) then
+          call throwError('Downsampling is supported for massless particles only.')
+        end if
       #endif
 
       ! extra physics properties
@@ -570,6 +574,7 @@ contains
     subroutine initializeDownsampling()
       implicit none
       call getInput('downsampling', 'interval', dwn_interval, 1)
+      call getInput('downsampling', 'start', dwn_start, 0)
       call getInput('downsampling', 'max_weight', dwn_maxweight, 100)
       call getInput('downsampling', 'angular_bins', n_angular_bins, 5)
       call getInput('downsampling', 'energy_bins', n_energy_bins, 5)

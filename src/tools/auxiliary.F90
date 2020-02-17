@@ -361,4 +361,54 @@ contains
     end if
   end function factorial
 
+  subroutine rotateRandomlyIn3D(rx, ry, rz, rnd1, rnd2, rnd3)
+    implicit none
+    real, intent(inout)         :: rx, ry, rz
+    real, optional, intent(in)  :: rnd1, rnd2, rnd3
+    real                        :: rnd1_, rnd2_, rnd3_, dummy1, dummy2
+    real                        :: rx_, ry_, rz_
+    real                        :: ux, uy, uz, cos_phi, one_m_cos_phi, sin_phi
+    ! generate optional arguments
+    ! ... each random number is uniform in [0, 1)
+    if (.not. present(rnd1)) then
+      rnd1_ = random(dseed)
+    else
+      rnd1_ = rnd1
+    end if
+    if (.not. present(rnd2)) then
+      rnd2_ = random(dseed)
+    else
+      rnd2_ = rnd2
+    end if
+    if (.not. present(rnd3)) then
+      rnd3_ = random(dseed)
+    else
+      rnd3_ = rnd3
+    end if
+    ! generate a random direction in 3d
+    dummy1 = 2.0 * rnd1_ - 1.0
+    dummy2 = 2.0 * M_PI * rnd2_
+    ux = sqrt(1.0 - dummy1**2) * cos(dummy2)
+    uy = sqrt(1.0 - dummy1**2) * sin(dummy2)
+    uz = dummy1
+    ! generate a random angle of rotation
+    cos_phi = cos(2.0 * M_PI * rnd3_)
+    sin_phi = sin(2.0 * M_PI * rnd3_)
+    ! copy old values
+    rx_ = rx; ry_ = ry; rz_ = rz
+
+    one_m_cos_phi = (1.0 - cos_phi)
+
+    rx = (one_m_cos_phi * ux**2   + cos_phi)      * rx_ +&
+       & (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ +&
+       & (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
+
+    ry = (one_m_cos_phi * ux * uy + sin_phi * uz) * rx_ +&
+       & (one_m_cos_phi * uy**2   + cos_phi)      * ry_ +&
+       & (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
+
+    rx = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ +&
+       & (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ +&
+       & (one_m_cos_phi * uz**2   + cos_phi)      * rz_
+  end subroutine rotateRandomlyIn3D
 end module m_aux
