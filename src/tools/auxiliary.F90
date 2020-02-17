@@ -407,7 +407,7 @@ contains
        & (one_m_cos_phi * uy**2   + cos_phi)      * ry_ +&
        & (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
 
-    rx = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ +&
+    rz = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ +&
        & (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ +&
        & (one_m_cos_phi * uz**2   + cos_phi)      * rz_
   end subroutine rotateRandomlyIn3D
