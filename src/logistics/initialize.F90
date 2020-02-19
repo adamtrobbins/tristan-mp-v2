@@ -316,9 +316,6 @@ contains
       #ifdef DOWNSAMPLING
         write (var_name, "(A3,I1)") "dwn", s
         call getInput('particles', var_name, species(s)%dwn_sp, .false.)
-        if ((species(s)%dwn_sp) .and. (species(s)%m_sp .ne. 0)) then
-          call throwError('Downsampling is supported for massless particles only.')
-        end if
       #endif
 
       ! extra physics properties
