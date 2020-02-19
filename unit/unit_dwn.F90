@@ -64,14 +64,34 @@ contains
 
     do i = 1, 100000
       th = 2.0 * M_PI * random(dseed)
-      rnd = 2.0 * random(dseed) - 1.0
-      u_ = sqrt(1.0 - rnd**2) * cos(th)
-      v_ = sqrt(1.0 - rnd**2) * sin(th)
-      w_ = rnd
+      ! rnd = 2.0 * random(dseed) - 1.0
+      ! u_ = sqrt(1.0 - rnd**2) * cos(th)
+      ! v_ = sqrt(1.0 - rnd**2) * sin(th)
+      ! w_ = rnd
 
-      x_ = 15.2
-      y_ = 15.2
+      u_ = cos(th)
+      v_ = sin(th)
+      w_ = 0.0
+
+      x_ = 61.6
+      y_ = 57.2
       call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_)
+    end do
+
+    do i = 1, 100000
+      th = 2.0 * M_PI * random(dseed)
+      ! rnd = 2.0 * random(dseed) - 1.0
+      ! u_ = sqrt(1.0 - rnd**2) * cos(th)
+      ! v_ = sqrt(1.0 - rnd**2) * sin(th)
+      ! w_ = rnd
+
+      u_ = cos(th)
+      v_ = sin(th)
+      w_ = 0.0
+
+      x_ = 90.6
+      y_ = 101.2
+      call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_)
     end do
 
   end subroutine userInitParticles

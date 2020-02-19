@@ -154,8 +154,8 @@ contains
         v_ = sin(thet) * ph_energy
         w_ = 0.0
 
-        x_ = x1_g + 10 * random(dseed) * cos(thet)
-        y_ = y1_g + 10 * random(dseed) * sin(thet)
+        x_ = x1_g
+        y_ = y1_g
         call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_, weight = wei_1)
       end do
 
@@ -166,8 +166,8 @@ contains
         v_ = sin(thet) * ph_energy
         w_ = 0.0
 
-        x_ = x2_g - 10 * random(dseed) * cos(thet)
-        y_ = y2_g + 10 * random(dseed) * sin(thet)
+        x_ = x2_g
+        y_ = y2_g
         call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_, weight = wei_2)
       end do
     end if
