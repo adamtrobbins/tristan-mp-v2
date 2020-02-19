@@ -66,22 +66,38 @@ contains
     type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
     type(particle_tile), intent(in)               :: tile
     real, intent(in)                              :: ax1, ax2, ang
+    integer                                       :: s
+    logical                                       :: masslessQ
 
     integer :: p
     integer :: energy_ind, theta_ind, phi_ind
-    real    :: prtl_ux, prtl_uy, prtl_uz, prtl_energy
+    real    :: prtl_ux, prtl_uy, prtl_uz, prtl_energy, prtl_gamma
     real    :: log10_e_max, log10_e_min
     real    :: u_theta, u_phi
     integer :: dummy_int
+
+    s = tile%spec
+    if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+      masslessQ = .true.
+    else
+      masslessQ = .false.
+    end if
 
     do p = 1, tile%npart_sp
       prtl_ux = tile%u(p); prtl_uy = tile%v(p); prtl_uz = tile%w(p)
       ! rotation (not really random, because axis and angles are passed)
       call rotateRandomlyIn3D(prtl_ux, prtl_uy, prtl_uz, ax1, ax2, ang)
       prtl_energy = sqrt(prtl_ux**2 + prtl_uy**2 + prtl_uz**2)
+      if (.not. masslessQ) then
+        prtl_gamma = sqrt(1.0 + prtl_ux**2 + prtl_uy**2 + prtl_uz**2)
+      end if
       prtl_ux = prtl_ux / prtl_energy
       prtl_uy = prtl_uy / prtl_energy
       prtl_uz = prtl_uz / prtl_energy
+      if (.not. masslessQ) then
+        ! binning by `lorentz-factor - 1` (kinetic energy)
+        prtl_energy = prtl_gamma - 1.0
+      end if
       if ((prtl_energy .ge. momentum_bins(0)%e_min) .and.&
         & (prtl_energy .lt. momentum_bins(n_energy_bins - 1)%e_max)) then
         u_theta = asin(prtl_uz)
@@ -141,6 +157,7 @@ contains
       th_ind = momentum_bin%n_theta_bins + 1
     else
       th_ind = INT((u_theta + 0.5 * M_PI - momentum_bin%th0_bin) / d_theta) + 1
+      th_ind = MIN(th_ind, momentum_bin%n_theta_bins)
       #ifdef DEBUG
         if ((th_ind .gt. momentum_bin%n_theta_bins) .or. (th_ind .le. 0)) then
           call throwError('Something is wrong in `findThetaBin()`')
@@ -155,8 +172,10 @@ contains
     real, intent(in)            :: u_phi
     integer, intent(out)        :: ph_bin
     ph_bin = INT(u_phi * theta_bin%n_phi_bins / (2 * M_PI))
+    ph_bin = MAX(0, MIN(ph_bin, theta_bin%n_phi_bins - 1))
     #ifdef DEBUG
       if ((ph_bin .lt. 0) .or. (ph_bin .ge. theta_bin%n_phi_bins)) then
+        print *, u_phi, ph_bin, theta_bin%theta_min, theta_bin%theta_max
         call throwError('Something is wrong in `findPhiBin()`')
       end if
     #endif

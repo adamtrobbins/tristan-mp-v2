@@ -135,8 +135,16 @@ contains
     real, intent(in)                    :: theta_mid, phi_mid
     real, intent(in)                    :: ax1, ax2, ang
     type(particleDwnGroup)              :: group
-    integer       :: p_ind, p
+    integer       :: p_ind, p, s
     real          :: en
+    logical       :: masslessQ
+
+    s = tile%spec
+    if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+      masslessQ = .true.
+    else
+      masslessQ = .false.
+    end if
 
     allocate(group%indices(npart))
     group%indices(:) = -1
@@ -152,8 +160,6 @@ contains
     call rotateRandomlyIn3D(group%bin_px, group%bin_py, group%bin_pz,&
                           & ax1, ax2, -ang)
 
-    ! FIX: this is for photons only
-
     p_ind = 1
     do while (p_ind .le. npart)
       p = indices(p_ind)
@@ -167,7 +173,11 @@ contains
         group%tot_px = group%tot_px + tile%weight(p) * tile%u(p)
         group%tot_py = group%tot_py + tile%weight(p) * tile%v(p)
         group%tot_pz = group%tot_pz + tile%weight(p) * tile%w(p)
-        en = sqrt(tile%u(p)**2 + tile%v(p)**2 + tile%w(p)**2)
+        if (masslessQ) then
+          en = sqrt(tile%u(p)**2 + tile%v(p)**2 + tile%w(p)**2)
+        else
+          en = sqrt(1.0 + tile%u(p)**2 + tile%v(p)**2 + tile%w(p)**2)
+        end if
         group%tot_en = group%tot_en + tile%weight(p) * en
 
         group%indices(group%size + 1) = p
@@ -205,8 +215,14 @@ contains
     real            :: pA, pB, enA, enB, tot_p, cos_th, sin_th
     real            :: temp1_x, temp1_y, temp1_z, temp1
     real            :: temp2_x, temp2_y, temp2_z, temp2
+    logical         :: masslessQ
 
-    ! FIX: this is for photons only
+    s = tile%spec
+    if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+      masslessQ = .true.
+    else
+      masslessQ = .false.
+    end if
 
     ! There are two directions in this problem...
     ! ... parallel to the total momentum...
@@ -236,16 +252,31 @@ contains
     wA = INT(FLOOR(group%tot_wei / 2.0), 2)
     wB = INT(CEILING(group%tot_wei / 2.0), 2)
 
-    ! new energies & momenta (magnitudes)
-    enA = group%tot_en / (2.0 * wA)
-    pA = enA
-    enB = group%tot_en / (2.0 * wB)
-    pB = enB
+    if (masslessQ) then
+      ! new energies & momenta (magnitudes)
+      enA = group%tot_en / (2.0 * wA)
+      pA = enA
+      enB = group%tot_en / (2.0 * wB)
+      pB = enB
 
-    ! direction between new particle momenta...
-    ! ... and the total group momentum
-    cos_th = tot_p / group%tot_en
-    sin_th = sqrt(1.0 - cos_th**2)
+      ! direction between new particle momenta...
+      ! ... and the total group momentum
+      cos_th = tot_p / group%tot_en
+      sin_th = sqrt(1.0 - cos_th**2)
+    else
+      ! new energies & momenta (magnitudes)
+      enA = (group%tot_en**2 + REAL(wA)**2 - REAL(wB)**2) /&
+            & (2.0 * group%tot_en * wA)
+      pA = sqrt(enA**2 - 1.0)
+      enB = (group%tot_en**2 + REAL(wB)**2 - REAL(wA)**2) /&
+            & (2.0 * group%tot_en * wB)
+      pB = sqrt(enB**2 - 1.0)
+
+      ! direction between new particle momenta...
+      ! ... and the total group momentum
+      cos_th = MIN(tot_p / (2.0 * REAL(wA) * pA), 1.0)
+      sin_th = sqrt(1.0 - cos_th**2)
+    end if
 
     ! new momenta
     pxA = (group%tot_px / tot_p) * cos_th * pA +& ! parallel component
@@ -308,7 +339,6 @@ contains
     end do
 
     ! inject new particles
-    s = tile%spec
     call createParticle(s, xAi, yAi, zAi, dxA, dyA, dzA, pxA, pyA, pzA, weight=wA)
     call createParticle(s, xBi, yBi, zBi, dxB, dyB, dzB, pxB, pyB, pzB, weight=wB)
   end subroutine mergeParticlesInGroup
