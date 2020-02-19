@@ -235,7 +235,7 @@ contains
       end do
       if (allocated(set)) deallocate(set)
     end if
-  end subroutine
+  end subroutine bwOnTile_bin
 
   subroutine bwOnTile_mc(ti, tj, tk,&
                        & sp_arr_1, n_sp_1,&
@@ -294,7 +294,7 @@ contains
         end if
       end if
     end do
-  end subroutine
+  end subroutine bwOnTile_mc
 
   subroutine computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                  & P_12, thresholdQ)
