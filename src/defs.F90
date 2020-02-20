@@ -3,6 +3,7 @@
 
 #define CORR      1.025
 #define TINYXYZ   1e-6
+#define TINYREAL  1e-3
 
 #define M_PI      3.141592653589793
 #define CC        0.45

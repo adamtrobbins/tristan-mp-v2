@@ -20,6 +20,11 @@ module m_mainloop
   #ifdef QED
     use m_qedphysics
   #endif
+
+  #ifdef DOWNSAMPLING
+    use m_particledownsampling
+  #endif
+
   implicit none
 
   integer       :: timestep
@@ -29,10 +34,14 @@ module m_mainloop
                  & t_outputstep, t_fldexchstep,&
                  & t_prtlexchxtep, t_fldslvrstep,&
                  & t_usrfuncs
+
   #ifdef QED
-    real (kind=8) :: t_qedstep
+    real(kind=8) :: t_qedstep
   #endif
 
+  #ifdef DOWNSAMPLING
+    real(kind=8) :: t_dwnstep
+  #endif
 
   !--- PRIVATE functions -----------------------------------------!
   private :: makeReport
@@ -46,6 +55,10 @@ module m_mainloop
            & t_usrfuncs
   #ifdef QED
     private :: t_qedstep
+  #endif
+
+  #ifdef DOWNSAMPLING
+    private :: t_dwnstep
   #endif
   !...............................................................!
 contains
@@ -66,6 +79,10 @@ contains
 
     #ifdef QED
       t_qedstep = 0
+    #endif
+
+    #ifdef DOWNSAMPLING
+      t_dwnstep = 0
     #endif
 
     do timestep = 0, final_timestep
@@ -200,6 +217,16 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! Particle downsampling
+      #ifdef DOWNSAMPLING
+          t_dwnstep = MPI_WTIME()
+        call downsamplingStep(timestep)
+        call clearGhostParticles()
+          t_dwnstep = MPI_WTIME() - t_dwnstep
+      #endif
+      !.................................................
+
+      !-------------------------------------------------
       ! Output
       t_outputstep = 0
       if ((modulo(timestep, output_interval) .eq. 0) .and.&
@@ -234,6 +261,10 @@ contains
 
     #ifdef QED
       real(kind=8), allocatable     :: dt_qedstep(:)
+    #endif
+
+    #ifdef DOWNSAMPLING
+      real(kind=8), allocatable     :: dt_dwnstep(:)
     #endif
 
     ! full # of particles for each species
@@ -294,10 +325,17 @@ contains
                     & 0, MPI_COMM_WORLD, ierr)
     #endif
 
+    #ifdef DOWNSAMPLING
+      allocate(dt_dwnstep(mpi_size))
+      call MPI_GATHER(t_dwnstep, 1, MPI_REAL8,&
+                    & dt_dwnstep, 1, MPI_REAL8,&
+                    & 0, MPI_COMM_WORLD, ierr)
+    #endif
+
     if (mpi_rank .eq. 0) then
       fullstep = SUM(dt_fullstep) * 1000 / mpi_size
       call printTimeHeader(tstep)
-      ! call printReport(.true., "timestep: " // STR(tstep))
+
       call printTime(dt_fullstep, "Full_step: ")
       call printTime(dt_movestep, "  move_step: ", fullstep)
       call printTime(dt_depositstep, "  deposit_step: ", fullstep)
@@ -312,6 +350,10 @@ contains
         call printTime(dt_qedstep, "  qed_step: ", fullstep)
       #endif
 
+      #ifdef DOWNSAMPLING
+        call printTime(dt_dwnstep, "  dwn_step: ", fullstep)
+      #endif
+
       do s = 1, nspec
         if (s .ne. nspec) then
           call printNpart(nprt_sp_global(s, :),&
@@ -323,7 +365,6 @@ contains
       end do
 
       call printTimeFooter()
-
       print *, ""
     end if
 
@@ -336,6 +377,11 @@ contains
     #ifdef QED
       deallocate(dt_qedstep)
     #endif
+
+    #ifdef DOWNSAMPLING
+      deallocate(dt_dwnstep)
+    #endif
+
   end subroutine makeReport
 
 end module m_mainloop

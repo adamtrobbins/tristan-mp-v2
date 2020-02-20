@@ -28,14 +28,11 @@ module m_writeoutput
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   integer, allocatable, dimension(:,:) :: glob_spectra
-  logical                 :: flds_at_prtl
+  logical                 :: flds_at_prtl, write_xdmf
 
 
   !--- PRIVATE functions -----------------------------------------!
-  #ifndef HDF5
-    private :: writeParticles_Binary, writeFields_Binary,&
-             & writeSpectra_Binary
-  #else
+  #ifdef HDF5
     private :: writeParticles_hdf5, writeFields_hdf5,&
              & writeSpectra_hdf5, writeDomain_hdf5,&
              & writeXDMF_hdf5
@@ -59,13 +56,13 @@ contains
     step = output_index
     #ifdef HDF5
       call writeParticles_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
       call writeFields_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
       call writeSpectra_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
       call writeDomain_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+        call printReport((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
     #endif
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
@@ -82,23 +79,23 @@ contains
     real, allocatable, dimension(:)       :: send_spec_real, recv_spec_real
     ! initialize particle variables
     if (.not. flds_at_prtl) then
-      n_prtl_vars = 8
+      n_prtl_vars = 9
       prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
                                  & 'u    ', 'v    ', 'w    ',&
-                                 & 'ind  ', 'proc '/)
+                                 & 'wei  ', 'ind  ', 'proc '/)
       prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real ',&
-                                      & 'int  ', 'int  '/)
+                                      & 'int  ', 'int  ', 'int  '/)
     else
-      n_prtl_vars = 14
+      n_prtl_vars = 15
       prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
                                  & 'u    ', 'v    ', 'w    ',&
-                                 & 'ind  ', 'proc ',&
+                                 & 'wei  ', 'ind  ', 'proc ',&
                                  & 'ex   ', 'ey   ', 'ez   ',&
                                  & 'bx   ', 'by   ', 'bz   '/)
       prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real ',&
-                                      & 'int  ', 'int  ',&
+                                      & 'int  ', 'int  ', 'int  ',&
                                       & 'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real '/)
       do s = 1, nspec
@@ -163,7 +160,7 @@ contains
                if (spec_index .lt. 1) spec_index = 1
                if (spec_index .gt. spec_num) spec_index = spec_num
              end if
-             spectra(s, spec_index) = spectra(s, spec_index) + 1
+             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
            end do
          end do
        end do
@@ -337,7 +334,7 @@ contains
       #endif
     end if
 
-    if (mpi_rank .eq. 0) then
+    if ((mpi_rank .eq. 0) .and. write_xdmf) then
       call writeXDMF_hdf5(step, time, glob_n_i, glob_n_j, glob_n_k)
     end if
 
@@ -565,6 +562,9 @@ contains
             tj = stride_tj_arr(j)
             tk = stride_tk_arr(j)
             select case (trim(prtl_vars(p))) ! select integer variable
+              case('wei')
+                temp_int = INT(species(s)%prtl_tile(ti, tj, tk)%weight(temp))
+                temp_int_arr(j) = temp_int
               case('ind')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
                 temp_int_arr(j) = temp_int

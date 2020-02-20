@@ -205,7 +205,7 @@ contains
     fill_maxwellian%temperature = temperature
     fill_maxwellian%generated = .false.
     if (present(shift_gamma)) then
-      fill_maxwellian%shift_gamma = shift_gamma
+      fill_maxwellian%shift_gamma = abs(shift_gamma)
       fill_maxwellian%shift_flag = .true.
     else
       fill_maxwellian%shift_flag = .false.
@@ -267,6 +267,9 @@ contains
         do s = 1, num_species
           ! generate momenta for every species individually
           spec_ = fill_species(s)
+          if ((spec_ .le. 0) .or. (spec_ .gt. nspec)) then
+            call throwError('Wrong species specified in fillRegionWithThermalPlasma.')
+          end if
           !   shift direction is opposite for opposite signed species
           if (present(shift_gamma)) then
             fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir

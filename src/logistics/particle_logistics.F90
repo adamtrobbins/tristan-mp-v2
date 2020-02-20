@@ -27,6 +27,8 @@ contains
 
     species(s)%prtl_tile(ti, tj, tk)%ind(p_to) = species(s)%prtl_tile(ti, tj, tk)%ind(p_from)
     species(s)%prtl_tile(ti, tj, tk)%proc(p_to) = species(s)%prtl_tile(ti, tj, tk)%proc(p_from)
+
+    species(s)%prtl_tile(ti, tj, tk)%weight(p_to) = species(s)%prtl_tile(ti, tj, tk)%weight(p_from)
   end subroutine copyParticleFromTo
 
   subroutine removeParticleFromTile(s, ti, tj, tk, p)
@@ -39,7 +41,7 @@ contains
   end subroutine removeParticleFromTile
 
   subroutine createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w, &
-                          & ind, proc)
+                          & ind, proc, weight)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)           :: s
@@ -48,10 +50,14 @@ contains
     integer                       :: p
     integer                       :: ti, tj, tk
     integer, optional, intent(in) :: ind, proc
+    integer(kind=2), optional     :: weight
     ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
     tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
     tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
     #ifdef DEBUG
+      if ((s .le. 0) .or. (s .gt. nspec)) then
+        call throwError('Wrong species in `createParticle`.')
+      end if
       if ((ti .gt. species(s)%tile_nx) .or. &
         & (tj .gt. species(s)%tile_ny) .or. &
         & (tk .gt. species(s)%tile_nz)) then
@@ -97,17 +103,20 @@ contains
     if (present(ind) .and. present(proc)) then
       ! moving particle from one tile/meshblock to another
       species(s)%prtl_tile(ti, tj, tk)%ind(p) = ind
-      #ifdef DEBUG
-        species(s)%prtl_tile(ti, tj, tk)%proc(p) = mpi_rank
-      #else
-        species(s)%prtl_tile(ti, tj, tk)%proc(p) = proc
-      #endif
+      species(s)%prtl_tile(ti, tj, tk)%proc(p) = proc
     else
       ! create a very new particle
       species(s)%prtl_tile(ti, tj, tk)%ind(p) = species(s)%cntr_sp
       species(s)%prtl_tile(ti, tj, tk)%proc(p) = mpi_rank
       species(s)%cntr_sp = species(s)%cntr_sp + 1
     end if
+
+    if (present(weight)) then
+      species(s)%prtl_tile(ti, tj, tk)%weight(p) = weight
+    else
+      species(s)%prtl_tile(ti, tj, tk)%weight(p) = 1
+    end if
+
   end subroutine createParticle
 
   subroutine allocateParticles(prt, sz)
@@ -124,10 +133,13 @@ contains
     if (allocated(prt%u)) deallocate(prt%u)
     if (allocated(prt%v)) deallocate(prt%v)
     if (allocated(prt%w)) deallocate(prt%w)
+    if (allocated(prt%ind)) deallocate(prt%ind)
+    if (allocated(prt%proc)) deallocate(prt%proc)
+    if (allocated(prt%weight)) deallocate(prt%weight)
     allocate(prt%xi(sz)); allocate(prt%yi(sz)); allocate(prt%zi(sz))
     allocate(prt%dx(sz)); allocate(prt%dy(sz)); allocate(prt%dz(sz))
     allocate(prt%u(sz)); allocate(prt%v(sz)); allocate(prt%w(sz))
-    allocate(prt%ind(sz)); allocate(prt%proc(sz))
+    allocate(prt%ind(sz)); allocate(prt%proc(sz)); allocate(prt%weight(sz))
   end subroutine allocateParticles
 
   subroutine checkTileSizes()
@@ -198,6 +210,10 @@ contains
     deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
     tile%zi(1 : current_npart) = dummy_int2(1 : current_npart)
 
+    dummy_int2(1 : current_npart) = tile%weight(1 : current_npart)
+    deallocate(tile%weight); allocate(tile%weight(tile%maxptl_sp))
+    tile%weight(1 : current_npart) = dummy_int2(1 : current_npart)
+
     dummy_real(1 : current_npart) = tile%dx(1 : current_npart)
     deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
     tile%dx(1 : current_npart) = dummy_real(1 : current_npart)
@@ -267,19 +283,24 @@ contains
     call printDiag((mpi_rank .eq. 0), "clearGhostParticles()", .true.)
   end subroutine clearGhostParticles
 
-  subroutine injectParticleGlobally(s, x_glob, y_glob, z_glob, u, v, w)
+  subroutine injectParticleGlobally(s, x_glob, y_glob, z_glob, u, v, w, weight)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: s
     real, intent(in)    :: x_glob, y_glob, z_glob
     real, intent(in)    :: u, v, w
     real                :: x_loc, y_loc, z_loc
     real                :: dx_, dy_, dz_
-    integer(kind=2)     :: xi_, yi_, zi_
+    integer(kind=2)     :: xi_, yi_, zi_, weight_
+    integer, optional, intent(in) :: weight
 
-    ! convert local to global
-    call globalToLocalCoords(x_glob, y_glob, z_glob,&
-                           & x_loc, y_loc, z_loc)
+    if (present(weight)) then
+      weight_ = INT(weight, 2)
+    else
+      weight_ = INT(1, 2)
+    end if
 
+    call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc)
     x_loc = x_loc + TINYXYZ
     y_loc = y_loc + TINYXYZ
     z_loc = z_loc + TINYXYZ
@@ -288,11 +309,34 @@ contains
       & (y_loc .ge. 0.0) .and. (y_loc .lt. REAL(this_meshblock%ptr%sy)) .and.&
       & (z_loc .ge. 0.0) .and. (z_loc .lt. REAL(this_meshblock%ptr%sz))) then
       ! transform coordinates
-      xi_ = INT(FLOOR(x_loc), 2); dx_ = x_loc - FLOOR(x_loc)
-      yi_ = INT(FLOOR(y_loc), 2); dy_ = y_loc - FLOOR(y_loc)
-      zi_ = INT(FLOOR(z_loc), 2); dz_ = z_loc - FLOOR(z_loc)
-
-      call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w)
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi_, yi_, zi_, dx_, dy_, dz_)
+      call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w, weight=weight_)
     end if
   end subroutine
+
+  ! subroutine injectParticleLocally(s, x_loc, y_loc, z_loc,&
+  !                                & u, v, w, ind, proc, weight)
+  !   ! DEP_PRT [particle-dependent]
+  !   implicit none
+  !   integer, intent(in)                   :: s
+  !   real, intent(in)                      :: x_loc, y_loc, z_loc, u, v, w
+  !   integer, optional, intent(in)         :: ind, proc
+  !   integer(kind=2), optional, intent(in) :: weight
+  !   integer(kind=2)                       :: xi, yi, zi
+  !   real                                  :: dx, dy, dz
+  !
+  !   call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+  !   if (present(ind) .and. present(proc) .and. present(weight)) then
+  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+  !                       & ind=ind, proc=proc, weight=weight)
+  !   else if (present(ind) .and. present(proc)) then
+  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+  !                       & ind=ind, proc=proc)
+  !   else if (present(weight)) then
+  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+  !                       & weight=weight)
+  !   else
+  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w)
+  !   end if
+  ! end subroutine injectParticleLocally
 end module m_particlelogistics

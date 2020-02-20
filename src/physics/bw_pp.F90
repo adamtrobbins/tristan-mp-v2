@@ -102,8 +102,10 @@ contains
     integer                                       :: set_p_1, set_p_2, s1, s2, p1, p2
     integer                                       :: set_size, set_size_1, set_size_2
     type(couple)                                  :: pair_of_photons
-    real                                          :: rnd, P_12, P_1
+    real                                          :: rnd, P_12, P_1, delta_P_12
     logical                                       :: thresholdQ
+    integer(kind=2)                               :: weight1, weight2, min_weight
+    integer                                       :: npairs_produced, npp
 
     if (n_sp_2 .ne. 0) then
       ! two separate groups of photons interacting with each other
@@ -121,27 +123,64 @@ contains
       do set_p_1 = 1, set_size_1
         s1 = set_1(set_p_1)%spec
         p1 = set_1(set_p_1)%index
+        weight1 = species(s1)%prtl_tile(ti, tj, tk)%weight(p1)
         ! check if particle is scheduled for deletion
         if (species(s1)%prtl_tile(ti, tj, tk)%proc(p1) .lt. 0) cycle
+        #ifdef DEBUG
+          if (weight1 .eq. 0) then
+            call throwError('Something went wrong in BW...')
+          end if
+        #endif
         rnd = random(dseed)
         P_1 = 0.0
         do set_p_2 = 1, set_size_2
           s2 = set_2(set_p_2)%spec
           p2 = set_2(set_p_2)%index
+          weight2 = species(s2)%prtl_tile(ti, tj, tk)%weight(p2)
           ! check if particle is scheduled for deletion
           if (species(s2)%prtl_tile(ti, tj, tk)%proc(p2) .lt. 0) cycle
+          #ifdef DEBUG
+            if (weight2 .eq. 0) then
+              call throwError('Something went wrong in BW...')
+            end if
+          #endif
           pair_of_photons%part_1 = set_1(set_p_1)
           pair_of_photons%part_2 = set_2(set_p_2)
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
-          P_1 = P_1 + P_12
+          min_weight = MIN(weight1, weight2)
+          delta_P_12 = P_12 * min_weight * min_weight
+          P_1 = P_1 + delta_P_12
           if ((P_1 .gt. rnd) .and. (thresholdQ)) then
+            #ifdef DEBUG
+              if (((rnd - P_1 + delta_P_12) / delta_P_12 .gt. 1.0) .or.&
+                & ((rnd - P_1 + delta_P_12) / delta_P_12 .le. 0.0)) then
+                call throwError('Something went wrong in BW, deltaP12 etc...')
+              end if
+            #endif
             ! pair produce
-            call PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
-            ! schedule particles for deletion
-            species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
-            species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+            npairs_produced = MAX(1, INT(REAL(min_weight) * ((rnd - P_1 + delta_P_12) / delta_P_12)))
+            #ifdef DEBUG
+              if (npairs_produced .gt. min_weight) then
+                print *, npairs_produced, min_weight, weight1, weight2
+                print *, ((rnd - P_1 + delta_P_12) / delta_P_12)
+                print *, 'smth wrong :( npairs_produced .gt. min_weight'
+                stop
+              end if
+            #endif
+            do npp = 1, npairs_produced
+              call PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
+              species(s1)%prtl_tile(ti, tj, tk)%weight(p1) = species(s1)%prtl_tile(ti, tj, tk)%weight(p1) - 1
+              species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - 1
+            end do
+            ! schedule particles for deletion if necessary
+            if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .eq. 0) then
+              species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
+            end if
+            if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .eq. 0) then
+              species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+            end if
             exit
           end if
         end do
@@ -156,6 +195,7 @@ contains
       do set_p_1 = 1, set_size
         s1 = set(set_p_1)%spec
         p1 = set(set_p_1)%index
+        weight1 = species(s1)%prtl_tile(ti, tj, tk)%weight(p1)
         ! check if particle is scheduled for deletion
         if (species(s1)%prtl_tile(ti, tj, tk)%proc(p1) .lt. 0) cycle
         rnd = random(dseed)
@@ -163,6 +203,7 @@ contains
         do set_p_2 = set_p_1 + 1, set_size
           s2 = set(set_p_2)%spec
           p2 = set(set_p_2)%index
+          weight2 = species(s2)%prtl_tile(ti, tj, tk)%weight(p2)
           ! check if particle is scheduled for deletion
           if (species(s2)%prtl_tile(ti, tj, tk)%proc(p2) .lt. 0) cycle
           pair_of_photons%part_1 = set(set_p_1)
@@ -170,20 +211,31 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
-          P_1 = P_1 + P_12
+          min_weight = MIN(weight1, weight2)
+          delta_P_12 = P_12 * min_weight * min_weight
+          P_1 = P_1 + delta_P_12
           if ((P_1 .gt. rnd) .and. (thresholdQ)) then
             ! pair produce
-            call PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
-            ! schedule particles for deletion
-            species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
-            species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+            npairs_produced = MAX(1, INT(REAL(min_weight) * ((rnd - P_1 + delta_P_12) / delta_P_12)))
+            do npp = 1, npairs_produced
+              call PPfromTwoPhotons(ti, tj, tk, pair_of_photons)
+              species(s1)%prtl_tile(ti, tj, tk)%weight(p1) = species(s1)%prtl_tile(ti, tj, tk)%weight(p1) - 1
+              species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - 1
+            end do
+            ! schedule particles for deletion if necessary
+            if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .eq. 0) then
+              species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
+            end if
+            if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .eq. 0) then
+              species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+            end if
             exit
           end if
         end do
       end do
       if (allocated(set)) deallocate(set)
     end if
-  end subroutine
+  end subroutine bwOnTile_bin
 
   subroutine bwOnTile_mc(ti, tj, tk,&
                        & sp_arr_1, n_sp_1,&
@@ -232,11 +284,17 @@ contains
         p1 = pairs_of_photons(ph)%part_1%index
         s2 = pairs_of_photons(ph)%part_2%spec
         p2 = pairs_of_photons(ph)%part_2%index
-        species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
-        species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+        species(s1)%prtl_tile(ti, tj, tk)%weight(p1) = species(s1)%prtl_tile(ti, tj, tk)%weight(p1) - 1
+        species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - 1
+        if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .eq. 0) then
+          species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
+        end if
+        if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .eq. 0) then
+          species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+        end if
       end if
     end do
-  end subroutine
+  end subroutine bwOnTile_mc
 
   subroutine computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                  & P_12, thresholdQ)

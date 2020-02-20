@@ -318,6 +318,38 @@ contains
     ! deallocate(seed)
   end subroutine initializeRandomSeed
 
+  subroutine log_normal(n_bins, lognorm)
+    integer, intent(in)               :: n_bins
+    real, allocatable, intent(inout)  :: lognorm(:)
+    real                              :: x, y, z, sum
+    integer                           :: i
+
+    allocate(lognorm(n_bins))
+    sum = 0.0
+    do i = 1, n_bins
+        x = random(dseed)
+        y = random(dseed)
+        z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
+        z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
+        lognorm(i) = z
+        sum = sum + z
+    end do
+    ! this ensures lognorm(max) = 1/
+    ! lognorm(1) = lognorm(1) / sum
+    ! do i = 2, n_bins
+    !     lognorm(i) = lognorm(i) / sum + lognorm(i - 1)
+    ! end do
+    ! /this ensures lognorm(max) = 1
+
+    ! this allows having lognorm(max) != 1/
+    !   in this case bins are not fixed in upper limit
+    lognorm(1) = lognorm(1) / (n_bins + 1.)
+    do i = 2, n_bins
+        lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
+    end do
+    ! /this allows having lognorm(max) != 1
+  end subroutine log_normal
+
   recursive function factorial(n) result(fact)
     implicit none
     integer             :: fact
@@ -329,4 +361,54 @@ contains
     end if
   end function factorial
 
+  subroutine rotateRandomlyIn3D(rx, ry, rz, rnd1, rnd2, rnd3)
+    implicit none
+    real, intent(inout)         :: rx, ry, rz
+    real, optional, intent(in)  :: rnd1, rnd2, rnd3
+    real                        :: rnd1_, rnd2_, rnd3_, dummy1, dummy2
+    real                        :: rx_, ry_, rz_
+    real                        :: ux, uy, uz, cos_phi, one_m_cos_phi, sin_phi
+    ! generate optional arguments
+    ! ... each random number is uniform in [0, 1)
+    if (.not. present(rnd1)) then
+      rnd1_ = random(dseed)
+    else
+      rnd1_ = rnd1
+    end if
+    if (.not. present(rnd2)) then
+      rnd2_ = random(dseed)
+    else
+      rnd2_ = rnd2
+    end if
+    if (.not. present(rnd3)) then
+      rnd3_ = random(dseed)
+    else
+      rnd3_ = rnd3
+    end if
+    ! generate a random direction in 3d
+    dummy1 = 2.0 * rnd1_ - 1.0
+    dummy2 = 2.0 * M_PI * rnd2_
+    ux = sqrt(1.0 - dummy1**2) * cos(dummy2)
+    uy = sqrt(1.0 - dummy1**2) * sin(dummy2)
+    uz = dummy1
+    ! generate a random angle of rotation
+    cos_phi = cos(2.0 * M_PI * rnd3_)
+    sin_phi = sin(2.0 * M_PI * rnd3_)
+    ! copy old values
+    rx_ = rx; ry_ = ry; rz_ = rz
+
+    one_m_cos_phi = (1.0 - cos_phi)
+
+    rx = (one_m_cos_phi * ux**2   + cos_phi)      * rx_ +&
+       & (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ +&
+       & (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
+
+    ry = (one_m_cos_phi * ux * uy + sin_phi * uz) * rx_ +&
+       & (one_m_cos_phi * uy**2   + cos_phi)      * ry_ +&
+       & (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
+
+    rz = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ +&
+       & (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ +&
+       & (one_m_cos_phi * uz**2   + cos_phi)      * rz_
+  end subroutine rotateRandomlyIn3D
 end module m_aux

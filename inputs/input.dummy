@@ -42,8 +42,11 @@
   stride        = 100            # particle stride
   istep         = 4              # field downsampling
   flds_at_prtl  = 1              # save fields at particle position
+  write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
 
-  history       = 0              # 0 = .false.; 1 = .true.
+  history       = 0              # turn history file ON/OFF (currently not supported)
+                                 # ... integrated average quantities...
+                                 # saved at each timestep
   hst_interval  = 1
 
   spec_min      = 1e-3           # `g - 1` for massive and `e` for massless
@@ -102,6 +105,18 @@
   m3            = 0
   ch3           = 0
   bw3           = 1             # turn ON/OFF BW process on these particles
+  dwn3          = 1             # enable/disable particle downsampling
+
+<downsampling>
+
+  # particle downsampling (merging) parameters
+  interval      = 10
+  start         = 1             # starting timestep
+  max_weight    = 100           # maximum weight of merging particles
+  angular_bins  = 5             # number of angular bins (theta/phi)
+  energy_bins   = 5             # number of log energy bins
+  energy_min    = 1e-1          # min energy of merged particle
+  energy_max    = 1e1           # max energy of merged particle
 
 <radiation>
 

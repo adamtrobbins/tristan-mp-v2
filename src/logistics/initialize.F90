@@ -16,6 +16,11 @@ module m_initialize
   use m_helpers
   use m_errors
 
+  #ifdef DOWNSAMPLING
+    use m_momentumbinning
+    use m_particledownsampling
+  #endif
+
   ! extra physics
   #ifdef RADIATION
     use m_radiation
@@ -36,6 +41,10 @@ module m_initialize
            & initializeSimulation, checkEverything
   #ifdef RADIATION
     private :: initializeRadiation
+  #endif
+
+  #ifdef DOWNSAMPLING
+    private :: initializeDownsampling
   #endif
 
   #ifdef BWPAIRPRODUCTION
@@ -82,6 +91,11 @@ contains
     #ifdef RADIATION
       call initializeRadiation()
         call printDiag((mpi_rank .eq. 0), "initializeRadiation()", .true.)
+    #endif
+
+    #ifdef DOWNSAMPLING
+      call initializeDownsampling()
+        call printDiag((mpi_rank .eq. 0), "initializeDownsampling()", .true.)
     #endif
 
     #ifdef BWPAIRPRODUCTION
@@ -236,6 +250,7 @@ contains
     spec_max = log(spec_max)
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
+    call getInput('output', 'write_xdmf', write_xdmf, .true.)
 
     #ifdef HDF5
 
@@ -298,6 +313,11 @@ contains
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
 
+      #ifdef DOWNSAMPLING
+        write (var_name, "(A3,I1)") "dwn", s
+        call getInput('particles', var_name, species(s)%dwn_sp, .false.)
+      #endif
+
       ! extra physics properties
       #ifdef RADIATION
         write (var_name, "(A4,I1)") "cool", s
@@ -322,6 +342,7 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
+            species(s)%prtl_tile(ti, tj, tk)%spec = s
             species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = maxptl_ / &
                               & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
             species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
@@ -430,12 +451,12 @@ contains
     ! new type for myMPI_ENROUTE
     !   BY DEFAULT:
     !     # of blockcounts = 3:
-    !       3 x integer2  [xi, yi, zi]
+    !       4 x integer2  [weight, xi, yi, zi]
     !       6 x real      [dx, dy, dz, u, v, w]
     !       2 x integer   [ind, proc]
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
-    blockcounts(0) = 3
+    blockcounts(0) = 4
     oldtypes(0) = MPI_INTEGER2
     blockcounts(1) = 6
     oldtypes(1) = MPI_REAL
@@ -557,6 +578,19 @@ contains
       end if
     #endif
   end subroutine checkEverything
+
+  #ifdef DOWNSAMPLING
+    subroutine initializeDownsampling()
+      implicit none
+      call getInput('downsampling', 'interval', dwn_interval, 1)
+      call getInput('downsampling', 'start', dwn_start, 0)
+      call getInput('downsampling', 'max_weight', dwn_maxweight, 100)
+      call getInput('downsampling', 'angular_bins', n_angular_bins, 5)
+      call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
+      call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
+      call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
+    end subroutine initializeDownsampling
+  #endif
 
   ! extra physics
   #ifdef RADIATION

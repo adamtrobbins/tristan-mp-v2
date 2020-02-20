@@ -1,6 +1,7 @@
 #include "../defs.F90"
 
 module m_bincoupling
+  ! DEP_PRT [particle-dependent]
   use m_globalnamespace
   use m_aux
   use m_domain
@@ -56,6 +57,40 @@ contains
       end do
     end do
   end subroutine prtlToSet
+
+  subroutine prtlToSetWeighted(ti, tj, tk,&
+                     & sp_arr, n_sp,&
+                     & set, set_size)
+    implicit none
+    integer, intent(in)                           :: ti, tj, tk
+    integer, intent(in)                           :: n_sp ! # of species in set
+    integer, intent(in)                           :: sp_arr(n_sp)
+    integer, intent(out)                          :: set_size
+    type(spec_ind_pair), allocatable, intent(out) :: set(:)
+    integer                                       :: s, si, i, p, q
+
+    ! computing number of particles in the set
+    set_size = 0
+    do si = 1, n_sp
+      s = sp_arr(si)
+      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+        set_size = set_size + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+      end do
+    end do
+    allocate(set(set_size))
+    ! assigning particles in the set
+    i = 1
+    do si = 1, n_sp
+      s = sp_arr(si)
+      do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+        do q = 1, species(s)%prtl_tile(ti, tj, tk)%weight(p)
+          set(i)%spec = s
+          set(i)%index = p
+          i = i + 1
+        end do
+      end do
+    end do
+  end subroutine prtlToSetWeighted
 
   ! Knuth's algorithm to randomly shuffle a set
   subroutine shuffleSet(set, set_size)
@@ -117,7 +152,7 @@ contains
 
     if (same_setsQ) then ! if two sets are exactly the same (e.g. gamma+gamma)
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
+      call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
       ! shuffle the set
       call shuffleSet(set_1, num_1)
       num_couples = INT(num_1 / 2)
@@ -130,8 +165,8 @@ contains
       ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     else ! if two sets have no common elements (e.g. compton scattering)
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      call prtlToSet(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
-      call prtlToSet(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2)
+      call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
+      call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2)
       ! now we can simply work with `set_1` and `set_2`
       num_couples = min(num_1, num_2)
       if ((num_1 .eq. 1) .and. (num_2 .eq. 1)) then

@@ -8,6 +8,25 @@ module m_helpers
   use m_fields
   implicit none
 contains
+  logical function numbersAreClose(number1, number2)
+    implicit none
+    real, intent(in)  :: number1, number2
+    real              :: abs1, abs2
+    real              :: diff
+
+    abs1 = abs(number1); abs2 = abs(number2)
+    diff = abs(number1 - number2)
+
+    if (number1 .eq. number2) then
+      numbersAreClose = .true.
+    else if ((number1 .eq. 0.0) .or. (number2 .eq. 0.0) .or.&
+           & (abs1 + abs2 .lt. TINYREAL)) then
+      numbersAreClose = (diff .lt. TINYREAL)
+    else
+      numbersAreClose = (diff / (abs1 + abs2) .lt. 0.5 * TINYREAL)
+    end if
+  end function numbersAreClose
+
   subroutine checkNpart(msg)
     implicit none
     integer             :: ti, tj, tk, s, nprt
@@ -60,6 +79,18 @@ contains
       #endif
     end if
   end subroutine globalToLocalCoords
+
+  subroutine localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                  & xi, yi, zi, dx, dy, dz)
+    implicit none
+    real, intent(in)              :: x_loc, y_loc, z_loc
+    real, intent(out)             :: dx, dy, dz
+    integer(kind=2), intent(out)  :: xi, yi, zi
+
+    xi = INT(FLOOR(x_loc), 2); dx = x_loc - FLOOR(x_loc)
+    yi = INT(FLOOR(y_loc), 2); dy = y_loc - FLOOR(y_loc)
+    zi = INT(FLOOR(z_loc), 2); dz = z_loc - FLOOR(z_loc)
+  end subroutine localToCellBasedCoords
 
   subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax,&
                                  & x_, y_, z_, xi_, yi_, zi_, dx_, dy_, dz_)
@@ -182,11 +213,12 @@ contains
   end subroutine computeNumberOfNeighbors
 
   subroutine computeDensity(s, reset)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds
     integer :: pow
@@ -205,7 +237,7 @@ contains
           pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
           pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
           pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
-          ! FIX1 vectorize/align
+          pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
 
@@ -225,24 +257,25 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + 1.0 / (2 * ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + REAL(pt_wei(p)) / (2 * ds + 1.0)**pow
                 end do
               end do
             end do
 
           end do
-          pt_xi => null(); pt_yi => null(); pt_zi => null()
+          pt_xi => null(); pt_yi => null(); pt_zi => null(); pt_wei => null()
         end do
       end do
     end do
   end subroutine computeDensity
 
   subroutine computeEnergy(s, reset)
+    ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
     real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:)
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds
@@ -271,10 +304,10 @@ contains
           pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
           pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
           pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+          pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
           pt_u => species(s)%prtl_tile(ti, tj, tk)%u
           pt_v => species(s)%prtl_tile(ti, tj, tk)%v
           pt_w => species(s)%prtl_tile(ti, tj, tk)%w
-          ! FIX1 vectorize/align
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
             if (massive) then
@@ -299,7 +332,7 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy / (2 * ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy * REAL(pt_wei(p)) / (2 * ds + 1.0)**pow
                 end do
               end do
             end do
@@ -307,6 +340,7 @@ contains
           end do
           pt_xi => null(); pt_yi => null(); pt_zi => null()
           pt_u => null(); pt_v => null(); pt_w => null()
+          pt_wei => null()
         end do
       end do
     end do
