@@ -165,8 +165,17 @@ contains
     call getInput('grid', 'boundary_y', boundary_y, 1)
     #ifdef threeD
       call getInput('grid', 'boundary_z', boundary_z, 1)
+      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
+        boundary_x = 2
+        boundary_y = 2
+        boundary_z = 2
+      end if
     #else
       boundary_z = 0
+      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2)) then
+        boundary_x = 2
+        boundary_y = 2
+      end if
     #endif
   end subroutine initializeDomain
 
