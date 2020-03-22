@@ -218,16 +218,20 @@ contains
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_wei(:)
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds
     integer :: pow
+    real    :: contrib
     ds = 2
     #ifndef threeD
       pow = 2
     #else
       pow = 3
     #endif
+    contrib = 1.0 / (2.0 * REAL(ds) + 1.0)**pow
+
     if (reset) then
       lg_arr(:,:,:) = 0
     end if
@@ -257,7 +261,7 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + REAL(pt_wei(p)) / (2 * ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + pt_wei(p) * contrib
                 end do
               end do
             end do
@@ -275,13 +279,14 @@ contains
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
     integer                               :: p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
-    real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds
     integer :: pow
     logical :: massive
     real    :: energy
+    real    :: contrib
 
     if (species(s)%m_sp .gt. 0) then
       massive = .true.
@@ -295,6 +300,8 @@ contains
     #else
       pow = 3
     #endif
+    contrib = 1.0 / (2.0 * REAL(ds) + 1.0)**pow
+
     if (reset) then
       lg_arr(:,:,:) = 0
     end if
@@ -332,7 +339,7 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy * REAL(pt_wei(p)) / (2 * ds + 1.0)**pow
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy * pt_wei(p) * contrib
                 end do
               end do
             end do

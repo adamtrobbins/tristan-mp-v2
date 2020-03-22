@@ -20,8 +20,8 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
-  integer   :: ph_ndot1, ph_ndot2, inject_interval, wei_1, wei_2
-  real      :: ph_energy, del_x1, del_x2
+  integer   :: ph_ndot1, ph_ndot2, inject_interval
+  real      :: ph_energy, del_x1, del_x2, wei_1, wei_2
 
   private   :: ph_ndot1, ph_ndot2, ph_energy, del_x1, del_x2, wei_1, wei_2
   !...............................................................!

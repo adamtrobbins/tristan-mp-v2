@@ -50,7 +50,7 @@ contains
     integer                       :: p
     integer                       :: ti, tj, tk
     integer, optional, intent(in) :: ind, proc
-    integer(kind=2), optional     :: weight
+    real, optional                :: weight
     ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
     tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
     tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
@@ -210,9 +210,9 @@ contains
     deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
     tile%zi(1 : current_npart) = dummy_int2(1 : current_npart)
 
-    dummy_int2(1 : current_npart) = tile%weight(1 : current_npart)
+    dummy_real(1 : current_npart) = tile%weight(1 : current_npart)
     deallocate(tile%weight); allocate(tile%weight(tile%maxptl_sp))
-    tile%weight(1 : current_npart) = dummy_int2(1 : current_npart)
+    tile%weight(1 : current_npart) = dummy_real(1 : current_npart)
 
     dummy_real(1 : current_npart) = tile%dx(1 : current_npart)
     deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
@@ -291,13 +291,14 @@ contains
     real, intent(in)    :: u, v, w
     real                :: x_loc, y_loc, z_loc
     real                :: dx_, dy_, dz_
-    integer(kind=2)     :: xi_, yi_, zi_, weight_
-    integer, optional, intent(in) :: weight
+    integer(kind=2)     :: xi_, yi_, zi_
+    real                :: weight_
+    real, optional, intent(in) :: weight
 
     if (present(weight)) then
-      weight_ = INT(weight, 2)
+      weight_ = weight
     else
-      weight_ = INT(1, 2)
+      weight_ = 1.0
     end if
 
     call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc)

@@ -451,14 +451,14 @@ contains
     ! new type for myMPI_ENROUTE
     !   BY DEFAULT:
     !     # of blockcounts = 3:
-    !       4 x integer2  [weight, xi, yi, zi]
-    !       6 x real      [dx, dy, dz, u, v, w]
+    !       3 x integer2  [xi, yi, zi]
+    !       7 x real      [dx, dy, dz, u, v, w, weight]
     !       2 x integer   [ind, proc]
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
-    blockcounts(0) = 4
+    blockcounts(0) = 3
     oldtypes(0) = MPI_INTEGER2
-    blockcounts(1) = 6
+    blockcounts(1) = 7
     oldtypes(1) = MPI_REAL
     blockcounts(2) = 2
     oldtypes(2) = MPI_INTEGER
@@ -584,7 +584,7 @@ contains
       implicit none
       call getInput('downsampling', 'interval', dwn_interval, 1)
       call getInput('downsampling', 'start', dwn_start, 0)
-      call getInput('downsampling', 'max_weight', dwn_maxweight, 100)
+      call getInput('downsampling', 'max_weight', dwn_maxweight, 1e2)
       call getInput('downsampling', 'angular_bins', n_angular_bins, 5)
       call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)

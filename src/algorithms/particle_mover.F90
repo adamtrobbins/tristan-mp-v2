@@ -21,9 +21,9 @@ contains
     implicit none
     integer                               :: s, p, temp_i, ti, tj, tk
     real                                  :: g_temp, over_g_temp, over_e_temp, temp_r
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
-                                           & pt_u(:), pt_v(:), pt_w(:)
+                                           & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_
     real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad

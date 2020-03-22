@@ -67,29 +67,50 @@ contains
     integer, intent(in)                           :: sp_arr(n_sp)
     integer, intent(out)                          :: set_size
     type(spec_ind_pair), allocatable, intent(out) :: set(:)
+    integer                                       :: set_size_
+    type(spec_ind_pair), allocatable              :: set_(:)
     integer                                       :: s, si, i, p, q
+    real                                          :: wei, wei_fract
 
     ! computing number of particles in the set
-    set_size = 0
+    set_size_ = 0
     do si = 1, n_sp
       s = sp_arr(si)
       do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-        set_size = set_size + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+        set_size_ = set_size_ + CEILING(species(s)%prtl_tile(ti, tj, tk)%weight(p))
       end do
     end do
-    allocate(set(set_size))
+    allocate(set_(set_size_))
     ! assigning particles in the set
     i = 1
     do si = 1, n_sp
       s = sp_arr(si)
       do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-        do q = 1, species(s)%prtl_tile(ti, tj, tk)%weight(p)
-          set(i)%spec = s
-          set(i)%index = p
+        wei = species(s)%prtl_tile(ti, tj, tk)%weight(p)
+        ! if (wei .ge. 1.0) then
+        do q = 1, INT(wei)
+          set_(i)%spec = s
+          set_(i)%index = p
           i = i + 1
         end do
+        !   wei_fract = wei - FLOOR(wei)
+        !   if (random(dseed) .lt. wei_fract) then
+        !     set_(i)%spec = s
+        !     set_(i)%index = p
+        !     i = i + 1
+        !   end if
+        ! else
+        !   if (random(dseed) .lt. wei) then
+        !     set_(i)%spec = s
+        !     set_(i)%index = p
+        !     i = i + 1
+        !   end if
+        ! end if
       end do
     end do
+    set_size = i - 1
+    allocate(set(set_size))
+    set(1 : set_size) = set_(1 : set_size)
   end subroutine prtlToSetWeighted
 
   ! Knuth's algorithm to randomly shuffle a set
@@ -146,7 +167,7 @@ contains
       if ((n_sp_1 .eq. n_sp_2) .and. (n_sp_1 .eq. common_species)) then
         same_setsQ = .true.
       else
-        call throwError("Sets should be equal or have no intersaction in `coupleParticlesOnTile()`")
+        call throwError("Sets should be equal or have no intersection in `coupleParticlesOnTile()`")
       end if
     end if
 

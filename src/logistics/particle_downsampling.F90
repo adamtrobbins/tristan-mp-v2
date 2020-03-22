@@ -18,7 +18,7 @@ module m_particledownsampling
     ! total momentum components and energy of the group
     real                  :: tot_px, tot_py, tot_pz, tot_en
     ! total weight of the group
-    integer(kind=2)       :: tot_wei
+    real                  :: tot_wei
     ! indices of particles on a tile contained in the group
     integer, allocatable  :: indices(:)
     ! size of the group
@@ -27,7 +27,8 @@ module m_particledownsampling
     real                  :: bin_px, bin_py, bin_pz
   end type particleDwnGroup
 
-  integer           :: dwn_start, dwn_interval, dwn_maxweight
+  integer           :: dwn_start, dwn_interval
+  real              :: dwn_maxweight
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: downsampleParticles, downsampleOnTile,&
@@ -150,7 +151,7 @@ contains
     group%indices(:) = -1
     group%size = 0
     group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
-    group%tot_en = 0.0; group%tot_wei = 0_2
+    group%tot_en = 0.0; group%tot_wei = 0.0
 
     group%bin_px = cos(theta_mid) * cos(phi_mid)
     group%bin_px = cos(theta_mid) * sin(phi_mid)
@@ -163,7 +164,7 @@ contains
     p_ind = 1
     do while (p_ind .le. npart)
       p = indices(p_ind)
-      if (REAL(tile%weight(p)) .gt. sqrt(REAL(dwn_maxweight))) then
+      if (tile%weight(p) .gt. sqrt(dwn_maxweight)) then
         ! particle to heavy to merge
         indices(p_ind) = indices(npart)
         npart = npart - 1
@@ -193,7 +194,7 @@ contains
           group%indices(:) = -1
           group%size = 0
           group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
-          group%tot_en = 0.0; group%tot_wei = 0_2
+          group%tot_en = 0.0; group%tot_wei = 0.0
         end if
 
         p_ind = p_ind + 1
@@ -207,7 +208,7 @@ contains
     implicit none
     type(particleDwnGroup), intent(in)  :: group
     type(particle_tile), intent(inout)  :: tile
-    integer(kind=2) :: wA, wB
+    real            :: wA, wB
     integer         :: p, p_ind, s
     real            :: pxA, pxB, pyA, pyB, pzA, pzB, rnd
     real            :: dxA, dyA, dzA, dxB, dyB, dzB
@@ -249,8 +250,11 @@ contains
     tot_p = sqrt(group%tot_px**2 + group%tot_py**2 + group%tot_pz**2)
 
     ! new weights
-    wA = INT(FLOOR(group%tot_wei / 2.0), 2)
-    wB = INT(CEILING(group%tot_wei / 2.0), 2)
+    ! ... weights of A and B are a matter of choice ...
+    wA = group%tot_wei / 2.0
+    wB = group%tot_wei / 2.0
+    ! ... but the code below works even if wA != wB ...
+    ! ... (as long as their sum is tot_wei)
 
     if (masslessQ) then
       ! new energies & momenta (magnitudes)
@@ -265,16 +269,16 @@ contains
       sin_th = sqrt(1.0 - cos_th**2)
     else
       ! new energies & momenta (magnitudes)
-      enA = (group%tot_en**2 + REAL(wA)**2 - REAL(wB)**2) /&
+      enA = (group%tot_en**2 + wA**2 - wB**2) /&
             & (2.0 * group%tot_en * wA)
       pA = sqrt(enA**2 - 1.0)
-      enB = (group%tot_en**2 + REAL(wB)**2 - REAL(wA)**2) /&
+      enB = (group%tot_en**2 + wB**2 - wA**2) /&
             & (2.0 * group%tot_en * wB)
       pB = sqrt(enB**2 - 1.0)
 
       ! direction between new particle momenta...
       ! ... and the total group momentum
-      cos_th = MIN(tot_p / (2.0 * REAL(wA) * pA), 1.0)
+      cos_th = MIN(tot_p / (2.0 * wA * pA), 1.0)
       sin_th = sqrt(1.0 - cos_th**2)
     end if
 
@@ -296,6 +300,7 @@ contains
     #ifdef DEBUG
       ! check weight conservation
       if (wA + wB .ne. group%tot_wei) then
+        print *, wA, wB, group%tot_wei
         call throwError('Weight is not conserved in `mergeParticlesInGroup()`')
       end if
       if (.not. numbersAreClose(pxA * wA + pxB * wB, group%tot_px)) then

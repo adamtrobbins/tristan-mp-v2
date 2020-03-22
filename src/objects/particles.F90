@@ -14,9 +14,9 @@ module m_particles
     integer(kind=2), allocatable, dimension(:)  :: xi, yi, zi
     real, allocatable, dimension(:)             :: dx, dy, dz
     real, allocatable, dimension(:)             :: u, v, w
+    real, allocatable, dimension(:)             :: weight
     integer, allocatable, dimension(:)          :: ind, proc
-    integer(kind=2), allocatable, dimension(:)  :: weight
-    !dir$ attributes align: 64 :: xi, yi, zi, dx, dy, dz, u, v, w, ind, proc, weight
+    !dir$ attributes align: 64 :: xi, yi, zi, dx, dy, dz, u, v, w, weight, ind, proc
     ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
 
@@ -50,9 +50,10 @@ module m_particles
   ! particle types for exchange between processors />
   type :: prtl_enroute
     ! DEP_PRT [particle-dependent]
-    integer(kind=2)   :: weight, xi, yi, zi
+    integer(kind=2)   :: xi, yi, zi
     real              :: dx, dy, dz
     real              :: u, v, w
+    real              :: weight
     integer           :: ind, proc
   end type prtl_enroute
 
@@ -65,7 +66,7 @@ module m_particles
     type(enroute_array), dimension(-1:1,-1:1,-1:1)   :: get
   end type enroute_handler
   ! </ particle types for exchange between processors
-  
+
   ! main container for particles
   type(particle_species), target, allocatable   :: species(:)
   ! number of species

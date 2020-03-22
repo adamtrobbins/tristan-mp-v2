@@ -27,7 +27,7 @@ module m_writeoutput
   integer                 :: output_start, output_interval, output_stride, output_istep
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
-  integer, allocatable, dimension(:,:) :: glob_spectra
+  real, allocatable, dimension(:,:) :: glob_spectra
   logical                 :: flds_at_prtl, write_xdmf
 
 
@@ -74,9 +74,8 @@ contains
     real                      :: energy, u_, v_, w_
     integer                   :: s, i, ti, tj, tk, p, spec_index
     integer                   :: ierr
-    integer, allocatable, dimension(:,:)  :: spectra
-    integer, allocatable, dimension(:)    :: send_spec_int, recv_spec_int
-    real, allocatable, dimension(:)       :: send_spec_real, recv_spec_real
+    real, allocatable, dimension(:,:)     :: spectra
+    real, allocatable, dimension(:)       :: send_spec, recv_spec
     ! initialize particle variables
     if (.not. flds_at_prtl) then
       n_prtl_vars = 9
@@ -85,7 +84,7 @@ contains
                                  & 'wei  ', 'ind  ', 'proc '/)
       prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real ',&
-                                      & 'int  ', 'int  ', 'int  '/)
+                                      & 'real ', 'int  ', 'int  '/)
     else
       n_prtl_vars = 15
       prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
@@ -95,7 +94,7 @@ contains
                                  & 'bx   ', 'by   ', 'bz   '/)
       prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real ',&
-                                      & 'int  ', 'int  ', 'int  ',&
+                                      & 'real ', 'int  ', 'int  ',&
                                       & 'real ', 'real ', 'real ',&
                                       & 'real ', 'real ', 'real '/)
       do s = 1, nspec
@@ -133,8 +132,7 @@ contains
       allocate(glob_spectra(nspec, spec_num))
     end if
     allocate(spectra(nspec, spec_num))
-    allocate(send_spec_int(spec_num), recv_spec_int(spec_num))
-    allocate(send_spec_real(spec_num), recv_spec_real(spec_num))
+    allocate(send_spec(spec_num), recv_spec(spec_num))
 
     spectra(:,:) = 0
     do s = 1, nspec
@@ -169,28 +167,26 @@ contains
 
     ! send to root rank
     do s = 1, nspec
-      send_spec_int(:) = spectra(s,:)
-      call MPI_REDUCE(send_spec_int, recv_spec_int, spec_num, MPI_INTEGER,&
+      send_spec(:) = spectra(s,:)
+      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
                     & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-      glob_spectra(s,:) = recv_spec_int(:)
+      glob_spectra(s,:) = recv_spec(:)
 
       #ifdef RADIATION
         ! compute radiation spectra
         if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
-          send_spec_real(:) = rad_spectra(s,:)
-          call MPI_REDUCE(send_spec_real, recv_spec_real, spec_num, MPI_REAL,&
+          send_spec(:) = rad_spectra(s,:)
+          call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
                         & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-          glob_rad_spectra(s,:) = recv_spec_real(:)
+          glob_rad_spectra(s,:) = recv_spec(:)
           rad_spectra(s,:) = 0.0
         end if
       #endif
     end do
 
     if (allocated(spectra)) deallocate(spectra)
-    if (allocated(send_spec_int)) deallocate(send_spec_int)
-    if (allocated(recv_spec_int)) deallocate(recv_spec_int)
-    if (allocated(send_spec_real)) deallocate(send_spec_real)
-    if (allocated(recv_spec_real)) deallocate(recv_spec_real)
+    if (allocated(send_spec)) deallocate(send_spec)
+    if (allocated(recv_spec)) deallocate(recv_spec)
   end subroutine initializeOutput
 
   #ifdef HDF5
@@ -347,14 +343,6 @@ contains
     global_dims(1) = glob_n_i
     global_dims(2) = glob_n_j
     global_dims(3) = glob_n_k
-
-    ! mpi_f08 thing
-    ! call MPI_INFO_CREATE(FILE_INFO_TEMPLATE, error)
-    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "access_style", "write_once", error)
-    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "collective_buffering", "true", error)
-    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_block_size", "4194304", error)
-    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_buffer_size", "16777216", error)
-    ! call MPI_INFO_SET(FILE_INFO_TEMPLATE, "cb_nodes", "1", error)
 
     call h5open_f(error)
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
@@ -562,9 +550,6 @@ contains
             tj = stride_tj_arr(j)
             tk = stride_tk_arr(j)
             select case (trim(prtl_vars(p))) ! select integer variable
-              case('wei')
-                temp_int = INT(species(s)%prtl_tile(ti, tj, tk)%weight(temp))
-                temp_int_arr(j) = temp_int
               case('ind')
                 temp_int = species(s)%prtl_tile(ti, tj, tk)%ind(temp)
                 temp_int_arr(j) = temp_int
@@ -612,6 +597,9 @@ contains
               case('w')
                 temp_real1 = species(s)%prtl_tile(ti, tj, tk)%w(temp)
                 temp_real_arr(j) = REAL(temp_real1, 4)
+              case('wei')
+                temp_real1 = species(s)%prtl_tile(ti, tj, tk)%weight(temp)
+                temp_real_arr(j) = temp_real1
               case('ex')
                 call interpFromEdges(species(s)%prtl_tile(ti, tj, tk)%dx(temp),&
                                    & species(s)%prtl_tile(ti, tj, tk)%dy(temp),&
@@ -761,9 +749,9 @@ contains
         ! writing spectra:
         dsetname = 'n' // trim(STR(s))
         call h5screate_simple_f(datarank, data_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER, dspace_id, &
+        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
                        & dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, glob_spectra(s,:), data_dims, error)
+        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_spectra(s,:), data_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
 

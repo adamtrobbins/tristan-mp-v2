@@ -28,7 +28,7 @@ contains
     real, intent(in)              :: bx, by, bz, ex, ey, ez
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
-    integer(kind=2), intent(in)   :: weight
+    real, intent(in)              :: weight
     integer, intent(in)           :: s
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
@@ -116,7 +116,7 @@ contains
     real, intent(in)              :: bx, by, bz, ex, ey, ez
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
-    integer(kind=2), intent(in)   :: weight
+    real, intent(in)              :: weight
     integer, intent(in)           :: s
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci

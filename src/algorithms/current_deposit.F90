@@ -12,16 +12,16 @@ contains
     ! DEP_PRT [particle-dependent]
     implicit none
     integer :: s, p, ti, tj, tk
-    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:), pt_wei(:)
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
-                                           & pt_u(:), pt_v(:), pt_w(:)
+                                           & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     real                                  :: xr, yr, zr, x1, y1, z1, x2, y2, z2
     real                                  :: gamma_inv, temp_charge
     integer(kind=2)                       :: i1, i2, j1, j2, k1, k2
     integer(kind=2)                       :: i1p1, i2p1, j1p1, j2p1, k1p1, k2p1
     real                                  :: Wx1, Wy1, Wz1, Wx2, Wy2, Wz2
     real                                  :: onemWx1, onemWy1, onemWz1, onemWx2, onemWy2, onemWz2
-    real                                  :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2, prtl_weight
+    real                                  :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2
 
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
@@ -68,13 +68,12 @@ contains
                 onemWx2 = 1 - Wx2;            onemWy2 = 1 - Wy2
 
                 ! deposit with a "-" sign
-                prtl_weight = REAL(pt_wei(p))
-                Fx1 = -temp_charge * (xr - x1) * prtl_weight
-                Fy1 = -temp_charge * (yr - y1) * prtl_weight
-                Fz1 = -temp_charge * (zr - z1) * prtl_weight
-                Fx2 = -temp_charge * (x2 - xr) * prtl_weight
-                Fy2 = -temp_charge * (y2 - yr) * prtl_weight
-                Fz2 = -temp_charge * (z2 - zr) * prtl_weight
+                Fx1 = -temp_charge * (xr - x1) * pt_wei(p)
+                Fy1 = -temp_charge * (yr - y1) * pt_wei(p)
+                Fz1 = -temp_charge * (zr - z1) * pt_wei(p)
+                Fx2 = -temp_charge * (x2 - xr) * pt_wei(p)
+                Fy2 = -temp_charge * (y2 - yr) * pt_wei(p)
+                Fz2 = -temp_charge * (z2 - zr) * pt_wei(p)
 
                 jx(i1  , j1  , k1) = jx(i1  , j1  , k1) + Fx1 * onemWy1
                 jx(i1  , j1p1, k1) = jx(i1  , j1p1, k1) + Fx1 * Wy1
@@ -118,13 +117,12 @@ contains
                 onemWx2 = 1 - Wx2; onemWy2 = 1 - Wy2; onemWz2 = 1 - Wz2
 
                 ! deposit with a "-" sign
-                prtl_weight = REAL(pt_wei(p))
-                Fx1 = -temp_charge * (xr - x1) * prtl_weight
-                Fy1 = -temp_charge * (yr - y1) * prtl_weight
-                Fz1 = -temp_charge * (zr - z1) * prtl_weight
-                Fx2 = -temp_charge * (x2 - xr) * prtl_weight
-                Fy2 = -temp_charge * (y2 - yr) * prtl_weight
-                Fz2 = -temp_charge * (z2 - zr) * prtl_weight
+                Fx1 = -temp_charge * (xr - x1) * pt_wei(p)
+                Fy1 = -temp_charge * (yr - y1) * pt_wei(p)
+                Fz1 = -temp_charge * (zr - z1) * pt_wei(p)
+                Fx2 = -temp_charge * (x2 - xr) * pt_wei(p)
+                Fy2 = -temp_charge * (y2 - yr) * pt_wei(p)
+                Fz2 = -temp_charge * (z2 - zr) * pt_wei(p)
 
                 jx(i1  , j1  , k1  ) = jx(i1  , j1  , k1  ) + Fx1 * onemWy1 * onemWz1
                 jx(i1  , j1p1, k1  ) = jx(i1  , j1p1, k1  ) + Fx1 * Wy1 * onemWz1
