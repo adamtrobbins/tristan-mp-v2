@@ -18,9 +18,9 @@
   my0           = 64             # number of actual grid points in the y direction
   mz0           = 1              # ... (ignored for 2D simulations)
 
-  boundary_x    = 1              # boundary in x: 1 = periodic, 0 = outflow, 2 = central outflow
-  boundary_y    = 1              # boundary in y: 1 = periodic, 0 = outflow, 2 = central outflow
-  boundary_z    = 1              # boundary in z: 1 = periodic, 0 = outflow, 2 = central outflow
+  boundary_x    = 1              # boundary in x: 1 = periodic, 0 = outflow, 2 = radial outflow
+  boundary_y    = 1              # boundary in y: 1 = periodic, 0 = outflow, 2 = radial outflow
+  boundary_z    = 1              # boundary in z: 1 = periodic, 0 = outflow, 2 = radial outflow
                                  # ... if either is "2" all will be assigned to "2"
 
   resize_tiles  = 0              # reallocate particle tiles if necessary
