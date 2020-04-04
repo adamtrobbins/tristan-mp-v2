@@ -18,8 +18,6 @@ contains
     real :: lam, lam1, lam2, xg, yg, zg
     const = CORR * 0.5 * CC
 
-    ! FIX0 needs to be changed for different BC-s
-
     #ifndef threeD
       k = 0
       zg = 0.0
@@ -90,8 +88,6 @@ contains
     real :: const
     real :: lam, lam1, lam2, xg, yg, zg
     const = CORR * CC
-
-    ! FIX0 needs to be changed for different BC-s
 
     #ifndef threeD
       k = 0
@@ -207,7 +203,7 @@ contains
         if (radius .gt. gr_bound) then
           radius = sqrt(radius)
           gr_bound = sqrt(gr_bound)
-          lambdaAbsorb = -MIN(K_abs * ((radius - gr_bound) / ds_abs)**3, Kabs)
+          lambdaAbsorb = -MIN(K_abs * ((radius - gr_bound) / ds_abs)**3, K_abs)
         end if
       #else
         gc_x = global_mesh%sx * 0.5
@@ -219,7 +215,7 @@ contains
         if (radius .gt. gr_bound) then
           radius = sqrt(radius)
           gr_bound = sqrt(gr_bound)
-          lambdaAbsorb = -MIN(K_abs * ((radius - gr_bound) / ds_abs)**3, Kabs)
+          lambdaAbsorb = -MIN(K_abs * ((radius - gr_bound) / ds_abs)**3, K_abs)
         end if
       #endif
     else
