@@ -91,7 +91,7 @@ contains
       ! MAINLOOP >
       !-------------------------------------------------
       ! User defined boundary conditions for B-field
-        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+        t_usrfuncs = MPI_WTIME()
       call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
