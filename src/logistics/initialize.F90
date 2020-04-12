@@ -161,6 +161,7 @@ contains
       call throwError('ERROR: grid size is not evenly divisible by the number of cores')
     end if
 
+    call getInput('grid', 'abs_thick', ds_abs, 10.0)
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
     #ifdef threeD
