@@ -191,7 +191,6 @@ contains
     real              :: gr_max, gr_bound, gc_x, gc_y, gc_z, radius
     lambdaAbsorb = 0.0
     K_abs = CC / 3.0
-    ds_abs = 50.0
     if (boundary_x .eq. 2) then
       ! radial open boundaries (in all directions)
       #ifndef threeD
@@ -219,7 +218,7 @@ contains
         end if
       #endif
     else
-      ! simple open boundaries
+      ! simple cartesian open boundaries
       if (boundary_x .eq. 0) then
         ! open boundaries in x direction
         if (x0 .lt. ds_abs) then
