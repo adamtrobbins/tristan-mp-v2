@@ -19,4 +19,6 @@ module m_fields
   integer               :: sendrecv_buffsz, sendrecv_offsetsz
   real, allocatable     :: lg_arr(:,:,:)
   real, allocatable     :: sm_arr(:,:,:)
+  ! absorption layer thickness
+  real                  :: ds_abs
 end module m_fields
