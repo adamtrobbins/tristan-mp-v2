@@ -219,7 +219,9 @@ contains
                     & fldBoundZ))
     end if
 
+    ! update only within this "supersphere"
     supersph_radius_sq = (psr_radius * 2)**2
+    ! B fields are set few cells below the E fields
     shift_B = 4.0
     shift_E = 0.0
 
