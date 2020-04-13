@@ -155,8 +155,8 @@ contains
       global_mesh%sz = 1
     #endif
 
-    if ((modulo(global_mesh%sx, sizex) .ne. 0) .and.&
-      & (modulo(global_mesh%sy, sizey) .ne. 0) .and.&
+    if ((modulo(global_mesh%sx, sizex) .ne. 0) .or.&
+      & (modulo(global_mesh%sy, sizey) .ne. 0) .or.&
       & (modulo(global_mesh%sz, sizez) .ne. 0)) then
       call throwError('ERROR: grid size is not evenly divisible by the number of cores')
     end if
