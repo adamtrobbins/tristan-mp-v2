@@ -71,42 +71,35 @@ contains
     integer, intent(in) :: do_n_times
     real                :: tmp2, tmp1
     integer             :: i, j, k, n_pass
+    integer             :: imin, imax, jmin, jmax, kmin, kmax
     if (do_n_times .gt. NGHOST) then
       call throwError('ERROR: `filterInX()` called with `do_n_times` > NGHOST.')
     end if
     do n_pass = 1, do_n_times
+      imin = -NGHOST + n_pass
+      imax = this_meshblock%ptr%sx - 1 + NGHOST - n_pass
+      jmin = -NGHOST + n_pass
+      jmax = this_meshblock%ptr%sy - 1 + NGHOST - n_pass
+      
       #ifndef threeD
-        k = 0
-        do j = -NGHOST + n_pass, this_meshblock%ptr%sy - 1 + NGHOST - n_pass
-          tmp2 = arr(-NGHOST + n_pass - 1, j, k)
-          i = -NGHOST + n_pass
-          do while (i .le. this_meshblock%ptr%sx - 1 + NGHOST - n_pass)
+        kmin = 0 
+        kmax = 0
+      #else
+        kmin = -NGHOST + n_pass
+        kmax = this_meshblock%ptr%sz - 1 + NGHOST - n_pass
+      #endif
+      do k = kmin, kmax
+        do j = jmin, jmax
+          tmp2 = arr(imin - 1, j, k)
+          do i = imin, imax, 2
             tmp1 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
             arr(i - 1, j, k) = tmp2
-            i = i + 1
-            tmp2 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
-            arr(i - 1, j, k) = tmp1
-            i = i + 1
+            tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i + 1, j, k) + 0.25 * arr(i + 2, j, k)
+            arr(i, j, k) = tmp1
           end do
-          arr(this_meshblock%ptr%sx - 1 + NGHOST - n_pass, j, k) = tmp2
+          arr(imax + 1, j, k) = tmp2
         end do
-      #else
-        do k = -NGHOST + n_pass, this_meshblock%ptr%sz - 1 + NGHOST - n_pass
-          do j = -NGHOST + n_pass, this_meshblock%ptr%sy - 1 + NGHOST - n_pass
-            tmp2 = arr(-NGHOST + n_pass - 1, j, k)
-            i = -NGHOST + n_pass
-            do while (i .le. this_meshblock%ptr%sx - 1 + NGHOST - n_pass)
-              tmp1 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
-              arr(i - 1, j, k) = tmp2
-              i = i + 1
-              tmp2 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
-              arr(i - 1, j, k) = tmp1
-              i = i + 1
-            end do
-            arr(this_meshblock%ptr%sx - 1 + NGHOST - n_pass, j, k) = tmp2
-          end do
-        end do
-      #endif
+      end do
     end do
   end subroutine
 
@@ -118,42 +111,34 @@ contains
     integer, intent(in) :: do_n_times
     real                :: tmp2, tmp1
     integer             :: i, j, k, n_pass
+    integer             :: imin, imax, jmin, jmax, kmin, kmax
     if (do_n_times .gt. NGHOST) then
       call throwError('ERROR: `filterInY()` called with `do_n_times` > NGHOST.')
     end if
     do n_pass = 1, do_n_times
+      imin = -NGHOST + n_pass
+      imax = this_meshblock%ptr%sx - 1 + NGHOST - n_pass
+      jmin = -NGHOST + n_pass
+      jmax = this_meshblock%ptr%sy - 1 + NGHOST - n_pass
       #ifndef threeD
-        k = 0
-        do i = -NGHOST + n_pass, this_meshblock%ptr%sx - 1 + NGHOST - n_pass
-          tmp2 = arr(i, -NGHOST + n_pass - 1, k)
-          j = -NGHOST + n_pass
-          do while (j .lt.  this_meshblock%ptr%sy - 1 + NGHOST - n_pass)
+        kmin = 0 
+        kmax = 0
+      #else
+        kmin = -NGHOST + n_pass
+        kmax = this_meshblock%ptr%sz - 1 + NGHOST - n_pass
+      #endif
+      do k = kmin, kmax
+        do i = imin, imax
+          tmp2 = arr(i, jmin - 1, k)
+          do j = jmin, jmax, 2
             tmp1 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
             arr(i, j - 1, k) = tmp2
-            j = j + 1
-            tmp2 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
-            arr(i, j - 1, k) = tmp1
-            j = j + 1
+            tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j + 1, k) + 0.25 * arr(i, j + 2, k)
+            arr(i, j, k) = tmp1
           end do
-          arr(i, this_meshblock%ptr%sy - 1 + NGHOST - n_pass, k) = tmp2
+          arr(i, jmax + 1, k) = tmp2
         end do
-      #else
-        do k = -NGHOST + n_pass, this_meshblock%ptr%sz - 1 + NGHOST - n_pass
-          do i = -NGHOST + n_pass, this_meshblock%ptr%sx - 1 + NGHOST - n_pass
-            tmp2 = arr(i, -NGHOST + n_pass - 1, k)
-            j = -NGHOST + n_pass
-            do while (j .lt.  this_meshblock%ptr%sy - 1 + NGHOST - n_pass)
-              tmp1 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
-              arr(i, j - 1, k) = tmp2
-              j = j + 1
-              tmp2 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
-              arr(i, j - 1, k) = tmp1
-              j = j + 1
-            end do
-            arr(i, this_meshblock%ptr%sy - 1 + NGHOST - n_pass, k) = tmp2
-          end do
-        end do
-      #endif
+      end do
     end do
   end subroutine
 
@@ -166,23 +151,27 @@ contains
       integer, intent(in) :: do_n_times
       real                :: tmp2, tmp1
       integer             :: i, j, k, n_pass
+      integer             :: imin, imax, jmin, jmax, kmin, kmax
       if (do_n_times .gt. NGHOST) then
         call throwError('ERROR: `filterInZ()` called with `do_n_times` > NGHOST.')
       end if
       do n_pass = 1, do_n_times
-        do j = -NGHOST + n_pass, this_meshblock%ptr%sy - 1 + NGHOST - n_pass
-          do i = -NGHOST + n_pass, this_meshblock%ptr%sx - 1 + NGHOST - n_pass
-            tmp2 = arr(i, j, -NGHOST + n_pass - 1)
-            k = -NGHOST + n_pass
-            do while (k .lt. this_meshblock%ptr%sz - 1 + NGHOST - n_pass)
+        imin = -NGHOST + n_pass
+        imax = this_meshblock%ptr%sx - 1 + NGHOST - n_pass
+        jmin = -NGHOST + n_pass
+        jmax = this_meshblock%ptr%sy - 1 + NGHOST - n_pass
+        kmin = -NGHOST + n_pass
+        kmax = this_meshblock%ptr%sz - 1 + NGHOST - n_pass
+        do j = jmin, jmax
+          do i = imin, imax
+            tmp2 = arr(i, j, kmin - 1)
+            do k = kmin, kmax, 2
               tmp1 = 0.25 * arr(i, j, k - 1) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j, k + 1)
               arr(i, j, k - 1) = tmp2
-              k = k + 1
-              tmp2 = 0.25 * arr(i, j, k - 1) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j, k + 1)
-              arr(i, j, k - 1) = tmp1
-              k = k + 1
+              tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j, k + 1) + 0.25 * arr(i, j, k + 2)
+              arr(i, j, k) = tmp1
             end do
-            arr(i, j, this_meshblock%ptr%sz - 1 + NGHOST - n_pass) = tmp2
+            arr(i, j, kmax + 1) = tmp2
           end do
         end do
       end do
