@@ -118,3 +118,4 @@
   psr_radius    = 10
   psr_angle     = 30
   psr_period    = 500
+  e_dot_b_thr   = 0.02
