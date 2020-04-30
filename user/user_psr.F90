@@ -15,9 +15,10 @@ module m_userfile
 
   !--- PRIVATE variables -----------------------------------------!
   real :: xc_g, yc_g, zc_g
-  real :: psr_angle, psr_period, psr_omega, psr_radius
+  real :: psr_angle, psr_period, psr_omega, psr_radius, e_dot_b_thr
 
   private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
+  private :: e_dot_b_thr
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -39,6 +40,7 @@ contains
     call getInput('problem', 'psr_radius', psr_radius)
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
+    call getInput('problem', 'e_dot_b_thr', e_dot_b_thr, 0.01)
 
     ! safety check
     if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
@@ -145,7 +147,42 @@ contains
     integer, optional, intent(in) :: step
     integer                       :: s, ti, tj, tk, p
     real                          :: x_g, y_g, z_g, r_g
+    integer                       :: n_part, n
+    real                          :: shell_width
+    real                          :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)               :: xi, yi, zi
+    real                          :: x_glob, y_glob, z_glob, weight, ppc
+    real                          :: ex0, ey0, ez0, bx0, by0, bz0, e_dot_b, b_sqr
 
+    ! inject new particles in the spherical shell
+    shell_width = 0.75
+    ppc = 0.5 * ppc0
+    n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - psr_radius**3) * ppc)
+    do n = 1, n_part
+      call randomPointInSphericalShell(psr_radius, psr_radius + shell_width, x_glob, y_glob, z_glob)
+      x_glob = x_glob + xc_g
+      y_glob = y_glob + yc_g
+      z_glob = z_glob + zc_g
+
+      ! convert global coordinates to local
+      call globalToLocalCoords(x_glob, y_glob, z_glob,&
+                             & x_loc, y_loc, z_loc, .true.)
+      call localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                & xi, yi, zi, dx, dy, dz)
+      ! interpolate fields on particle position
+      call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+      call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      b_sqr = bx0**2 + by0**2 + bz0**2
+      e_dot_b = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0)
+      weight = 0.5 * (e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc)
+
+      if (e_dot_b / b_sqr .gt. e_dot_b_thr) then
+        call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
+        call injectParticleGlobally(2, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
+      end if
+    end do
+
+    ! remove particles falling into the star
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
@@ -157,7 +194,7 @@ contains
                   & + species(s)%prtl_tile(ti, tj, tk)%dy(p)
               z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
                   & + species(s)%prtl_tile(ti, tj, tk)%dz(p)
-              r_g = sqrt(x_g**2 + y_g**2 + z_g**2)
+              r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
               if (r_g .le. (psr_radius - 0.5)) then
                 species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
               end if
@@ -168,6 +205,22 @@ contains
     end do
 
   end subroutine userParticleBoundaryConditions
+
+  subroutine randomPointInSphericalShell(rmin, rmax, x, y, z)
+    implicit none
+    real, intent(in)    :: rmin, rmax
+    real, intent(out)   :: x, y, z
+    real                :: TH, X0, Y0, Z0, T, R
+    TH = random(dseed) * 2.0 * M_PI
+    Z0 = 2.0 * (random(dseed) - 0.5)
+    X0 = sqrt(1.0 - Z0**2) * cos(TH)
+    Y0 = sqrt(1.0 - Z0**2) * sin(TH)
+    T = random(dseed) * (rmax**3 - rmin**3) + rmin**3
+    R = T**(1.0 / 3.0)
+    x = X0 * R
+    y = Y0 * R
+    z = Z0 * R
+  end subroutine randomPointInSphericalShell
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
