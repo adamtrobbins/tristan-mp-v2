@@ -155,18 +155,28 @@ contains
       global_mesh%sz = 1
     #endif
 
-    if ((modulo(global_mesh%sx, sizex) .ne. 0) .and.&
-      & (modulo(global_mesh%sy, sizey) .ne. 0) .and.&
+    if ((modulo(global_mesh%sx, sizex) .ne. 0) .or.&
+      & (modulo(global_mesh%sy, sizey) .ne. 0) .or.&
       & (modulo(global_mesh%sz, sizez) .ne. 0)) then
       call throwError('ERROR: grid size is not evenly divisible by the number of cores')
     end if
 
+    call getInput('grid', 'abs_thick', ds_abs, 10.0)
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
     #ifdef threeD
       call getInput('grid', 'boundary_z', boundary_z, 1)
+      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
+        boundary_x = 2
+        boundary_y = 2
+        boundary_z = 2
+      end if
     #else
       boundary_z = 0
+      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2)) then
+        boundary_x = 2
+        boundary_y = 2
+      end if
     #endif
   end subroutine initializeDomain
 

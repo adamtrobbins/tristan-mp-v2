@@ -232,7 +232,11 @@ contains
     real, intent(in)          :: my_real
     character(:), allocatable :: string
     character(len=STR_MAX)    :: temp
-    write(temp, '(G0.2)') my_real
+    if ((my_real .ge. 1000) .or. ((my_real .lt. 1e-2) .and. (my_real .ne. 0.0))) then
+      write(temp, '(ES10.2)') my_real
+    else
+      write(temp, '(F10.2)') my_real
+    end if
     string = trim(temp)
   end function realToStr
 
@@ -243,14 +247,7 @@ contains
     read (my_str, *) my_int
   end function STRtoINT
 
-  !--- Taken from Zeltron -------------------------------------------------!
-  ! Reference: http://gcc.gnu.org/onlinedocs/gfortran/RANDOM_005fSEED.html
-  !........................................................................!
-
   real(dprec) function randomNum(DSEED)
-    ! implicit none
-    ! integer, intent(in) :: dseed
-    ! call random_number(random)
   	implicit none
   	real(dprec)    :: DSEED
   	integer        :: I
@@ -305,17 +302,6 @@ contains
     integer, intent(in) :: rank
     dseed = 123457.D0
     dseed = dseed + rank
-    ! integer :: i, n, clock
-    ! integer, dimension(:), allocatable :: seed
-    !
-    ! call random_seed(size = n)
-    ! allocate(seed(n))
-    !
-    ! call system_clock(COUNT = clock)
-    !
-    ! seed = clock + rank * (/ (i - 1, i = 1, n) /)
-    ! call random_seed(PUT = seed)
-    ! deallocate(seed)
   end subroutine initializeRandomSeed
 
   subroutine log_normal(n_bins, lognorm)

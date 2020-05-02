@@ -145,9 +145,23 @@ contains
     integer, optional, intent(in) :: step
   end subroutine userParticleBoundaryConditions
 
-  subroutine userFieldBoundaryConditions(step)
+  subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
     integer, optional, intent(in) :: step
+    logical, optional, intent(in) :: updateE, updateB
+    logical                       :: updateE_, updateB_
+
+    if (present(updateE)) then
+      updateE_ = updateE
+    else
+      updateE_ = .true.
+    end if
+
+    if (present(updateB)) then
+      updateB_ = updateB
+    else
+      updateB_ = .true.
+    end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
 end module m_userfile

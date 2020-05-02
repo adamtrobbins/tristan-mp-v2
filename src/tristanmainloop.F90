@@ -90,16 +90,16 @@ contains
 
       ! MAINLOOP >
       !-------------------------------------------------
-      ! User defined boundary conditions for fields
+      ! User defined boundary conditions for B-field
         t_usrfuncs = MPI_WTIME()
-      call userFieldBoundaryConditions(timestep)
+      call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 
       !-------------------------------------------------
       ! Exchanging `E` and `B`-fields
         t_fldexchstep = MPI_WTIME()
-      call exchangeFields(.true., .true.)
+      call exchangeFields(exchangeE=.true., exchangeB=.true.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -111,9 +111,16 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! User defined boundary conditions for B-field
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      !.................................................
+
+      !-------------------------------------------------
       ! Exchanging `B`-fields
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeFields(.false., .true.)
+      call exchangeFields(exchangeE=.false., exchangeB=.true.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -142,9 +149,16 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! User defined boundary conditions for B-field
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      !.................................................
+
+      !-------------------------------------------------
       ! Exchanging `B`-fields
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeFields(.false., .true.)
+      call exchangeFields(exchangeE=.false., exchangeB=.true.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -158,7 +172,7 @@ contains
       !-------------------------------------------------
       ! Exchanging `E`-fields
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeFields(.true., .false.)
+      call exchangeFields(exchangeE=.true., exchangeB=.false.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -191,9 +205,16 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! User defined boundary conditions for E-field
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      call userFieldBoundaryConditions(timestep, updateE=.true., updateB=.false.)
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      !.................................................
+
+      !-------------------------------------------------
       ! Exchanging `E`-fields
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeFields(.true., .false.)
+      call exchangeFields(exchangeE=.true., exchangeB=.false.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
