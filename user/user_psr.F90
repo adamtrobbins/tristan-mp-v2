@@ -14,9 +14,11 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
+  integer :: fld_geometry
   real :: xc_g, yc_g, zc_g
   real :: psr_angle, psr_period, psr_omega, psr_radius, e_dot_b_thr
 
+  private :: fld_geometry
   private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
   private :: e_dot_b_thr
   !...............................................................!
@@ -41,6 +43,7 @@ contains
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
     call getInput('problem', 'e_dot_b_thr', e_dot_b_thr, 0.01)
+    call getInput('problem', 'fld_geometry', fld_geometry, 2)
 
     ! safety check
     if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
@@ -97,11 +100,11 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          call getDipole(0, 0.0, REAL(i_glob), REAL(j_glob) + 0.5, REAL(k_glob) + 0.5, bx0, by0, bz0)
+          call getBfield(0, 0.0, REAL(i_glob), REAL(j_glob) + 0.5, REAL(k_glob) + 0.5, bx0, by0, bz0)
           bx(i, j, k) = bx0
-          call getDipole(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob), REAL(k_glob) + 0.5, bx0, by0, bz0)
+          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob), REAL(k_glob) + 0.5, bx0, by0, bz0)
           by(i, j, k) = by0
-          call getDipole(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob) + 0.5, REAL(k_glob), bx0, by0, bz0)
+          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob) + 0.5, REAL(k_glob), bx0, by0, bz0)
           bz(i, j, k) = bz0
         end do
       end do
@@ -302,7 +305,7 @@ contains
                 b_int_dot_r = bx(i,j,k) * rx +&
                             & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i-1,j,k) + by(i-1,j+1,k)) * ry +&
                             & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i-1,j,k) + bz(i-1,j,k+1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
                 scale = scaleBperp
@@ -323,7 +326,7 @@ contains
                 b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j-1,k) + bx(i+1,j-1,k)) * rx +&
                             & by(i,j,k) * ry +&
                             & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i,j-1,k) + bz(i,j-1,k+1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
                 scale = scaleBperp
@@ -344,7 +347,7 @@ contains
                 b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j,k-1) + bx(i+1,j,k-1)) * rx +&
                             & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i,j,k-1) + by(i,j+1,k-1)) * ry +&
                             & bz(i,j,k) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
                 scale = scaleBperp
@@ -367,7 +370,7 @@ contains
                 e_int_dot_r = ex(i,j,k) * rx +&
                             & 0.25 * (ey(i,j,k) + ey(i+1,j,k) + ey(i,j-1,k) + ey(i+1,j-1,k)) * ry +&
                             & 0.25 * (ez(i,j,k) + ez(i+1,j,k) + ez(i,j,k-1) + ez(i+1,j,k-1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
@@ -394,7 +397,7 @@ contains
                 e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j+1,k) + ex(i-1,j,k) + ex(i-1,j+1,k)) * rx +&
                             & ey(i,j,k) * ry +&
                             & 0.25 * (ez(i,j,k) + ez(i,j+1,k) + ez(i,j,k-1) + ez(i,j+1,k-1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
@@ -421,7 +424,7 @@ contains
                 e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j,k+1) + ex(i-1,j,k) + ex(i-1,j,k+1)) * rx +&
                             & 0.25 * (ey(i,j,k) + ey(i,j-1,k) + ey(i,j,k+1) + ey(i,j-1,k+1)) * ry +&
                             & ez(i,j,k) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
@@ -474,6 +477,21 @@ contains
   !............................................................!
 
   !--- auxiliary functions ------------------------------------!
+  subroutine getBfield(step, offset, x_g, y_g, z_g,&
+                     & obx, oby, obz)
+    integer, intent(in) :: step
+    real, intent(in)    :: x_g, y_g, z_g, offset
+    real, intent(out)   :: obx, oby, obz
+    if (fld_geometry .eq. 1) then
+      call getMonopole(step, offset, x_g, y_g, z_g, obx, oby, obz)
+    else if (fld_geometry .eq. 2) then
+      call getDipole(step, offset, x_g, y_g, z_g, obx, oby, obz)
+    else
+      print *, "Something went wrong in `usr_psr`."
+      stop
+    end if
+  end subroutine getBfield
+
   subroutine getDipole(step, offset, x_g, y_g, z_g,&
                      & obx, oby, obz)
     implicit none
@@ -504,6 +522,25 @@ contains
     oby = (3.0 * ny * mu_dot_n - muy) * rr
     obz = (3.0 * nz * mu_dot_n - muz) * rr
   end subroutine getDipole
+
+  subroutine getMonopole(step, offset, x_g, y_g, z_g,&
+                       & obx, oby, obz)
+    implicit none
+    integer, intent(in) :: step
+    real, intent(in)    :: x_g, y_g, z_g, offset
+    real, intent(out)   :: obx, oby, obz
+    real                :: nx, ny, nz, rr
+    nx = x_g - xc_g
+    ny = y_g - yc_g
+    nz = z_g - zc_g
+
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    rr = 1.0 / rr**3
+
+    obx = psr_radius**2 * nx * rr
+    oby = psr_radius**2 * ny * rr
+    obz = psr_radius**2 * nz * rr
+  end subroutine getMonopole
 
   real function shape(rad, rad0)
     implicit none

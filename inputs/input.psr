@@ -115,7 +115,8 @@
 
 <problem>
 
+  fld_geometry  = 2             # 2 = dipole [default], 1 = monopole
   psr_radius    = 10
   psr_angle     = 30
   psr_period    = 500
-  e_dot_b_thr   = 0.02
+  e_dot_b_thr   = 0.02          # screen || E-field on the surface if (E.B) / B^2 > thr
