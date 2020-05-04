@@ -86,29 +86,29 @@ contains
     integer                :: sz, i
 
     ! printing divider
-    do i = 68, 70
+    do i = 72, 72
       dummy(i : i) = ' '
     end do
-    do i = 1, 67
+    do i = 1, 71
       dummy(i : i) = '-'
     end do
-    print *, dummy(1:70)
+    print *, dummy(1:72)
 
     ! printing timestep
     sz = len(trim("Timestep: " // STR(tstep)))
-    do i = 1, 67
+    do i = 1, 71
       dummy(i : i) = '.'
     end do
     dummy(1 : sz) = trim("Timestep: " // STR(tstep))
-    dummy(62:67) = '[DONE]'
-    print *, dummy(1:70)
+    dummy(66:71) = '[DONE]'
+    print *, dummy(1:72)
 
     ! printing header
-    do i = 1, 70
+    do i = 1, 72
       dummy(i : i) = ' '
     end do
-    dummy(1:67) = '[ROUTINE]          [TIME, ms]      [MIN/MAX, %]       [FRACTION, %]'
-    print *, dummy(1:70)
+    dummy(1:71) = '[ROUTINE]          [TIME, ms]      [MIN  /  MAX, ms]      [FRACTION, %]'
+    print *, dummy(1:72)
   end subroutine printTimeHeader
 
   subroutine printTimeFooter()
@@ -116,13 +116,13 @@ contains
     character(len=STR_MAX) :: dummy
     integer                :: i
 
-    do i = 68, 70
+    do i = 72, 72
       dummy(i : i) = ' '
     end do
-    do i = 1, 67
+    do i = 1, 71
       dummy(i : i) = '.'
     end do
-    print *, dummy(1:70)
+    print *, dummy(1:72)
   end subroutine printTimeFooter
 
   subroutine printTime(dt_arr, msg, fullstep)
@@ -132,19 +132,17 @@ contains
     real(kind=8), intent(in)              :: dt_arr(:)
     real, optional, intent(in)            :: fullstep
     real                                  :: dt_mean, dt_max, dt_min
-    integer                               :: pcent_max, pcent_min, sz, sz1, i
+    integer                               :: sz, sz1, i
     dt_mean = SUM(dt_arr) * 1000 / mpi_size
     dt_max = MAXVAL(dt_arr) * 1000
     dt_min = MINVAL(dt_arr) * 1000
-    pcent_max = dt_max * 100 / dt_mean
-    pcent_min = dt_min * 100 / dt_mean
     if (present(fullstep)) then
       if (dt_mean / fullstep .lt. 1e-4) then
-        dt_mean = 0; pcent_max = 0; pcent_min = 0
+        dt_mean = 0; dt_min = 0; dt_max = 0
       end if
     end if
 
-    do i = 1, 70
+    do i = 1, 72
       dummy(i : i) = ' '
     end do
 
@@ -154,23 +152,21 @@ contains
     dummy1 = trim(STR(dt_mean))
     sz = len(trim(dummy1))
     dummy(20 : 20 + sz - 1) = trim(dummy1)
-    dummy(36 : 36) = '-'
 
-    dummy1 = trim(STR(pcent_min))
+    dummy1 = trim(STR(dt_min))
     sz = len(trim(dummy1))
-    dummy(37 : 37 + sz - 1) = trim(dummy1)
+    dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy(44 : 44) = '+'
-    dummy1 = trim(STR(pcent_max))
+    dummy1 = trim(STR(dt_max))
     sz = len(trim(dummy1))
-    dummy(45 : 45 + sz - 1) = trim(dummy1)
+    dummy(43 : 43 + sz - 1) = trim(dummy1)
     if (present(fullstep)) then
       dummy1 = trim(STR(dt_mean * 100 / fullstep))
       sz1 = len(trim(dummy1))
-      dummy(55 : 55 + sz1 - 1) = trim(dummy1)
+      dummy(62 : 62 + sz1 - 1) = trim(dummy1)
     end if
 
-    print *, dummy(1:70)
+    print *, dummy(1:72)
   end subroutine printTime
 
   subroutine printNpart(npart_arr, msg)
@@ -178,23 +174,13 @@ contains
     character(len=*), intent(in)          :: msg
     character(len=STR_MAX)                :: dummy, dummy1
     integer, intent(in)                   :: npart_arr(:)
-    integer                               :: npart_mean, npart_max, npart_min
-    integer                               :: pcent_max, pcent_min, sz, sz1, i
+    real                                  :: npart_mean, npart_max, npart_min
+    integer                               :: sz, sz1, i
     npart_mean = SUM(npart_arr) / mpi_size
     npart_max = MAXVAL(npart_arr)
     npart_min = MINVAL(npart_arr)
-    if (npart_mean .ne. 0) then
-      pcent_max = npart_max * 100 / npart_mean
-    else
-      pcent_max = 0
-    end if
-    if (npart_mean .ne. 0) then
-      pcent_min = npart_min * 100 / npart_mean
-    else
-      pcent_min = 0
-    end if
 
-    do i = 1, 70
+    do i = 1, 72
       dummy(i : i) = ' '
     end do
 
@@ -204,18 +190,16 @@ contains
     dummy1 = trim(STR(npart_mean))
     sz = len(trim(dummy1))
     dummy(20 : 20 + sz - 1) = trim(dummy1)
-    dummy(36 : 36) = '-'
 
-    dummy1 = trim(STR(pcent_min))
+    dummy1 = trim(STR(npart_min))
     sz = len(trim(dummy1))
-    dummy(37 : 37 + sz - 1) = trim(dummy1)
+    dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy(44 : 44) = '+'
-    dummy1 = trim(STR(pcent_max))
+    dummy1 = trim(STR(npart_max))
     sz = len(trim(dummy1))
-    dummy(45 : 45 + sz - 1) = trim(dummy1)
+    dummy(43 : 43 + sz - 1) = trim(dummy1)
 
-    print *, dummy(1:70)
+    print *, dummy(1:72)
   end subroutine printNpart
 
   function intToStr(my_int) result(string)
