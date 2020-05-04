@@ -161,7 +161,7 @@ contains
   end subroutine deallocateMaxwellian
 
   subroutine fillRegionWithThermalPlasma(fill_region, fill_species, num_species, ndens_sp,&
-                                       & temperature, shift_gamma, shift_dir,&
+                                       & temperature, shift_gamma, shift_dir, zero_current,&
                                        & spat_distr_ptr,&
                                        & dummy1, dummy2, dummy3)
     implicit none
@@ -182,9 +182,18 @@ contains
     real                             :: x_, y_, z_, rnd, num_part_r
     real                             :: x_glob, y_glob, z_glob
 
+    logical, intent(in), optional    :: zero_current
+    logical                          :: zero_current_
+
     procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
     real, intent(in), optional                                     :: dummy1, dummy2, dummy3
     real                                                           :: dummy1_, dummy2_, dummy3_
+
+    if (.not. present(zero_current)) then
+      zero_current_ = .false.
+    else
+      zero_current_ = zero_current
+    end if
 
     if (present(dummy1)) then
       dummy1_ = dummy1
@@ -272,7 +281,11 @@ contains
           end if
           !   shift direction is opposite for opposite signed species
           if (present(shift_gamma)) then
-            fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
+            if (zero_current_) then
+              fill_maxwellian%shift_dir = shift_dir
+            else
+              fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
+            end if
           end if
           call generateFromMaxwellian(fill_maxwellian, u_, v_, w_)
           call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_)
