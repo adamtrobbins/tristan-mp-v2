@@ -330,6 +330,9 @@ contains
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
     call getInput('algorithm', 'nfilter', nfilter, 16)
+    call getInput('algorithm', 'c', CC, 0.45)
+    call getInput('algorithm', 'corr', CORR, 1.025)
+    CCINV = 1.0 / CC
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
   end subroutine initializeSimulation

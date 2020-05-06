@@ -18,6 +18,7 @@ module m_globalnamespace
   integer, parameter      :: sprec = kind(1.0e0)
   integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30
   integer, parameter      :: UNIT_params = 50
+  real                    :: CC, CCINV, CORR
 
   ! plasma parameters
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
