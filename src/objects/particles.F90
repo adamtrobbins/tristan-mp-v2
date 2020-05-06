@@ -58,8 +58,9 @@ module m_particles
   end type prtl_enroute
 
   type :: enroute_array
-    type(prtl_enroute), allocatable    :: send_enroute(:)
-    integer                            :: cnt_send
+    type(prtl_enroute), allocatable     :: send_enroute(:)
+    integer                             :: cnt_send
+    integer                             :: max_send
   end type enroute_array
 
   type :: enroute_handler

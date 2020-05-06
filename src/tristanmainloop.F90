@@ -92,7 +92,7 @@ contains
       !-------------------------------------------------
       ! User defined boundary conditions for B-field
         t_usrfuncs = MPI_WTIME()
-      call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
+      call userFieldBoundaryConditions(timestep, updateE=.true., updateB=.true.)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 

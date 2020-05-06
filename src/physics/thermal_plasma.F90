@@ -161,30 +161,47 @@ contains
   end subroutine deallocateMaxwellian
 
   subroutine fillRegionWithThermalPlasma(fill_region, fill_species, num_species, ndens_sp,&
-                                       & temperature, shift_gamma, shift_dir,&
-                                       & spat_distr_ptr,&
+                                       & temperature, shift_gamma, shift_dir, zero_current,&
+                                       & weights, spat_distr_ptr,&
                                        & dummy1, dummy2, dummy3)
     implicit none
     ! assuming that the charges of all species given in `fill_species` add up to `0`
-    type(region), intent(in)         :: fill_region
-    integer, intent(in)              :: num_species
-    integer, intent(in)              :: fill_species(num_species)
-    real, intent(in)                 :: ndens_sp, temperature
-    real, optional, intent(in)       :: shift_gamma
-    integer, optional, intent(in)    :: shift_dir
-    type(maxwellian)                 :: fill_maxwellian
-    integer                          :: num_part, n, s, spec_
-    integer(kind=2)                  :: xi_, yi_, zi_
-    real                             :: fill_xmin, fill_xmax,&
-                                      & fill_ymin, fill_ymax,&
-                                      & fill_zmin, fill_zmax
-    real                             :: u_, v_, w_, dx_, dy_, dz_
-    real                             :: x_, y_, z_, rnd, num_part_r
-    real                             :: x_glob, y_glob, z_glob
+    type(region), intent(in)          :: fill_region
+    integer, intent(in)               :: num_species
+    integer, intent(in)               :: fill_species(num_species)
+    real, intent(in)                  :: ndens_sp, temperature
+    real, optional, intent(in)        :: shift_gamma
+    integer, optional, intent(in)     :: shift_dir
+    type(maxwellian)                  :: fill_maxwellian
+    integer                           :: num_part, n, s, spec_
+    integer(kind=2)                   :: xi_, yi_, zi_
+    real                              :: fill_xmin, fill_xmax,&
+                                       & fill_ymin, fill_ymax,&
+                                       & fill_zmin, fill_zmax
+    real                              :: u_, v_, w_, dx_, dy_, dz_
+    real                              :: x_, y_, z_, rnd, num_part_r
+    real                              :: x_glob, y_glob, z_glob
+
+    real, intent(in), optional        :: weights
+    real                              :: weights_
+    logical, intent(in), optional     :: zero_current
+    logical                           :: zero_current_
 
     procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
     real, intent(in), optional                                     :: dummy1, dummy2, dummy3
     real                                                           :: dummy1_, dummy2_, dummy3_
+
+    if (.not. present(zero_current)) then
+      zero_current_ = .false.
+    else
+      zero_current_ = zero_current
+    end if
+
+    if (.not. present(weights)) then
+      weights_ = 1.0
+    else
+      weights_ = weights
+    end if
 
     if (present(dummy1)) then
       dummy1_ = dummy1
@@ -272,10 +289,15 @@ contains
           end if
           !   shift direction is opposite for opposite signed species
           if (present(shift_gamma)) then
-            fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
+            if (zero_current_) then
+              fill_maxwellian%shift_dir = shift_dir
+            else
+              fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
+            end if
           end if
           call generateFromMaxwellian(fill_maxwellian, u_, v_, w_)
-          call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_)
+          call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_,&
+                            & weight = weights_)
         end do
       end if
       n = n + 1

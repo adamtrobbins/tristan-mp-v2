@@ -14,11 +14,16 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => null()
 
   !--- PRIVATE variables -----------------------------------------!
+  integer :: fld_geometry
   real :: xc_g, yc_g, zc_g
-  real :: psr_angle, psr_period, psr_omega, psr_radius, e_dot_b_thr
+  real :: psr_angle, psr_period, psr_omega, psr_radius
+  real :: weight_mult, e_dot_b_thr
+  real :: shell_width
 
+  private :: fld_geometry
   private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
-  private :: e_dot_b_thr
+  private :: weight_mult, e_dot_b_thr
+  private :: shell_width
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -41,6 +46,9 @@ contains
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
     call getInput('problem', 'e_dot_b_thr', e_dot_b_thr, 0.01)
+    call getInput('problem', 'inj_shell', shell_width, 0.75)
+    call getInput('problem', 'weight_mult', weight_mult, 1.0)
+    call getInput('problem', 'fld_geometry', fld_geometry, 2)
 
     ! safety check
     if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
@@ -97,11 +105,11 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          call getDipole(0, 0.0, REAL(i_glob), REAL(j_glob) + 0.5, REAL(k_glob) + 0.5, bx0, by0, bz0)
+          call getBfield(0, 0.0, REAL(i_glob), REAL(j_glob) + 0.5, REAL(k_glob) + 0.5, bx0, by0, bz0)
           bx(i, j, k) = bx0
-          call getDipole(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob), REAL(k_glob) + 0.5, bx0, by0, bz0)
+          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob), REAL(k_glob) + 0.5, bx0, by0, bz0)
           by(i, j, k) = by0
-          call getDipole(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob) + 0.5, REAL(k_glob), bx0, by0, bz0)
+          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob) + 0.5, REAL(k_glob), bx0, by0, bz0)
           bz(i, j, k) = bz0
         end do
       end do
@@ -148,14 +156,12 @@ contains
     integer                       :: s, ti, tj, tk, p
     real                          :: x_g, y_g, z_g, r_g
     integer                       :: n_part, n
-    real                          :: shell_width
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi
     real                          :: x_glob, y_glob, z_glob, weight, ppc
     real                          :: ex0, ey0, ez0, bx0, by0, bz0, e_dot_b, b_sqr
 
     ! inject new particles in the spherical shell
-    shell_width = 0.75
     ppc = 0.5 * ppc0
     n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - psr_radius**3) * ppc)
     do n = 1, n_part
@@ -174,7 +180,7 @@ contains
       call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
       b_sqr = bx0**2 + by0**2 + bz0**2
       e_dot_b = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0)
-      weight = 0.5 * (e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc)
+      weight = weight_mult * B_norm * (e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc * shell_width)
 
       if (e_dot_b / b_sqr .gt. e_dot_b_thr) then
         call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
@@ -195,7 +201,7 @@ contains
               z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
                   & + species(s)%prtl_tile(ti, tj, tk)%dz(p)
               r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
-              if (r_g .le. (psr_radius - 0.5)) then
+              if (r_g .le. (psr_radius - 1.0)) then
                 species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
               end if
             end do
@@ -203,7 +209,6 @@ contains
         end do
       end do
     end do
-
   end subroutine userParticleBoundaryConditions
 
   subroutine randomPointInSphericalShell(rmin, rmax, x, y, z)
@@ -302,18 +307,27 @@ contains
                 b_int_dot_r = bx(i,j,k) * rx +&
                             & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i-1,j,k) + by(i-1,j+1,k)) * ry +&
                             & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i-1,j,k) + bz(i-1,j,k+1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
+                ! scale = scaleBperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bx_new(i, j, k) = (b_dip_dot_r * rx / rr_sqr) +&
+                !                 & (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
+                ! scale = scaleBpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bx_new(i, j, k) = bx_new(i, j, k) + bx_dip - (b_dip_dot_r * rx / rr_sqr) +&
+                !                 & ((bx(i, j, k) - b_int_dot_r * rx / rr_sqr) -&
+                !                 & (bx_dip - b_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
                 scale = scaleBperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bx_new(i, j, k) = (b_dip_dot_r * rx / rr_sqr) +&
-                                & (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
+                bx_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
                 scale = scaleBpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bx_new(i, j, k) = bx_new(i, j, k) + bx_dip - (b_dip_dot_r * rx / rr_sqr) +&
+                bx_new(i, j, k) = bx_new(i, j, k) + bx_dip +&
                                 & ((bx(i, j, k) - b_int_dot_r * rx / rr_sqr) -&
                                 & (bx_dip - b_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
+
 
                 ! setting `B_y`
                 rx = REAL(i_glob) + 0.5 - xc_g
@@ -323,16 +337,24 @@ contains
                 b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j-1,k) + bx(i+1,j-1,k)) * rx +&
                             & by(i,j,k) * ry +&
                             & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i,j-1,k) + bz(i,j-1,k+1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
+                ! scale = scaleBperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! by_new(i, j, k) = (b_dip_dot_r * ry / rr_sqr) +&
+                !                 & (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
+                ! scale = scaleBpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! by_new(i, j, k) = by_new(i, j, k) + by_dip - (b_dip_dot_r * ry / rr_sqr) +&
+                !                 & ((by(i, j, k) - b_int_dot_r * ry / rr_sqr) -&
+                !                 & (by_dip - b_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
                 scale = scaleBperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                by_new(i, j, k) = (b_dip_dot_r * ry / rr_sqr) +&
-                                & (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
+                by_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
                 scale = scaleBpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                by_new(i, j, k) = by_new(i, j, k) + by_dip - (b_dip_dot_r * ry / rr_sqr) +&
+                by_new(i, j, k) = by_new(i, j, k) + by_dip +&
                                 & ((by(i, j, k) - b_int_dot_r * ry / rr_sqr) -&
                                 & (by_dip - b_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
 
@@ -344,16 +366,24 @@ contains
                 b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j,k-1) + bx(i+1,j,k-1)) * rx +&
                             & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i,j,k-1) + by(i,j+1,k-1)) * ry +&
                             & bz(i,j,k) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
+                ! scale = scaleBperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bz_new(i, j, k) = (b_dip_dot_r * rz / rr_sqr) +&
+                !                 & (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
+                ! scale = scaleBpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bz_new(i, j, k) = bz_new(i, j, k) + bz_dip - (b_dip_dot_r * rz / rr_sqr) +&
+                !                 & ((bz(i, j, k) - b_int_dot_r * rz / rr_sqr) -&
+                !                 & (bz_dip - b_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
                 scale = scaleBperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bz_new(i, j, k) = (b_dip_dot_r * rz / rr_sqr) +&
-                                & (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
+                bz_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
                 scale = scaleBpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bz_new(i, j, k) = bz_new(i, j, k) + bz_dip - (b_dip_dot_r * rz / rr_sqr) +&
+                bz_new(i, j, k) = bz_new(i, j, k) + bz_dip +&
                                 & ((bz(i, j, k) - b_int_dot_r * rz / rr_sqr) -&
                                 & (bz_dip - b_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
               end if
@@ -367,23 +397,32 @@ contains
                 e_int_dot_r = ex(i,j,k) * rx +&
                             & 0.25 * (ey(i,j,k) + ey(i+1,j,k) + ey(i,j-1,k) + ey(i+1,j-1,k)) * ry +&
                             & 0.25 * (ez(i,j,k) + ez(i+1,j,k) + ez(i,j,k-1) + ez(i+1,j,k-1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) / CC
-                ey_dip = (vx * bz_dip - vz * bx_dip) / CC
-                ez_dip = -(vx * by_dip - vy * bx_dip) / CC
+                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
+                ! scale = scaleEpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ex_new(i, j, k) = (ex_dip - e_dip_dot_r * rx / rr_sqr) +&
+                !                 & ((ex(i, j, k) - e_int_dot_r * rx / rr_sqr) -&
+                !                 & (ex_dip - e_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
+                ! scale = scaleEperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ex_new(i, j, k) = ex_new(i, j, k) + (e_dip_dot_r * rx / rr_sqr) +&
+                !                 & (e_int_dot_r - e_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
                 scale = scaleEpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ex_new(i, j, k) = (ex_dip - e_dip_dot_r * rx / rr_sqr) +&
+                ex_new(i, j, k) = ex_dip +&
                                 & ((ex(i, j, k) - e_int_dot_r * rx / rr_sqr) -&
                                 & (ex_dip - e_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
                 scale = scaleEperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ex_new(i, j, k) = ex_new(i, j, k) + (e_dip_dot_r * rx / rr_sqr) +&
+                ex_new(i, j, k) = ex_new(i, j, k) +&
                                 & (e_int_dot_r - e_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
 
                 ! setting `E_y`
@@ -394,23 +433,32 @@ contains
                 e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j+1,k) + ex(i-1,j,k) + ex(i-1,j+1,k)) * rx +&
                             & ey(i,j,k) * ry +&
                             & 0.25 * (ez(i,j,k) + ez(i,j+1,k) + ez(i,j,k-1) + ez(i,j+1,k-1)) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) / CC
-                ey_dip = (vx * bz_dip - vz * bx_dip) / CC
-                ez_dip = -(vx * by_dip - vy * bx_dip) / CC
+                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
+                ! scale = scaleEpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ey_new(i, j, k) = (ey_dip - e_dip_dot_r * ry / rr_sqr) +&
+                !                 & ((ey(i, j, k) - e_int_dot_r * ry / rr_sqr) -&
+                !                 & (ey_dip - e_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
+                ! scale = scaleEperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ey_new(i, j, k) = ey_new(i, j, k) + (e_dip_dot_r * ry / rr_sqr) +&
+                !                 & (e_int_dot_r - e_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
                 scale = scaleEpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ey_new(i, j, k) = (ey_dip - e_dip_dot_r * ry / rr_sqr) +&
+                ey_new(i, j, k) = ey_dip +&
                                 & ((ey(i, j, k) - e_int_dot_r * ry / rr_sqr) -&
                                 & (ey_dip - e_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
                 scale = scaleEperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ey_new(i, j, k) = ey_new(i, j, k) + (e_dip_dot_r * ry / rr_sqr) +&
+                ey_new(i, j, k) = ey_new(i, j, k) +&
                                 & (e_int_dot_r - e_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
 
                 ! setting `E_z`
@@ -421,23 +469,32 @@ contains
                 e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j,k+1) + ex(i-1,j,k) + ex(i-1,j,k+1)) * rx +&
                             & 0.25 * (ey(i,j,k) + ey(i,j-1,k) + ey(i,j,k+1) + ey(i,j-1,k+1)) * ry +&
                             & ez(i,j,k) * rz
-                call getDipole(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) / CC
-                ey_dip = (vx * bz_dip - vz * bx_dip) / CC
-                ez_dip = -(vx * by_dip - vy * bx_dip) / CC
+                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
+                ! scale = scaleEpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ez_new(i, j, k) = (ez_dip - e_dip_dot_r * rz / rr_sqr) +&
+                !                 & ((ez(i, j, k) - e_int_dot_r * rz / rr_sqr) -&
+                !                 & (ez_dip - e_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
+                ! scale = scaleEperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ez_new(i, j, k) = ez_new(i, j, k) + (e_dip_dot_r * rz / rr_sqr) +&
+                !                 & (e_int_dot_r - e_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
                 scale = scaleEpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ez_new(i, j, k) = (ez_dip - e_dip_dot_r * rz / rr_sqr) +&
+                ez_new(i, j, k) = ez_dip +&
                                 & ((ez(i, j, k) - e_int_dot_r * rz / rr_sqr) -&
                                 & (ez_dip - e_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
                 scale = scaleEperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ez_new(i, j, k) = ez_new(i, j, k) + (e_dip_dot_r * rz / rr_sqr) +&
+                ez_new(i, j, k) = ez_new(i, j, k) +&
                                 & (e_int_dot_r - e_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
               end if
             end if
@@ -474,6 +531,21 @@ contains
   !............................................................!
 
   !--- auxiliary functions ------------------------------------!
+  subroutine getBfield(step, offset, x_g, y_g, z_g,&
+                     & obx, oby, obz)
+    integer, intent(in) :: step
+    real, intent(in)    :: x_g, y_g, z_g, offset
+    real, intent(out)   :: obx, oby, obz
+    if (fld_geometry .eq. 1) then
+      call getMonopole(step, offset, x_g, y_g, z_g, obx, oby, obz)
+    else if (fld_geometry .eq. 2) then
+      call getDipole(step, offset, x_g, y_g, z_g, obx, oby, obz)
+    else
+      print *, "Something went wrong in `usr_psr`."
+      stop
+    end if
+  end subroutine getBfield
+
   subroutine getDipole(step, offset, x_g, y_g, z_g,&
                      & obx, oby, obz)
     implicit none
@@ -504,6 +576,25 @@ contains
     oby = (3.0 * ny * mu_dot_n - muy) * rr
     obz = (3.0 * nz * mu_dot_n - muz) * rr
   end subroutine getDipole
+
+  subroutine getMonopole(step, offset, x_g, y_g, z_g,&
+                       & obx, oby, obz)
+    implicit none
+    integer, intent(in) :: step
+    real, intent(in)    :: x_g, y_g, z_g, offset
+    real, intent(out)   :: obx, oby, obz
+    real                :: nx, ny, nz, rr
+    nx = x_g - xc_g
+    ny = y_g - yc_g
+    nz = z_g - zc_g
+
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    rr = 1.0 / rr**3
+
+    obx = psr_radius**2 * nx * rr
+    oby = psr_radius**2 * ny * rr
+    obz = psr_radius**2 * nz * rr
+  end subroutine getMonopole
 
   real function shape(rad, rad0)
     implicit none

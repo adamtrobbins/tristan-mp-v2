@@ -187,7 +187,7 @@ contains
   real function lambdaAbsorb(x0, y0, z0)
     implicit none
     real, intent(in)  :: x0, y0, z0 ! global coordinates
-    real              :: ds_abs, K_abs
+    real              :: K_abs
     real              :: gr_max, gr_bound, gc_x, gc_y, gc_z, radius
     lambdaAbsorb = 0.0
     K_abs = CC / 3.0

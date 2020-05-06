@@ -68,6 +68,47 @@ contains
     output_index = output_index + 1
   end subroutine writeOutput
 
+  subroutine writeParams()
+    implicit none
+    integer                 :: n
+    character(len=STR_MAX)  :: FMT
+    character(len=STR_MAX)  :: filename
+
+    if (mpi_rank .eq. 0) then
+      filename = trim(output_dir_name) // '/sim.params'
+      open (UNIT_params, file=filename, status="replace", access="stream", form="formatted")
+      if (mpi_rank .eq. 0) then
+        do n = 1, sim_params%count
+          if (sim_params%param_type(n) .eq. 1) then
+            FMT = '(A30,A1,A20,A1,I10)'
+            write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
+                                   & trim(sim_params%param_name(n)%str), ':',&
+                                   & sim_params%param_value(n)%value_int
+          else if (sim_params%param_type(n) .eq. 2) then
+            if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
+              & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
+                & (sim_params%param_value(n)%value_real .ne. 0.0))) then
+              FMT = '(A30,A1,A20,A1,ES10.2)'
+            else
+              FMT = '(A30,A1,A20,A1,F10.2)'
+            end if
+            write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
+                         & trim(sim_params%param_name(n)%str), ':',&
+                         & sim_params%param_value(n)%value_real
+          else if (sim_params%param_type(n) .eq. 3) then
+            FMT = '(A30,A1,A20,A1,L10)'
+            write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
+                         & trim(sim_params%param_name(n)%str), ':',&
+                         & sim_params%param_value(n)%value_bool
+          else
+            call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
+          end if
+        end do
+      end if
+      close (UNIT_params)
+    end if
+  end subroutine writeParams
+
   subroutine initializeOutput()
     ! DEP_PRT [particle-dependent]
     implicit none

@@ -35,7 +35,7 @@ module m_initialize
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
            & firstRankInitialize, initializeParticles,&
-           & initializeLB,&
+           & initializeLB, printParams,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & initializeSimulation, checkEverything
@@ -56,6 +56,14 @@ contains
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
+
+    ! initializing the simulation parameters class ...
+    ! ... which stores all the input values for the simulation
+    sim_params%count = 0
+    allocate(sim_params%param_type(1000))
+    allocate(sim_params%param_group(1000))
+    allocate(sim_params%param_name(1000))
+    allocate(sim_params%param_value(1000))
 
     call initializeDomain()
 
@@ -120,8 +128,49 @@ contains
     call checkEverything()
       call printDiag((mpi_rank .eq. 0), "checkEverything()", .true.)
 
+    call printParams()
+    call writeParams()
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
+
+  subroutine printParams()
+    implicit none
+    integer                 :: n
+    character(len=STR_MAX)  :: FMT
+
+    if (mpi_rank .eq. 0) then
+      FMT = '== Simulation parameters ==============================================='
+      write(*, '(A)') trim(FMT)
+      do n = 1, sim_params%count
+        if (sim_params%param_type(n) .eq. 1) then
+          FMT = '(A30,A1,A20,A1,I10)'
+          write (*, FMT) trim(sim_params%param_group(n)%str), ':',&
+                       & trim(sim_params%param_name(n)%str), ':',&
+                       & sim_params%param_value(n)%value_int
+        else if (sim_params%param_type(n) .eq. 2) then
+          if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
+            & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
+              & (sim_params%param_value(n)%value_real .ne. 0.0))) then
+            FMT = '(A30,A1,A20,A1,ES10.2)'
+          else
+            FMT = '(A30,A1,A20,A1,F10.2)'
+          end if
+          write (*, FMT) trim(sim_params%param_group(n)%str), ':',&
+                       & trim(sim_params%param_name(n)%str), ':',&
+                       & sim_params%param_value(n)%value_real
+        else if (sim_params%param_type(n) .eq. 3) then
+          FMT = '(A30,A1,A20,A1,L10)'
+          write (*, FMT) trim(sim_params%param_group(n)%str), ':',&
+                       & trim(sim_params%param_name(n)%str), ':',&
+                       & sim_params%param_value(n)%value_bool
+        else
+          call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
+        end if
+      end do
+      FMT = '........................................................................'
+      write(*, '(A)') trim(FMT)
+    end if
+  end subroutine printParams
 
   subroutine initializeCommunications()
     implicit none
@@ -281,6 +330,9 @@ contains
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
     call getInput('algorithm', 'nfilter', nfilter, 16)
+    call getInput('algorithm', 'c', CC, 0.45)
+    call getInput('algorithm', 'corr', CORR, 1.025)
+    CCINV = 1.0 / CC
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
   end subroutine initializeSimulation
@@ -410,7 +462,7 @@ contains
     integer(kind=MPI_ADDRESS_KIND), dimension(0:2)  :: offsets
     integer(kind=MPI_ADDRESS_KIND)                  :: extent_int2, extent_real, lb
 
-    multiplier = max(INT(ppc0), 1) * 1000
+    multiplier = max(INT(ppc0), 1) * 100
     ! FIX this might change over time (due to load balancing)
     buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
     buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
@@ -452,6 +504,7 @@ contains
           else
             buffsize = buffsize_xyz
           end if
+          enroute_bot%get(ind1, ind2, ind3)%max_send = buffsize
           allocate(enroute_bot%get(ind1, ind2, ind3)%send_enroute(buffsize))
         end do
       end do

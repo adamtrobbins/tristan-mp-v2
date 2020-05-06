@@ -33,6 +33,8 @@
 
 <algorithm>
 
+  c             = 0.45           # speed of light
+  corr          = 1.025          # correction to the speed of light
   nfilter       = 8              # number of current filter passes
 
 <restart>

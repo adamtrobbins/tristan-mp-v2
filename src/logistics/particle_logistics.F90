@@ -54,6 +54,9 @@ contains
     ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
     tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
     tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
+    ! if the debug flag is enabled ...
+    ! ... check that the particle is within the boundaries ...
+    ! ... of that tile and that the tile exists
     #ifdef DEBUG
       if ((s .le. 0) .or. (s .gt. nspec)) then
         call throwError('Wrong species in `createParticle`.')
@@ -84,6 +87,9 @@ contains
         call throwError('ERROR: wrong ti, tj, tk in `createParticle` according to x1,x2,etc')
       end if
     #endif
+    if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .eq. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
+      call throwError('ERROR: npart_sp > maxptl_sp in createParticle')
+    end if
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
     p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
