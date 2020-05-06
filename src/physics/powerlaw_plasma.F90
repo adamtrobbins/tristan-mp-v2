@@ -17,25 +17,27 @@ contains
 
   subroutine fillRegionWithPowerlawPlasma(fill_region, fill_species, num_species, ndens_sp,&
                                         & plaw_gmin, plaw_gmax, plaw_ind,&
-                                        & init_2dQ,&
+                                        & init_2dQ, weights,&
                                         & spat_distr_ptr,&
                                         & dummy1, dummy2, dummy3)
     implicit none
     ! assuming that the charges of all species given in `fill_species` add up to `0`
-    type(region), intent(in)         :: fill_region
-    integer, intent(in)              :: num_species
-    integer, intent(in)              :: fill_species(num_species)
-    real, intent(in)                 :: ndens_sp, plaw_gmin, plaw_gmax, plaw_ind
-    integer                          :: num_part, n, s, spec_
-    integer(kind=2)                  :: xi_, yi_, zi_
-    real                             :: fill_xmin, fill_xmax,&
-                                      & fill_ymin, fill_ymax,&
-                                      & fill_zmin, fill_zmax
-    real                             :: u_, v_, w_, dx_, dy_, dz_
-    real                             :: x_, y_, z_, gam_, bet_, TH, ZT, rnd, num_part_r
-    real                             :: x_glob, y_glob, z_glob
-    logical, optional                :: init_2dQ
-    logical                          :: init_2dQ_
+    type(region), intent(in)          :: fill_region
+    integer, intent(in)               :: num_species
+    integer, intent(in)               :: fill_species(num_species)
+    real, intent(in)                  :: ndens_sp, plaw_gmin, plaw_gmax, plaw_ind
+    integer                           :: num_part, n, s, spec_
+    integer(kind=2)                   :: xi_, yi_, zi_
+    real                              :: fill_xmin, fill_xmax,&
+                                       & fill_ymin, fill_ymax,&
+                                       & fill_zmin, fill_zmax
+    real                              :: u_, v_, w_, dx_, dy_, dz_
+    real                              :: x_, y_, z_, gam_, bet_, TH, ZT, rnd, num_part_r
+    real                              :: x_glob, y_glob, z_glob
+    logical, optional                 :: init_2dQ
+    logical                           :: init_2dQ_
+    real, optional                    :: weights
+    real                              :: weights_
 
     procedure (spatialDistribution), pointer, intent(in), optional :: spat_distr_ptr
     real, intent(in), optional                                     :: dummy1, dummy2, dummy3
@@ -55,6 +57,12 @@ contains
       dummy3_ = dummy3
     else
       dummy3_ = 0.0
+    end if
+
+    if (.not. present(weights)) then
+      weights_ = 1.0
+    else
+      weights_ = weights
     end if
 
     if (present(init_2dQ)) then
@@ -138,7 +146,8 @@ contains
             v_ = gam_ * bet_ * sqrt(1.0 - ZT**2) * sin(TH)
             w_ = gam_ * bet_ * ZT
           end if
-          call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_)
+          call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_,&
+                            & weight = weights_)
         end do
       end if
       n = n + 1

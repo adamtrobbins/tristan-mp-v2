@@ -16,11 +16,14 @@ module m_userfile
   !--- PRIVATE variables -----------------------------------------!
   integer :: fld_geometry
   real :: xc_g, yc_g, zc_g
-  real :: psr_angle, psr_period, psr_omega, psr_radius, e_dot_b_thr
+  real :: psr_angle, psr_period, psr_omega, psr_radius
+  real :: weight_mult, e_dot_b_thr
+  real :: shell_width
 
   private :: fld_geometry
   private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
-  private :: e_dot_b_thr
+  private :: weight_mult, e_dot_b_thr
+  private :: shell_width
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -43,6 +46,8 @@ contains
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
     call getInput('problem', 'e_dot_b_thr', e_dot_b_thr, 0.01)
+    call getInput('problem', 'inj_shell', shell_width, 0.75)
+    call getInput('problem', 'weight_mult', weight_mult, 1.0)
     call getInput('problem', 'fld_geometry', fld_geometry, 2)
 
     ! safety check
@@ -151,14 +156,12 @@ contains
     integer                       :: s, ti, tj, tk, p
     real                          :: x_g, y_g, z_g, r_g
     integer                       :: n_part, n
-    real                          :: shell_width
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi
     real                          :: x_glob, y_glob, z_glob, weight, ppc
     real                          :: ex0, ey0, ez0, bx0, by0, bz0, e_dot_b, b_sqr
 
     ! inject new particles in the spherical shell
-    shell_width = 0.75
     ppc = 0.5 * ppc0
     n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - psr_radius**3) * ppc)
     do n = 1, n_part
@@ -177,7 +180,7 @@ contains
       call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
       b_sqr = bx0**2 + by0**2 + bz0**2
       e_dot_b = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0)
-      weight = 0.5 * (e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc)
+      weight = weight_mult * B_norm * (e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc * shell_width)
 
       if (e_dot_b / b_sqr .gt. e_dot_b_thr) then
         call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
@@ -198,7 +201,7 @@ contains
               z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
                   & + species(s)%prtl_tile(ti, tj, tk)%dz(p)
               r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
-              if (r_g .le. (psr_radius - 0.5)) then
+              if (r_g .le. (psr_radius - 1.0)) then
                 species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
               end if
             end do
@@ -206,7 +209,6 @@ contains
         end do
       end do
     end do
-
   end subroutine userParticleBoundaryConditions
 
   subroutine randomPointInSphericalShell(rmin, rmax, x, y, z)
@@ -308,15 +310,24 @@ contains
                 call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
+                ! scale = scaleBperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bx_new(i, j, k) = (b_dip_dot_r * rx / rr_sqr) +&
+                !                 & (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
+                ! scale = scaleBpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bx_new(i, j, k) = bx_new(i, j, k) + bx_dip - (b_dip_dot_r * rx / rr_sqr) +&
+                !                 & ((bx(i, j, k) - b_int_dot_r * rx / rr_sqr) -&
+                !                 & (bx_dip - b_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
                 scale = scaleBperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bx_new(i, j, k) = (b_dip_dot_r * rx / rr_sqr) +&
-                                & (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
+                bx_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
                 scale = scaleBpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bx_new(i, j, k) = bx_new(i, j, k) + bx_dip - (b_dip_dot_r * rx / rr_sqr) +&
+                bx_new(i, j, k) = bx_new(i, j, k) + bx_dip +&
                                 & ((bx(i, j, k) - b_int_dot_r * rx / rr_sqr) -&
                                 & (bx_dip - b_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
+
 
                 ! setting `B_y`
                 rx = REAL(i_glob) + 0.5 - xc_g
@@ -329,13 +340,21 @@ contains
                 call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
+                ! scale = scaleBperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! by_new(i, j, k) = (b_dip_dot_r * ry / rr_sqr) +&
+                !                 & (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
+                ! scale = scaleBpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! by_new(i, j, k) = by_new(i, j, k) + by_dip - (b_dip_dot_r * ry / rr_sqr) +&
+                !                 & ((by(i, j, k) - b_int_dot_r * ry / rr_sqr) -&
+                !                 & (by_dip - b_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
                 scale = scaleBperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                by_new(i, j, k) = (b_dip_dot_r * ry / rr_sqr) +&
-                                & (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
+                by_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
                 scale = scaleBpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                by_new(i, j, k) = by_new(i, j, k) + by_dip - (b_dip_dot_r * ry / rr_sqr) +&
+                by_new(i, j, k) = by_new(i, j, k) + by_dip +&
                                 & ((by(i, j, k) - b_int_dot_r * ry / rr_sqr) -&
                                 & (by_dip - b_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
 
@@ -350,13 +369,21 @@ contains
                 call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
                 b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
+                ! scale = scaleBperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bz_new(i, j, k) = (b_dip_dot_r * rz / rr_sqr) +&
+                !                 & (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
+                ! scale = scaleBpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                ! bz_new(i, j, k) = bz_new(i, j, k) + bz_dip - (b_dip_dot_r * rz / rr_sqr) +&
+                !                 & ((bz(i, j, k) - b_int_dot_r * rz / rr_sqr) -&
+                !                 & (bz_dip - b_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
                 scale = scaleBperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bz_new(i, j, k) = (b_dip_dot_r * rz / rr_sqr) +&
-                                & (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
+                bz_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
                 scale = scaleBpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bz_new(i, j, k) = bz_new(i, j, k) + bz_dip - (b_dip_dot_r * rz / rr_sqr) +&
+                bz_new(i, j, k) = bz_new(i, j, k) + bz_dip +&
                                 & ((bz(i, j, k) - b_int_dot_r * rz / rr_sqr) -&
                                 & (bz_dip - b_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
               end if
@@ -379,14 +406,23 @@ contains
                 ez_dip = -(vx * by_dip - vy * bx_dip) / CC
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
+                ! scale = scaleEpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ex_new(i, j, k) = (ex_dip - e_dip_dot_r * rx / rr_sqr) +&
+                !                 & ((ex(i, j, k) - e_int_dot_r * rx / rr_sqr) -&
+                !                 & (ex_dip - e_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
+                ! scale = scaleEperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ex_new(i, j, k) = ex_new(i, j, k) + (e_dip_dot_r * rx / rr_sqr) +&
+                !                 & (e_int_dot_r - e_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
                 scale = scaleEpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ex_new(i, j, k) = (ex_dip - e_dip_dot_r * rx / rr_sqr) +&
+                ex_new(i, j, k) = ex_dip +&
                                 & ((ex(i, j, k) - e_int_dot_r * rx / rr_sqr) -&
                                 & (ex_dip - e_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
                 scale = scaleEperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ex_new(i, j, k) = ex_new(i, j, k) + (e_dip_dot_r * rx / rr_sqr) +&
+                ex_new(i, j, k) = ex_new(i, j, k) +&
                                 & (e_int_dot_r - e_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
 
                 ! setting `E_y`
@@ -406,14 +442,23 @@ contains
                 ez_dip = -(vx * by_dip - vy * bx_dip) / CC
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
+                ! scale = scaleEpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ey_new(i, j, k) = (ey_dip - e_dip_dot_r * ry / rr_sqr) +&
+                !                 & ((ey(i, j, k) - e_int_dot_r * ry / rr_sqr) -&
+                !                 & (ey_dip - e_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
+                ! scale = scaleEperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ey_new(i, j, k) = ey_new(i, j, k) + (e_dip_dot_r * ry / rr_sqr) +&
+                !                 & (e_int_dot_r - e_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
                 scale = scaleEpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ey_new(i, j, k) = (ey_dip - e_dip_dot_r * ry / rr_sqr) +&
+                ey_new(i, j, k) = ey_dip +&
                                 & ((ey(i, j, k) - e_int_dot_r * ry / rr_sqr) -&
                                 & (ey_dip - e_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
                 scale = scaleEperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ey_new(i, j, k) = ey_new(i, j, k) + (e_dip_dot_r * ry / rr_sqr) +&
+                ey_new(i, j, k) = ey_new(i, j, k) +&
                                 & (e_int_dot_r - e_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
 
                 ! setting `E_z`
@@ -433,14 +478,23 @@ contains
                 ez_dip = -(vx * by_dip - vy * bx_dip) / CC
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
+                ! scale = scaleEpar
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ez_new(i, j, k) = (ez_dip - e_dip_dot_r * rz / rr_sqr) +&
+                !                 & ((ez(i, j, k) - e_int_dot_r * rz / rr_sqr) -&
+                !                 & (ez_dip - e_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
+                ! scale = scaleEperp
+                ! s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                ! ez_new(i, j, k) = ez_new(i, j, k) + (e_dip_dot_r * rz / rr_sqr) +&
+                !                 & (e_int_dot_r - e_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
                 scale = scaleEpar
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ez_new(i, j, k) = (ez_dip - e_dip_dot_r * rz / rr_sqr) +&
+                ez_new(i, j, k) = ez_dip +&
                                 & ((ez(i, j, k) - e_int_dot_r * rz / rr_sqr) -&
                                 & (ez_dip - e_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
                 scale = scaleEperp
                 s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ez_new(i, j, k) = ez_new(i, j, k) + (e_dip_dot_r * rz / rr_sqr) +&
+                ez_new(i, j, k) = ez_new(i, j, k) +&
                                 & (e_int_dot_r - e_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
               end if
             end if

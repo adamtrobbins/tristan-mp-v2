@@ -4,8 +4,7 @@ module m_aux
   use m_globalnamespace
   implicit none
   real(dprec)                  :: dseed
-  ! integer, dimension(0:15)        :: state
-  ! integer                         :: rand_ind
+
 
   abstract interface
     function spatialDistribution(x_glob, y_glob, z_glob,&
@@ -20,6 +19,26 @@ module m_aux
     module procedure intToStr
     module procedure realToStr
   end interface STR
+
+  type :: generic_var
+    integer :: value_int
+    real    :: value_real
+    logical :: value_bool
+  end type generic_var
+
+  type generic_string
+    character(len=STR_MAX), allocatable :: str
+  end type generic_string
+
+  type :: simulation_params
+    integer                           :: count
+    integer, allocatable              :: param_type(:) ! 1 = int, 2 = float, 3 = bool
+    type(generic_string), allocatable :: param_group(:)
+    type(generic_string), allocatable :: param_name(:)
+    type(generic_var), allocatable    :: param_value(:)
+  end type simulation_params
+
+  type(simulation_params) :: sim_params
 
   !--- PRIVATE functions -----------------------------------------!
   private :: intToStr, realToStr
