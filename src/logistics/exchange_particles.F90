@@ -72,6 +72,10 @@ contains
                 end if
                 ! copy this particle to temporary `enroute_bot` array
                 enroute_bot%get(send_x, send_y, send_z)%cnt_send = enroute_bot%get(send_x, send_y, send_z)%cnt_send + 1
+                if (enroute_bot%get(send_x, send_y, send_z)%cnt_send .ge.&
+                  & enroute_bot%get(send_x, send_y, send_z)%max_send) then
+                  call throwError('ERROR: particle send buffer array too small.')
+                end if
                 cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
                 call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr))
                 ! make ghost particle
