@@ -35,7 +35,7 @@ module m_initialize
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
            & firstRankInitialize, initializeParticles,&
-           & initializeLB,&
+           & initializeLB, printParams,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & initializeSimulation, checkEverything
@@ -128,11 +128,12 @@ contains
     call checkEverything()
       call printDiag((mpi_rank .eq. 0), "checkEverything()", .true.)
 
-    call saveAllParameters()
+    call printParams()
+    call writeParams()
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
 
-  subroutine saveAllParameters()
+  subroutine printParams()
     implicit none
     integer                 :: n
     character(len=STR_MAX)  :: FMT
@@ -169,7 +170,7 @@ contains
       FMT = '........................................................................'
       write(*, '(A)') trim(FMT)
     end if
-  end subroutine saveAllParameters
+  end subroutine printParams
 
   subroutine initializeCommunications()
     implicit none
