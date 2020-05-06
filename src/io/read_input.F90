@@ -2,6 +2,7 @@
 
 module m_readinput
   use m_globalnamespace
+  use m_aux
   use m_errors
   use m_writeoutput
   implicit none
@@ -92,7 +93,7 @@ contains
       found = .true.
       parseInput = value_str
     end if
-  end function
+  end function parseInput
 
   subroutine getInt4Input(blockname, varname, val, def_val)
     implicit none
@@ -126,6 +127,11 @@ contains
         end if
       end if
     end if
+    sim_params%count = sim_params%count + 1
+    sim_params%param_type(sim_params%count) = 1
+    sim_params%param_group(sim_params%count)%str = blockname
+    sim_params%param_name(sim_params%count)%str = varname
+    sim_params%param_value(sim_params%count)%value_int = val
   end subroutine getInt4Input
   subroutine strToInt4(val_str, val, stat)
     implicit none
@@ -169,6 +175,11 @@ contains
         end if
       end if
     end if
+    sim_params%count = sim_params%count + 1
+    sim_params%param_type(sim_params%count) = 1
+    sim_params%param_group(sim_params%count)%str = blockname
+    sim_params%param_name(sim_params%count)%str = varname
+    sim_params%param_value(sim_params%count)%value_int = val
   end subroutine getInt8Input
   subroutine strToInt8(val_str, val, stat)
     implicit none
@@ -212,6 +223,11 @@ contains
         end if
       end if
     end if
+    sim_params%count = sim_params%count + 1
+    sim_params%param_type(sim_params%count) = 2
+    sim_params%param_group(sim_params%count)%str = blockname
+    sim_params%param_name(sim_params%count)%str = varname
+    sim_params%param_value(sim_params%count)%value_real = val
   end subroutine getReal4Input
   subroutine strToReal4(val_str, val, stat)
     implicit none
@@ -255,7 +271,19 @@ contains
         end if
       end if
     end if
+    sim_params%count = sim_params%count + 1
+    sim_params%param_type(sim_params%count) = 2
+    sim_params%param_group(sim_params%count)%str = blockname
+    sim_params%param_name(sim_params%count)%str = varname
+    sim_params%param_value(sim_params%count)%value_real = val
   end subroutine getReal8Input
+  subroutine strToReal8(val_str, val, stat)
+    implicit none
+    character(len=*), intent(in) :: val_str
+    real(kind=8), intent(out)    :: val
+    integer, intent(out)         :: stat
+    read(val_str, *, iostat = stat) val
+  end subroutine strToReal8
 
   subroutine getLogicalInput(blockname, varname, val, def_val)
     implicit none
@@ -298,13 +326,10 @@ contains
         end if
       end if
     end if
+    sim_params%count = sim_params%count + 1
+    sim_params%param_type(sim_params%count) = 3
+    sim_params%param_group(sim_params%count)%str = blockname
+    sim_params%param_name(sim_params%count)%str = varname
+    sim_params%param_value(sim_params%count)%value_bool = val
   end subroutine getLogicalInput
-
-  subroutine strToReal8(val_str, val, stat)
-    implicit none
-    character(len=*), intent(in) :: val_str
-    real(kind=8), intent(out)    :: val
-    integer, intent(out)         :: stat
-    read(val_str, *, iostat = stat) val
-  end subroutine strToReal8
 end module m_readinput
