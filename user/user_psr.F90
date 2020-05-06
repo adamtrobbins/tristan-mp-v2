@@ -401,9 +401,9 @@ contains
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) / CC
-                ey_dip = (vx * bz_dip - vz * bx_dip) / CC
-                ez_dip = -(vx * by_dip - vy * bx_dip) / CC
+                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
                 ! scale = scaleEpar
@@ -437,9 +437,9 @@ contains
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) / CC
-                ey_dip = (vx * bz_dip - vz * bx_dip) / CC
-                ez_dip = -(vx * by_dip - vy * bx_dip) / CC
+                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
                 ! scale = scaleEpar
@@ -473,9 +473,9 @@ contains
                 vx = -psr_omega * ry
                 vy = psr_omega * rx
                 vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) / CC
-                ey_dip = (vx * bz_dip - vz * bx_dip) / CC
-                ez_dip = -(vx * by_dip - vy * bx_dip) / CC
+                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
                 e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
 
                 ! scale = scaleEpar
