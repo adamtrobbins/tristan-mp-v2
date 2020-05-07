@@ -5,6 +5,7 @@ module m_readinput
   use m_aux
   use m_errors
   use m_writeoutput
+  use m_writerestart
   implicit none
 
   interface strToNum
@@ -45,6 +46,10 @@ contains
         case ('-r', '--restart')
           call get_command_argument(i + 1, arg1)
           restart_dir_name = trim(arg1)
+        case ('-R', '--RST')
+          call get_command_argument(i + 1, arg1)
+          restart_from = trim(arg1)
+          rst_simulation = .true.
       end select
     end do
   end subroutine readCommandlineArgs

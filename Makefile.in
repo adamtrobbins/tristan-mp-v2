@@ -44,6 +44,7 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)logistics/exchange_currents.F90 \
              $(SRC_DIR)logistics/exchange_array.F90 \
              $(SRC_DIR)io/write_output.F90 \
+						 $(SRC_DIR)io/write_restart.F90 \
              $(SRC_DIR)io/write_history.F90 \
              $(SRC_DIR)io/read_input.F90 \
              $(addprefix $(USR_DIR), $(USER_FILE).F90) \
