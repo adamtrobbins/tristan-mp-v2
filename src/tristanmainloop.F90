@@ -5,6 +5,7 @@ module m_mainloop
   use m_helpers
   use m_aux
   use m_writeoutput
+  use m_writerestart
   use m_fldsolver
   use m_mover
   use m_currentdeposit
@@ -85,7 +86,7 @@ contains
       t_dwnstep = 0
     #endif
 
-    do timestep = 0, final_timestep
+    do timestep = start_timestep, final_timestep
         t_fullstep = MPI_WTIME()
 
       ! MAINLOOP >
@@ -254,6 +255,17 @@ contains
         & (timestep .ge. output_start)) then
         t_outputstep = MPI_WTIME()
         call writeOutput(timestep)
+        t_outputstep = MPI_WTIME() - t_outputstep
+      end if
+      !.................................................
+
+      !-------------------------------------------------
+      ! Restart
+      if ((modulo(timestep, rst_interval) .eq. 0) .and.&
+        & (timestep .ge. rst_start) .and.&
+        & (timestep .gt. 0)) then
+        t_outputstep = MPI_WTIME() - t_outputstep
+        call writeRestart(timestep)
         t_outputstep = MPI_WTIME() - t_outputstep
       end if
       !.................................................
