@@ -22,17 +22,9 @@ module m_userfile
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userInitParticles, userInitFields, userReadInput,&
-           & userSpatialDistribution
+  private :: userSpatialDistribution
   !...............................................................!
 contains
-  subroutine userInitialize()
-    implicit none
-    call userReadInput()
-    call userInitParticles()
-    call userInitFields()
-  end subroutine userInitialize
-
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
