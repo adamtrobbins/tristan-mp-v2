@@ -39,6 +39,11 @@
 
 <restart>
 
+  enable        = 0              # enable/disable restart
+  start         = 1              # first restart step
+  interval      = 1000           # step interval between restarts
+  rewrite       = 1              # 1 = rewrite each restart; 0 = separate restart each time
+
 <output>
 
   start         = 0              # first output step
