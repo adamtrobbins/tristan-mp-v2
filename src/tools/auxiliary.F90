@@ -5,7 +5,6 @@ module m_aux
   implicit none
   real(dprec)                  :: dseed
 
-
   abstract interface
     function spatialDistribution(x_glob, y_glob, z_glob,&
                                & dummy1, dummy2, dummy3)

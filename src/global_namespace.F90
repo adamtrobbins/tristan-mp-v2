@@ -18,13 +18,14 @@ module m_globalnamespace
   integer, parameter      :: sprec = kind(1.0e0)
   integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30
   integer, parameter      :: UNIT_params = 50
+  integer, parameter      :: UNIT_restart_fld = 60, UNIT_restart_prtl = 70
   real                    :: CC, CCINV, CORR
 
   ! plasma parameters
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
 
   ! simulation parameters
-  integer                :: final_timestep, output_index = 0
+  integer                :: start_timestep = 0, final_timestep, output_index = 0
   logical                :: resize_tiles
   integer                :: min_tile_nprt = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
@@ -41,4 +42,11 @@ module m_globalnamespace
     integer, parameter  :: UNIT_xdmf = 40
     integer             :: h5comm, h5info
   #endif
+contains
+  subroutine renormalizeUnits()
+    implicit none
+    CCINV = 1.0 / CC
+    B_norm = CC**2 * sqrt(sigma) / c_omp
+    unit_ch = CC**2 / (ppc0 * c_omp**2)
+  end subroutine renormalizeUnits
 end module m_globalnamespace

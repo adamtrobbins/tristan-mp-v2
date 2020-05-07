@@ -266,6 +266,29 @@ contains
     end if
   end subroutine reallocTileSize
 
+  subroutine reallocEmptyTile(tile, new_size)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    type(particle_tile), intent(inout)    :: tile
+    integer, intent(in)                   :: new_size
+
+    tile%npart_sp = 0
+    tile%maxptl_sp = new_size
+
+    deallocate(tile%xi); allocate(tile%xi(tile%maxptl_sp))
+    deallocate(tile%yi); allocate(tile%yi(tile%maxptl_sp))
+    deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
+    deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
+    deallocate(tile%dy); allocate(tile%dy(tile%maxptl_sp))
+    deallocate(tile%dz); allocate(tile%dz(tile%maxptl_sp))
+    deallocate(tile%u); allocate(tile%u(tile%maxptl_sp))
+    deallocate(tile%v); allocate(tile%v(tile%maxptl_sp))
+    deallocate(tile%w); allocate(tile%w(tile%maxptl_sp))
+    deallocate(tile%weight); allocate(tile%weight(tile%maxptl_sp))
+    deallocate(tile%ind); allocate(tile%ind(tile%maxptl_sp))
+    deallocate(tile%proc); allocate(tile%proc(tile%maxptl_sp))
+  end subroutine reallocEmptyTile
+
   subroutine clearGhostParticles()
     implicit none
     integer                       :: s, p, ti, tj, tk
