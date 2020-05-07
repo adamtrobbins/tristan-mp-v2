@@ -22,6 +22,10 @@ module m_writeoutput
     use m_bwpairproduction
   #endif
 
+  #ifdef COMPTONSCATTERING
+    use m_compton
+  #endif
+
   implicit none
 
   integer                 :: output_start, output_interval, output_stride, output_istep

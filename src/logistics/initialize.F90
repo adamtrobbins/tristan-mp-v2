@@ -32,6 +32,10 @@ module m_initialize
     use m_bwpairproduction
   #endif
 
+  #ifdef COMPTONSCATTERING
+    use m_compton
+  #endif
+
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -52,6 +56,10 @@ module m_initialize
 
   #ifdef BWPAIRPRODUCTION
     private :: initializeBWPairProduction
+  #endif
+
+  #ifdef COMPTONSCATTERING
+    private :: initializeComptonScattering
   #endif
   !...............................................................!
 contains
@@ -114,6 +122,11 @@ contains
     #ifdef BWPAIRPRODUCTION
       call initializeBWPairProduction()
         call printDiag((mpi_rank .eq. 0), "initializeBWPairProduction()", .true.)
+    #endif
+
+    #ifdef COMPTONSCATTERING
+      call initializeComptonScattering()
+        call printDiag((mpi_rank .eq. 0), "initializeComptonScattering()", .true.)
     #endif
 
     call initializePrtlExchange()
@@ -420,6 +433,17 @@ contains
         if ((species(s)%bw_sp .gt. 2)) then
           call throwError('only two BW photon populations are allowed.')
         end if
+      #endif
+
+      #ifdef COMPTONSCATTERING
+        write (var_name, "(A7,I1)") "compton", s
+        call getInput('particles', var_name, species(s)%compton_sp, .false.)
+        if (species(s)%compton_sp) then 
+          if ( .not. (((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) .or. &
+             & ((species(s)%m_sp .eq. 1.0) .and. (abs(species(s)%ch_sp) .eq. 1.0))) ) then
+            call throwError('`Only electron/positron and photon species can Compton scatter.')
+          endif
+        endif
       #endif
 
       do ti = 1, species(s)%tile_nx
@@ -820,6 +844,15 @@ contains
       call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
       call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
     end subroutine initializeBWPairProduction
+  #endif
+
+  #ifdef COMPTONSCATTERING
+    subroutine initializeComptonScattering()
+      implicit none
+      call getInput('compton', 'tau_Compton', Compton_tau)
+      call getInput('compton', 'interval', Compton_interval, 1)
+      call getInput('compton', 'algorithm', Compton_algorithm)
+    end subroutine initializeComptonScattering
   #endif
 
 end module m_initialize

@@ -41,6 +41,10 @@ module m_particles
       integer     :: bw_sp
     #endif
 
+    #ifdef COMPTONSCATTERING
+      logical     :: compton_sp
+    #endif
+
     #ifdef DOWNSAMPLING
     ! `true/false` - either downsample species or not
       logical     :: dwn_sp
