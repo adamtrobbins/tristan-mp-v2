@@ -23,6 +23,7 @@ module m_particles
   type :: particle_species
     integer     :: cntr_sp
     real        :: m_sp, ch_sp
+    logical     :: deposit_curr_sp  ! disable current deposit for charged particle species
     ! sizes and boundaries of the tiles in each direction
     integer     :: tile_sx, tile_sy, tile_sz
     ! numbers of the tiles in each direction

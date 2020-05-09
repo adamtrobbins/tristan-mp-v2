@@ -369,7 +369,10 @@ contains
     call getInput('algorithm', 'c', CC, 0.45)
     call getInput('algorithm', 'corr', CORR, 1.025)
     call getInput('plasma', 'ppc0', ppc0)
-    call getInput('plasma', 'sigma', sigma)
+    call getInput('plasma', 'sigma', sigma, 1.0)
+    if (sigma .le. 0.0) then
+          call throwError('Reference sigma value must be > 0.')
+    endif
     call getInput('plasma', 'c_omp', c_omp)
     call renormalizeUnits()
 
@@ -408,6 +411,12 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
+      if (species(s)%ch_sp .ne. 0) then
+        write (var_name, "(A12,I1)") "deposit_curr", s
+        call getInput('particles', var_name, species(s)%deposit_curr_sp, .true.)
+      else
+        species(s)%deposit_curr_sp = .false.
+      endif
 
       #ifdef DOWNSAMPLING
         write (var_name, "(A3,I1)") "dwn", s
@@ -851,7 +860,9 @@ contains
       implicit none
       call getInput('compton', 'tau_Compton', Compton_tau)
       call getInput('compton', 'interval', Compton_interval, 1)
-      call getInput('compton', 'algorithm', Compton_algorithm)
+      call getInput('compton', 'algorithm', Compton_algorithm, 2)
+      call getInput('compton', 'el_recoil', Compton_el_recoil, .true.)
+      call getInput('compton', 'Thomson_lim', Thomson_lim, 1e-2)
     end subroutine initializeComptonScattering
   #endif
 
