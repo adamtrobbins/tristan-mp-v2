@@ -55,6 +55,8 @@ contains
 
     step = output_index
     #ifdef HDF5
+      call writeParams_hdf5(step, time)
+        call printReport((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
       call writeParticles_hdf5(step, time)
         call printReport((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
       call writeFields_hdf5(step, time)
@@ -63,51 +65,108 @@ contains
         call printReport((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
       call writeDomain_hdf5(step, time)
         call printReport((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+    #else
+      call writeParams(step, time)
+        call printReport((mpi_rank .eq. 0), "...writeParams()", .true.)
     #endif
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
   end subroutine writeOutput
 
-  subroutine writeParams()
+  subroutine writeParams(step, time)
     implicit none
+    integer, intent(in)     :: step, time
     integer                 :: n
     character(len=STR_MAX)  :: FMT
-    character(len=STR_MAX)  :: filename
+    character(len=STR_MAX)  :: filename, stepchar
 
     if (mpi_rank .eq. 0) then
-      filename = trim(output_dir_name) // '/sim.params'
+      write(stepchar, "(i5.5)") step
+      filename = trim(output_dir_name) // '/params.' // trim(stepchar)
       open (UNIT_params, file=filename, status="replace", access="stream", form="formatted")
-      if (mpi_rank .eq. 0) then
-        do n = 1, sim_params%count
-          if (sim_params%param_type(n) .eq. 1) then
-            FMT = '(A30,A1,A20,A1,I10)'
-            write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
-                                   & trim(sim_params%param_name(n)%str), ':',&
-                                   & sim_params%param_value(n)%value_int
-          else if (sim_params%param_type(n) .eq. 2) then
-            if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
-              & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
-                & (sim_params%param_value(n)%value_real .ne. 0.0))) then
-              FMT = '(A30,A1,A20,A1,ES10.2)'
-            else
-              FMT = '(A30,A1,A20,A1,F10.2)'
-            end if
-            write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
-                         & trim(sim_params%param_name(n)%str), ':',&
-                         & sim_params%param_value(n)%value_real
-          else if (sim_params%param_type(n) .eq. 3) then
-            FMT = '(A30,A1,A20,A1,L10)'
-            write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
-                         & trim(sim_params%param_name(n)%str), ':',&
-                         & sim_params%param_value(n)%value_bool
+      FMT = '(A52,I10)'
+      write (UNIT_params, FMT) 'timestep', time
+
+      do n = 1, sim_params%count
+        if (sim_params%param_type(n) .eq. 1) then
+          FMT = '(A30,A1,A20,A1,I10)'
+          write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
+                                 & trim(sim_params%param_name(n)%str), ':',&
+                                 & sim_params%param_value(n)%value_int
+        else if (sim_params%param_type(n) .eq. 2) then
+          if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
+            & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
+              & (sim_params%param_value(n)%value_real .ne. 0.0))) then
+            FMT = '(A30,A1,A20,A1,ES10.2)'
           else
-            call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
+            FMT = '(A30,A1,A20,A1,F10.2)'
           end if
-        end do
-      end if
+          write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
+                       & trim(sim_params%param_name(n)%str), ':',&
+                       & sim_params%param_value(n)%value_real
+        else if (sim_params%param_type(n) .eq. 3) then
+          FMT = '(A30,A1,A20,A1,L10)'
+          write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
+                       & trim(sim_params%param_name(n)%str), ':',&
+                       & sim_params%param_value(n)%value_bool
+        else
+          call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
+        end if
+      end do
       close (UNIT_params)
     end if
   end subroutine writeParams
+
+  subroutine writeParams_hdf5(step, time)
+    implicit none
+    integer, intent(in)               :: step, time
+    character(len=STR_MAX)            :: stepchar, filename
+    integer                           :: error, datarank
+    integer(HID_T)                    :: file_id, dset_id, dspace_id
+    integer                           :: n, dummy_bool
+    character(len=STR_MAX)            :: dsetname
+    integer(HSIZE_T), dimension(1)    :: data_dims
+
+    datarank = 1
+    data_dims(1) = 1
+
+    if (mpi_rank .eq. 0) then
+
+      write(stepchar, "(i5.5)") step
+      filename = trim(output_dir_name) // '/params.' // trim(stepchar)
+
+      dsetname = 'timestep'
+      call h5open_f(error)
+      call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+      call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+      call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
+      call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, (/time/), data_dims, error)
+      call h5dclose_f(dset_id, error)
+      call h5sclose_f(dspace_id, error)
+
+      do n = 1, sim_params%count
+        dsetname = trim(sim_params%param_group(n)%str) // '_' // trim(sim_params%param_name(n)%str)
+        call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+        if (sim_params%param_type(n) .eq. 1) then
+          call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, (/sim_params%param_value(n)%value_int/), data_dims, error)
+        else if (sim_params%param_type(n) .eq. 2) then
+          call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_REAL, dspace_id, dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, (/sim_params%param_value(n)%value_real/), data_dims, error)
+        else if (sim_params%param_type(n) .eq. 3) then
+          dummy_bool = sim_params%param_value(n)%value_bool
+          call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, (/dummy_bool/), data_dims, error)
+        else
+          call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
+        end if
+        call h5dclose_f(dset_id, error)
+        call h5sclose_f(dspace_id, error)
+      end do
+      call h5fclose_f(file_id, error)
+      call h5close_f(error)
+    end if
+  end subroutine writeParams_hdf5
 
   subroutine initializeOutput()
     ! DEP_PRT [particle-dependent]
