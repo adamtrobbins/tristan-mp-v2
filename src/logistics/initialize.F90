@@ -142,7 +142,6 @@ contains
       call printDiag((mpi_rank .eq. 0), "checkEverything()", .true.)
 
     call printParams()
-    call writeParams()
 
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
@@ -151,6 +150,7 @@ contains
     implicit none
     integer                 :: n
     character(len=STR_MAX)  :: FMT
+    ! printing simulation parameters in the report
 
     if (mpi_rank .eq. 0) then
       FMT = '== Simulation parameters ==============================================='
