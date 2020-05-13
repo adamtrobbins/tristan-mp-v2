@@ -862,7 +862,7 @@ contains
       call getInput('compton', 'interval', Compton_interval, 1)
       call getInput('compton', 'algorithm', Compton_algorithm, 2)
       call getInput('compton', 'el_recoil', Compton_el_recoil, .true.)
-      call getInput('compton', 'Thomson_lim', Thomson_lim, 1e-2)
+      call getInput('compton', 'Thomson_lim', Thomson_lim, 1e-5)
     end subroutine initializeComptonScattering
   #endif
 
