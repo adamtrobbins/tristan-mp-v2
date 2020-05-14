@@ -71,6 +71,19 @@ contains
     #endif
   end subroutine printDiag
 
+  function getFMTForReal(value) result(FMT)
+    implicit none
+    real, intent(in)        :: value
+    character(len=STR_MAX)  :: FMT
+    if ((abs(value) .ge. 1000) .or.&
+      & ((abs(value) .lt. 1e-2) .and.&
+        & (abs(value) .ne. 0.0))) then
+      FMT = 'ES10.2'
+    else
+      FMT = 'F10.2'
+    end if
+  end function getFMTForReal
+
   subroutine printReport(bool, msg, prepend)
     implicit none
     character(len=*), intent(in)  :: msg

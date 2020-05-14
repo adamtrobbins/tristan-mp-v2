@@ -94,13 +94,8 @@ contains
                                  & trim(sim_params%param_name(n)%str), ':',&
                                  & sim_params%param_value(n)%value_int
         else if (sim_params%param_type(n) .eq. 2) then
-          if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
-            & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
-              & (sim_params%param_value(n)%value_real .ne. 0.0))) then
-            FMT = '(A30,A1,A20,A1,ES10.2)'
-          else
-            FMT = '(A30,A1,A20,A1,F10.2)'
-          end if
+          FMT = getFMTForReal(sim_params%param_value(n)%value_real)
+          FMT = '(A30,A1,A20,A1,' // trim(FMT) // ')'
           write (UNIT_params, FMT) trim(sim_params%param_group(n)%str), ':',&
                        & trim(sim_params%param_name(n)%str), ':',&
                        & sim_params%param_value(n)%value_real
