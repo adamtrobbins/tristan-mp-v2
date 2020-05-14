@@ -121,16 +121,18 @@ contains
     implicit none
     integer, intent(in)               :: step, time
     character(len=STR_MAX)            :: stepchar, filename
-    integer                           :: error, datarank
-    integer(HID_T)                    :: file_id, dset_id, dspace_id
-    integer                           :: n, dummy_bool
-    character(len=STR_MAX)            :: dsetname
+    integer                           :: n, error, datarank
+    integer(HID_T)                    :: file_id, dspace_id, dset_id
     integer(HSIZE_T), dimension(1)    :: data_dims
-
-    datarank = 1
-    data_dims(1) = 1
+    integer, allocatable              :: data_int(:)
+    real, allocatable                 :: data_real(:)
+    character(len=STR_MAX)            :: dsetname
 
     if (mpi_rank .eq. 0) then
+      datarank = 1
+      data_dims(1) = 1
+      allocate(data_real(1))
+      allocate(data_int(1))
 
       write(stepchar, "(i5.5)") step
       filename = trim(output_dir_name) // '/params.' // trim(stepchar)
@@ -140,23 +142,26 @@ contains
       call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
       call h5screate_simple_f(datarank, data_dims, dspace_id, error)
       call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
-      call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, (/time/), data_dims, error)
+      data_int(1) = time
+      call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data_int, data_dims, error)
       call h5dclose_f(dset_id, error)
       call h5sclose_f(dspace_id, error)
 
       do n = 1, sim_params%count
-        dsetname = trim(sim_params%param_group(n)%str) // '_' // trim(sim_params%param_name(n)%str)
+        dsetname = trim(sim_params%param_group(n)%str) // ':' // trim(sim_params%param_name(n)%str)
         call h5screate_simple_f(datarank, data_dims, dspace_id, error)
         if (sim_params%param_type(n) .eq. 1) then
           call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
-          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, (/sim_params%param_value(n)%value_int/), data_dims, error)
+          data_int(1) = sim_params%param_value(n)%value_int
+          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data_int, data_dims, error)
         else if (sim_params%param_type(n) .eq. 2) then
           call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_REAL, dspace_id, dset_id, error)
-          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, (/sim_params%param_value(n)%value_real/), data_dims, error)
+          data_real(1) = sim_params%param_value(n)%value_real
+          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, data_real, data_dims, error)
         else if (sim_params%param_type(n) .eq. 3) then
-          dummy_bool = sim_params%param_value(n)%value_bool
           call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
-          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, (/dummy_bool/), data_dims, error)
+          data_int(1) = sim_params%param_value(n)%value_bool
+          call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data_int, data_dims, error)
         else
           call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
         end if
@@ -557,7 +562,6 @@ contains
     integer                           :: error, ierr
     integer                           :: rnk, s, dummy_s, p, j, ln_, ti, tj, tk, temp, temp_int
     integer                           :: dataset_rank = 1
-    integer(HID_T)                    :: h5type
     integer(HSSIZE_T), dimension(1)   :: offsets
     integer(HSIZE_T), dimension(1)    :: global_dims, blocks
     integer                           :: npart_stride(nspec), npart_stride_global(nspec, mpi_size)
@@ -633,6 +637,9 @@ contains
         call h5screate_simple_f(dataset_rank, global_dims, filespace(p), error)
       end do
 
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
+      call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
+
       do p = 1, n_prtl_vars
         ! dataset name `var_name` + '_' + `species #`
         ln_ = len(trim(prtl_vars(p)))
@@ -641,7 +648,6 @@ contains
         ! creating dataset for a given type
         if (trim(prtl_var_types(p)) .eq. 'int') then
           writing_intQ = .true.
-          h5type = H5T_NATIVE_INTEGER
           ! Create dataset
           allocate(temp_int_arr(npart_stride(s)))
           do j = 1, npart_stride(s)
@@ -662,7 +668,6 @@ contains
           end do
         else if (trim(prtl_var_types(p)) .eq. 'real') then
           writing_intQ = .false.
-          h5type = H5T_NATIVE_REAL
           if (prtl_vars(p)(1:4) .eq. 'dens') then
             dummy_s = STRtoINT(prtl_vars(p)(5:5))
             call computeDensity(dummy_s, reset=.true.) ! filled `lg_arr` with density of species `s`
@@ -768,32 +773,33 @@ contains
           call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(prtl_var_types(p))//'`')
         end if
 
-        call h5dcreate_f(file_id, dsetname, h5type, filespace(p),&
-                       & dset_id(p), error)
+        if (writing_intQ) then
+          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER, filespace(p), dset_id(p), error)
+        else
+          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, filespace(p), dset_id(p), error)
+        end if
         call h5sclose_f(filespace(p), error)
         call h5dget_space_f(dset_id(p), filespace(p), error)
 
-        call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
-        call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
-
         call h5screate_simple_f(dataset_rank, blocks, memspace, error)
+        call h5dget_space_f(dset_id(p), filespace(p), error)
         call h5sselect_hyperslab_f(filespace(p), H5S_SELECT_SET_F, offsets, blocks, error)
 
         ! Write the dataset collectively
         if (writing_intQ) then
-          call h5dwrite_f(dset_id(p), h5type, temp_int_arr, global_dims, error,&
+          call h5dwrite_f(dset_id(p), H5T_NATIVE_INTEGER, temp_int_arr, global_dims, error,&
                         & file_space_id = filespace(p), mem_space_id = memspace,&
-                        & xfer_prp = plist_id)
+                        & xfer_prp = h5p_default_f)
           deallocate(temp_int_arr)
         else
-          call h5dwrite_f(dset_id(p), h5type, temp_real_arr, global_dims, error,&
+          call h5dwrite_f(dset_id(p), H5T_NATIVE_REAL, temp_real_arr, global_dims, error,&
                         & file_space_id = filespace(p), mem_space_id = memspace,&
-                        & xfer_prp = plist_id)
+                        & xfer_prp = h5p_default_f)
           deallocate(temp_real_arr)
         end if
-
-        call h5sclose_f(filespace(p), error)
+        call h5sclose_f(memspace, error)
         call h5dclose_f(dset_id(p), error)
+        call h5sclose_f(filespace(p), error)
       end do
       deallocate(stride_indices_arr)
       deallocate(stride_ti_arr)
@@ -801,7 +807,6 @@ contains
       deallocate(stride_tk_arr)
     end do
 
-    call h5sclose_f(memspace, error)
     call h5pclose_f(plist_id, error)
     call h5fclose_f(file_id, error)
     call h5close_f(error)
