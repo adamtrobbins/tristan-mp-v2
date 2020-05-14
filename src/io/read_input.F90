@@ -76,6 +76,8 @@ contains
         find_varname: do while (.true.)
           read(UNIT_input, *, IOSTAT = iostatus) istream
           if (iostatus .lt. 0) exit find_blockname
+          ! exit if you reach the beginning of a new block:
+          if (istream(1:1) .eq. '<') exit find_blockname
           if (trim(istream) .eq. trim(varname)) then
             ! found the right variable
             backspace(UNIT_input)

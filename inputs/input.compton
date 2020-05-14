@@ -10,7 +10,7 @@
 
 <time>
 
-  last           = 50000          # last timestep
+  last           = 5000          # last timestep
 
 <grid>
 
@@ -48,8 +48,8 @@
   hst_interval  = 1
 
   spec_min      = 1e-5           # `g - 1` for massive and `e` for massless
-  spec_max      = 2            # `g - 1` for massive and `e` for massless
-  spec_num      = 200           # number of energy bins
+  spec_max      = 1e3            # `g - 1` for massive and `e` for massless
+  spec_num      = 200            # number of energy bins
 
 <plasma>
 
@@ -89,11 +89,11 @@
   interval      = 1             # scatter once every `interval` timestep
   algorithm     = 2             # 1 = BINARY; 2 = MC
   el_recoil     = 0
-  Thomson_lim   = 10.0
+  Thomson_lim   = 1e-5
 
 <problem>
 
-  Te         = 5e-3         
+  Te         = 1e-2         
   eph0       = 1e-3           
   delta_eph0 = 0.1e-3       
     

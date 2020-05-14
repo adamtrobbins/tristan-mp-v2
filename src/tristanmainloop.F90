@@ -261,7 +261,8 @@ contains
 
       !-------------------------------------------------
       ! Restart
-      if ((modulo(timestep, rst_interval) .eq. 0) .and.&
+      if (rst_enabled .and.& 
+        & (modulo(timestep, rst_interval) .eq. 0) .and.&
         & (timestep .ge. rst_start) .and.&
         & (timestep .gt. 0)) then
         t_outputstep = MPI_WTIME() - t_outputstep

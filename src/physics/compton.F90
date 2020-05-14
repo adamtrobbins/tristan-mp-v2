@@ -15,11 +15,13 @@ module m_compton
   integer :: Compton_interval
   integer :: Compton_algorithm
   logical :: Compton_el_recoil
-  real    :: Thomson_lim
+  real(kind=8)    :: Thomson_lim
+  real(kind=8), parameter :: low_eph_lim = 2d-3
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: comptonOnTile_bin, comptonOnTile_mc, scatterPhoton
-  private :: generateRandomCosTheta, du_KN_Newt
+  private :: generateRandomCosTheta, du_KN_Newt, boostPhoton
+  private :: low_eph_lim
   !...............................................................!
 contains
   subroutine comptonScattering()
@@ -98,9 +100,9 @@ contains
     real                      :: rnd, P_12
     logical                   :: KleinNishina
     integer                   :: num_1, num_2
-    real                      :: el_gamma, el_beta, pel_x, pel_y, pel_z
-    real                      :: eph, kph_x, kph_y, kph_z
-    real                      :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
+    real(kind=8)              :: el_gamma, el_beta, pel_x, pel_y, pel_z
+    real(kind=8)              :: eph, kph_x, kph_y, kph_z
+    real(kind=8)              :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
     real, pointer             :: u_el, v_el, w_el, u_ph, v_ph, w_ph
 
     ! couple the electrons/positrons (group1) and photons (group2): 
@@ -130,11 +132,11 @@ contains
       v_ph => species(s2)%prtl_tile(ti, tj, tk)%v(p2)
       w_ph => species(s2)%prtl_tile(ti, tj, tk)%w(p2)
 
-      pel_x = u_el; pel_y = v_el; pel_z = w_el
-      kph_x = u_ph; kph_y = v_ph; kph_z = w_ph
+      pel_x = REAL(u_el, 8); pel_y = REAL(v_el, 8); pel_z = REAL(w_el, 8)
+      kph_x = REAL(u_ph, 8); kph_y = REAL(v_ph, 8); kph_z = REAL(w_ph, 8)
 
-      el_gamma = 1.0 + pel_x**2 + pel_y**2 + pel_z**2 ! here gamma^2
-      el_beta = sqrt(1.0 - 1.0 / el_gamma)
+      el_gamma = 1.0d0 + pel_x**2 + pel_y**2 + pel_z**2 ! here gamma^2
+      el_beta = sqrt(1.0d0 - 1.0d0 / el_gamma)
       el_gamma = sqrt(el_gamma)
       eph = sqrt(kph_x**2 + kph_y**2 + kph_z**2)
 
@@ -144,8 +146,7 @@ contains
                              & eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
 
       ! compute cross section:
-      call computeComptonCrossSection(REAL(eph, 8), REAL(eph_RF, 8), &
-                                    & REAL(el_gamma, 8), P_12, KleinNishina)
+      call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
 
       ! to match the optical depth with the binary pairing case:
       P_12 = P_12 * REAL(num_2)
@@ -163,14 +164,14 @@ contains
                             & eph, kph_x, kph_y, kph_z)
         ! obtain the recoil on the electron via momentum conservation:
         if (Compton_el_recoil) then
-          u_el = u_el - (kph_x - u_ph)
-          v_el = v_el - (kph_y - v_ph)
-          w_el = w_el - (kph_z - w_ph)
+          u_el = u_el + u_ph - REAL(kph_x)
+          v_el = v_el + v_ph - REAL(kph_y)
+          w_el = w_el + w_ph - REAL(kph_z)
         endif
         ! store the new photon momentum:
-        u_ph = kph_x
-        v_ph = kph_y
-        w_ph = kph_z
+        u_ph = REAL(kph_x)
+        v_ph = REAL(kph_y)
+        w_ph = REAL(kph_z)
       end if
       u_el => null(); v_el => null(); w_el => null()
       u_ph => null(); v_ph => null(); w_ph => null()
@@ -187,7 +188,7 @@ contains
     if (eph_RF .lt. Thomson_lim) then
       KleinNishina = .false.  ! use classical Thomson cross-section
       f_KN = 1.0d0
-    else if (eph_RF .lt. 2d-3) then
+    else if (eph_RF .lt. low_eph_lim) then
       ! correctly handle the eph_RF << 1 limit using 2nd order expansion of f_KN:
       KleinNishina = .true.  ! Klein-Nishina
       f_KN = 1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2
@@ -212,67 +213,66 @@ contains
                        & eph, k_x, k_y, k_z, &
                        & eph1, k1_x, k1_y, k1_z)
     implicit none
-    real, intent(in)  :: gam, beta, p_x, p_y, p_z 
+    real(kind=8), intent(in)  :: gam, beta, p_x, p_y, p_z 
     ! the input momentum:
-    real, intent(in)  :: eph, k_x, k_y, k_z
+    real(kind=8), intent(in)  :: eph, k_x, k_y, k_z
     ! the transformed momentum:
-    real, intent(out) :: eph1, k1_x, k1_y, k1_z
-    real              :: p_dot_k
-    real              :: check
+    real(kind=8), intent(out) :: eph1, k1_x, k1_y, k1_z
+    real(kind=8)              :: p_dot_k, check
 
     p_dot_k = p_x * k_x + p_y * k_y + p_z * k_z
     ! The transformed photon momentum:
     eph1 = gam * eph - p_dot_k
-    k1_x = k_x + (p_dot_k / (1.0 + gam) - eph) * p_x 
-    k1_y = k_y + (p_dot_k / (1.0 + gam) - eph) * p_y 
-    k1_z = k_z + (p_dot_k / (1.0 + gam) - eph) * p_z 
+    k1_x = k_x + (p_dot_k / (1.0d0 + gam) - eph) * p_x 
+    k1_y = k_y + (p_dot_k / (1.0d0 + gam) - eph) * p_y 
+    k1_z = k_z + (p_dot_k / (1.0d0 + gam) - eph) * p_z 
     #ifdef DEBUG
-      check = eph1 / eph
-      if ((check .lt. 0.0) .or. (check .gt. 2.0*gam)) then
-        print *, 'Photon ratio energy1 / energy  = ', check
-        call throwError('Error in boostPhoton().')
+      check = eph1 / (gam * eph)
+      if ((check .le. 0.0d0) .or. (check .ge. 2.0d0)) then
+        print *, 'Ratio Eph1 / (gamma * Eph)  = ', check
+        call throwError('Error in boostPhoton(). Transformed energy out of bounds!')
       end if
     #endif
   end subroutine boostPhoton
 
   subroutine scatterPhoton(KleinNishina, eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
     implicit none
-    logical, intent(in) :: KleinNishina
-    real, intent(inout) :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
-    real                :: a_RF_x, a_RF_y, a_RF_z
-    real                :: b_RF_x, b_RF_y, b_RF_z
-    real                :: c_RF_x, c_RF_y, c_RF_z
-    real                :: rand_costheta_RF, rand_sintheta_RF
-    real                :: rand_phi_RF, rand_cosphi_RF, rand_sinphi_RF, norm
+    logical, intent(in)          :: KleinNishina
+    real(kind=8), intent(inout)  :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
+    real(kind=8)                 :: a_RF_x, a_RF_y, a_RF_z
+    real(kind=8)                 :: b_RF_x, b_RF_y, b_RF_z
+    real(kind=8)                 :: c_RF_x, c_RF_y, c_RF_z
+    real(kind=8)                 :: rand_costheta_RF, rand_sintheta_RF
+    real(kind=8)                 :: rand_phi_RF, rand_cosphi_RF, rand_sinphi_RF, norm
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! Define a basis in the electron frame:
-    norm = 1.0 / eph_RF
+    norm = 1.0d0 / eph_RF
     a_RF_x = kph_RF_x * norm; a_RF_y = kph_RF_y * norm; a_RF_z = kph_RF_z * norm
-    if (a_RF_x .ne. 0.0) then
+    if (a_RF_x .ne. 0.0d0) then
       b_RF_x = -a_RF_y / a_RF_x; b_RF_y = 1.0; b_RF_z = 0.0
-      norm = 1.0 / sqrt(b_RF_x**2 + b_RF_y**2)
+      norm = 1.0d0 / sqrt(b_RF_x**2 + b_RF_y**2)
       b_RF_x = b_RF_x * norm; b_RF_y = b_RF_y * norm
     else
-      b_RF_x = 1.0; b_RF_y = 0.0; b_RF_z = 0.0
+      b_RF_x = 1.0d0; b_RF_y = 0.0; b_RF_z = 0.0
     end if
     c_RF_x = b_RF_z * a_RF_y - b_RF_y * a_RF_z
     c_RF_y = b_RF_x * a_RF_z - b_RF_z * a_RF_x
     c_RF_z = b_RF_y * a_RF_x - b_RF_x * a_RF_y
-    norm = 1.0 / sqrt(c_RF_x**2 + c_RF_y**2 + c_RF_z**2)
+    norm = 1.0d0 / sqrt(c_RF_x**2 + c_RF_y**2 + c_RF_z**2)
     c_RF_x = c_RF_x * norm; c_RF_y = c_RF_y * norm; c_RF_z = c_RF_z * norm
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     ! Generate random vector in the electron frame ...
     ! ... respecting the differential (Klein-Nishina) cross section ...
-    call generateRandomCosTheta(REAL(eph_RF, 8), rand_costheta_RF, KleinNishina)
-    rand_phi_RF = 2.0 * M_PI * random(dseed)
-    rand_sintheta_RF = sqrt(1.0 - rand_costheta_RF**2)
+    call generateRandomCosTheta(eph_RF, rand_costheta_RF, KleinNishina)
+    rand_phi_RF = REAL(2.0 * M_PI * random(dseed), 8)
+    rand_sintheta_RF = sqrt(1.0d0 - rand_costheta_RF**2)
     rand_cosphi_RF = cos(rand_phi_RF)
     rand_sinphi_RF = sin(rand_phi_RF)
 
     ! update the momentum:
-    eph_RF = eph_RF / (1.0 + eph_RF * (1.0 - rand_costheta_RF))
+    eph_RF = eph_RF / (1.0d0 + eph_RF * (1.0d0 - rand_costheta_RF))
     kph_RF_x = eph_RF * (rand_costheta_RF * a_RF_x + &
                        & rand_sintheta_RF * rand_cosphi_RF * b_RF_x + &
                        & rand_sintheta_RF * rand_sinphi_RF * c_RF_x)
@@ -290,7 +290,7 @@ contains
   subroutine generateRandomCosTheta(eph_RF, costheta_RF, KleinNishina)
     implicit none
     real(kind=8), intent(in)  :: eph_RF
-    real,         intent(out) :: costheta_RF
+    real(kind=8), intent(out) :: costheta_RF
     logical, intent(in)       :: KleinNishina
     real(kind=8)              :: rnd, u, du
     real(kind=8)              :: c0, c1, c2, c3, c4
@@ -300,7 +300,7 @@ contains
     
     iter = 0
    
-    rnd = random(dseed)
+    rnd = REAL(random(dseed), 8)
     if ( .not. KleinNishina ) then
       ! `u` for Thomson can be sampled by transforming `rnd` with 
       ! an analytic formula, which is obtained by inverting the 
@@ -322,17 +322,17 @@ contains
         u = u + du
         if (u .gt. 1.0d0) u = 1.0d0
         if (abs(du) .lt. thresh) exit
-        if (iter .eq. max_iter) then
-          print *, 'Warning: Cos(theta) = ', u,  ' not converged for eph_RF = ', eph_RF, ', rnd = ', rnd
-          #ifdef DEBUG
-            call throwError('Random value for cos(theta) in Compton scattering failed to converge.')
-          #endif
-        end if
       end do
+      if (iter .ge. max_iter) then
+        print *, 'Warning: Cos(theta) = ', u,  ' not converged for eph_RF = ', eph_RF, ', rnd = ', rnd
+        #ifdef DEBUG
+          call throwError('Random value for cos(theta) in Compton scattering failed to converge.')
+        #endif
+      end if
     endif
-    costheta_RF = REAL(u)
+    costheta_RF = u
     #ifdef DEBUG
-      if ((costheta_RF .lt. -1.0) .or. (costheta_RF .gt. 1.0)) then
+      if ((costheta_RF .lt. -1.0d0) .or. (costheta_RF .gt. 1.0d0)) then
         print *, 'Cos(theta) = ', costheta_RF
         call throwError('Cos(theta) for Compton scattering went out of bounds.')
       end if
@@ -345,7 +345,7 @@ contains
     real(kind=8), intent(in)  :: eph_RF, u, rnd, c0, c1, c2, c3, c4
     real(kind=8)              :: Fu, dFdu, g, eg, c0g
 
-    if (eph_RF .lt. 2d-3) then
+    if (eph_RF .lt. low_eph_lim) then
       ! use a 2nd order expansion in eph_RF to avoid numerical issues
       ! when eph_RF << 1:
       Fu = 0.125d0 * (u**3 + 3.0d0 * u + 4.0d0) + &
@@ -368,3 +368,4 @@ contains
 
 #endif
 end module m_compton
+
