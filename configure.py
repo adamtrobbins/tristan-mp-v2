@@ -73,6 +73,11 @@ parser.add_argument('-extfields',
                     default=False,
                     help='apply external fields')
 
+parser.add_argument('-absorb',
+                    action='store_true',
+                    default=False,
+                    help='enable absorbing boundaries')
+
 parser.add_argument('-debug',
                     action='store_true',
                     default=False,
@@ -185,6 +190,9 @@ if args['3d']:
 else:
     makefile_options['EXE_NAME'] = 'tristan-mp2d'
 
+if args['absorb']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DABSORB '
+
 # extra algorithms
 if args['dwn']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDOWNSAMPLING '
@@ -242,6 +250,7 @@ print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
+print('  Absorbing boundaries:    ' + ('ON' if args['absorb'] else 'OFF'))
 print('  Cooling:                 ' + args['radiation'])
 print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
 print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
