@@ -37,11 +37,11 @@ contains
       ! group1 (electrons/positrons) or to group2 (photons):
       if (species(s)%compton_sp) then
         ! electrons or positrons:
-        if ( (species(s)%m_sp .eq. 1.0) .and. (abs(species(s)%ch_sp) .eq. 1.0) ) then
+        if ((species(s)%m_sp .eq. 1.0) .and. (abs(species(s)%ch_sp) .eq. 1.0)) then
           compton_species_1(si_1 + 1) = s
           si_1 = si_1 + 1
         ! the photons:
-        else if ( (species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0) ) then
+        else if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
           compton_species_2(si_2 + 1) = s
           si_2 = si_2 + 1
         end if
@@ -297,11 +297,10 @@ contains
     integer                   :: iter
     real(kind=8), parameter   :: thresh = 1d-7
     integer, parameter        :: max_iter = 30
+    logical                   :: converged
     
-    iter = 0
-   
     rnd = REAL(random(dseed), 8)
-    if ( .not. KleinNishina ) then
+    if (.not. KleinNishina) then
       ! `u` for Thomson can be sampled by transforming `rnd` with 
       ! an analytic formula, which is obtained by inverting the 
       ! cumulative distribution: 
@@ -310,6 +309,8 @@ contains
     else 
       ! generate random costheta for Klein-Nishina
       ! by solving iteratively (via Newton method) for F(u=cos(theta)) = rnd \in [0,1]
+      iter = 0
+      converged = .false.
       c0 = 1.0d0 + 2.0d0 * eph_RF
       c1 = eph_RF / c0
       c2 = eph_RF**2 - 2.0d0 * eph_RF - 2.0d0
@@ -321,9 +322,12 @@ contains
         du = du_KN_Newt(eph_RF, u, rnd, c0, c1, c2, c3, c4)
         u = u + du
         if (u .gt. 1.0d0) u = 1.0d0
-        if (abs(du) .lt. thresh) exit
+        if (abs(du) .lt. thresh) then
+          converged = .true.
+          exit
+        endif
       end do
-      if (iter .ge. max_iter) then
+      if (.not. converged) then
         print *, 'Warning: Cos(theta) = ', u,  ' not converged for eph_RF = ', eph_RF, ', rnd = ', rnd
         #ifdef DEBUG
           call throwError('Random value for cos(theta) in Compton scattering failed to converge.')

@@ -44,8 +44,16 @@ def getSpectra(fname):
         data = {}
         for sp in spectra:
             data[sp] = {}
-            (data[sp])['bn'] = np.exp(file['e' + sp][:])
+            log_e = file['e' + sp][:]
+            bn = np.exp(log_e)
+            (data[sp])['bn'] = bn
             (data[sp])['cnt'] = file['n' + sp][:]
+            # the bin-centered energy axis:
+            n = len(log_e)
+            spec_max = n / (n - 1.0) * (log_e[-1] - log_e[0])
+            bn_next = np.roll(bn, -1)
+            bn_next[-1] = np.exp(spec_max)
+            (data[sp])['ene'] = 0.5 * (bn_next + bn)
     return data
 
 def getDomains(fname):
