@@ -14,6 +14,7 @@ module m_initialize
   use m_fields
   use m_userfile
   use m_writeoutput
+  use m_writehistory
   use m_writerestart
   use m_helpers
   use m_errors
@@ -100,9 +101,6 @@ contains
     call initializeRestart()
       call printDiag((mpi_rank .eq. 0), "initializeRestart()", .true.)
 
-    ! ADD possibility to define output function in userfile
-    ! ADD hst file?
-
     call initializeFields()
       call printDiag((mpi_rank .eq. 0), "initializeFields()", .true.)
 
@@ -155,7 +153,6 @@ contains
       call printDiag((mpi_rank .eq. 0), "checkEverything()", .true.)
 
     call printParams()
-    call writeParams()
 
     call printReport((mpi_rank .eq. 0), "InitializeAll()")
   end subroutine initializeAll
@@ -164,6 +161,7 @@ contains
     implicit none
     integer                 :: n
     character(len=STR_MAX)  :: FMT
+    ! printing simulation parameters in the report
 
     if (mpi_rank .eq. 0) then
       FMT = '== Simulation parameters ==============================================='
@@ -175,13 +173,8 @@ contains
                        & trim(sim_params%param_name(n)%str), ':',&
                        & sim_params%param_value(n)%value_int
         else if (sim_params%param_type(n) .eq. 2) then
-          if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
-            & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
-              & (sim_params%param_value(n)%value_real .ne. 0.0))) then
-            FMT = '(A30,A1,A20,A1,ES10.2)'
-          else
-            FMT = '(A30,A1,A20,A1,F10.2)'
-          end if
+          FMT = getFMTForReal(sim_params%param_value(n)%value_real)
+          FMT = '(A30,A1,A20,A1,' // trim(FMT) // ')'
           write (*, FMT) trim(sim_params%param_group(n)%str), ':',&
                        & trim(sim_params%param_name(n)%str), ':',&
                        & sim_params%param_value(n)%value_real
@@ -240,6 +233,7 @@ contains
     call getInput('grid', 'abs_thick', ds_abs, 10.0)
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
+    call getInput('grid', 'boundary_z', boundary_z, 1)
     #ifdef threeD
       call getInput('grid', 'boundary_z', boundary_z, 1)
       if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
@@ -248,12 +242,17 @@ contains
         boundary_z = 2
       end if
     #else
-      boundary_z = 0
+      boundary_z = 1
       if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2)) then
         boundary_x = 2
         boundary_y = 2
       end if
     #endif
+    if ((boundary_x .ne. 1) .or. (boundary_x .ne. 1) .or. (boundary_x .ne. 1)) then
+      #ifndef ABSORB
+        call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+      #endif
+    end if
   end subroutine initializeDomain
 
   subroutine distributeMeshblocks()
@@ -328,6 +327,9 @@ contains
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
     call getInput('output', 'istep', output_istep, 4)
+
+    call getInput('output', 'hst_enable', hst_enable, .false.)
+    call getInput('output', 'hst_interval', hst_interval, 1)
 
     call getInput('output', 'spec_min', spec_min, 1e-2)
     call getInput('output', 'spec_max', spec_max, 1e2)

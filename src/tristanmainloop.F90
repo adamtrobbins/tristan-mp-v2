@@ -5,6 +5,7 @@ module m_mainloop
   use m_helpers
   use m_aux
   use m_writeoutput
+  use m_writehistory
   use m_writerestart
   use m_fldsolver
   use m_mover
@@ -257,11 +258,18 @@ contains
         call writeOutput(timestep)
         t_outputstep = MPI_WTIME() - t_outputstep
       end if
+
+      if ((hst_enable) .and.&
+        & (modulo(timestep, hst_interval) .eq. 0)) then
+        t_outputstep = MPI_WTIME() - t_outputstep
+        call writeHistory(timestep)
+        t_outputstep = MPI_WTIME() - t_outputstep
+      end if
       !.................................................
 
       !-------------------------------------------------
       ! Restart
-      if (rst_enabled .and.& 
+      if ((rst_enabled) .and.&
         & (modulo(timestep, rst_interval) .eq. 0) .and.&
         & (timestep .ge. rst_start) .and.&
         & (timestep .gt. 0)) then
