@@ -53,7 +53,7 @@
   flds_at_prtl  = 1              # save fields at particle position
   write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
 
-  history       = 0              # turn history file ON/OFF (currently not supported)
+  hst_enable    = 0              # turn history file ON/OFF (currently not supported)
                                  # ... integrated average quantities...
                                  # saved at each timestep
   hst_interval  = 1

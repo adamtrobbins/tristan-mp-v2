@@ -14,6 +14,7 @@ module m_initialize
   use m_fields
   use m_userfile
   use m_writeoutput
+  use m_writehistory
   use m_writerestart
   use m_helpers
   use m_errors
@@ -92,9 +93,6 @@ contains
     call initializeRestart()
       call printDiag((mpi_rank .eq. 0), "initializeRestart()", .true.)
 
-    ! ADD possibility to define output function in userfile
-    ! ADD hst file?
-
     call initializeFields()
       call printDiag((mpi_rank .eq. 0), "initializeFields()", .true.)
 
@@ -162,13 +160,8 @@ contains
                        & trim(sim_params%param_name(n)%str), ':',&
                        & sim_params%param_value(n)%value_int
         else if (sim_params%param_type(n) .eq. 2) then
-          if ((sim_params%param_value(n)%value_real .ge. 1000) .or.&
-            & ((sim_params%param_value(n)%value_real .lt. 1e-2) .and.&
-              & (sim_params%param_value(n)%value_real .ne. 0.0))) then
-            FMT = '(A30,A1,A20,A1,ES10.2)'
-          else
-            FMT = '(A30,A1,A20,A1,F10.2)'
-          end if
+          FMT = getFMTForReal(sim_params%param_value(n)%value_real)
+          FMT = '(A30,A1,A20,A1,' // trim(FMT) // ')'
           write (*, FMT) trim(sim_params%param_group(n)%str), ':',&
                        & trim(sim_params%param_name(n)%str), ':',&
                        & sim_params%param_value(n)%value_real
@@ -321,6 +314,9 @@ contains
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
     call getInput('output', 'istep', output_istep, 4)
+
+    call getInput('output', 'hst_enable', hst_enable, .false.)
+    call getInput('output', 'hst_interval', hst_interval, 1)
 
     call getInput('output', 'spec_min', spec_min, 1e-2)
     call getInput('output', 'spec_max', spec_max, 1e2)
