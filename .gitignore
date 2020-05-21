@@ -9,3 +9,4 @@ Makefile
 __pycache__
 vis/
 .sync-config.cson
+.DS_Store

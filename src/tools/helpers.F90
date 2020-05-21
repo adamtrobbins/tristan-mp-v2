@@ -212,29 +212,42 @@ contains
     sendrecv_neighbors = cntr
   end subroutine computeNumberOfNeighbors
 
-  subroutine computeDensity(s, reset)
+  subroutine computeDensity(s, reset, ds)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
+    integer, optional, intent(in)         :: ds
     integer                               :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_wei(:)
     integer(kind=2) :: i, j, k
-    integer :: i1, i2, j1, j2, k1, k2, ds
+    integer :: i1, i2, j1, j2, k1, k2, ds_
     integer :: pow
     real    :: contrib
-    ds = 2
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
     #ifndef threeD
       pow = 2
     #else
       pow = 3
     #endif
-    contrib = 1.0 / (2.0 * REAL(ds) + 1.0)**pow
+
+    if (species(s)%m_sp .eq. 0) then
+      contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
+    else
+      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+    end if
 
     if (reset) then
       lg_arr(:,:,:) = 0
     end if
+
     do ti = 1, species(s)%tile_nx
       do tj = 1, species(s)%tile_ny
         do tk = 1, species(s)%tile_nz
@@ -245,17 +258,17 @@ contains
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
 
-            i1 = max(i - ds, -NGHOST)
-            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1)
+            i1 = max(i - ds_, -NGHOST)
+            i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
 
-            j1 = max(j - ds, -NGHOST)
-            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1)
+            j1 = max(j - ds_, -NGHOST)
+            j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
 
             #ifndef threeD
               k1 = 0; k2 = 0
             #else
-              k1 = max(k - ds, -NGHOST)
-              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1)
+              k1 = max(k - ds_, -NGHOST)
+              k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
             #endif
 
             do k = k1, k2
@@ -273,34 +286,41 @@ contains
     end do
   end subroutine computeDensity
 
-  subroutine computeEnergy(s, reset)
+  subroutine computeEnergy(s, reset, ds)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
+    integer, optional, intent(in)         :: ds
     integer                               :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     integer(kind=2) :: i, j, k
-    integer :: i1, i2, j1, j2, k1, k2, ds
+    integer :: i1, i2, j1, j2, k1, k2, ds_
     integer :: pow
     logical :: massive
     real    :: energy
     real    :: contrib
 
-    if (species(s)%m_sp .gt. 0) then
-      massive = .true.
+    if (.not. present(ds)) then
+      ds_ = 2
     else
-      massive = .false.
+      ds_ = ds
     end if
 
-    ds = 2
     #ifndef threeD
       pow = 2
     #else
       pow = 3
     #endif
-    contrib = 1.0 / (2.0 * REAL(ds) + 1.0)**pow
+
+    if (species(s)%m_sp .eq. 0) then
+      massive = .false.
+      contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
+    else
+      massive = .true.
+      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+    end if
 
     if (reset) then
       lg_arr(:,:,:) = 0
@@ -323,17 +343,17 @@ contains
               energy = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
             end if
 
-            i1 = max(i - ds, -NGHOST)
-            i2 = min(i + ds, this_meshblock%ptr%sx + NGHOST - 1)
+            i1 = max(i - ds_, -NGHOST)
+            i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
 
-            j1 = max(j - ds, -NGHOST)
-            j2 = min(j + ds, this_meshblock%ptr%sy + NGHOST - 1)
+            j1 = max(j - ds_, -NGHOST)
+            j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
 
             #ifndef threeD
               k1 = 0; k2 = 0
             #else
-              k1 = max(k - ds, -NGHOST)
-              k2 = min(k + ds, this_meshblock%ptr%sz + NGHOST - 1)
+              k1 = max(k - ds_, -NGHOST)
+              k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
             #endif
 
             do k = k1, k2

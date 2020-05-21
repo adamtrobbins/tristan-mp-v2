@@ -169,7 +169,7 @@ contains
   subroutine printTime(dt_arr, msg, fullstep)
     implicit none
     character(len=*), intent(in)          :: msg
-    character(len=STR_MAX)                :: dummy, dummy1
+    character(len=STR_MAX)                :: dummy, dummy1, FMT
     real(kind=8), intent(in)              :: dt_arr(:)
     real, optional, intent(in)            :: fullstep
     real                                  :: dt_mean, dt_max, dt_min
@@ -190,20 +190,24 @@ contains
     sz = len(msg)
     dummy(1 : sz) = msg
 
-    dummy1 = trim(STR(dt_mean))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_mean))//")"
+    write(dummy1, FMT) dt_mean
+    sz = len_trim(dummy1)
     dummy(20 : 20 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(dt_min))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_min))//")"
+    write(dummy1, FMT) dt_min
+    sz = len_trim(dummy1)
     dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(dt_max))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_max))//")"
+    write(dummy1, FMT) dt_max
+    sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
     if (present(fullstep)) then
-      dummy1 = trim(STR(dt_mean * 100 / fullstep))
-      sz1 = len(trim(dummy1))
+      FMT = "("//trim(getFMTForReal(dt_mean * 100 / fullstep))//")"
+      write(dummy1, FMT) dt_mean * 100 / fullstep
+      sz1 = len_trim(dummy1)
       dummy(62 : 62 + sz1 - 1) = trim(dummy1)
     end if
 
@@ -213,7 +217,7 @@ contains
   subroutine printNpart(npart_arr, msg)
     implicit none
     character(len=*), intent(in)          :: msg
-    character(len=STR_MAX)                :: dummy, dummy1
+    character(len=STR_MAX)                :: dummy, dummy1, FMT
     integer, intent(in)                   :: npart_arr(:)
     real                                  :: npart_mean, npart_max, npart_min
     integer                               :: sz, sz1, i
@@ -228,16 +232,19 @@ contains
     sz = len(msg)
     dummy(1 : sz) = msg
 
-    dummy1 = trim(STR(npart_mean))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_mean))//")"
+    write(dummy1, FMT) npart_mean
+    sz = len_trim(dummy1)
     dummy(20 : 20 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(npart_min))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_min))//")"
+    write(dummy1, FMT) npart_min
+    sz = len_trim(dummy1)
     dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(npart_max))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_max))//")"
+    write(dummy1, FMT) npart_max
+    sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
 
     print *, dummy(1:72)
