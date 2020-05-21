@@ -80,26 +80,42 @@ contains
       imax = this_meshblock%ptr%sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass
       jmax = this_meshblock%ptr%sy - 1 + NGHOST - n_pass
-      
       #ifndef threeD
-        kmin = 0 
+        kmin = 0
         kmax = 0
       #else
         kmin = -NGHOST + n_pass
         kmax = this_meshblock%ptr%sz - 1 + NGHOST - n_pass
       #endif
-      do k = kmin, kmax
-        do j = jmin, jmax
-          tmp2 = arr(imin - 1, j, k)
-          do i = imin, imax, 2
-            tmp1 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
-            arr(i - 1, j, k) = tmp2
-            tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i + 1, j, k) + 0.25 * arr(i + 2, j, k)
-            arr(i, j, k) = tmp1
+      if (modulo(imax - imin, 2) .eq. 0) then
+        do k = kmin, kmax
+          do j = jmin, jmax
+            tmp2 = arr(imin - 1, j, k)
+            do i = imin, imax - 1, 2
+              tmp1 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
+              arr(i - 1, j, k) = tmp2
+              tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i + 1, j, k) + 0.25 * arr(i + 2, j, k)
+              arr(i, j, k) = tmp1
+            end do
+            tmp1 = 0.25 * arr(imax - 1, j, k) + 0.5 * arr(imax, j, k) + 0.25 * arr(imax + 1, j, k)
+            arr(imax - 1, j, k) = tmp2
+            arr(imax, j, k) = tmp1
           end do
-          arr(imax + 1, j, k) = tmp2
         end do
-      end do
+      else
+        do k = kmin, kmax
+          do j = jmin, jmax
+            tmp2 = arr(imin - 1, j, k)
+            do i = imin, imax, 2
+              tmp1 = 0.25 * arr(i - 1, j, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i + 1, j, k)
+              arr(i - 1, j, k) = tmp2
+              tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i + 1, j, k) + 0.25 * arr(i + 2, j, k)
+              arr(i, j, k) = tmp1
+            end do
+            arr(imax, j, k) = tmp2
+          end do
+        end do
+      end if
     end do
   end subroutine
 
@@ -121,24 +137,41 @@ contains
       jmin = -NGHOST + n_pass
       jmax = this_meshblock%ptr%sy - 1 + NGHOST - n_pass
       #ifndef threeD
-        kmin = 0 
+        kmin = 0
         kmax = 0
       #else
         kmin = -NGHOST + n_pass
         kmax = this_meshblock%ptr%sz - 1 + NGHOST - n_pass
       #endif
-      do k = kmin, kmax
-        do i = imin, imax
-          tmp2 = arr(i, jmin - 1, k)
-          do j = jmin, jmax, 2
-            tmp1 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
-            arr(i, j - 1, k) = tmp2
-            tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j + 1, k) + 0.25 * arr(i, j + 2, k)
-            arr(i, j, k) = tmp1
+      if (modulo(jmax - jmin, 2) .eq. 0) then
+        do k = kmin, kmax
+          do i = imin, imax
+            tmp2 = arr(i, jmin - 1, k)
+            do j = jmin, jmax - 1, 2
+              tmp1 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
+              arr(i, j - 1, k) = tmp2
+              tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j + 1, k) + 0.25 * arr(i, j + 2, k)
+              arr(i, j, k) = tmp1
+            end do
+            tmp1 = 0.25 * arr(i, jmax - 1, k) + 0.5 * arr(i, jmax, k) + 0.25 * arr(i, jmax + 1, k)
+            arr(i, jmax - 1, k) = tmp2
+            arr(i, jmax, k) = tmp1
           end do
-          arr(i, jmax + 1, k) = tmp2
         end do
-      end do
+      else
+        do k = kmin, kmax
+          do i = imin, imax
+            tmp2 = arr(i, jmin - 1, k)
+            do j = jmin, jmax, 2
+              tmp1 = 0.25 * arr(i, j - 1, k) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j + 1, k)
+              arr(i, j - 1, k) = tmp2
+              tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j + 1, k) + 0.25 * arr(i, j + 2, k)
+              arr(i, j, k) = tmp1
+            end do
+            arr(i, jmax, k) = tmp2
+          end do
+        end do
+      end if
     end do
   end subroutine
 
@@ -162,18 +195,35 @@ contains
         jmax = this_meshblock%ptr%sy - 1 + NGHOST - n_pass
         kmin = -NGHOST + n_pass
         kmax = this_meshblock%ptr%sz - 1 + NGHOST - n_pass
-        do j = jmin, jmax
-          do i = imin, imax
-            tmp2 = arr(i, j, kmin - 1)
-            do k = kmin, kmax, 2
-              tmp1 = 0.25 * arr(i, j, k - 1) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j, k + 1)
-              arr(i, j, k - 1) = tmp2
-              tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j, k + 1) + 0.25 * arr(i, j, k + 2)
-              arr(i, j, k) = tmp1
+        if (modulo(kmax - kmin, 2) .eq. 0) then
+          do j = jmin, jmax
+            do i = imin, imax
+              tmp2 = arr(i, j, kmin - 1)
+              do k = kmin, kmax - 1, 2
+                tmp1 = 0.25 * arr(i, j, k - 1) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j, k + 1)
+                arr(i, j, k - 1) = tmp2
+                tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j, k + 1) + 0.25 * arr(i, j, k + 2)
+                arr(i, j, k) = tmp1
+              end do
+              tmp1 = 0.25 * arr(i, j, kmax - 1) + 0.5 * arr(i, j, kmax) + 0.25 * arr(i, j, kmax + 1)
+              arr(i, j, kmax - 1) = tmp2
+              arr(i, j, kmax) = tmp1
             end do
-            arr(i, j, kmax + 1) = tmp2
           end do
-        end do
+        else
+          do j = jmin, jmax
+            do i = imin, imax
+              tmp2 = arr(i, j, kmin - 1)
+              do k = kmin, kmax, 2
+                tmp1 = 0.25 * arr(i, j, k - 1) + 0.5 * arr(i, j, k) + 0.25 * arr(i, j, k + 1)
+                arr(i, j, k - 1) = tmp2
+                tmp2 = 0.25 * arr(i, j, k) + 0.5 * arr(i, j, k + 1) + 0.25 * arr(i, j, k + 2)
+                arr(i, j, k) = tmp1
+              end do
+              arr(i, j, kmax) = tmp2
+            end do
+          end do
+        end if
       end do
     end subroutine
   #endif
