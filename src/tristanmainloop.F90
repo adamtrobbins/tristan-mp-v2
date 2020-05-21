@@ -69,7 +69,6 @@ contains
     integer       :: ierr, i
     integer       :: s, ti, tj, tk, p
 
-    ! ADD needs to be changed for restart
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call printReport((mpi_rank .eq. 0), "Starting mainloop()")
 
@@ -234,7 +233,7 @@ contains
       !     ... boundary conditions for particles
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       call userParticleBoundaryConditions(timestep)
-      call clearGhostParticles() ! hack
+      call clearGhostParticles()
       call userDriveParticles(timestep)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
