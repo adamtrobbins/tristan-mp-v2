@@ -19,13 +19,13 @@ module m_userfile
   real :: xc_g, yc_g, zc_g
   real :: psr_angle, psr_period, psr_omega, psr_radius
   real :: inj_mult, e_dot_b_thr
-  real :: shell_width, prtl_kick
+  real :: shell_width, prtl_kick, rmin_dr, e_dot_b_dr
   real :: sigma_mult, sigma_nGJ, nGJ
 
   private :: fld_geometry, inj_method
   private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
   private :: inj_mult, e_dot_b_thr
-  private :: shell_width, prtl_kick
+  private :: shell_width, prtl_kick, rmin_dr, e_dot_b_dr
   private :: sigma_mult, sigma_nGJ, nGJ
   !...............................................................!
 
@@ -36,16 +36,34 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    ! B-field geometry: 1 = monopole, 2 = dipole
+    call getInput('problem', 'fld_geometry', fld_geometry)
     call getInput('problem', 'psr_radius', psr_radius)
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
-    call getInput('problem', 'e_dot_b_thr', e_dot_b_thr)
-    call getInput('problem', 'inj_shell', shell_width)
-    call getInput('problem', 'inj_mult', inj_mult)
+
+    ! remove particles which fall below `radius - rmin_dr`
+    call getInput('problem', 'rmin_dr', rmin_dr)
+
+    ! injection method:
+    !     0 = no injection at all
+    !     1 = inject with 0 velocity in the shell with weight ~ E.B
+    !     2 = inject with a kick and constant weight
     call getInput('problem', 'inj_method', inj_method)
-    call getInput('problem', 'sigma_mult', sigma_mult, 0.1)
-    call getInput('problem', 'fld_geometry', fld_geometry)
-    call getInput('problem', 'prtl_kick', prtl_kick)
+    call getInput('problem', 'inj_shell', shell_width)
+
+    ! for method #1
+    if (inj_method .eq. 1) then
+      call getInput('problem', 'e_dot_b_dr', e_dot_b_dr)
+      call getInput('problem', 'e_dot_b_thr', e_dot_b_thr)
+      call getInput('problem', 'inj_mult', inj_mult)
+    end if
+
+    ! for method #2
+    if (inj_method .eq. 2) then
+      call getInput('problem', 'sigma_mult', sigma_mult)
+      call getInput('problem', 'prtl_kick', prtl_kick)
+    end if
 
     ! safety check
     if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
@@ -157,7 +175,7 @@ contains
     real                          :: x_g, y_g, z_g, r_g
     integer                       :: n_part, n
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
-    integer(kind=2)               :: xi, yi, zi
+    integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
     real                          :: ex0, ey0, ez0, bx0, by0, bz0, e_dot_b, b_sqr, e_sqr
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
@@ -182,26 +200,24 @@ contains
       n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - psr_radius**3) * ppc)
       do n = 1, n_part
         call randomPointInSphericalShell(psr_radius, psr_radius + shell_width, x_glob, y_glob, z_glob)
+        rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+        nx = x_glob / rr
+        ny = y_glob / rr
+        nz = z_glob / rr
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g
-        ! convert global coordinates to local
-        call globalToLocalCoords(x_glob, y_glob, z_glob,&
-                               & x_loc, y_loc, z_loc, .true.)
-        call localToCellBasedCoords(x_loc, y_loc, z_loc,&
-                                  & xi, yi, zi, dx, dy, dz)
-
-        nx = x_glob - xc_g
-        ny = y_glob - yc_g
-        nz = z_glob - zc_g
-        rr = sqrt(nx**2 + ny**2 + nz**2)
-        nx = nx / rr
-        ny = ny / rr
-        nz = nz / rr
-
         if (inj_method .eq. 1) then
           ! screen E.B
-          ! interpolate fields on particle position
+          ! convert global coordinates to local
+          call globalToLocalCoords(x_glob + nx * e_dot_b_dr,&
+                                 & y_glob + ny * e_dot_b_dr,&
+                                 & z_glob + nz * e_dot_b_dr,&
+                                 & x_loc, y_loc, z_loc, .true.)
+          call localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                    & xi, yi, zi, dx, dy, dz)
+          ! interpolate fields on particle position + dr
+
           call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
           call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
           b_sqr = bx0**2 + by0**2 + bz0**2
@@ -209,18 +225,22 @@ contains
 
           if (e_dot_b / b_sqr .gt. e_dot_b_thr) then
             weight = inj_mult * (B_norm * e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc * shell_width)
-
             call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
             call injectParticleGlobally(2, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
           end if
         else if (inj_method .eq. 2) then
+          ! inject fraction of GJ
+          ! convert global coordinates to local
+          call globalToLocalCoords(x_glob, y_glob, z_glob,&
+                                 & x_loc, y_loc, z_loc, .true.)
+          call localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                    & xi, yi, zi, dx, dy, dz)
           call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
           dens = lg_arr(xi, yi, zi)
           sig = (bx0**2 + by0**2 + bz0**2) * sigma * ppc0 / dens
           if (sig .gt. sigma_nGJ * sigma_mult) then
-            ! inject fraction of GJ
-
             ! v_pol + v_phi
+
             u_ = nx * prtl_kick
             v_ = ny * prtl_kick
             w_ = nz * prtl_kick
@@ -245,7 +265,7 @@ contains
                 z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
                     & + species(s)%prtl_tile(ti, tj, tk)%dz(p)
                 r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
-                if ((r_g .lt. (psr_radius - 2)) .or. (r_g .gt. rr)) then
+                if ((r_g .lt. (psr_radius - rmin_dr)) .or. (r_g .gt. rr)) then
                   species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
                 end if
               end do
@@ -346,8 +366,8 @@ contains
               if (updateB_) then
                 ! setting `B_x`
                 rx = REAL(i_glob) - xc_g
-                ry = REAL(j_glob) + 0.5 - xc_g
-                rz = REAL(k_glob) + 0.5 - xc_g
+                ry = REAL(j_glob) + 0.5 - yc_g
+                rz = REAL(k_glob) + 0.5 - zc_g
                 rr_sqr = rx**2 + ry**2 + rz**2
                 b_int_dot_r = bx(i,j,k) * rx +&
                             & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i-1,j,k) + by(i-1,j+1,k)) * ry +&
@@ -367,8 +387,8 @@ contains
 
                 ! setting `B_y`
                 rx = REAL(i_glob) + 0.5 - xc_g
-                ry = REAL(j_glob) - xc_g
-                rz = REAL(k_glob) + 0.5 - xc_g
+                ry = REAL(j_glob) - yc_g
+                rz = REAL(k_glob) + 0.5 - zc_g
                 rr_sqr = rx**2 + ry**2 + rz**2
                 b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j-1,k) + bx(i+1,j-1,k)) * rx +&
                             & by(i,j,k) * ry +&
@@ -387,8 +407,8 @@ contains
 
                 ! setting `B_z`
                 rx = REAL(i_glob) + 0.5 - xc_g
-                ry = REAL(j_glob) + 0.5 - xc_g
-                rz = REAL(k_glob) - xc_g
+                ry = REAL(j_glob) + 0.5 - yc_g
+                rz = REAL(k_glob) - zc_g
                 rr_sqr = rx**2 + ry**2 + rz**2
                 b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j,k-1) + bx(i+1,j,k-1)) * rx +&
                             & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i,j,k-1) + by(i,j+1,k-1)) * ry +&
@@ -409,8 +429,8 @@ contains
               if (updateE_) then
                 ! setting `E_x`
                 rx = REAL(i_glob) + 0.5 - xc_g
-                ry = REAL(j_glob) - xc_g
-                rz = REAL(k_glob) - xc_g
+                ry = REAL(j_glob) - yc_g
+                rz = REAL(k_glob) - zc_g
                 rr_sqr = rx**2 + ry**2 + rz**2
                 e_int_dot_r = ex(i,j,k) * rx +&
                             & 0.25 * (ey(i,j,k) + ey(i+1,j,k) + ey(i,j-1,k) + ey(i+1,j-1,k)) * ry +&
@@ -436,8 +456,8 @@ contains
 
                 ! setting `E_y`
                 rx = REAL(i_glob) - xc_g
-                ry = REAL(j_glob) + 0.5 - xc_g
-                rz = REAL(k_glob) - xc_g
+                ry = REAL(j_glob) + 0.5 - yc_g
+                rz = REAL(k_glob) - zc_g
                 rr_sqr = rx**2 + ry**2 + rz**2
                 e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j+1,k) + ex(i-1,j,k) + ex(i-1,j+1,k)) * rx +&
                             & ey(i,j,k) * ry +&
@@ -463,8 +483,8 @@ contains
 
                 ! setting `E_z`
                 rx = REAL(i_glob) - xc_g
-                ry = REAL(j_glob) - xc_g
-                rz = REAL(k_glob) + 0.5 - xc_g
+                ry = REAL(j_glob) - yc_g
+                rz = REAL(k_glob) + 0.5 - zc_g
                 rr_sqr = rx**2 + ry**2 + rz**2
                 e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j,k+1) + ex(i-1,j,k) + ex(i-1,j,k+1)) * rx +&
                             & 0.25 * (ey(i,j,k) + ey(i,j-1,k) + ey(i,j,k+1) + ey(i,j-1,k+1)) * ry +&
