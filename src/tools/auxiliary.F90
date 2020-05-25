@@ -214,14 +214,28 @@ contains
     print *, dummy(1:72)
   end subroutine printTime
 
+  subroutine printNpartHeader()
+    implicit none
+    character(len=STR_MAX) :: dummy
+    integer                :: i
+
+    ! printing header
+    do i = 1, 72
+      dummy(i : i) = ' '
+    end do
+    dummy(1:71) = '[NPART per S]       [AVERAGE]      [MIN/MAX per CPU]            [TOTAL]'
+    print *, dummy(1:72)
+  end subroutine printNpartHeader
+
   subroutine printNpart(npart_arr, msg)
     implicit none
     character(len=*), intent(in)          :: msg
     character(len=STR_MAX)                :: dummy, dummy1, FMT
     integer, intent(in)                   :: npart_arr(:)
-    real                                  :: npart_mean, npart_max, npart_min
+    real                                  :: npart_mean, npart_max, npart_min, npart_sum
     integer                               :: sz, sz1, i
-    npart_mean = SUM(npart_arr) / mpi_size
+    npart_sum = SUM(npart_arr)
+    npart_mean = npart_sum / mpi_size
     npart_max = MAXVAL(npart_arr)
     npart_min = MINVAL(npart_arr)
 
@@ -246,6 +260,11 @@ contains
     write(dummy1, FMT) npart_max
     sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
+
+    FMT = "("//trim(getFMTForReal(npart_sum))//")"
+    write(dummy1, FMT) npart_sum
+    sz1 = len_trim(dummy1)
+    dummy(62 : 62 + sz1 - 1) = trim(dummy1)
 
     print *, dummy(1:72)
   end subroutine printNpart

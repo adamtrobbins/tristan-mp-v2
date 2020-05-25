@@ -395,14 +395,10 @@ contains
         call printTime(dt_dwnstep, "  dwn_step: ", fullstep)
       #endif
 
+      call printNpartHeader()
       do s = 1, nspec
-        if (s .ne. nspec) then
-          call printNpart(nprt_sp_global(s, :),&
-                        & "  nprt " // trim(STR(s)) // " [core]: ")
-        else
-          call printNpart(nprt_sp_global(s, :),&
-                        & "  nprt " // trim(STR(s)) // " [core]: ")
-        end if
+        call printNpart(nprt_sp_global(s, :),&
+                      & "  species # " // trim(STR(s)))
       end do
 
       call printTimeFooter()
