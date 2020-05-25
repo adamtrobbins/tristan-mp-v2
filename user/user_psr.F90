@@ -15,22 +15,23 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
 
   !--- PRIVATE variables -----------------------------------------!
-  integer :: fld_geometry, inj_method
+  integer :: fld_geometry, inj_method, e_par_method
   real :: xc_g, yc_g, zc_g
   real :: psr_angle, psr_period, psr_omega, psr_radius
-  real :: inj_mult, e_dot_b_thr
-  real :: shell_width, prtl_kick, rmin_dr, e_dot_b_dr
-  real :: sigma_mult, sigma_nGJ, nGJ
+  real :: inj_mult, e_thr
+  real :: shell_width, prtl_kick, rmin_dr, e_dr
+  real :: sigma_mult, sigma_nGJ, nGJ, inj_dr
+  logical :: GJ_limiter
 
-  private :: fld_geometry, inj_method
+  private :: fld_geometry, inj_method, e_par_method
   private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
-  private :: inj_mult, e_dot_b_thr
-  private :: shell_width, prtl_kick, rmin_dr, e_dot_b_dr
-  private :: sigma_mult, sigma_nGJ, nGJ
+  private :: inj_mult, e_thr, GJ_limiter
+  private :: shell_width, prtl_kick, rmin_dr, e_dr
+  private :: sigma_mult, sigma_nGJ, nGJ, inj_dr
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution
+  private :: userSpatialDistribution, getEparAt, randomPointInSphericalShell, getDeltaErAt
   !...............................................................!
 contains
   !--- initialization -----------------------------------------!
@@ -54,9 +55,15 @@ contains
 
     ! for method #1
     if (inj_method .eq. 1) then
-      call getInput('problem', 'e_dot_b_dr', e_dot_b_dr)
-      call getInput('problem', 'e_dot_b_thr', e_dot_b_thr)
+      ! probe slightl above the injection point
+      call getInput('problem', 'e_dr', e_dr)
+      ! inject slightly above the star
+      call getInput('problem', 'inj_dr', inj_dr)
+      call getInput('problem', 'e_thr', e_thr)
       call getInput('problem', 'inj_mult', inj_mult)
+
+      call getInput('problem', 'e_par_method', e_par_method)
+      call getInput('problem', 'GJ_limiter', GJ_limiter)
     end if
 
     ! for method #2
@@ -177,27 +184,66 @@ contains
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
-    real                          :: ex0, ey0, ez0, bx0, by0, bz0, e_dot_b, b_sqr, e_sqr
+    real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
+    real                          :: dens_GJ, e_b_scale
     logical                       :: dummy_flag
 
-    if (inj_method .gt. 0) then
-      ! inject new particles in the spherical shell
+    if (inj_method .eq. 1) then
       ppc = 0.5 * ppc0
-      if (inj_method .eq. 2) then
-        weight = inj_mult * nGJ / ppc
-        ! compute density and write to `lg_arr`
-        dummy_flag = .true.
-        do s = 1, nspec
-          if (species(s)%m_sp .ne. 0) then
-            call computeDensity(s, reset=dummy_flag, ds=0)
-            dummy_flag = .false.
-          end if
-        end do
-        call exchangeArray()
+      if (GJ_limiter) then
+        ! compute charge density and write to `lg_arr`
+        call computeDensity(1, reset=.true., ds=0, charge=.true.)
+        call computeDensity(2, reset=.false., ds=0, charge=.true.)
       end if
+      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
+      do n = 1, n_part
+        ! inject slightly above the star
+        call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
+        rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+        nx = x_glob / rr
+        ny = y_glob / rr
+        nz = z_glob / rr
+        x_glob = x_glob + xc_g
+        y_glob = y_glob + yc_g
+        z_glob = z_glob + zc_g
+        ! screen E-parallel
+        if (e_par_method .eq. 1) then
+          call getEparAt(e_dot_b, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
+          e_b_scale = abs(e_dot_b) / b_sqr
+          weight = inj_mult * (B_norm * abs(e_dot_b) / sqrt(b_sqr)) / (unit_ch * ppc * shell_width)
+        else if (e_par_method .eq. 2) then
+          call getDeltaErAt(delta_er, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
+          e_b_scale = abs(delta_er) / sqrt(b_sqr)
+          weight = inj_mult * (B_norm * abs(delta_er)) / (unit_ch * ppc * shell_width)
+        end if
 
-      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - psr_radius**3) * ppc)
+        ! if point is contained in MPI block
+        if (dummy_flag) then
+          if (e_b_scale .gt. e_thr) then
+            if (GJ_limiter) then
+              call globalToLocalCoords(x_glob, y_glob, z_glob,&
+                                     & x_loc, y_loc, z_loc, .true.)
+              call localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                        & xi, yi, zi, dx, dy, dz)
+              dens = lg_arr(xi, yi, zi)
+              dens_GJ = 2.0 * psr_omega * bz(xi, yi, zi) * B_norm / (CC * unit_ch)
+            end if
+            if ((.not. GJ_limiter) .or.&
+              & ((dens_GJ .lt. 0) .and. (dens .gt. dens_GJ)) .or.&
+              & ((dens_GJ .gt. 0) .and. (dens .lt. dens_GJ))) then
+              call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
+              call injectParticleGlobally(2, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
+            end if
+          end if
+        end if
+      end do
+    else if (inj_method .eq. 2) then
+      ppc = 0.5 * ppc0
+      ! compute density and write to `lg_arr`
+      call computeDensity(1, reset=.true., ds=0)
+      call computeDensity(2, reset=.false., ds=0)
+      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - (psr_radius)**3) * ppc)
       do n = 1, n_part
         call randomPointInSphericalShell(psr_radius, psr_radius + shell_width, x_glob, y_glob, z_glob)
         rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
@@ -207,50 +253,27 @@ contains
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g
-        if (inj_method .eq. 1) then
-          ! screen E.B
-          ! convert global coordinates to local
-          call globalToLocalCoords(x_glob + nx * e_dot_b_dr,&
-                                 & y_glob + ny * e_dot_b_dr,&
-                                 & z_glob + nz * e_dot_b_dr,&
-                                 & x_loc, y_loc, z_loc, .true.)
-          call localToCellBasedCoords(x_loc, y_loc, z_loc,&
-                                    & xi, yi, zi, dx, dy, dz)
-          ! interpolate fields on particle position + dr
-
-          call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-          call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-          b_sqr = bx0**2 + by0**2 + bz0**2
-          e_dot_b = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0)
-
-          if (e_dot_b / b_sqr .gt. e_dot_b_thr) then
-            weight = inj_mult * (B_norm * e_dot_b / sqrt(b_sqr)) / (abs(unit_ch) * ppc * shell_width)
-            call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
-            call injectParticleGlobally(2, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
-          end if
-        else if (inj_method .eq. 2) then
-          ! inject fraction of GJ
-          ! convert global coordinates to local
-          call globalToLocalCoords(x_glob, y_glob, z_glob,&
-                                 & x_loc, y_loc, z_loc, .true.)
-          call localToCellBasedCoords(x_loc, y_loc, z_loc,&
-                                    & xi, yi, zi, dx, dy, dz)
-          call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-          dens = lg_arr(xi, yi, zi)
-          sig = (bx0**2 + by0**2 + bz0**2) * sigma * ppc0 / dens
-          if (sig .gt. sigma_nGJ * sigma_mult) then
-            ! v_pol + v_phi
-
-            u_ = nx * prtl_kick
-            v_ = ny * prtl_kick
-            w_ = nz * prtl_kick
-
-            call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-            call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-          end if
+        weight = inj_mult * nGJ / ppc
+        ! convert global coordinates to local
+        call globalToLocalCoords(x_glob, y_glob, z_glob,&
+                               & x_loc, y_loc, z_loc, .true.)
+        call localToCellBasedCoords(x_loc, y_loc, z_loc,&
+                                  & xi, yi, zi, dx, dy, dz)
+        call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+        dens = lg_arr(xi, yi, zi)
+        sig = (bx0**2 + by0**2 + bz0**2) * sigma * ppc0 / dens
+        if (sig .gt. sigma_nGJ * sigma_mult) then
+          ! v_pol + v_phi
+          u_ = nx * prtl_kick
+          v_ = ny * prtl_kick
+          w_ = nz * prtl_kick
+          call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
+          call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
         end if
       end do
+    end if
 
+    if (inj_method .gt. 0) then
       rr = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs / 2.0
       ! remove particles falling into the star
       do s = 1, nspec
@@ -291,6 +314,70 @@ contains
     y = Y0 * R
     z = Z0 * R
   end subroutine randomPointInSphericalShell
+
+  subroutine getEparAt(E_dot_B, B_sqr, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(out)     :: E_dot_B, B_sqr
+    real, intent(in)      :: x0, y0, z0
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+    real                  :: ex0, ey0, ez0, bx0, by0, bz0
+    real                  :: nx, ny, nz, rr
+    nx = x0 - xc_g
+    ny = y0 - yc_g
+    nz = z0 - zc_g
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx / rr; ny = ny / rr; nz = nz / rr
+
+    call globalToLocalCoords(x0 + nx * e_dr,&
+                           & y0 + ny * e_dr,&
+                           & z0 + nz * e_dr,&
+                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      ! interpolate fields on particle position + dr
+      call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+      call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      B_sqr = bx0**2 + by0**2 + bz0**2
+      E_dot_B = (ex0 * bx0 + ey0 * by0 + ez0 * bz0)
+    end if
+  end subroutine getEparAt
+
+  subroutine getDeltaErAt(delta_Er, B_sqr, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(out)     :: delta_Er, B_sqr
+    real, intent(in)      :: x0, y0, z0
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+    real                  :: ex0, ey0, ez0, bx0, by0, bz0, vx, vy, vz
+    real                  :: nx, ny, nz, rr, ex_cor, ey_cor, ez_cor, er_cor, er
+    nx = x0 - xc_g
+    ny = y0 - yc_g
+    nz = z0 - zc_g
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx / rr; ny = ny / rr; nz = nz / rr
+    call globalToLocalCoords(x0 + nx * e_dr,&
+                           & y0 + ny * e_dr,&
+                           & z0 + nz * e_dr,&
+                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      ! interpolate fields on particle position + dr
+      call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+      call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      vx = -psr_omega * ny * rr
+      vy = psr_omega * nx * rr
+      ex_cor = -vy * bz0 * CCINV
+      ey_cor = vx * bz0 * CCINV
+      ez_cor = -(vx * by0 - vy * bx0) * CCINV
+      er_cor = ex_cor * nx + ey_cor * ny + ez_cor * nz
+      er = ex0 * nx + ey0 * ny + ez0 * nz
+      delta_Er = er - er_cor
+      B_sqr = bx0**2 + by0**2 + bz0**2
+    end if
+  end subroutine getDeltaErAt
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
