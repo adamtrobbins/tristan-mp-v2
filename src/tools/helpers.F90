@@ -49,11 +49,12 @@ contains
   end subroutine checkNpart
 
   subroutine globalToLocalCoords(x_glob, y_glob, z_glob,&
-                               & x_loc, y_loc, z_loc, adjustQ_)
+                               & x_loc, y_loc, z_loc, adjustQ_, containedQ)
     implicit none
     real, intent(in)              :: x_glob, y_glob, z_glob
     real, intent(out)             :: x_loc, y_loc, z_loc
     logical, optional, intent(in) :: adjustQ_
+    logical, optional, intent(out):: containedQ
     logical                       :: adjustQ
     if (present(adjustQ_)) then
       adjustQ = adjustQ_
@@ -77,6 +78,21 @@ contains
       #else
         z_loc = z_glob
       #endif
+      if (present(containedQ)) then
+        #ifdef threeD
+          containedQ = ((x_glob .ge. REAL(this_meshblock%ptr%x0)) .and.&
+                      & (x_glob .lt. REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .and.&
+                      & (y_glob .ge. REAL(this_meshblock%ptr%y0)) .and.&
+                      & (y_glob .lt. REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy)) .and.&
+                      & (z_glob .ge. REAL(this_meshblock%ptr%z0)) .and.&
+                      & (z_glob .lt. REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz)))
+        #else
+          containedQ = ((x_glob .ge. REAL(this_meshblock%ptr%x0)) .and.&
+                      & (x_glob .lt. REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .and.&
+                      & (y_glob .ge. REAL(this_meshblock%ptr%y0)) .and.&
+                      & (y_glob .lt. REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy)))
+        #endif
+      end if
     end if
   end subroutine globalToLocalCoords
 
@@ -212,15 +228,17 @@ contains
     sendrecv_neighbors = cntr
   end subroutine computeNumberOfNeighbors
 
-  subroutine computeDensity(s, reset, ds)
+  subroutine computeDensity(s, reset, ds, charge)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in)                   :: s
     logical, intent(in)                   :: reset
+    logical, optional, intent(in)         :: charge
     integer, optional, intent(in)         :: ds
     integer                               :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_wei(:)
+    logical                               :: charge_
     integer(kind=2) :: i, j, k
     integer :: i1, i2, j1, j2, k1, k2, ds_
     integer :: pow
@@ -232,6 +250,12 @@ contains
       ds_ = ds
     end if
 
+    if (.not. present(charge)) then
+      charge_ = .false.
+    else
+      charge_ = charge
+    end if
+
     #ifndef threeD
       pow = 2
     #else
@@ -241,7 +265,11 @@ contains
     if (species(s)%m_sp .eq. 0) then
       contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
     else
-      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+      if (charge_) then
+        contrib = species(s)%ch_sp / (2.0 * REAL(ds_) + 1.0)**pow
+      else
+        contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+      end if
     end if
 
     if (reset) then
