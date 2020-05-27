@@ -31,7 +31,8 @@ module m_userfile
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution, getEparAt, randomPointInSphericalShell, getDeltaErAt
+  private :: userSpatialDistribution, getEparAt, randomPointInSphericalShell,&
+           & getDeltaErAt, getLocalSigma
   !...............................................................!
 contains
   !--- initialization -----------------------------------------!
@@ -53,8 +54,8 @@ contains
     call getInput('problem', 'inj_method', inj_method)
     call getInput('problem', 'inj_shell', shell_width)
 
-    ! for method #1
-    if (inj_method .eq. 1) then
+    ! for method #1/#2
+    if (inj_method .ge. 1) then
       ! probe slightl above the injection point
       call getInput('problem', 'e_dr', e_dr)
       ! inject slightly above the star
@@ -184,11 +185,12 @@ contains
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
-    real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0
+    real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
     real                          :: dens_GJ, e_b_scale
     logical                       :: dummy_flag
 
+    ! inject particles with `w ~ E.B` at rest
     if (inj_method .eq. 1) then
       ppc = 0.5 * ppc0
       if (GJ_limiter) then
@@ -209,10 +211,12 @@ contains
         z_glob = z_glob + zc_g
         ! screen E-parallel
         if (e_par_method .eq. 1) then
+          ! ... measured `e_dr` cells above the injection point
           call getEparAt(e_dot_b, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
           e_b_scale = abs(e_dot_b) / b_sqr
           weight = inj_mult * (B_norm * abs(e_dot_b) / sqrt(b_sqr)) / (unit_ch * ppc * shell_width)
         else if (e_par_method .eq. 2) then
+          ! ... measured `e_dr` cells above the injection point
           call getDeltaErAt(delta_er, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
           e_b_scale = abs(delta_er) / sqrt(b_sqr)
           weight = inj_mult * (B_norm * abs(delta_er)) / (unit_ch * ppc * shell_width)
@@ -228,24 +232,36 @@ contains
                                         & xi, yi, zi, dx, dy, dz)
               dens = lg_arr(xi, yi, zi)
               dens_GJ = 2.0 * psr_omega * bz(xi, yi, zi) * B_norm / (CC * unit_ch)
+
+              if (inj_method .eq. 2) then
+                u_ = nx * prtl_kick
+                v_ = ny * prtl_kick
+                w_ = nz * prtl_kick
+              else
+                u_ = 0.0; v_ = 0.0; w_ = 0.0
+              end if
+
             end if
             if ((.not. GJ_limiter) .or.&
               & ((dens_GJ .lt. 0) .and. (dens .gt. dens_GJ)) .or.&
               & ((dens_GJ .gt. 0) .and. (dens .lt. dens_GJ))) then
-              call injectParticleGlobally(1, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
-              call injectParticleGlobally(2, x_glob, y_glob, z_glob, 0.0, 0.0, 0.0, weight)
+              call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
+              call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
             end if
           end if
         end if
       end do
     else if (inj_method .eq. 2) then
+      ! second injection option: fraction of polar GJ
       ppc = 0.5 * ppc0
-      ! compute density and write to `lg_arr`
-      call computeDensity(1, reset=.true., ds=0)
-      call computeDensity(2, reset=.false., ds=0)
-      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width)**3 - (psr_radius)**3) * ppc)
+      if (GJ_limiter) then
+        ! compute number density and write to `lg_arr`
+        call computeDensity(1, reset=.true., ds=0, charge=.false.)
+        call computeDensity(2, reset=.false., ds=0, charge=.false.)
+      end if
+      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
       do n = 1, n_part
-        call randomPointInSphericalShell(psr_radius, psr_radius + shell_width, x_glob, y_glob, z_glob)
+        call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
         rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
         nx = x_glob / rr
         ny = y_glob / rr
@@ -253,17 +269,12 @@ contains
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g
-        weight = inj_mult * nGJ / ppc
-        ! convert global coordinates to local
-        call globalToLocalCoords(x_glob, y_glob, z_glob,&
-                               & x_loc, y_loc, z_loc, .true.)
-        call localToCellBasedCoords(x_loc, y_loc, z_loc,&
-                                  & xi, yi, zi, dx, dy, dz)
-        call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-        dens = lg_arr(xi, yi, zi)
-        sig = (bx0**2 + by0**2 + bz0**2) * sigma * ppc0 / dens
-        if (sig .gt. sigma_nGJ * sigma_mult) then
-          ! v_pol + v_phi
+        ! ... measured `e_dr` cells above the injection point
+        if (GJ_limiter) then
+          call getLocalSigma(sig, x_glob, y_glob, z_glob, dummy_flag)
+        end if
+        if ((dummy_flag) .and. ((.not. GJ_limiter) .or. (sig .gt. sigma_nGJ * sigma_mult))) then
+          weight = inj_mult * nGJ / ppc
           u_ = nx * prtl_kick
           v_ = ny * prtl_kick
           w_ = nz * prtl_kick
@@ -271,7 +282,42 @@ contains
           call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
         end if
       end do
+
     end if
+
+    ! ! additionally inject particles with `w ~ j.B` and a kick
+    ! if (inj_method .eq. 2) then
+    !   ppc = 0.5 * ppc0
+    !   n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
+    !   do n = 1, n_part
+    !     call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
+    !     rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+    !     nx = x_glob / rr
+    !     ny = y_glob / rr
+    !     nz = z_glob / rr
+    !     x_glob = x_glob + xc_g
+    !     y_glob = y_glob + yc_g
+    !     z_glob = z_glob + zc_g
+    !     ! convert global coordinates to local
+    !     call globalToLocalCoords(x_glob, y_glob, z_glob,&
+    !                            & x_loc, y_loc, z_loc, .true.)
+    !     call localToCellBasedCoords(x_loc, y_loc, z_loc,&
+    !                               & xi, yi, zi, dx, dy, dz)
+    !     ! this is actually `j`!
+    !     call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, ex0, ey0, ez0)
+    !     call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+    !     e_dot_b = ex0 * bx0 + ey0 * by0 + ez0 * bz0
+    !     b_sqr = bx0**2 + by0**2 + bz0**2
+    !     if (abs(e_dot_b) / b_sqr .gt. e_thr) then
+    !       weight = inj_mult * (B_norm * abs(e_dot_b) / sqrt(b_sqr)) / (unit_ch * ppc * shell_width)
+    !       u_ = nx * prtl_kick
+    !       v_ = ny * prtl_kick
+    !       w_ = nz * prtl_kick
+    !       call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
+    !       call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
+    !     end if
+    !   end do
+    ! end if
 
     if (inj_method .gt. 0) then
       rr = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs / 2.0
@@ -329,7 +375,7 @@ contains
     nz = z0 - zc_g
     rr = sqrt(nx**2 + ny**2 + nz**2)
     nx = nx / rr; ny = ny / rr; nz = nz / rr
-
+    ! ... measure `e_dr` cells above the injection point
     call globalToLocalCoords(x0 + nx * e_dr,&
                            & y0 + ny * e_dr,&
                            & z0 + nz * e_dr,&
@@ -358,6 +404,7 @@ contains
     nz = z0 - zc_g
     rr = sqrt(nx**2 + ny**2 + nz**2)
     nx = nx / rr; ny = ny / rr; nz = nz / rr
+    ! ... measure `e_dr` cells above the injection point
     call globalToLocalCoords(x0 + nx * e_dr,&
                            & y0 + ny * e_dr,&
                            & z0 + nz * e_dr,&
@@ -378,6 +425,38 @@ contains
       B_sqr = bx0**2 + by0**2 + bz0**2
     end if
   end subroutine getDeltaErAt
+
+  subroutine getLocalSigma(sig, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(out)     :: sig
+    real, intent(in)      :: x0, y0, z0
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+    real                  :: bx0, by0, bz0, dens
+    real                  :: nx, ny, nz, rr
+    nx = x0 - xc_g
+    ny = y0 - yc_g
+    nz = z0 - zc_g
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx / rr; ny = ny / rr; nz = nz / rr
+    ! ... measure `e_dr` cells above the injection point
+    call globalToLocalCoords(x0 + nx * e_dr,&
+                           & y0 + ny * e_dr,&
+                           & z0 + nz * e_dr,&
+                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      ! interpolate fields on particle position + dr
+      call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      dens = lg_arr(xi, yi, zi)
+      if (dens .ge. 1e-3) then
+        sig = (bx0**2 + by0**2 + bz0**2) * sigma * ppc0 / dens
+      else
+        sig = 1e10
+      end if
+    end if
+  end subroutine getLocalSigma
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
