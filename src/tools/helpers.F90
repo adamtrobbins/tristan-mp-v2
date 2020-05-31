@@ -63,34 +63,43 @@ contains
     end if
 
     if (adjustQ) then
-      x_loc = MAX(0.0, MIN(x_glob - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx)))
-      y_loc = MAX(0.0, MIN(y_glob - REAL(this_meshblock%ptr%y0), REAL(this_meshblock%ptr%sy)))
-      #ifdef threeD
+      x_loc = x_glob; y_loc = y_glob; z_loc = z_glob
+      #if defined(oneD) || defined (twoD) || defined (threeD)
+        x_loc = MAX(0.0, MIN(x_glob - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx)))
+      #endif
+      #if defined (twoD) || defined (threeD)
+        y_loc = MAX(0.0, MIN(y_glob - REAL(this_meshblock%ptr%y0), REAL(this_meshblock%ptr%sy)))
+      #endif
+      #if defined(threeD)
         z_loc = MAX(0.0, MIN(z_glob - REAL(this_meshblock%ptr%z0), REAL(this_meshblock%ptr%sz)))
-      #else
-        z_loc = z_glob
       #endif
     else
-      x_loc = x_glob - REAL(this_meshblock%ptr%x0)
-      y_loc = y_glob - REAL(this_meshblock%ptr%y0)
-      #ifdef threeD
+      x_loc = x_glob; y_loc = y_glob; z_loc = z_glob
+      #if defined(oneD) || defined (twoD) || defined (threeD)
+        x_loc = x_glob - REAL(this_meshblock%ptr%x0)
+      #endif
+      #if defined (twoD) || defined (threeD)
+        y_loc = y_glob - REAL(this_meshblock%ptr%y0)
+      #endif
+      #if defined(threeD)
         z_loc = z_glob - REAL(this_meshblock%ptr%z0)
-      #else
-        z_loc = z_glob
       #endif
       if (present(containedQ)) then
-        #ifdef threeD
+        #ifdef oneD
+          containedQ = ((x_glob .ge. REAL(this_meshblock%ptr%x0)) .and.&
+                      & (x_glob .lt. REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx)))
+        #elif twoD
+          containedQ = ((x_glob .ge. REAL(this_meshblock%ptr%x0)) .and.&
+                      & (x_glob .lt. REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .and.&
+                      & (y_glob .ge. REAL(this_meshblock%ptr%y0)) .and.&
+                      & (y_glob .lt. REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy)))
+        #elif threeD
           containedQ = ((x_glob .ge. REAL(this_meshblock%ptr%x0)) .and.&
                       & (x_glob .lt. REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .and.&
                       & (y_glob .ge. REAL(this_meshblock%ptr%y0)) .and.&
                       & (y_glob .lt. REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy)) .and.&
                       & (z_glob .ge. REAL(this_meshblock%ptr%z0)) .and.&
                       & (z_glob .lt. REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz)))
-        #else
-          containedQ = ((x_glob .ge. REAL(this_meshblock%ptr%x0)) .and.&
-                      & (x_glob .lt. REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .and.&
-                      & (y_glob .ge. REAL(this_meshblock%ptr%y0)) .and.&
-                      & (y_glob .lt. REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy)))
         #endif
       end if
     end if
@@ -116,30 +125,34 @@ contains
     real, intent(out)             :: x_, y_, z_, dx_, dy_, dz_
     integer(kind=2), intent(out)  :: xi_, yi_, zi_
 
-    rnd = random(dseed)
-    x_ = xmin + rnd * (xmax - xmin)
-    xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
-    if (xi_ .eq. this_meshblock%ptr%sx) then
-      xi_ = xi_ - 1; dx_ = dx_ + 1.0
-    end if
-    rnd = random(dseed)
-    y_ = ymin + rnd * (ymax - ymin)
-    yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
-    if (yi_ .eq. this_meshblock%ptr%sy) then
-      yi_ = yi_ - 1; dy_ = dy_ + 1.0
-    end if
-    #ifdef threeD
+    x_ = 0.5; xi_ = 0; dx_ = 0.5
+    y_ = 0.5; yi_ = 0; dy_ = 0.5
+    z_ = 0.5; zi_ = 0; dz_ = 0.5
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      rnd = random(dseed)
+      x_ = xmin + rnd * (xmax - xmin)
+      xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
+      if (xi_ .eq. this_meshblock%ptr%sx) then
+        xi_ = xi_ - 1; dx_ = dx_ + 1.0
+      end if
+    #endif
+    #if defined (twoD) || defined (threeD)
+      rnd = random(dseed)
+      y_ = ymin + rnd * (ymax - ymin)
+      yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
+      if (yi_ .eq. this_meshblock%ptr%sy) then
+        yi_ = yi_ - 1; dy_ = dy_ + 1.0
+      end if
+    #endif
+    #if defined(threeD)
       rnd = random(dseed)
       z_ = zmin + rnd * (zmax - zmin)
       zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
       if (zi_ .eq. this_meshblock%ptr%sz) then
         zi_ = zi_ - 1; dz_ = dz_ + 1.0
       end if
-    #else
-      z_ = 0.5
-      zi_ = 0; dz_ = 0.5
     #endif
-  end subroutine
+  end subroutine generateCoordInRegion
 
   function rnkToInd(rnk)
     implicit none
@@ -217,7 +230,9 @@ contains
       do ind2 = -1, 1
         do ind3 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifndef threeD
+          #ifdef oneD
+            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+          #elif twoD
             if (ind3 .ne. 0) cycle
           #endif
           if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
@@ -256,9 +271,11 @@ contains
       charge_ = charge
     end if
 
-    #ifndef threeD
+    #ifdef oneD
+      pow = 1
+    #elif twoD
       pow = 2
-    #else
+    #elif threeD
       pow = 3
     #endif
 
@@ -286,15 +303,18 @@ contains
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
 
-            i1 = max(i - ds_, -NGHOST)
-            i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
-
-            j1 = max(j - ds_, -NGHOST)
-            j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
-
-            #ifndef threeD
-              k1 = 0; k2 = 0
-            #else
+            i1 = 0; i2 = 0
+            j1 = 0; j2 = 0
+            k1 = 0; k2 = 0
+            #if defined(oneD) || defined (twoD) || defined (threeD)
+              i1 = max(i - ds_, -NGHOST)
+              i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+            #endif
+            #if defined (twoD) || defined (threeD)
+              j1 = max(j - ds_, -NGHOST)
+              j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+            #endif
+            #if defined (threeD)
               k1 = max(k - ds_, -NGHOST)
               k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
             #endif
@@ -336,9 +356,11 @@ contains
       ds_ = ds
     end if
 
-    #ifndef threeD
+    #ifdef oneD
+      pow = 1
+    #elif twoD
       pow = 2
-    #else
+    #elif threeD
       pow = 3
     #endif
 
@@ -371,15 +393,18 @@ contains
               energy = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
             end if
 
-            i1 = max(i - ds_, -NGHOST)
-            i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
-
-            j1 = max(j - ds_, -NGHOST)
-            j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
-
-            #ifndef threeD
-              k1 = 0; k2 = 0
-            #else
+            i1 = 0; i2 = 0
+            j1 = 0; j2 = 0
+            k1 = 0; k2 = 0
+            #if defined(oneD) || defined (twoD) || defined (threeD)
+              i1 = max(i - ds_, -NGHOST)
+              i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+            #endif
+            #if defined (twoD) || defined (threeD)
+              j1 = max(j - ds_, -NGHOST)
+              j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+            #endif
+            #if defined (threeD)
               k1 = max(k - ds_, -NGHOST)
               k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
             #endif
@@ -407,62 +432,91 @@ contains
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz
-    real, intent(in)              :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                                      & fldBoundZ)
-    real, intent(in)              :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                                      & fldBoundZ)
-    real, intent(in)              :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                                      & fldBoundZ)
+    #ifdef oneD
+      real, intent(inout) :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0)
+      real, intent(inout) :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0)
+      real, intent(inout) :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0)
+    #elif twoD
+      real, intent(inout) :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0)
+      real, intent(inout) :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0)
+      real, intent(inout) :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0)
+    #elif threeD
+      real, intent(inout) :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST)
+      real, intent(inout) :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST)
+      real, intent(inout) :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST)
+    #endif
     real, intent(out)             :: intfx, intfy, intfz
     real                          :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                    & c00, c01, c10, c11, c0, c1
     ! f_x
-    c000 = 0.5 * (fx(     i,      j,      k) + fx(  i - 1,      j,      k))
-    c100 = 0.5 * (fx(     i,      j,      k) + fx(  i + 1,      j,      k))
-    c010 = 0.5 * (fx(     i,  j + 1,      k) + fx(  i - 1,  j + 1,      k))
-    c110 = 0.5 * (fx(     i,  j + 1,      k) + fx(  i + 1,  j + 1,      k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
-    #ifndef threeD
-      intfx = c0
-    #else
-      c001 = 0.5 * (fx(     i,      j,  k + 1) + fx(  i - 1,      j,  k + 1))
-      c101 = 0.5 * (fx(     i,      j,  k + 1) + fx(  i + 1,      j,  k + 1))
-      c011 = 0.5 * (fx(     i,  j + 1,  k + 1) + fx(  i - 1,  j + 1,  k + 1))
-      c111 = 0.5 * (fx(     i,  j + 1,  k + 1) + fx(  i + 1,  j + 1,  k + 1))
-      c01 = c001 * (1 - dx) + c101 * dx
-      c11 = c011 * (1 - dx) + c111 * dx
-      c1 = c01 * (1 - dy) + c11 * dy
-      intfx = c0 * (1 - dz) + c1 * dz
+    #ifdef oneD
+      c0 = 0.5 * (fx(     i,      j,      k) + fx(  i - 1,      j,      k))
+      c1 = 0.5 * (fx(     i,      j,      k) + fx(  i + 1,      j,      k))
+      intfx = c0 * (1 - dx) + c1 * dx
+    #elif defined(twoD) || defined(threeD)
+      c000 = 0.5 * (fx(     i,      j,      k) + fx(  i - 1,      j,      k))
+      c100 = 0.5 * (fx(     i,      j,      k) + fx(  i + 1,      j,      k))
+      c010 = 0.5 * (fx(     i,  j + 1,      k) + fx(  i - 1,  j + 1,      k))
+      c110 = 0.5 * (fx(     i,  j + 1,      k) + fx(  i + 1,  j + 1,      k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
+      #ifdef twoD
+        intfx = c0
+      #else
+        c001 = 0.5 * (fx(     i,      j,  k + 1) + fx(  i - 1,      j,  k + 1))
+        c101 = 0.5 * (fx(     i,      j,  k + 1) + fx(  i + 1,      j,  k + 1))
+        c011 = 0.5 * (fx(     i,  j + 1,  k + 1) + fx(  i - 1,  j + 1,  k + 1))
+        c111 = 0.5 * (fx(     i,  j + 1,  k + 1) + fx(  i + 1,  j + 1,  k + 1))
+        c01 = c001 * (1 - dx) + c101 * dx
+        c11 = c011 * (1 - dx) + c111 * dx
+        c1 = c01 * (1 - dy) + c11 * dy
+        intfx = c0 * (1 - dz) + c1 * dz
+      #endif
     #endif
 
     ! f_y
-    c000 = 0.5 * (fy(     i,      j,      k) + fy(      i,  j - 1,      k))
-    c100 = 0.5 * (fy( i + 1,      j,      k) + fy(  i + 1,  j - 1,      k))
-    c010 = 0.5 * (fy(     i,      j,      k) + fy(      i,  j + 1,      k))
-    c110 = 0.5 * (fy( i + 1,      j,      k) + fy(  i + 1,  j + 1,      k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
-    #ifndef threeD
-      intfy = c0
-    #else
-      c001 = 0.5 * (fy(     i,      j,  k + 1) + fy(      i,  j - 1,  k + 1))
-      c101 = 0.5 * (fy( i + 1,      j,  k + 1) + fy(  i + 1,  j - 1,  k + 1))
-      c011 = 0.5 * (fy(     i,      j,  k + 1) + fy(      i,  j + 1,  k + 1))
-      c111 = 0.5 * (fy( i + 1,      j,  k + 1) + fy(  i + 1,  j + 1,  k + 1))
-      c01 = c001 * (1 - dx) + c101 * dx
-      c11 = c011 * (1 - dx) + c111 * dx
-      c1 = c01 * (1 - dy) + c11 * dy
-      intfy = c0 * (1 - dz) + c1 * dz
+    #ifdef oneD
+      c0 = 0.5 * (fy(     i,      j,      k) + fy(      i,      j,      k))
+      c1 = 0.5 * (fy( i + 1,      j,      k) + fy(  i + 1,      j,      k))
+      intfy = c0 * (1 - dx) + c1 * dx
+    #elif defined(twoD) || defined(threeD)
+      c000 = 0.5 * (fy(     i,      j,      k) + fy(      i,  j - 1,      k))
+      c100 = 0.5 * (fy( i + 1,      j,      k) + fy(  i + 1,  j - 1,      k))
+      c010 = 0.5 * (fy(     i,      j,      k) + fy(      i,  j + 1,      k))
+      c110 = 0.5 * (fy( i + 1,      j,      k) + fy(  i + 1,  j + 1,      k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
+      #ifdef twoD
+        intfy = c0
+      #else
+        c001 = 0.5 * (fy(     i,      j,  k + 1) + fy(      i,  j - 1,  k + 1))
+        c101 = 0.5 * (fy( i + 1,      j,  k + 1) + fy(  i + 1,  j - 1,  k + 1))
+        c011 = 0.5 * (fy(     i,      j,  k + 1) + fy(      i,  j + 1,  k + 1))
+        c111 = 0.5 * (fy( i + 1,      j,  k + 1) + fy(  i + 1,  j + 1,  k + 1))
+        c01 = c001 * (1 - dx) + c101 * dx
+        c11 = c011 * (1 - dx) + c111 * dx
+        c1 = c01 * (1 - dy) + c11 * dy
+        intfy = c0 * (1 - dz) + c1 * dz
+      #endif
     #endif
 
     ! f_z
-    #ifndef threeD
+    #ifdef oneD
+      c0 = fz(     i,      j,      k)
+      c1 = fz( i + 1,      j,      k)
+      intfz = c0 * (1 - dx) + c1 * dx
+    #elif twoD
       c000 = fz(     i,      j,      k)
       c100 = fz( i + 1,      j,      k)
       c010 = fz(     i,  j + 1,      k)
@@ -470,7 +524,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfz = c00 * (1 - dy) + c10 * dy
-    #else
+    #elif threeD
       c000 = 0.5 * (fz(     i,      j,      k) + fz(      i,      j,  k - 1))
       c100 = 0.5 * (fz( i + 1,      j,      k) + fz(  i + 1,      j,  k - 1))
       c010 = 0.5 * (fz(     i,  j + 1,      k) + fz(      i,  j + 1,  k - 1))
@@ -495,20 +549,37 @@ contains
     implicit none
     integer(kind=2), intent(in)   :: i, j, k
     real, intent(in)              :: dx, dy, dz
-    real, intent(in)              :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                                      & fldBoundZ)
-    real, intent(in)              :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                                      & fldBoundZ)
-    real, intent(in)              :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                                      & fldBoundZ)
+    #ifdef oneD
+      real, intent(inout) :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0)
+      real, intent(inout) :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0)
+      real, intent(inout) :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0)
+    #elif twoD
+      real, intent(inout) :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0)
+      real, intent(inout) :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0)
+      real, intent(inout) :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0)
+    #elif threeD
+      real, intent(inout) :: fx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST)
+      real, intent(inout) :: fy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                              & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST)
+      real, intent(inout) :: fz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                               & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST)
+    #endif
     real, intent(out)             :: intfx, intfy, intfz
     real                          :: c000, c100, c001, c101, c010, c110, c011, c111,&
                                    & c00, c01, c10, c11, c0, c1
     ! f_x
-    #ifndef threeD
+    #ifdef oneD
+      c0 = 0.5 * (fx(      i,      j,      k) + fx(      i,  j,      k))
+      c1 = 0.5 * (fx(  i + 1,      j,      k) + fx(  i + 1,  j,      k))
+      intfx = c0 * (1 - dx) + c1 * dx
+    #elif twoD
       c000 = 0.5 * (fx(      i,      j,      k) + fx(      i,  j - 1,      k))
       c100 = 0.5 * (fx(  i + 1,      j,      k) + fx(  i + 1,  j - 1,      k))
       c010 = 0.5 * (fx(      i,      j,      k) + fx(      i,  j + 1,      k))
@@ -516,7 +587,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfx = c00 * (1 - dy) + c10 * dy
-    #else
+    #elif threeD
       c000 = 0.25 * (fx(      i,      j,      k) + fx(      i,  j - 1,      k) +&
                    & fx(      i,      j,  k - 1) + fx(      i,  j - 1,  k - 1))
       c100 = 0.25 * (fx(  i + 1,      j,      k) + fx(  i + 1,  j - 1,      k) +&
@@ -543,7 +614,11 @@ contains
     #endif
 
     ! b_y
-    #ifndef threeD
+    #ifdef oneD
+      c0 = 0.5 * (fy(  i - 1,      j,      k) + fy(      i,      j,      k))
+      c1 = 0.5 * (fy(      i,      j,      k) + fy(  i + 1,      j,      k))
+      intfy = c0 * (1 - dx) + c1 * dx
+    #elif twoD
       c000 = 0.5 * (fy(  i - 1,      j,      k) + fy(      i,      j,      k))
       c100 = 0.5 * (fy(      i,      j,      k) + fy(  i + 1,      j,      k))
       c010 = 0.5 * (fy(  i - 1,  j + 1,      k) + fy(      i,  j + 1,      k))
@@ -551,7 +626,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfy = c00 * (1 - dy) + c10 * dy
-    #else
+    #elif threeD
       c000 = 0.25 * (fy(  i - 1,      j,  k - 1) + fy(  i - 1,      j,      k) +&
                    & fy(      i,      j,  k - 1) + fy(      i,      j,      k))
       c100 = 0.25 * (fy(      i,      j,  k - 1) + fy(      i,      j,      k) +&
@@ -578,7 +653,11 @@ contains
     #endif
 
     ! b_z
-    #ifndef threeD
+    #ifdef oneD
+      c0 = 0.5 * (fz(  i - 1,      j,      k) + fz(      i,      j,      k))
+      c1 = 0.5 * (fz(      i,      j,      k) + fz(  i + 1,      j,      k))
+      intfz = c0 * (1 - dx) + c1 * dx
+    #elif twoD
       c000 = 0.25 * (fz(  i - 1,  j - 1,      k) + fz(  i - 1,      j,      k) +&
                    & fz(      i,  j - 1,      k) + fz(      i,      j,      k))
       c100 = 0.25 * (fz(      i,  j - 1,      k) + fz(      i,      j,      k) +&
@@ -590,7 +669,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfz = c00 * (1 - dy) + c10 * dy
-    #else
+    #elif threeD
       c000 = 0.25 * (fz(  i - 1,  j - 1,      k) + fz(  i - 1,      j,      k) +&
                    & fz(      i,  j - 1,      k) + fz(      i,      j,      k))
       c100 = 0.25 * (fz(      i,  j - 1,      k) + fz(      i,      j,      k) +&

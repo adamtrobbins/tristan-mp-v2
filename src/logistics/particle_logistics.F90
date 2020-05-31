@@ -342,31 +342,31 @@ contains
       call localToCellBasedCoords(x_loc, y_loc, z_loc, xi_, yi_, zi_, dx_, dy_, dz_)
       call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w, weight=weight_)
     end if
-  end subroutine
+  end subroutine injectParticleGlobally
 
-  ! subroutine injectParticleLocally(s, x_loc, y_loc, z_loc,&
-  !                                & u, v, w, ind, proc, weight)
-  !   ! DEP_PRT [particle-dependent]
-  !   implicit none
-  !   integer, intent(in)                   :: s
-  !   real, intent(in)                      :: x_loc, y_loc, z_loc, u, v, w
-  !   integer, optional, intent(in)         :: ind, proc
-  !   integer(kind=2), optional, intent(in) :: weight
-  !   integer(kind=2)                       :: xi, yi, zi
-  !   real                                  :: dx, dy, dz
-  !
-  !   call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-  !   if (present(ind) .and. present(proc) .and. present(weight)) then
-  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
-  !                       & ind=ind, proc=proc, weight=weight)
-  !   else if (present(ind) .and. present(proc)) then
-  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
-  !                       & ind=ind, proc=proc)
-  !   else if (present(weight)) then
-  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
-  !                       & weight=weight)
-  !   else
-  !     call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w)
-  !   end if
-  ! end subroutine injectParticleLocally
+  subroutine injectParticleLocally(s, x_loc, y_loc, z_loc,&
+                                 & u, v, w, ind, proc, weight)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in)                   :: s
+    real, intent(in)                      :: x_loc, y_loc, z_loc, u, v, w
+    integer, optional, intent(in)         :: ind, proc
+    real, optional, intent(in)            :: weight
+    integer(kind=2)                       :: xi, yi, zi
+    real                                  :: dx, dy, dz
+
+    call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+    if (present(ind) .and. present(proc) .and. present(weight)) then
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+                        & ind=ind, proc=proc, weight=weight)
+    else if (present(ind) .and. present(proc)) then
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+                        & ind=ind, proc=proc)
+    else if (present(weight)) then
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w,&
+                        & weight=weight)
+    else
+      call createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w)
+    end if
+  end subroutine injectParticleLocally
 end module m_particlelogistics

@@ -492,24 +492,24 @@ contains
     if (updateE_) then
       allocate(ex_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & fldBoundZ))
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
       allocate(ey_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & fldBoundZ))
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
       allocate(ez_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & fldBoundZ))
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
     end if
     if (updateB_) then
       allocate(bx_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & fldBoundZ))
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
       allocate(by_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & fldBoundZ))
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
       allocate(bz_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & fldBoundZ))
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
     end if
 
     ! update only within this "supersphere"

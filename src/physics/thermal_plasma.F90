@@ -232,26 +232,29 @@ contains
     end if
 
     ! global to local coordinates
-    #ifndef threeD
+    #ifdef oneD
+      call globalToLocalCoords(fill_region%x_min, 0.0, 0.0,&
+                             & fill_xmin, fill_ymin, fill_zmin, adjustQ_ = .true.)
+      call globalToLocalCoords(fill_region%x_max, 0.0, 0.0,&
+                             & fill_xmax, fill_ymax, fill_zmax, adjustQ_ = .true.)
+      num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)
+    #elif twoD
       call globalToLocalCoords(fill_region%x_min, fill_region%y_min, 0.0,&
                              & fill_xmin, fill_ymin, fill_zmin, adjustQ_ = .true.)
       call globalToLocalCoords(fill_region%x_max, fill_region%y_max, 0.0,&
                              & fill_xmax, fill_ymax, fill_zmax, adjustQ_ = .true.)
-    #else
+      num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)&
+                                & * (fill_ymax - fill_ymin)
+    #elif threeD
       call globalToLocalCoords(fill_region%x_min, fill_region%y_min, fill_region%z_min,&
                              & fill_xmin, fill_ymin, fill_zmin, adjustQ_ = .true.)
       call globalToLocalCoords(fill_region%x_max, fill_region%y_max, fill_region%z_max,&
-                             & fill_xmax, fill_ymax, fill_zmax, adjustQ_ = .true.)
-    #endif
-
-    #ifndef threeD
-      num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)&
-                                & * (fill_ymax - fill_ymin)
-    #else
+                           & fill_xmax, fill_ymax, fill_zmax, adjustQ_ = .true.)
       num_part_r = REAL(ndens_sp) * (fill_xmax - fill_xmin)&
                                 & * (fill_ymax - fill_ymin)&
                                 & * (fill_zmax - fill_zmin)
     #endif
+    
     if (num_part_r .lt. 10.0) then
       if (num_part_r .ne. 0.0) then
         num_part_r = poisson(num_part_r)
