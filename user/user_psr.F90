@@ -60,11 +60,15 @@ contains
       call getInput('problem', 'e_dr', e_dr)
       ! inject slightly above the star
       call getInput('problem', 'inj_dr', inj_dr)
-      call getInput('problem', 'e_thr', e_thr)
       call getInput('problem', 'inj_mult', inj_mult)
 
-      call getInput('problem', 'e_par_method', e_par_method)
       call getInput('problem', 'GJ_limiter', GJ_limiter)
+    end if
+
+    ! for method #1
+    if (inj_method .eq. 1) then
+      call getInput('problem', 'e_thr', e_thr)
+      call getInput('problem', 'e_par_method', e_par_method)
     end if
 
     ! for method #2
