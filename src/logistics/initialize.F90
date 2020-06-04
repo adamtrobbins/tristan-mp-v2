@@ -796,13 +796,15 @@ contains
       call getInput('radiation', 'gamma_syn', cool_gamma_syn, 10.0)
       call getInput('radiation', 'gamma_ic', cool_gamma_ic, 10.0)
       call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
-      call getInput('radiation', 'dens_limit', rad_dens_lim, 1e8)
+      call getInput('radiation', 'dens_limit', rad_dens_lim, 0.0)
       #ifdef EMIT
-        call getInput('radiation', 'photon_sp', rad_photon_sp, 3)
-        if ((nspec .lt. rad_photon_sp) .or.&
-          & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
-          & (species(rad_photon_sp)%m_sp .ne. 0)) then
-          call throwError('Wrong choice of `photon_sp`.')
+        call getInput('radiation', 'photon_sp', rad_photon_sp, 0)
+        if (rad_photon_sp .ne. 0) then
+          if ((nspec .lt. rad_photon_sp) .or.&
+            & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
+            & (species(rad_photon_sp)%m_sp .ne. 0)) then
+            call throwError('Wrong choice of `photon_sp`.')
+          end if
         end if
       #endif
 
