@@ -39,14 +39,17 @@ contains
     iz = iy * (this_meshblock%ptr%sy + 2 * NGHOST)
 
     #ifdef RADIATION
-      dummy_flag = .true.
-      do s = 1, nspec
-        if (species(s)%m_sp .ne. 0) then
-          call computeDensity(s, reset=dummy_flag)
-          dummy_flag = .false.
-        end if
-      end do
-      call exchangeArray()
+      if (rad_dens_lim .gt. 0) then
+        ! if density limit is enabled
+        dummy_flag = .true.
+        do s = 1, nspec
+          if (species(s)%m_sp .ne. 0) then
+            call computeDensity(s, reset=dummy_flag)
+            dummy_flag = .false.
+          end if
+        end do
+        call exchangeArray()
+      end if
     #endif
 
     do s = 1, nspec
