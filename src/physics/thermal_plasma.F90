@@ -22,10 +22,11 @@ module m_thermalplasma
     real, allocatable, dimension(:) :: beta_table
     logical                         :: generated, shift_flag
     integer                         :: npoints, shift_dir
+    integer                         :: dimension = 3
   end type maxwellian
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: tabulateMaxwellian, generateFromMaxwellian
+  private :: tabulateMaxwellian
   private :: deallocateMaxwellian
   !...............................................................!
 contains
@@ -33,19 +34,13 @@ contains
   !   arXiv:1504.03910v1
 
   ! this should only be used for `T << 1`
-  subroutine tabulateMaxwellian(maxw, n, dimension)
+  subroutine tabulateMaxwellian(maxw, n)
     implicit none
     type(maxwellian), intent(inout) :: maxw
     integer, intent(in)             :: n
-    integer, optional, intent(in)   :: dimension
-    integer                         :: iter, dimension_
+    integer                         :: iter
     real                            :: beta_wave1, beta_wave2, beta_wave_max, df
     ! `beta_wave` is `beta / sqrt(T)`
-    if (.not. present(dimension)) then
-      dimension_ = 3
-    else
-      dimension_ = dimension
-    end if
 
     if (maxw%generated) then
       call throwError('ERROR: maxwell table already generated.')
@@ -61,13 +56,13 @@ contains
     do iter = 1, maxw%npoints
       beta_wave1 = beta_wave_max * REAL(iter - 1) / REAL(maxw%npoints)
       beta_wave2 = beta_wave_max * REAL(iter) / REAL(maxw%npoints)
-      if (dimension_ .eq. 1) then
+      if (maxw%dimension .eq. 1) then
         df = (beta_wave2 - beta_wave1) * 0.5 *&
               & (exp(-beta_wave1**2 * 0.5) + exp(-beta_wave2**2 * 0.5))
-      else if (dimension_ .eq. 2) then
+      else if (maxw%dimension .eq. 2) then
         df = (beta_wave2 - beta_wave1) * 0.5 *&
               & (exp(-beta_wave1**2 * 0.5) * beta_wave1 + exp(-beta_wave2**2 * 0.5) * beta_wave2)
-      else if (dimension_ .eq. 3) then
+      else if (maxw%dimension .eq. 3) then
         df = (beta_wave2 - beta_wave1) * 0.5 *&
               & (exp(-beta_wave1**2 * 0.5) * beta_wave1**2 + exp(-beta_wave2**2 * 0.5) * beta_wave2**2)
       else
@@ -85,24 +80,18 @@ contains
     end do
   end subroutine tabulateMaxwellian
 
-  subroutine generateFromMaxwellian(maxw, u_, v_, w_, dimension)
+  subroutine generateFromMaxwellian(maxw, u_, v_, w_)
     implicit none
-    type(maxwellian), intent(in) :: maxw
-    integer, optional, intent(in):: dimension
-    real, intent(out)            :: u_, v_, w_
-    real                         :: U, ETA, X1, X2, X3, X4, X5, X6, X7, X8, dx1, dx2, BETA, gamma, gamma1
-    logical                      :: flag
-    integer                      :: iter, dimension_
-    if (.not. present(dimension)) then
-      dimension_ = 3
-    else
-      dimension_ = dimension
-    end if
+    type(maxwellian), intent(inout) :: maxw
+    real, intent(out)               :: u_, v_, w_
+    real                            :: U, ETA, X1, X2, X3, X4, X5, X6, X7, X8, dx1, dx2, BETA, gamma, gamma1
+    logical                         :: flag
+    integer                         :: iter
 
-    if ((maxw%temperature .lt. 0.1) .or. (dimension_ .ne. 3)) then
+    if ((maxw%temperature .lt. 0.1) .or. (maxw%dimension .ne. 3)) then
       ! using tabulated Maxwellian
       if (.not. maxw%generated) then
-        call throwError('ERROR: maxwell table not generated yet.')
+        call tabulateMaxwellian(maxw, 2000)
       end if
       X3 = random(dseed)
       do iter = 1, maxw%npoints
@@ -140,16 +129,16 @@ contains
     end if
 
     ! generate projections
-    if (dimension_ .eq. 1) then
+    if (maxw%dimension .eq. 1) then
       u_ = U
       v_ = 0.0
       w_ = 0.0
-    else if (dimension_ .eq. 2) then
+    else if (maxw%dimension .eq. 2) then
       X1 = random(dseed)
       u_ = U * sin(2.0 * M_PI * X1)
       v_ = U * cos(2.0 * M_PI * X1)
       w_ = 0.0
-    else if (dimension_ .eq. 3) then
+    else if (maxw%dimension .eq. 3) then
       X1 = random(dseed); X2 = random(dseed)
       u_ = U * (2.0 * X1 - 1.0)
       v_ = 2.0 * U * sqrt(X1 * (1.0 - X1)) * cos(2.0 * M_PI * X2)
@@ -262,6 +251,7 @@ contains
       dummy3_ = 0.0
     end if
 
+    fill_maxwellian%dimension = dimension_
     fill_maxwellian%temperature = temperature
     fill_maxwellian%generated = .false.
     if (present(shift_gamma)) then
@@ -271,7 +261,7 @@ contains
       fill_maxwellian%shift_flag = .false.
     end if
     if (temperature .lt. 0.1) then
-      call tabulateMaxwellian(fill_maxwellian, 2000, dimension=dimension_)
+      call tabulateMaxwellian(fill_maxwellian, 2000)
     end if
 
     ! global to local coordinates
@@ -341,7 +331,7 @@ contains
               fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
             end if
           end if
-          call generateFromMaxwellian(fill_maxwellian, u_, v_, w_, dimension=dimension_)
+          call generateFromMaxwellian(fill_maxwellian, u_, v_, w_)
           call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_,&
                             & weight = weights_)
         end do
