@@ -16,18 +16,18 @@ module m_userfile
 
   !--- PRIVATE variables -----------------------------------------!
   integer :: fld_geometry, inj_method, e_par_method
-  real :: xc_g, yc_g, zc_g
-  real :: psr_angle, psr_period, psr_omega, psr_radius
+  real :: xc_g, yc_g, zc_g, psr_spinupT
+  real :: psr_angle, psr_period, psr_omega, psr_omega0, psr_radius
   real :: inj_mult, e_thr
   real :: shell_width, prtl_kick, rmin_dr, e_dr
   real :: sigma_mult, sigma_nGJ, nGJ, inj_dr
   logical :: GJ_limiter
 
   private :: fld_geometry, inj_method, e_par_method
-  private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_radius
+  private :: xc_g, yc_g, zc_g, psr_angle, psr_period, psr_omega, psr_omega0, psr_radius
   private :: inj_mult, e_thr, GJ_limiter
   private :: shell_width, prtl_kick, rmin_dr, e_dr
-  private :: sigma_mult, sigma_nGJ, nGJ, inj_dr
+  private :: sigma_mult, sigma_nGJ, nGJ, inj_dr, psr_spinupT
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -43,6 +43,7 @@ contains
     call getInput('problem', 'psr_radius', psr_radius)
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
+    call getInput('problem', 'psr_spinupT', psr_spinupT, 0.0)
 
     ! remove particles which fall below `radius - rmin_dr`
     call getInput('problem', 'rmin_dr', rmin_dr)
@@ -82,10 +83,13 @@ contains
       psr_angle = psr_angle * M_PI / 180.0
     end if
 
-    psr_omega = 2.0 * M_PI / psr_period
+    psr_omega0 = 2.0 * M_PI / psr_period
 
-    nGJ = 2 * psr_omega * B_norm / (CC * abs(unit_ch))
-    sigma_nGJ = sigma * ppc0 / nGJ
+    if (psr_spinupT .eq. 0.0) then
+      psr_omega = psr_omega0
+    else
+      psr_omega = 0.0
+    end if
 
     xc_g = 0.5 * global_mesh%sx
     yc_g = 0.5 * global_mesh%sy
@@ -108,9 +112,12 @@ contains
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
-    real                        :: radius
-    radius = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
-    userSLBload = 10.0 / radius
+    real                        :: radius2
+    radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
+    userSLBload = 40**2 / radius2
+    if (radius2 .lt. 40**2) then
+      userSLBload = 1.0 / exp((40**2 - radius2) / 40**2)
+    end if
     return
   end function
 
@@ -191,8 +198,11 @@ contains
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
-    real                          :: dens_GJ, e_b_scale
+    real                          :: dens_GJ, e_b_scale, j_dot_b
     logical                       :: dummy_flag
+
+    nGJ = 2 * psr_omega0 * B_norm / (CC * abs(unit_ch))
+    sigma_nGJ = sigma * ppc0 / nGJ
 
     ! inject particles with `w ~ E.B` at rest
     if (inj_method .eq. 1) then
@@ -275,9 +285,16 @@ contains
         z_glob = z_glob + zc_g
         ! ... measured `e_dr` cells above the injection point
         if (GJ_limiter) then
-          call getLocalSigma(sig, x_glob, y_glob, z_glob, dummy_flag)
+          call getLocalSigma(sig, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
+          ! call getLocalJdotB(j_dot_b, x_glob, y_glob, z_glob, dummy_flag)
         end if
-        if ((dummy_flag) .and. ((.not. GJ_limiter) .or. (sig .gt. sigma_nGJ * sigma_mult))) then
+        ! if ((dummy_flag) .and.&
+        !   & ((.not. GJ_limiter) .or.&
+        !     & ((sig .gt. sigma_nGJ * sigma_mult) .and.& ! limiter on min sigma
+        !     & ((abs(j_dot_b) * B_norm .gt. nGJ * CC * unit_ch) .or. (step .lt. 10)))& ! limiter on current
+        !   & )) then
+        if ((dummy_flag) .and.&
+          & ((.not. GJ_limiter) .or. (sig .gt. sigma_nGJ * sigma_mult))) then
           weight = inj_mult * nGJ / ppc
           u_ = nx * prtl_kick
           v_ = ny * prtl_kick
@@ -286,43 +303,7 @@ contains
           call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
         end if
       end do
-
     end if
-
-    ! ! additionally inject particles with `w ~ j.B` and a kick
-    ! if (inj_method .eq. 2) then
-    !   ppc = 0.5 * ppc0
-    !   n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
-    !   do n = 1, n_part
-    !     call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
-    !     rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
-    !     nx = x_glob / rr
-    !     ny = y_glob / rr
-    !     nz = z_glob / rr
-    !     x_glob = x_glob + xc_g
-    !     y_glob = y_glob + yc_g
-    !     z_glob = z_glob + zc_g
-    !     ! convert global coordinates to local
-    !     call globalToLocalCoords(x_glob, y_glob, z_glob,&
-    !                            & x_loc, y_loc, z_loc, .true.)
-    !     call localToCellBasedCoords(x_loc, y_loc, z_loc,&
-    !                               & xi, yi, zi, dx, dy, dz)
-    !     ! this is actually `j`!
-    !     call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, ex0, ey0, ez0)
-    !     call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-    !     e_dot_b = ex0 * bx0 + ey0 * by0 + ez0 * bz0
-    !     b_sqr = bx0**2 + by0**2 + bz0**2
-    !     if (abs(e_dot_b) / b_sqr .gt. e_thr) then
-    !       weight = inj_mult * (B_norm * abs(e_dot_b) / sqrt(b_sqr)) / (unit_ch * ppc * shell_width)
-    !       u_ = nx * prtl_kick
-    !       v_ = ny * prtl_kick
-    !       w_ = nz * prtl_kick
-    !       call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-    !       call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-    !     end if
-    !   end do
-    ! end if
-
     if (inj_method .gt. 0) then
       rr = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs / 2.0
       ! remove particles falling into the star
@@ -430,9 +411,9 @@ contains
     end if
   end subroutine getDeltaErAt
 
-  subroutine getLocalSigma(sig, x0, y0, z0, contained_flag)
+  subroutine getLocalSigma(sig, b_sqr, x0, y0, z0, contained_flag)
     implicit none
-    real, intent(out)     :: sig
+    real, intent(out)     :: sig, b_sqr
     real, intent(in)      :: x0, y0, z0
     logical, intent(out)  :: contained_flag
     real                  :: x_loc, y_loc, z_loc, dx, dy, dz
@@ -454,13 +435,70 @@ contains
       ! interpolate fields on particle position + dr
       call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
       dens = lg_arr(xi, yi, zi)
-      if (dens .ge. 1e-3) then
+      b_sqr = bx0**2 + by0**2 + bz0**2
+      if (dens .gt. 0) then
         sig = (bx0**2 + by0**2 + bz0**2) * sigma * ppc0 / dens
       else
         sig = 1e10
       end if
     end if
   end subroutine getLocalSigma
+
+  subroutine getLocalGJ(dens, densgj, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(out)     :: dens, densgj
+    real, intent(in)      :: x0, y0, z0
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+    real                  :: bx0, by0, bz0
+    real                  :: nx, ny, nz, rr
+    nx = x0 - xc_g
+    ny = y0 - yc_g
+    nz = z0 - zc_g
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx / rr; ny = ny / rr; nz = nz / rr
+    ! ... measure `e_dr` cells above the injection point
+    call globalToLocalCoords(x0 + nx * e_dr,&
+                           & y0 + ny * e_dr,&
+                           & z0 + nz * e_dr,&
+                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      ! interpolate fields on particle position + dr
+      call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      dens = lg_arr(xi, yi, zi)
+      densgj = 2 * psr_omega * B_norm * bz0 / (CC * abs(unit_ch))
+    end if
+  end subroutine getLocalGJ
+
+  subroutine getLocalJdotB(j_dot_b, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(out)     :: j_dot_b
+    real, intent(in)      :: x0, y0, z0
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+    real                  :: bx0, by0, bz0, jx0, jy0, jz0
+    real                  :: nx, ny, nz, rr
+    nx = x0 - xc_g
+    ny = y0 - yc_g
+    nz = z0 - zc_g
+    rr = sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx / rr; ny = ny / rr; nz = nz / rr
+    ! ... measure `e_dr` cells above the injection point
+    call globalToLocalCoords(x0 + nx * e_dr,&
+                           & y0 + ny * e_dr,&
+                           & z0 + nz * e_dr,&
+                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      ! interpolate fields on particle position + dr
+      call interpFromEdges(0.5, 0.5, 0.5, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
+      call interpFromFaces(0.5, 0.5, 0.5, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      j_dot_b = (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
+    end if
+  end subroutine getLocalJdotB
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
@@ -487,6 +525,12 @@ contains
       updateB_ = updateB
     else
       updateB_ = .true.
+    end if
+
+    if ((psr_spinupT .eq. 0.0) .or. (step .gt. 4 * psr_spinupT)) then
+      psr_omega = psr_omega0
+    else
+      psr_omega = psr_omega0 * tanh(REAL(step) / psr_spinupT)
     end if
 
     if (updateE_) then
