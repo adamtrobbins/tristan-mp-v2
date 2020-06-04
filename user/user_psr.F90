@@ -286,19 +286,28 @@ contains
         ! ... measured `e_dr` cells above the injection point
         if (GJ_limiter) then
           call getLocalSigma(sig, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
-          ! call getLocalJdotB(j_dot_b, x_glob, y_glob, z_glob, dummy_flag)
+          call getLocalJdotB(j_dot_b, x_glob, y_glob, z_glob, dummy_flag)
         end if
-        ! if ((dummy_flag) .and.&
-        !   & ((.not. GJ_limiter) .or.&
-        !     & ((sig .gt. sigma_nGJ * sigma_mult) .and.& ! limiter on min sigma
-        !     & ((abs(j_dot_b) * B_norm .gt. nGJ * CC * unit_ch) .or. (step .lt. 10)))& ! limiter on current
-        !   & )) then
         if ((dummy_flag) .and.&
-          & ((.not. GJ_limiter) .or. (sig .gt. sigma_nGJ * sigma_mult))) then
-          weight = inj_mult * nGJ / ppc
+          & ((.not. GJ_limiter) .or.&
+            & ((sig .gt. sigma_nGJ * sigma_mult) .and.& ! limiter on min sigma
+            & ((abs(j_dot_b) * B_norm .gt. 0.25 * nGJ * CC * unit_ch) .or. (step .lt. 10)))& ! limiter on current
+          & )) then
+        ! if ((dummy_flag) .and.&
+        !   & ((.not. GJ_limiter) .or. (sig .gt. sigma_nGJ * sigma_mult))) then
+          ! kick along local b-field
+          call getBfieldAt(bx0, by0, bz0, x_glob, y_glob, z_glob, dummy_flag)
+          b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
+          if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
+            bx0 = -bx0; by0 = -by0; bz0 = -bz0
+          end if
+          nx = bx0 / b_sqr
+          ny = by0 / b_sqr
+          nz = bz0 / b_sqr
           u_ = nx * prtl_kick
           v_ = ny * prtl_kick
           w_ = nz * prtl_kick
+          weight = inj_mult * nGJ / ppc
           call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
           call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
         end if
@@ -345,6 +354,21 @@ contains
     y = Y0 * R
     z = Z0 * R
   end subroutine randomPointInSphericalShell
+
+  subroutine getBFieldAt(bx0, by0, bz0, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(in)      :: x0, y0, z0
+    real, intent(out)     :: bx0, by0, bz0
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+
+    call globalToLocalCoords(x0, y0, z0, x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+    end if
+  end subroutine getBFieldAt
 
   subroutine getEparAt(E_dot_B, B_sqr, x0, y0, z0, contained_flag)
     implicit none
