@@ -41,7 +41,7 @@ contains
 
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
     if ( (g0 .gt. 1.5) .and.&
-      &  (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim) .and.&
+      &  ((rad_dens_lim .eq. 0) .or. (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) .and.&
       &  (cool_gamma_syn .gt. 0.0) ) then
 
       uci = 0.5 * (u0 + ui)
@@ -126,7 +126,7 @@ contains
 
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
     if ( (g0 .gt. 1.5) .and.&
-      &  (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim) .and.&
+      &  ((rad_dens_lim .eq. 0) .or. (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) .and.&
       &  (cool_gamma_ic .gt. 0.0) ) then
 
       uci = 0.5 * (u0 + ui)
