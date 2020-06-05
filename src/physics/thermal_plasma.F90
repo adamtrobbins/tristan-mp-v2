@@ -11,19 +11,22 @@ module m_thermalplasma
   use m_particlelogistics
   implicit none
 
-  logical :: maxwell_generated = .false.
-
   type :: maxwellian
-    ! tabulated maxwellian is only used with `T < 0.1 [me c^2]`
-    !   so non-relativistic maxwellian is used with the parameter
-    !     `beta_wave = beta / sqrt(T)` for simplicity
+    ! tabulated maxwellian is used 1d/2d for any T, and 3d for T < t_crit
+    ! ... in all cases if T < t_crit -- we use non-relativistic maxwellian
+    ! ... and `u_table` contains `beta` instead of `4-velocity`
     real                            :: temperature, shift_gamma
     real, allocatable, dimension(:) :: DF_table
-    real, allocatable, dimension(:) :: beta_table
+    real, allocatable, dimension(:) :: u_table
     logical                         :: generated, shift_flag
     integer                         :: npoints, shift_dir
     integer                         :: dimension = 3
   end type maxwellian
+
+  !--- PRIVATE variables -----------------------------------------!
+  real    :: t_crit = 0.1
+  private :: t_crit
+  !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
   private :: tabulateMaxwellian
@@ -33,14 +36,11 @@ contains
   ! See more details in Zenitani 2015
   !   arXiv:1504.03910v1
 
-  ! this should only be used for `T << 1`
-  subroutine tabulateMaxwellian(maxw, n)
+  subroutine tabulateMaxwellian(maxw)
     implicit none
     type(maxwellian), intent(inout) :: maxw
-    integer, intent(in)             :: n
     integer                         :: iter
-    real                            :: beta_wave1, beta_wave2, beta_wave_max, df
-    ! `beta_wave` is `beta / sqrt(T)`
+    real                            :: u_1, u_2, u_max, df, temp
 
     if (maxw%generated) then
       call throwError('ERROR: maxwell table already generated.')
@@ -48,27 +48,44 @@ contains
       maxw%generated = .true.
     end if
 
-    maxw%npoints = n
-    allocate(maxw%DF_table(maxw%npoints))
-    allocate(maxw%beta_table(maxw%npoints))
+    temp = maxw%temperature
 
-    beta_wave_max = 8.0
+    if (temp .lt. t_crit) then
+      maxw%npoints = 2000
+      u_max = 5 * sqrt(2 * temp)
+    else
+      maxw%npoints = 10000
+      u_max = 50 * temp
+    end if
+
+    allocate(maxw%DF_table(maxw%npoints))
+    allocate(maxw%u_table(maxw%npoints))
+
     do iter = 1, maxw%npoints
-      beta_wave1 = beta_wave_max * REAL(iter - 1) / REAL(maxw%npoints)
-      beta_wave2 = beta_wave_max * REAL(iter) / REAL(maxw%npoints)
-      if (maxw%dimension .eq. 1) then
-        df = (beta_wave2 - beta_wave1) * 0.5 *&
-              & (exp(-beta_wave1**2 * 0.5) + exp(-beta_wave2**2 * 0.5))
-      else if (maxw%dimension .eq. 2) then
-        df = (beta_wave2 - beta_wave1) * 0.5 *&
-              & (exp(-beta_wave1**2 * 0.5) * beta_wave1 + exp(-beta_wave2**2 * 0.5) * beta_wave2)
-      else if (maxw%dimension .eq. 3) then
-        df = (beta_wave2 - beta_wave1) * 0.5 *&
-              & (exp(-beta_wave1**2 * 0.5) * beta_wave1**2 + exp(-beta_wave2**2 * 0.5) * beta_wave2**2)
+      u_1 = u_max * REAL(iter - 1) / REAL(maxw%npoints)
+      u_2 = u_max * REAL(iter) / REAL(maxw%npoints)
+      if (temp .ge. t_crit) then
+        if (maxw%dimension .eq. 1) then
+          df = (u_2 - u_1) * 0.5 * (exp(-sqrt(1.0 + u_1**2) / temp) + exp(-sqrt(1.0 + u_2**2) / temp))
+        else if (maxw%dimension .eq. 2) then
+          df = (u_2 - u_1) * 0.5 * (exp(-sqrt(1.0 + u_1**2) / temp) * u_1 + exp(-sqrt(1.0 + u_2**2) / temp) * u_2)
+        else if (maxw%dimension .eq. 3) then
+          df = (u_2 - u_1) * 0.5 * (exp(-sqrt(1.0 + u_1**2) / temp) * u_1**2 + exp(-sqrt(1.0 + u_2**2) / temp) * u_2**2)
+        else
+          call throwError('ERROR: Unknown dimension in `tabulateMaxwellian`.')
+        end if
       else
-        call throwError('ERROR: Unknown dimension in `tabulateMaxwellian`.')
+        if (maxw%dimension .eq. 1) then
+          df = (u_2 - u_1) * 0.5 * (exp(-u_1**2 * 0.5 / temp) + exp(-u_2**2 * 0.5 / temp))
+        else if (maxw%dimension .eq. 2) then
+          df = (u_2 - u_1) * 0.5 * (exp(-u_1**2 * 0.5 / temp) * u_1 + exp(-u_2**2 * 0.5 / temp) * u_2)
+        else if (maxw%dimension .eq. 3) then
+          df = (u_2 - u_1) * 0.5 * (exp(-u_1**2 * 0.5 / temp) * u_1**2 + exp(-u_2**2 * 0.5 / temp) * u_2**2)
+        else
+          call throwError('ERROR: Unknown dimension in `tabulateMaxwellian`.')
+        end if
       end if
-      maxw%beta_table(iter) = beta_wave2
+      maxw%u_table(iter) = u_2
       if (iter .eq. 1) then
         maxw%DF_table(iter) = df
       else
@@ -88,10 +105,10 @@ contains
     logical                         :: flag
     integer                         :: iter
 
-    if ((maxw%temperature .lt. 0.1) .or. (maxw%dimension .ne. 3)) then
+    if ((maxw%temperature .lt. t_crit) .or. (maxw%dimension .ne. 3)) then
       ! using tabulated Maxwellian
       if (.not. maxw%generated) then
-        call tabulateMaxwellian(maxw, 2000)
+        call tabulateMaxwellian(maxw)
       end if
       X3 = random(dseed)
       do iter = 1, maxw%npoints
@@ -99,17 +116,16 @@ contains
           if (iter .gt. 1) then
             dx1 = (maxw%DF_table(iter) - X3) / (maxw%DF_table(iter) - maxw%DF_table(iter - 1))
             dx2 = (X3 - maxw%DF_table(iter - 1)) / (maxw%DF_table(iter) - maxw%DF_table(iter - 1))
-            U = maxw%beta_table(iter) * dx2 +&
-              & maxw%beta_table(iter - 1) * dx1
+            U = maxw%u_table(iter) * dx2 +&
+              & maxw%u_table(iter - 1) * dx1
           else
             dx2 = X3 / maxw%DF_table(iter)
-            U = maxw%beta_table(iter) * dx2
+            U = maxw%u_table(iter) * dx2
           end if
-          ! `U` now is in terms of `beta_wave = beta / sqrt(T)`
-          !   step 1 (convert to `beta`):
-          U = U * sqrt(maxw%temperature)
-           !   step 2 (convert to 4-velocity):
-          U = U / sqrt(1.0 - U**2)
+          ! if T < t_crit -> convert from `beta` to `4-velocity`
+          if (maxw%temperature .lt. t_crit) then
+            U = U / sqrt(1.0 - U**2)
+          end if
           exit
         end if
       end do
@@ -130,7 +146,8 @@ contains
 
     ! generate projections
     if (maxw%dimension .eq. 1) then
-      u_ = U
+      X1 = random(dseed)
+      u_ = SIGN(U, X1 - 0.5)
       v_ = 0.0
       w_ = 0.0
     else if (maxw%dimension .eq. 2) then
@@ -183,7 +200,7 @@ contains
     implicit none
     type(maxwellian), intent(inout) :: maxw
     if (allocated(maxw%DF_table)) deallocate(maxw%DF_table)
-    if (allocated(maxw%beta_table)) deallocate(maxw%beta_table)
+    if (allocated(maxw%u_table)) deallocate(maxw%u_table)
   end subroutine deallocateMaxwellian
 
   subroutine fillRegionWithThermalPlasma(fill_region, fill_species, num_species, ndens_sp,&
@@ -259,9 +276,6 @@ contains
       fill_maxwellian%shift_flag = .true.
     else
       fill_maxwellian%shift_flag = .false.
-    end if
-    if (temperature .lt. 0.1) then
-      call tabulateMaxwellian(fill_maxwellian, 2000)
     end if
 
     ! global to local coordinates
