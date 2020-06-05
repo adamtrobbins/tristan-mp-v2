@@ -831,7 +831,8 @@ contains
       ! saving the energy bins
       allocate(bin_data(spec_num))
       do i = 1, spec_num
-        bin_data(i) = spec_min + (REAL(i - 1, 4) / REAL(spec_num, 4)) * (spec_max - spec_min)
+        bin_data(i) = spec_min + (REAL(i - 0.5) / REAL(spec_num)) * (spec_max - spec_min)
+        bin_data(i) = exp(bin_data(i))
       end do
 
       write(stepchar, "(i5.5)") step
