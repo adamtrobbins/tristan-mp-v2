@@ -198,7 +198,7 @@ contains
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
-    real                          :: dens_GJ, e_b_scale, j_dot_b
+    real                          :: dens_GJ, e_b_scale, j_dot_b, density
     logical                       :: dummy_flag
 
     nGJ = 2 * psr_omega0 * B_norm / (CC * abs(unit_ch))
@@ -284,17 +284,24 @@ contains
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g
         ! ... measured `e_dr` cells above the injection point
+        dummy_flag = .true.
         if (GJ_limiter) then
           call getLocalSigma(sig, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
           call getLocalJdotB(j_dot_b, x_glob, y_glob, z_glob, dummy_flag)
+          call getDensityAt(density, x_glob, y_glob, z_glob, dummy_flag)
+          ! here `dummy_flag` is `false` if particle is outside the boundaries of current MPI block
+          if (sig .lt. sigma_nGJ * sigma_mult) then
+            dummy_flag = .false.
+          end if
+          if ((abs(j_dot_b) * B_norm .lt. 0.25 * nGJ * CC * unit_ch) .and. (step .gt. 10)) then
+            dummy_flag = .false.
+          end if
+          if (density .gt. nGJ) then
+            dummy_flag = .false.
+          end if
         end if
-        if ((dummy_flag) .and.&
-          & ((.not. GJ_limiter) .or.&
-            & ((sig .gt. sigma_nGJ * sigma_mult) .and.& ! limiter on min sigma
-            & ((abs(j_dot_b) * B_norm .gt. 0.25 * nGJ * CC * unit_ch) .or. (step .lt. 10)))& ! limiter on current
-          & )) then
-        ! if ((dummy_flag) .and.&
-        !   & ((.not. GJ_limiter) .or. (sig .gt. sigma_nGJ * sigma_mult))) then
+
+        if (dummy_flag) then
           ! kick along local b-field
           call getBfieldAt(bx0, by0, bz0, x_glob, y_glob, z_glob, dummy_flag)
           b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
@@ -369,6 +376,21 @@ contains
       call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
     end if
   end subroutine getBFieldAt
+
+  subroutine getDensityAt(density, x0, y0, z0, contained_flag)
+    implicit none
+    real, intent(in)      :: x0, y0, z0
+    real, intent(out)     :: density
+    logical, intent(out)  :: contained_flag
+    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
+    integer(kind=2)       :: xi, yi, zi
+
+    call globalToLocalCoords(x0, y0, z0, x_loc, y_loc, z_loc, containedQ=contained_flag)
+    if (contained_flag) then
+      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      density = lg_arr(xi, yi, zi)
+    end if
+  end subroutine getDensityAt
 
   subroutine getEparAt(E_dot_B, B_sqr, x0, y0, z0, contained_flag)
     implicit none
