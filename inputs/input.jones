@@ -46,9 +46,10 @@
   history       = 0              # 0 = .false.; 1 = .true.
   hst_interval  = 1
 
-  spec_min      = 1e-2           # `g - 1` for massive and `e` for massless
-  spec_max      = 1e3            # `g - 1` for massive and `e` for massless
-  spec_num      = 512            # number of energy bins
+  spec_min      = 0              # `g - 1` for massive and `e` for massless
+  spec_max      = 110            # `g - 1` for massive and `e` for massless
+  spec_num      = 300            # number of energy bins
+  spec_log_bins = 0
 
 <plasma>
 
@@ -84,7 +85,7 @@
 
 <compton>
 
-  tau_Compton   = 0.7           # fiducial Thomson cross section
+  tau_Compton   = 1.0           # fiducial Thomson cross section
   interval      = 1             # scatter once every `interval` timestep
   algorithm     = 2             # 1 = BINARY; 2 = MC
   el_recoil     = 0
@@ -92,6 +93,6 @@
 
 <problem>
 
-  eph0       = 0.25           
+  eph0       = 0.025           
   gamma_e0   = 100      
     

@@ -100,7 +100,7 @@ contains
     real                      :: rnd, P_12
     logical                   :: KleinNishina
     integer                   :: num_1, num_2
-    real(kind=8)              :: el_gamma, el_beta, pel_x, pel_y, pel_z
+    real(kind=8)              :: el_gamma, pel_x, pel_y, pel_z
     real(kind=8)              :: eph, kph_x, kph_y, kph_z
     real(kind=8)              :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
     real, pointer             :: u_el, v_el, w_el, u_ph, v_ph, w_ph
@@ -135,21 +135,27 @@ contains
       pel_x = REAL(u_el, 8); pel_y = REAL(v_el, 8); pel_z = REAL(w_el, 8)
       kph_x = REAL(u_ph, 8); kph_y = REAL(v_ph, 8); kph_z = REAL(w_ph, 8)
 
-      el_gamma = 1.0d0 + pel_x**2 + pel_y**2 + pel_z**2 ! here gamma^2
-      el_beta = sqrt(1.0d0 - 1.0d0 / el_gamma)
-      el_gamma = sqrt(el_gamma)
+      el_gamma = sqrt(1.0d0 + pel_x**2 + pel_y**2 + pel_z**2)
       eph = sqrt(kph_x**2 + kph_y**2 + kph_z**2)
 
       ! boost photon momentum into electron frame:
-      call boostPhoton(el_gamma, el_beta, pel_x, pel_y, pel_z, &
+      call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
                              & eph, kph_x, kph_y, kph_z, &
                              & eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
 
       ! compute cross section:
       call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
 
-      ! to match the optical depth with the binary pairing case:
-      P_12 = P_12 * REAL(num_2)
+      ! TODO: rescale probability takiing into account random pairing and weights...
+      ! ... need to make sure here that P_12 for any particular scattering... 
+      ! ... of a (possibly split) particle is < 1
+      !P_12 = P_12 * REAL(num_2) ....
+      #ifdef DEBUG
+        if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
+          print *, 'P_12 = ', P_12
+          call throwError('Compton cross section P_12 out of bounds!')
+        end if
+      #endif
       rnd = random(dseed)
       if (rnd .le. P_12) then
         ! TODO: Split particles if el and photon weight are not equal!
@@ -159,7 +165,7 @@ contains
 
         ! boost back into lab frame:
         pel_x = -pel_x; pel_y = -pel_y; pel_z = -pel_z
-        call boostPhoton(el_gamma, el_beta, pel_x, pel_y, pel_z, &
+        call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
                             & eph_RF, kph_RF_x, kph_RF_y, kph_RF_z, &
                             & eph, kph_x, kph_y, kph_z)
         ! obtain the recoil on the electron via momentum conservation:
@@ -183,7 +189,7 @@ contains
     real(kind=8), intent(in)  :: eph, eph_RF, el_gamma
     real, intent(out)         :: P_12
     logical, intent(out)      :: KleinNishina
-    real(kind=8)              :: over_eph, f_KN
+    real(kind=8)              :: over_eph_RF, f_KN
 
     if (eph_RF .lt. Thomson_lim) then
       KleinNishina = .false.  ! use classical Thomson cross-section
@@ -194,26 +200,20 @@ contains
       f_KN = 1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2
     else   
       KleinNishina = .true.
-      over_eph = 1.0d0 / eph_RF
-      f_KN = 0.375d0 * over_eph * ((1.0d0 - 2.0d0 * over_eph - 2.0d0 * over_eph**2) * &
+      over_eph_RF = 1.0d0 / eph_RF
+      f_KN = 0.375d0 * over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
                                  & log(1.0d0 + 2.0d0 * eph_RF) + 0.5d0 + &
-                                 & 4.0d0 * over_eph - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
+                                 & 4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
     end if
     ! Cross section in the *lab* frame:
-    P_12 = REAL(Compton_interval) * Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph))
-    #ifdef DEBUG
-      if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
-        print *, 'P_12 = ', P_12
-        call throwError('Compton cross section P_12 out of bounds!')
-      end if
-    #endif
+    P_12 = 0.5 * REAL(Compton_interval) * Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph))
   end subroutine computeComptonCrossSection
 
-  subroutine boostPhoton(gam, beta, p_x, p_y, p_z, &
+  subroutine boostPhoton(gam, p_x, p_y, p_z, &
                        & eph, k_x, k_y, k_z, &
                        & eph1, k1_x, k1_y, k1_z)
     implicit none
-    real(kind=8), intent(in)  :: gam, beta, p_x, p_y, p_z 
+    real(kind=8), intent(in)  :: gam, p_x, p_y, p_z 
     ! the input momentum:
     real(kind=8), intent(in)  :: eph, k_x, k_y, k_z
     ! the transformed momentum:
@@ -250,11 +250,11 @@ contains
     norm = 1.0d0 / eph_RF
     a_RF_x = kph_RF_x * norm; a_RF_y = kph_RF_y * norm; a_RF_z = kph_RF_z * norm
     if (a_RF_x .ne. 0.0d0) then
-      b_RF_x = -a_RF_y / a_RF_x; b_RF_y = 1.0; b_RF_z = 0.0
+      b_RF_x = -a_RF_y / a_RF_x; b_RF_y = 1.0d0; b_RF_z = 0.0d0
       norm = 1.0d0 / sqrt(b_RF_x**2 + b_RF_y**2)
       b_RF_x = b_RF_x * norm; b_RF_y = b_RF_y * norm
     else
-      b_RF_x = 1.0d0; b_RF_y = 0.0; b_RF_z = 0.0
+      b_RF_x = 1.0d0; b_RF_y = 0.0d0; b_RF_z = 0.0d0
     end if
     c_RF_x = b_RF_z * a_RF_y - b_RF_y * a_RF_z
     c_RF_y = b_RF_x * a_RF_z - b_RF_z * a_RF_x

@@ -44,15 +44,18 @@ def getSpectra(fname):
         data = {}
         for sp in spectra:
             data[sp] = {}
-            log_e = file['e' + sp][:]
-            bn = np.exp(log_e)
+            if (file.attrs.__contains__('loge')):
+              log_bins = (file.attrs['loge'] == 1)
+            else: log_bins = True
+            bn = file['e' + sp][:]
+            bn_next = np.roll(bn, -1)
+            bn_next[-1] = bn[0] + len(bn) / (len(bn) - 1.0) * (bn[-1] - bn[0])
+            if (log_bins):
+                bn = np.exp(bn)
+                bn_next = np.exp(bn_next)
             (data[sp])['bn'] = bn
             (data[sp])['cnt'] = file['n' + sp][:]
             # the bin-centered energy axis:
-            n = len(log_e)
-            spec_max = n / (n - 1.0) * (log_e[-1] - log_e[0])
-            bn_next = np.roll(bn, -1)
-            bn_next[-1] = np.exp(spec_max)
             (data[sp])['ene'] = 0.5 * (bn_next + bn)
     return data
 

@@ -331,11 +331,14 @@ contains
     call getInput('output', 'hst_enable', hst_enable, .false.)
     call getInput('output', 'hst_interval', hst_interval, 1)
 
+    call getInput('output', 'spec_log_bins', spec_log_bins, .true.)
     call getInput('output', 'spec_min', spec_min, 1e-2)
     call getInput('output', 'spec_max', spec_max, 1e2)
     call getInput('output', 'spec_num', spec_num, 100)
-    spec_min = log(spec_min)
-    spec_max = log(spec_max)
+    if (spec_log_bins) then
+      spec_min = log(spec_min)
+      spec_max = log(spec_max)
+    endif
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
     call getInput('output', 'write_xdmf', write_xdmf, .true.)
@@ -863,6 +866,9 @@ contains
       call getInput('compton', 'tau_Compton', Compton_tau)
       call getInput('compton', 'interval', Compton_interval, 1)
       call getInput('compton', 'algorithm', Compton_algorithm, 2)
+      if (Compton_algorithm .ne. 2) then
+        call throwError('Compton scattering currently only supports the MC algorithm.')
+      endif
       call getInput('compton', 'el_recoil', Compton_el_recoil, .true.)
       call getInput('compton', 'Thomson_lim', Thomson_lim, 1d-6)
     end subroutine initializeComptonScattering
