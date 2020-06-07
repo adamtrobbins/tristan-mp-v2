@@ -123,6 +123,17 @@
   psr_radius    = 10
   psr_angle     = 30
   psr_period    = 500
+  rmin_dr       = 1             # remove particles falling below `radius - rmin_dr`
+
+  inj_method    = 1             # 1 = screen E.B; 2 = inject nGJ
   inj_shell     = 0.75          # injection shell width
-  weight_mult   = 2.0           # injected plasma weight multiplier: `W ~ mult * (E.B) / B`
-  e_dot_b_thr   = 0.02          # screen || E-field on the surface if `(E.B) / B^2 > thr`
+
+  e_dr          = 1.0           # probe E-parallel `dr` cells above the injection
+  inj_dr        = 0.0           # inject slightly above the star from `R* + inj_dr` to `R* + inj_dr + inj_shell`
+  e_thr         = 0.02          # screen || E-field on the surface if `E_|| / B > thr`
+  inj_mult      = 1.0           # injected plasma weight/density multiplier
+  e_par_method  = 1             # 1 = `E.B / B`; 2 = `Er - omega x r x B`
+  GJ_limiter    = 1             # enable/disable GJ limiter at the injector location
+
+  sigma_mult    = 0.1           # min sigma at star (normalized to sigma(nGJ*))
+  prtl_kick     = 0.0           # kick particles at the surface with 4-velocity of ...

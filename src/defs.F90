@@ -5,9 +5,3 @@
 #define TINYREAL  1e-3
 
 #define M_PI      3.141592653589793
-
-#ifdef threeD
-#define fldBoundZ           (-NGHOST) : ((this_meshblock%ptr%sz) - 1 + (NGHOST))
-#else
-#define fldBoundZ           (0) : (0)
-#endif

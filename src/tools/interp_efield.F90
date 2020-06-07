@@ -1,30 +1,20 @@
 ! linear indices used isntead of 3d
+#ifdef oneD
+  !e_x
+  c0 = 0.5 * (ex(lind, 0, 0) + ex(lind - 1, 0, 0))
+  c1 = 0.5 * (ex(lind, 0, 0) + ex(lind + 1, 0, 0))
+  ex0 = c0 * (1 - pt_dx(p)) + c1 * pt_dx(p)
 
-#ifndef threeD
-  ! c000 = 0.5 * (ex(pt_xi(p), pt_yi(p), pt_zi(p)) + ex(  pt_xi(p) - 1, pt_yi(p), pt_zi(p)))
-  ! c100 = 0.5 * (ex(pt_xi(p), pt_yi(p), pt_zi(p)) + ex(  pt_xi(p) + 1, pt_yi(p), pt_zi(p)))
-  ! c010 = 0.5 * (ex(pt_xi(p),  pt_yi(p) + 1, pt_zi(p)) + ex(  pt_xi(p) - 1,  pt_yi(p) + 1, pt_zi(p)))
-  ! c110 = 0.5 * (ex(pt_xi(p),  pt_yi(p) + 1, pt_zi(p)) + ex(  pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p)))
-  ! c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
-  ! c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
-  ! ex0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
-  !
-  ! c000 = 0.5 * (ey(pt_xi(p), pt_yi(p), pt_zi(p)) + ey( pt_xi(p),  pt_yi(p) - 1, pt_zi(p)))
-  ! c100 = 0.5 * (ey( pt_xi(p) + 1, pt_yi(p), pt_zi(p)) + ey(  pt_xi(p) + 1,  pt_yi(p) - 1, pt_zi(p)))
-  ! c010 = 0.5 * (ey(pt_xi(p), pt_yi(p), pt_zi(p)) + ey( pt_xi(p),  pt_yi(p) + 1, pt_zi(p)))
-  ! c110 = 0.5 * (ey( pt_xi(p) + 1, pt_yi(p), pt_zi(p)) + ey(  pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p)))
-  ! c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
-  ! c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
-  ! ey0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
-  !
-  ! c000 = ez(pt_xi(p), pt_yi(p), pt_zi(p))
-  ! c100 = ez( pt_xi(p) + 1, pt_yi(p), pt_zi(p))
-  ! c010 = ez(pt_xi(p),  pt_yi(p) + 1, pt_zi(p))
-  ! c110 = ez( pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p))
-  ! c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
-  ! c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
-  ! ez0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
+  !e_y
+  c0 = ey(lind, 0, 0)
+  c1 = ey(lind + 1, 0, 0)
+  ey0 = c0 * (1 - pt_dx(p)) + c1 * pt_dx(p)
 
+  !e_z
+  c0 = ez(lind, 0, 0)
+  c1 = ez(lind + 1, 0, 0)
+  ez0 = c0 * (1 - pt_dx(p)) + c1 * pt_dx(p)
+#elif twoD
   !e_x
   c000 = 0.5 * (ex(lind, -NGHOST, 0) + ex(lind - 1, -NGHOST, 0))
   c100 = 0.5 * (ex(lind, -NGHOST, 0) + ex(lind + 1, -NGHOST, 0))
@@ -51,7 +41,7 @@
   c00 = c000 * (1 - pt_dx(p)) + c100 * pt_dx(p)
   c10 = c010 * (1 - pt_dx(p)) + c110 * pt_dx(p)
   ez0 = c00 * (1 - pt_dy(p)) + c10 * pt_dy(p)
-#else
+#elif threeD
   !e_x
   c000 = 0.5 * (ex(lind, -NGHOST, -NGHOST) + ex(lind - 1, -NGHOST, -NGHOST))
   c100 = 0.5 * (ex(lind, -NGHOST, -NGHOST) + ex(lind + 1, -NGHOST, -NGHOST))
@@ -103,3 +93,27 @@
   c1 = c01 * (1.0 - pt_dy(p)) + c11 * pt_dy(p)
   ez0 = c0 * (1.0 - pt_dz(p)) + c1 * pt_dz(p)
 #endif
+
+! c000 = 0.5 * (ex(pt_xi(p), pt_yi(p), pt_zi(p)) + ex(  pt_xi(p) - 1, pt_yi(p), pt_zi(p)))
+! c100 = 0.5 * (ex(pt_xi(p), pt_yi(p), pt_zi(p)) + ex(  pt_xi(p) + 1, pt_yi(p), pt_zi(p)))
+! c010 = 0.5 * (ex(pt_xi(p),  pt_yi(p) + 1, pt_zi(p)) + ex(  pt_xi(p) - 1,  pt_yi(p) + 1, pt_zi(p)))
+! c110 = 0.5 * (ex(pt_xi(p),  pt_yi(p) + 1, pt_zi(p)) + ex(  pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p)))
+! c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
+! c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
+! ex0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
+!
+! c000 = 0.5 * (ey(pt_xi(p), pt_yi(p), pt_zi(p)) + ey( pt_xi(p),  pt_yi(p) - 1, pt_zi(p)))
+! c100 = 0.5 * (ey( pt_xi(p) + 1, pt_yi(p), pt_zi(p)) + ey(  pt_xi(p) + 1,  pt_yi(p) - 1, pt_zi(p)))
+! c010 = 0.5 * (ey(pt_xi(p), pt_yi(p), pt_zi(p)) + ey( pt_xi(p),  pt_yi(p) + 1, pt_zi(p)))
+! c110 = 0.5 * (ey( pt_xi(p) + 1, pt_yi(p), pt_zi(p)) + ey(  pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p)))
+! c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
+! c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
+! ey0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)
+!
+! c000 = ez(pt_xi(p), pt_yi(p), pt_zi(p))
+! c100 = ez( pt_xi(p) + 1, pt_yi(p), pt_zi(p))
+! c010 = ez(pt_xi(p),  pt_yi(p) + 1, pt_zi(p))
+! c110 = ez( pt_xi(p) + 1,  pt_yi(p) + 1, pt_zi(p))
+! c00 = c000 * (1.0 - pt_dx(p)) + c100 * pt_dx(p)
+! c10 = c010 * (1.0 - pt_dx(p)) + c110 * pt_dx(p)
+! ez0 = c00 * (1.0 - pt_dy(p)) + c10 * pt_dy(p)

@@ -169,7 +169,7 @@ contains
   subroutine printTime(dt_arr, msg, fullstep)
     implicit none
     character(len=*), intent(in)          :: msg
-    character(len=STR_MAX)                :: dummy, dummy1
+    character(len=STR_MAX)                :: dummy, dummy1, FMT
     real(kind=8), intent(in)              :: dt_arr(:)
     real, optional, intent(in)            :: fullstep
     real                                  :: dt_mean, dt_max, dt_min
@@ -190,34 +190,52 @@ contains
     sz = len(msg)
     dummy(1 : sz) = msg
 
-    dummy1 = trim(STR(dt_mean))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_mean))//")"
+    write(dummy1, FMT) dt_mean
+    sz = len_trim(dummy1)
     dummy(20 : 20 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(dt_min))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_min))//")"
+    write(dummy1, FMT) dt_min
+    sz = len_trim(dummy1)
     dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(dt_max))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_max))//")"
+    write(dummy1, FMT) dt_max
+    sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
     if (present(fullstep)) then
-      dummy1 = trim(STR(dt_mean * 100 / fullstep))
-      sz1 = len(trim(dummy1))
+      FMT = "("//trim(getFMTForReal(dt_mean * 100 / fullstep))//")"
+      write(dummy1, FMT) dt_mean * 100 / fullstep
+      sz1 = len_trim(dummy1)
       dummy(62 : 62 + sz1 - 1) = trim(dummy1)
     end if
 
     print *, dummy(1:72)
   end subroutine printTime
 
+  subroutine printNpartHeader()
+    implicit none
+    character(len=STR_MAX) :: dummy
+    integer                :: i
+
+    ! printing header
+    do i = 1, 72
+      dummy(i : i) = ' '
+    end do
+    dummy(1:71) = '[NPART per S]       [AVERAGE]      [MIN/MAX per CPU]            [TOTAL]'
+    print *, dummy(1:72)
+  end subroutine printNpartHeader
+
   subroutine printNpart(npart_arr, msg)
     implicit none
     character(len=*), intent(in)          :: msg
-    character(len=STR_MAX)                :: dummy, dummy1
+    character(len=STR_MAX)                :: dummy, dummy1, FMT
     integer, intent(in)                   :: npart_arr(:)
-    real                                  :: npart_mean, npart_max, npart_min
+    real                                  :: npart_mean, npart_max, npart_min, npart_sum
     integer                               :: sz, sz1, i
-    npart_mean = SUM(npart_arr) / mpi_size
+    npart_sum = SUM(npart_arr)
+    npart_mean = npart_sum / mpi_size
     npart_max = MAXVAL(npart_arr)
     npart_min = MINVAL(npart_arr)
 
@@ -228,17 +246,25 @@ contains
     sz = len(msg)
     dummy(1 : sz) = msg
 
-    dummy1 = trim(STR(npart_mean))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_mean))//")"
+    write(dummy1, FMT) npart_mean
+    sz = len_trim(dummy1)
     dummy(20 : 20 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(npart_min))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_min))//")"
+    write(dummy1, FMT) npart_min
+    sz = len_trim(dummy1)
     dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(npart_max))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_max))//")"
+    write(dummy1, FMT) npart_max
+    sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
+
+    FMT = "("//trim(getFMTForReal(npart_sum))//")"
+    write(dummy1, FMT) npart_sum
+    sz1 = len_trim(dummy1)
+    dummy(62 : 62 + sz1 - 1) = trim(dummy1)
 
     print *, dummy(1:72)
   end subroutine printNpart
