@@ -61,9 +61,15 @@ contains
     ! the electron and positron thermal background:
     dens = 0.5 * ppc0
     back_region%x_min = 0.0
-    back_region%y_min = 0.0
     back_region%x_max = REAL(global_mesh%sx)
-    back_region%y_max = REAL(global_mesh%sy)
+    #if defined(twoD) || defined (threeD)
+      back_region%y_min = 0.0
+      back_region%y_max = REAL(global_mesh%sy)
+    #endif
+    #if defined(threeD)
+      back_region%z_min = 0.0
+      back_region%z_max = REAL(global_mesh%sz)
+    #endif
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, dens, Te)
 
     ! the isotropic photon field:

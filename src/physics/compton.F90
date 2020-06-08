@@ -146,15 +146,20 @@ contains
       ! compute cross section:
       call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
 
-      ! TODO: rescale probability takiing into account random pairing and weights...
+      ! TODO: rescale probability taking into account random pairing and weights...
       ! ... need to make sure here that P_12 for any particular scattering... 
       ! ... of a (possibly split) particle is < 1
       !P_12 = P_12 * REAL(num_2) ....
+
       #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
           print *, 'P_12 = ', P_12
           call throwError('Compton cross section P_12 out of bounds!')
         end if
+      #else
+        if ((P_12 .gt. 1.0)) then
+          print '(1X,A,ES10.3,A)', 'Warning: Compton cross section P_12 = ', P_12, ' > 1 !!'
+        endif
       #endif
       rnd = random(dseed)
       if (rnd .le. P_12) then
@@ -328,7 +333,7 @@ contains
         endif
       end do
       if (.not. converged) then
-        print *, 'Warning: Cos(theta) = ', u,  ' not converged for eph_RF = ', eph_RF, ', rnd = ', rnd
+        print '(1X,A,F6.3,A,ES10.3,A,F6.3,A)', 'Warning: Cos(theta) = ', u, ' did not converge (eph_RF = ', eph_RF, ', rnd = ', rnd, ')'
         #ifdef DEBUG
           call throwError('Random value for cos(theta) in Compton scattering failed to converge.')
         #endif

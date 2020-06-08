@@ -822,16 +822,13 @@ contains
     integer, intent(in)               :: step, time
     character(len=STR_MAX)            :: stepchar, filename
     integer                           :: error, s, i, datarank
-    integer(HID_T)                    :: file_id, dset_id, dspace_id, attr_id
-    integer(HSIZE_T), dimension(1)    :: data_dims, attr_dims
+    integer(HID_T)                    :: file_id, dset_id, dspace_id
+    integer(HSIZE_T), dimension(1)    :: data_dims
     character(len=3)                  :: dsetname
-    character(len=4)                  :: attrname
     real, allocatable, dimension(:)   :: bin_data
-    integer                           :: loge
 
     datarank = 1
     data_dims(1) = spec_num
-    attr_dims(1) = 1
 
     ! only root rank writes the spectra file
     if (mpi_rank .eq. 0) then
@@ -839,7 +836,9 @@ contains
       allocate(bin_data(spec_num))
       do i = 1, spec_num
         bin_data(i) = spec_min + (REAL(i - 0.5) / REAL(spec_num)) * (spec_max - spec_min)
-        bin_data(i) = exp(bin_data(i))
+        if (spec_log_bins) then
+          bin_data(i) = exp(bin_data(i))
+        endif
       end do
 
       write(stepchar, "(i5.5)") step
@@ -849,19 +848,6 @@ contains
       call h5open_f(error)
       ! Create a new file using default properties
       call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
-
-      ! add `loge` attribute:
-      attrname = 'loge'
-      if (spec_log_bins) then
-        loge = 1
-      else
-        loge = 0
-      endif
-      call h5screate_simple_f(datarank, attr_dims, dspace_id, error)
-      call h5acreate_f(file_id, attrname, H5T_NATIVE_INTEGER, dspace_id, attr_id, error)
-      call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, loge, attr_dims, error)
-      call h5aclose_f(attr_id, error)
-      call h5sclose_f(dspace_id, error)
 
       do s = 1, nspec
         ! writing bins:

@@ -85,7 +85,7 @@
 
 <compton>
 
-  tau_Compton   = 0.002         # fiducial Thomson cross section
+  tau_Compton   = 0.7           # fiducial Thomson cross section
   interval      = 1             # scatter once every `interval` timestep
   algorithm     = 2             # 1 = BINARY; 2 = MC
   el_recoil     = 0

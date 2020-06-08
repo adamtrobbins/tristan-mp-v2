@@ -86,11 +86,11 @@ contains
     write(dummy, '(I10)') w_
 
     if ((abs(value) .ge. 100000) .or.&
-      & ((abs(value) .lt. 1e-4) .and.&
+      & ((abs(value) .lt. 1e-2) .and.&
         & (abs(value) .ne. 0.0))) then
-      FMT = 'ES' // trim(dummy) // '.2'
+      FMT = 'ES' // trim(dummy) // '.3'
     else
-      FMT = 'F' // trim(dummy) // '.2'
+      FMT = 'F' // trim(dummy) // '.3'
     end if
   end function getFMTForReal
 
