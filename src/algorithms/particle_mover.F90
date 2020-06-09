@@ -83,21 +83,25 @@ contains
                 ! move particle
                 over_e_temp = 1.0 / sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
 
-                pt_dx(p) = pt_dx(p) + CC * pt_u(p) * over_e_temp
-                temp_i = INT(pt_dx(p))
-                temp_r = MAX(SIGN(1., pt_dx(p)) + temp_i, REAL(temp_i)) - 1
-                temp_i = INT(temp_r)
-                pt_xi(p) = pt_xi(p) + temp_i
-                pt_dx(p) = pt_dx(p) - temp_r
+                #if defined(oneD) || defined(twoD) || defined(threeD)
+                  pt_dx(p) = pt_dx(p) + CC * pt_u(p) * over_e_temp
+                  temp_i = INT(pt_dx(p))
+                  temp_r = MAX(SIGN(1., pt_dx(p)) + temp_i, REAL(temp_i)) - 1
+                  temp_i = INT(temp_r)
+                  pt_xi(p) = pt_xi(p) + temp_i
+                  pt_dx(p) = pt_dx(p) - temp_r
+                #endif
 
-                pt_dy(p) = pt_dy(p) + CC * pt_v(p) * over_e_temp
-                temp_i = INT(pt_dy(p))
-                temp_r = MAX(SIGN(1., pt_dy(p)) + temp_i, REAL(temp_i)) - 1
-                temp_i = INT(temp_r)
-                pt_yi(p) = pt_yi(p) + temp_i
-                pt_dy(p) = pt_dy(p) - temp_r
+                #if defined(twoD) || defined(threeD)
+                  pt_dy(p) = pt_dy(p) + CC * pt_v(p) * over_e_temp
+                  temp_i = INT(pt_dy(p))
+                  temp_r = MAX(SIGN(1., pt_dy(p)) + temp_i, REAL(temp_i)) - 1
+                  temp_i = INT(temp_r)
+                  pt_yi(p) = pt_yi(p) + temp_i
+                  pt_dy(p) = pt_dy(p) - temp_r
+                #endif
 
-                #ifdef threeD
+                #if defined(threeD)
                   pt_dz(p) = pt_dz(p) + CC * pt_w(p) * over_e_temp
                   temp_i = INT(pt_dz(p))
                   temp_r = MAX(SIGN(1., pt_dz(p)) + temp_i, REAL(temp_i)) - 1
@@ -119,9 +123,11 @@ contains
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
-                #ifndef threeD
+                #ifdef oneD
+                  lind = pt_xi(p)
+                #elif twoD
                   lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
-                #else
+                #elif threeD
                   lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
                 #endif
                 include "interp_efield.F90"
@@ -205,21 +211,25 @@ contains
                 g_temp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
                 over_g_temp = 1.0 / g_temp
 
-                pt_dx(p) = pt_dx(p) + CC * pt_u(p) * over_g_temp
-                temp_i = INT(pt_dx(p))
-                temp_r = MAX(SIGN(1.0, pt_dx(p)) + temp_i, REAL(temp_i)) - 1
-                temp_i = INT(temp_r)
-                pt_xi(p) = pt_xi(p) + temp_i
-                pt_dx(p) = pt_dx(p) - temp_r
+                #if defined(oneD) || defined(twoD) || defined(threeD)
+                  pt_dx(p) = pt_dx(p) + CC * pt_u(p) * over_g_temp
+                  temp_i = INT(pt_dx(p))
+                  temp_r = MAX(SIGN(1.0, pt_dx(p)) + temp_i, REAL(temp_i)) - 1
+                  temp_i = INT(temp_r)
+                  pt_xi(p) = pt_xi(p) + temp_i
+                  pt_dx(p) = pt_dx(p) - temp_r
+                #endif
 
-                pt_dy(p) = pt_dy(p) + CC * pt_v(p) * over_g_temp
-                temp_i = INT(pt_dy(p))
-                temp_r = MAX(SIGN(1.0, pt_dy(p)) + temp_i, REAL(temp_i)) - 1
-                temp_i = INT(temp_r)
-                pt_yi(p) = pt_yi(p) + temp_i
-                pt_dy(p) = pt_dy(p) - temp_r
+                #if defined(twoD) || defined(threeD)
+                  pt_dy(p) = pt_dy(p) + CC * pt_v(p) * over_g_temp
+                  temp_i = INT(pt_dy(p))
+                  temp_r = MAX(SIGN(1.0, pt_dy(p)) + temp_i, REAL(temp_i)) - 1
+                  temp_i = INT(temp_r)
+                  pt_yi(p) = pt_yi(p) + temp_i
+                  pt_dy(p) = pt_dy(p) - temp_r
+                #endif
 
-                #ifdef threeD
+                #if defined(threeD)
                   pt_dz(p) = pt_dz(p) + CC * pt_w(p) * over_g_temp
                   temp_i = INT(pt_dz(p))
                   temp_r = MAX(SIGN(1.0, pt_dz(p)) + temp_i, REAL(temp_i)) - 1

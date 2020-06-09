@@ -44,7 +44,7 @@ def getSpectra(fname):
         data = {}
         for sp in spectra:
             data[sp] = {}
-            (data[sp])['bn'] = np.exp(file['e' + sp][:])
+            (data[sp])['bn'] = file['e' + sp][:]
             (data[sp])['cnt'] = file['n' + sp][:]
     return data
 

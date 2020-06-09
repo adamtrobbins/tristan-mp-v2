@@ -193,22 +193,21 @@ contains
 
   subroutine initializeDomain()
     implicit none
-    call getInput('node_configuration', 'sizex', sizex)
-    call getInput('node_configuration', 'sizey', sizey)
-    #ifdef threeD
-      call getInput('node_configuration', 'sizez', sizez)
-    #else
-      sizez = 1
+    sizex = 1; sizey = 1; sizez = 1
+    global_mesh%x0 = 0; global_mesh%y0 = 0; global_mesh%z0 = 0
+    global_mesh%sx = 1; global_mesh%sy = 1; global_mesh%sz = 1
+
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      call getInput('node_configuration', 'sizex', sizex)
+      call getInput('grid', 'mx0', global_mesh%sx)
     #endif
-    global_mesh%x0 = 0
-    global_mesh%y0 = 0
-    global_mesh%z0 = 0
-    call getInput('grid', 'mx0', global_mesh%sx)
-    call getInput('grid', 'my0', global_mesh%sy)
-    #ifdef threeD
+    #if defined(twoD) || defined (threeD)
+      call getInput('node_configuration', 'sizey', sizey)
+      call getInput('grid', 'my0', global_mesh%sy)
+    #endif
+    #if defined(threeD)
+      call getInput('node_configuration', 'sizez', sizez)
       call getInput('grid', 'mz0', global_mesh%sz)
-    #else
-      global_mesh%sz = 1
     #endif
 
     if ((modulo(global_mesh%sx, sizex) .ne. 0) .or.&
@@ -221,25 +220,33 @@ contains
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
     call getInput('grid', 'boundary_z', boundary_z, 1)
-    #ifdef threeD
-      call getInput('grid', 'boundary_z', boundary_z, 1)
-      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
-        boundary_x = 2
-        boundary_y = 2
-        boundary_z = 2
+    #ifdef oneD
+      boundary_y = 1
+      boundary_z = 1
+      if (boundary_x .eq. 2) then
+        #ifndef ABSORB
+          call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+        #endif
       end if
-    #else
+    #elif twoD
       boundary_z = 1
       if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2)) then
         boundary_x = 2
         boundary_y = 2
+        #ifndef ABSORB
+          call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+        #endif
+      end if
+    #elif threeD
+      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
+        boundary_x = 2
+        boundary_y = 2
+        boundary_z = 2
+        #ifndef ABSORB
+          call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+        #endif
       end if
     #endif
-    if ((boundary_x .ne. 1) .or. (boundary_x .ne. 1) .or. (boundary_x .ne. 1)) then
-      #ifndef ABSORB
-        call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
-      #endif
-    end if
   end subroutine initializeDomain
 
   subroutine distributeMeshblocks()
@@ -270,41 +277,40 @@ contains
   subroutine initializeLB()
     implicit none
     ! initializing static LB variables
-    call getInput('static_load_balancing', 'in_x', slb_x, .false.)
-    call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
-    call getInput('static_load_balancing', 'in_y', slb_y, .false.)
-    call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
-    #ifdef threeD
+    slb_x = .false.; slb_sxmin = -1
+    slb_y = .false.; slb_symin = -1
+    slb_z = .false.; slb_szmin = -1
+
+    alb_x = .false.; alb_sxmin = -1; alb_int_x = -1; alb_start_x = -1
+    alb_y = .false.; alb_symin = -1; alb_int_y = -1; alb_start_y = -1
+    alb_z = .false.; alb_szmin = -1; alb_int_z = -1; alb_start_z = -1
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      call getInput('static_load_balancing', 'in_x', slb_x, .false.)
+      call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
+      call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
+      call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
+      call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
+    #endif
+    #if defined(twoD) || defined (threeD)
+      call getInput('static_load_balancing', 'in_y', slb_y, .false.)
+      call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
+      call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
+      call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
+      call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
+    #endif
+    #if defined(threeD)
       call getInput('static_load_balancing', 'in_z', slb_z, .false.)
       call getInput('static_load_balancing', 'sz_min', slb_szmin, 10)
-    #else
-      slb_z = .false.
-      slb_szmin = -1
-    #endif
 
-    ! initializing adaptive LB variables
-    call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
-    call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
-
-    call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
-    call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
-
-    call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
-    call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
-
-    call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
-    call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
-
-    #ifdef threeD
       call getInput('adaptive_load_balancing', 'in_z', alb_z, .false.)
       call getInput('adaptive_load_balancing', 'sz_min', alb_szmin, 10)
       call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
       call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
-    #else
-      alb_z = .false.
-      alb_szmin = -1
-      alb_int_z = -1
-      alb_start_z = -1
+
     #endif
   end subroutine initializeLB
 
@@ -379,7 +385,10 @@ contains
       call getInput('grid', 'tileX', species(s)%tile_sx)
       call getInput('grid', 'tileY', species(s)%tile_sy)
       call getInput('grid', 'tileZ', species(s)%tile_sz)
-      #ifndef threeD
+      #ifdef oneD
+        species(s)%tile_sy = 1
+        species(s)%tile_sz = 1
+      #elif twoD
         species(s)%tile_sz = 1
       #endif
       species(s)%tile_nx = ceiling(real(this_meshblock%ptr%sx) / real(species(s)%tile_sx))
@@ -487,20 +496,29 @@ contains
 
     multiplier = max(INT(ppc0), 1) * 100
     ! FIX this might change over time (due to load balancing)
-    buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
-    buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
-    buffsize_xy = this_meshblock%ptr%sz * multiplier
-    #ifdef threeD
-      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
-
+    buffsize_x = 0
+    buffsize_y = 0; buffsize_xy = 0
+    buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
+    #endif
+    #if defined (twoD) || defined (threeD)
+      buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
+      buffsize_xy = this_meshblock%ptr%sz * multiplier
+    #endif
+    #if defined(threeD)
       buffsize_z = this_meshblock%ptr%sx * this_meshblock%ptr%sy * multiplier
       buffsize_xz = this_meshblock%ptr%sz * multiplier
       buffsize_yz = this_meshblock%ptr%sx * multiplier
       buffsize_xyz = multiplier
-    #else
-      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
+    #endif
 
-      buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #ifdef oneD
+      buffsize = multiplier
+    #elif twoD
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
+    #elif threeD
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
     #endif
 
     allocate(recv_enroute(buffsize))
@@ -509,7 +527,9 @@ contains
       do ind2 = -1, 1
         do ind3 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifndef threeD
+          #ifdef oneD
+            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+          #elif twoD
             if (ind3 .ne. 0) cycle
           #endif
           if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
@@ -569,69 +589,108 @@ contains
     if (allocated(jx_buff)) deallocate(jx_buff)
     if (allocated(jy_buff)) deallocate(jy_buff)
     if (allocated(jz_buff)) deallocate(jz_buff)
-    allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                   & fldBoundZ))
-    allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                   & fldBoundZ))
-    allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                   & fldBoundZ))
+    #ifdef oneD
+      allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      ! 20 = max # of fields sent in each direction
+      sendrecv_offsetsz = NGHOST * 20
+      ! 2 (~5) directions to send/recv in 1D
+      sendrecv_buffsz = sendrecv_offsetsz * 5
+    #elif twoD
+      allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
 
-    ! exchange fields
-    ! 20 = max # of fields sent in each direction
-    #ifndef threeD
-      sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
-      sendrecv_buffsz = sendrecv_offsetsz * 10
-      ! 8 (~10) directions to send/recv in 2D
-    #else
+     ! 20 = max # of fields sent in each direction
+     sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
+     ! 8 (~10) directions to send/recv in 2D
+     sendrecv_buffsz = sendrecv_offsetsz * 10
+    #elif threeD
+      allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      ! 20 = max # of fields sent in each direction
       sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 20
-      sendrecv_buffsz = sendrecv_offsetsz * 30
       ! 26 (~30) directions to send/recv in 3D
+      sendrecv_buffsz = sendrecv_offsetsz * 30
     #endif
 
-    if (allocated(send_fld)) deallocate(send_fld)
-    allocate(send_fld(sendrecv_buffsz))
-    if (allocated(recv_fld)) deallocate(recv_fld)
-    allocate(recv_fld(sendrecv_offsetsz))
+    allocate(sm_arr(0:this_meshblock%ptr%sx - 1, 0:this_meshblock%ptr%sy - 1, 0:this_meshblock%ptr%sz - 1))
 
-    ! output fields
-    if (allocated(lg_arr)) deallocate(lg_arr)
-    if (allocated(sm_arr)) deallocate(sm_arr)
-    allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                  & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                  & fldBoundZ))
-    allocate(sm_arr(0:this_meshblock%ptr%sx - 1,&
-                  & 0:this_meshblock%ptr%sy - 1,&
-                  & 0:this_meshblock%ptr%sz - 1))
+    if (allocated(send_fld)) deallocate(send_fld)
+    if (allocated(recv_fld)) deallocate(recv_fld)
+    allocate(send_fld(sendrecv_buffsz))
+    allocate(recv_fld(sendrecv_offsetsz))
   end subroutine initializeFields
 
   subroutine firstRankInitialize()
@@ -641,10 +700,14 @@ contains
     #ifdef IFPORT
       logical :: result
       result = makedirqq(trim(output_dir_name))
-      result = makedirqq(trim(restart_dir_name))
+      if (rst_enabled) then
+        result = makedirqq(trim(restart_dir_name))
+      end if
     #else
       call system('mkdir -p ' // trim(output_dir_name))
-      call system('mkdir -p ' // trim(restart_dir_name))
+      if (rst_enabled) then
+        call system('mkdir -p ' // trim(restart_dir_name))
+      end if
     #endif
   end subroutine firstRankInitialize
 
@@ -760,12 +823,16 @@ contains
   subroutine checkEverything()
     implicit none
     ! check that the domain size is larger than the number of ghost zones
-    #ifndef threeD
+    #ifdef oneD
+      if (this_meshblock%ptr%sx .lt. NGHOST) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #elif twoD
       if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
         & (this_meshblock%ptr%sy .lt. NGHOST)) then
         call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
       end if
-    #else
+    #elif threeD
       if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
         & (this_meshblock%ptr%sy .lt. NGHOST) .or.&
         & (this_meshblock%ptr%sz .lt. NGHOST)) then

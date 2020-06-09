@@ -57,10 +57,14 @@ contains
             pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               ! send_* = -1 / 0 / +1
-              send_z = 0
-              send_x = (ISIGN(1, pt_xi(p) - this_meshblock%ptr%sx) + 1) / 2 - (ISIGN(1, -pt_xi(p) - 1) + 1) / 2
-              send_y = (ISIGN(1, pt_yi(p) - this_meshblock%ptr%sy) + 1) / 2 - (ISIGN(1, -pt_yi(p) - 1) + 1) / 2
-              #ifdef threeD
+              send_x = 0; send_y = 0; send_z = 0
+              #if defined(oneD) || defined(twoD) || defined(threeD)
+                send_x = (ISIGN(1, pt_xi(p) - this_meshblock%ptr%sx) + 1) / 2 - (ISIGN(1, -pt_xi(p) - 1) + 1) / 2
+              #endif
+              #if defined(twoD) || defined(threeD)
+                send_y = (ISIGN(1, pt_yi(p) - this_meshblock%ptr%sy) + 1) / 2 - (ISIGN(1, -pt_yi(p) - 1) + 1) / 2
+              #endif
+              #if defined(threeD)
                 send_z = (ISIGN(1, pt_zi(p) - this_meshblock%ptr%sz) + 1) / 2 - (ISIGN(1, -pt_zi(p) - 1) + 1) / 2
               #endif
               ! FIX1 check for null() boundaries
@@ -82,17 +86,21 @@ contains
                 pt_proc(p) = -1
 
                 ! shift coordinates to fit the new grid
-                new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi
-                temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
-                new_xyz = -(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2
-                enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi = new_xyz
+                #if defined(oneD) || defined(twoD) || defined(threeD)
+                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi
+                  temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
+                  new_xyz = -(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2
+                  enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi = new_xyz
+                #endif
 
-                new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi
-                temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
-                new_xyz = -(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2
-                enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi = new_xyz
+                #if defined(twoD) || defined(threeD)
+                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi
+                  temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
+                  new_xyz = -(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2
+                  enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi = new_xyz
+                #endif
 
-                #ifdef threeD
+                #if defined(threeD)
                   new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi
                   temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
                   new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
@@ -114,7 +122,9 @@ contains
         do ind2 = -1, 1
           do ind3 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-            #ifndef threeD
+            #ifdef oneD
+              if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+            #elif twoD
               if (ind3 .ne. 0) cycle
             #endif
             if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
@@ -199,7 +209,9 @@ contains
           do ind2 = -1, 1
             do ind3 = -1, 1
               if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-              #ifndef threeD
+              #ifdef oneD
+                if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+              #elif twoD
                 if (ind3 .ne. 0) cycle
               #endif
               if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle

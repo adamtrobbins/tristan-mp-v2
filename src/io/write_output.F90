@@ -399,28 +399,34 @@ contains
 
       i_start = 0; j_start = 0; k_start = 0
     else
-      offset_i = CEILING(REAL(this_x0) / REAL(output_istep))
-      offset_j = CEILING(REAL(this_y0) / REAL(output_istep))
+      i_start = 0; i_end = 0
+      offset_i = 0; n_i = 0
+      glob_n_i = 1
 
-      i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
-      i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
-      j_start = CEILING(REAL(this_y0) / REAL(output_istep)) * output_istep - this_y0
-      j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_istep)) - 1) * output_istep - this_y0
+      j_start = 0; j_end = 0
+      offset_j = 0; n_j = 0
+      glob_n_j = 1
 
-      n_i = (i_end - i_start) / output_istep
-      n_j = (j_end - j_start) / output_istep
-
-      glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_istep))
-      glob_n_i = MAX(1, glob_n_i)
-
-      glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_istep))
-      glob_n_j = MAX(1, glob_n_j)
-
-      #ifndef threeD
-        k_start = 0; k_end = 0
-        offset_k = 0; n_k = 0
-        glob_n_k = 1
-      #else
+      k_start = 0; k_end = 0
+      offset_k = 0; n_k = 0
+      glob_n_k = 1
+      #if defined(oneD) || defined (twoD) || defined (threeD)
+        offset_i = CEILING(REAL(this_x0) / REAL(output_istep))
+        i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
+        i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
+        n_i = (i_end - i_start) / output_istep
+        glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_istep))
+        glob_n_i = MAX(1, glob_n_i)
+      #endif
+      #if defined(twoD) || defined (threeD)
+        offset_j = CEILING(REAL(this_y0) / REAL(output_istep))
+        j_start = CEILING(REAL(this_y0) / REAL(output_istep)) * output_istep - this_y0
+        j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_istep)) - 1) * output_istep - this_y0
+        n_j = (j_end - j_start) / output_istep
+        glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_istep))
+        glob_n_j = MAX(1, glob_n_j)
+      #endif
+      #if defined(threeD)
         offset_k = CEILING(REAL(this_z0) / REAL(output_istep))
         k_start = CEILING(REAL(this_z0) / REAL(output_istep)) * output_istep - this_z0
         k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_istep)) - 1) * output_istep - this_z0
@@ -825,7 +831,8 @@ contains
       ! saving the energy bins
       allocate(bin_data(spec_num))
       do i = 1, spec_num
-        bin_data(i) = spec_min + (REAL(i - 1, 4) / REAL(spec_num, 4)) * (spec_max - spec_min)
+        bin_data(i) = spec_min + (REAL(i - 0.5) / REAL(spec_num)) * (spec_max - spec_min)
+        bin_data(i) = exp(bin_data(i))
       end do
 
       write(stepchar, "(i5.5)") step

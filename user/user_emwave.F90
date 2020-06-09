@@ -40,20 +40,20 @@ contains
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    sx_glob = REAL(global_mesh%sx)
-    sy_glob = REAL(global_mesh%sy)
-
-    back_region%x_min = 0.0
-    back_region%y_min = 0.0
-    back_region%x_max = sx_glob
-    back_region%y_max = sy_glob
-    #ifdef threeD
-      sz_glob = REAL(global_mesh%sz)
-      back_region%z_min = 0.0
-      back_region%z_max = sz_glob
-    #endif
-
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, 0.5*ppc0, 0.1)
+    ! sx_glob = REAL(global_mesh%sx)
+    ! sy_glob = REAL(global_mesh%sy)
+    !
+    ! back_region%x_min = 0.0
+    ! back_region%y_min = 0.0
+    ! back_region%x_max = sx_glob
+    ! back_region%y_max = sy_glob
+    ! #ifdef threeD
+    !   sz_glob = REAL(global_mesh%sz)
+    !   back_region%z_min = 0.0
+    !   back_region%z_max = sz_glob
+    ! #endif
+    !
+    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, 0.5*ppc0, 0.1)
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -67,7 +67,25 @@ contains
     ex(:,:,:) = -1; ey(:,:,:) = -1; ez(:,:,:) = -1
     bx(:,:,:) = -1; by(:,:,:) = -1; bz(:,:,:) = -1
 
-    #ifndef threeD
+    #ifdef oneD
+      kx = 5
+      kx = kx * 2 * M_PI / global_mesh%sx
+      do i = 0, this_meshblock%ptr%sx - 1
+        i_glob = i + this_meshblock%ptr%x0
+        do j = 0, this_meshblock%ptr%sy - 1
+          j_glob = j + this_meshblock%ptr%y0
+          do k = 0, this_meshblock%ptr%sz - 1
+            k_glob = k + this_meshblock%ptr%z0
+            ex(i, j, k) = 0
+            ey(i, j, k) = sin((i_glob - 0.5) * kx)
+            ez(i, j, k) = 0
+            bx(i, j, k) = 0
+            by(i, j, k) = 0
+            bz(i, j, k) = sin(i_glob * kx)
+          end do
+        end do
+      end do
+    #elif twoD
       kx = 5; ky = 2
       kx = kx * 2 * M_PI / global_mesh%sx
       ky = ky * 2 * M_PI / global_mesh%sy
@@ -95,9 +113,7 @@ contains
           end do
         end do
       end do
-
-    #else
-
+    #elif threeD
       kx = 5; ky = 2; kz = 2
       kx = kx * 2 * M_PI / global_mesh%sx
       ky = ky * 2 * M_PI / global_mesh%sy
