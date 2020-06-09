@@ -46,6 +46,7 @@
 
 <output>
 
+  enable        = 1
   start         = 0              # first output step
   interval      = 10             # interval between output steps
   stride        = 100            # particle stride
@@ -61,6 +62,14 @@
   spec_min      = 1e-3           # `g - 1` for massive and `e` for massless
   spec_max      = 1e1            # `g - 1` for massive and `e` for massless
   spec_num      = 100            # number of energy bins
+
+<slice_output>
+
+  enable        = 1
+  start         = 0              # first slice output step
+  interval      = 10             # interval between slice output steps
+  istep         = 1              # field downsampling
+  write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
 
 <adaptive_load_balancing>
 

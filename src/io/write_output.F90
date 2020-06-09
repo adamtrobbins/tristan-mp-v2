@@ -24,6 +24,7 @@ module m_writeoutput
 
   implicit none
 
+  logical                 :: output_enabled
   integer                 :: output_start, output_interval, output_stride, output_istep
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)

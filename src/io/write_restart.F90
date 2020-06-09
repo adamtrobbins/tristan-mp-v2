@@ -109,7 +109,7 @@ contains
 
     filename = trim(rst_dir) // '/flds.rst.' // trim(mpichar)
     open(UNIT_restart_fld, file=filename, status="replace", form="unformatted")
-    write(UNIT_restart_fld) timestep, dseed, output_index
+    write(UNIT_restart_fld) timestep, dseed, output_index, slice_index
     write(UNIT_restart_fld) ex, ey, ez, bx, by, bz
     write(UNIT_restart_fld) CC, ppc0, c_omp, sigma
     close(UNIT_restart_fld)
