@@ -98,6 +98,7 @@ contains
     type(couple), allocatable :: el_photon_pairs(:)
     integer                   :: num_pairs, el_ph, s1, s2, p1, p2
     real                      :: rnd, P_12
+    real                      :: tile_corr_x, tile_corr_y, tile_corr_z, tile_corr
     logical                   :: KleinNishina
     integer                   :: num_1, num_2
     real(kind=8)              :: el_gamma, pel_x, pel_y, pel_z
@@ -108,6 +109,18 @@ contains
     ! couple the electrons/positrons (group1) and photons (group2): 
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
                              & el_photon_pairs, num_pairs, num_1, num_2)
+
+    ! correction for P_12 if tile is smaller than tileX, tileY, tileZ:
+    tile_corr_x = REAL(species(1)%tile_sx) / &
+                & REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
+                     & species(1)%prtl_tile(ti, tj, tk)%x1)
+    tile_corr_y = REAL(species(1)%tile_sy) / &
+                & REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
+                     & species(1)%prtl_tile(ti, tj, tk)%y1)
+    tile_corr_z = REAL(species(1)%tile_sz) / &
+                & REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
+                     & species(1)%prtl_tile(ti, tj, tk)%z1)
+    tile_corr   = tile_corr_x * tile_corr_y * tile_corr_z 
 
     do el_ph = 1, num_pairs
       ! "extract" the el-photon pair:
@@ -150,7 +163,7 @@ contains
       ! ... need to make sure here that P_12 for any particular scattering... 
       ! ... of a (possibly split) particle is < 1
 
-      P_12 = P_12 * REAL(max(num_1, num_2))
+      P_12 = P_12 * REAL(max(num_1, num_2)) * tile_corr
 
       #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
@@ -198,6 +211,7 @@ contains
     logical, intent(out)      :: KleinNishina
     real(kind=8)              :: over_eph_RF, f_KN
 
+    ! note: f_KN is normalized to sigma_T
     if (eph_RF .lt. Thomson_lim) then
       KleinNishina = .false.  ! use classical Thomson cross-section
       f_KN = 1.0d0
