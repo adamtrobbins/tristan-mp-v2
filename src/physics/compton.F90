@@ -149,7 +149,8 @@ contains
       ! TODO: rescale probability taking into account random pairing and weights...
       ! ... need to make sure here that P_12 for any particular scattering... 
       ! ... of a (possibly split) particle is < 1
-      !P_12 = P_12 * REAL(num_2) ....
+
+      P_12 = P_12 * REAL(max(num_1, num_2))
 
       #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
@@ -161,6 +162,7 @@ contains
           print '(1X,A,ES10.3,A)', 'Warning: Compton cross section P_12 = ', P_12, ' > 1 !!'
         endif
       #endif
+
       rnd = random(dseed)
       if (rnd .le. P_12) then
         ! TODO: Split particles if el and photon weight are not equal!
@@ -211,7 +213,7 @@ contains
                                  & 4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
     end if
     ! Cross section in the *lab* frame:
-    P_12 = 0.5 * REAL(Compton_interval) * Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph))
+    P_12 = Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph)) 
   end subroutine computeComptonCrossSection
 
   subroutine boostPhoton(gam, p_x, p_y, p_z, &
@@ -264,8 +266,7 @@ contains
     c_RF_x = b_RF_z * a_RF_y - b_RF_y * a_RF_z
     c_RF_y = b_RF_x * a_RF_z - b_RF_z * a_RF_x
     c_RF_z = b_RF_y * a_RF_x - b_RF_x * a_RF_y
-    norm = 1.0d0 / sqrt(c_RF_x**2 + c_RF_y**2 + c_RF_z**2)
-    c_RF_x = c_RF_x * norm; c_RF_y = c_RF_y * norm; c_RF_z = c_RF_z * norm
+    ! note: c_RF is normalized by construction
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     ! Generate random vector in the electron frame ...

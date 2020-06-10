@@ -274,7 +274,11 @@ contains
       call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph),&
                                & P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
-      P_12 = P_12 * num_2
+      if (n_sp_2 .ne. 0) then
+        P_12 = P_12 * REAL(max(num_1, num_2))
+      else
+        P_12 = P_12 * REAL(num_1 - 1)
+      endif
       rnd = random(dseed)
       if ((rnd .le. P_12) .and. (thresholdQ)) then
         ! pair produce
@@ -341,7 +345,7 @@ contains
       fs = (1.0 - beta2) *&
          & (-2.0 * beta * (2.0 - beta2) + (3.0 - beta2**2) *&
          & log((1.0 + beta) / (1.0 - beta)))
-      P_12 = REAL(BW_interval) * BW_tau * fs
+      P_12 = BW_tau * REAL(fs)
     else
       P_12 = 0.0
     end if

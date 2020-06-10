@@ -919,8 +919,13 @@ contains
   #ifdef BWPAIRPRODUCTION
     subroutine initializeBWPairProduction()
       implicit none
-      call getInput('bw_pp', 'tau_BW', BW_tau)
+      real            :: norm, over_ppc
       call getInput('bw_pp', 'interval', BW_interval, 1)
+      call getInput('bw_pp', 'tau_BW', BW_tau)
+      ! rescale the optical depth taking into account BW_interval, variable ppc & tile sizes:
+      over_ppc = 1.0 / ppc0
+      norm = over_ppc * REAL(BW_interval) / REAL(species(1)%tile_sx * species(1)%tile_sy * species(1)%tile_sz)
+      BW_tau = BW_tau * norm
       call getInput('bw_pp', 'algorithm', BW_algorithm)
       call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
       call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
@@ -930,8 +935,13 @@ contains
   #ifdef COMPTONSCATTERING
     subroutine initializeComptonScattering()
       implicit none
-      call getInput('compton', 'tau_Compton', Compton_tau)
+      real            :: norm, over_ppc
       call getInput('compton', 'interval', Compton_interval, 1)
+      call getInput('compton', 'tau_Compton', Compton_tau)
+      ! rescale the optical depth:
+      over_ppc = 1.0 / ppc0
+      norm = over_ppc * REAL(Compton_interval) / REAL(species(1)%tile_sx * species(1)%tile_sy * species(1)%tile_sz)
+      Compton_tau = Compton_tau * norm
       call getInput('compton', 'algorithm', Compton_algorithm, 2)
       if (Compton_algorithm .ne. 2) then
         call throwError('Compton scattering currently only supports the MC algorithm.')
