@@ -247,23 +247,11 @@ contains
     integer, intent(in)           :: n_sp_2 ! # of species in set
     integer, optional, intent(in) :: sp_arr_2(n_sp_2)
     type(couple), allocatable     :: pairs_of_photons(:)
-    integer                       :: num_pairs, ph, s1, s2, p1, p2
+    integer                       :: num_pairs, num_pairs_max, ph, s1, s2, p1, p2
     real                          :: rnd, P_12
-    real                          :: tile_corr_x, tile_corr_y, tile_corr_z, tile_corr
+    real                          :: tile_x, tile_y, tile_z, P_corr
     logical                       :: thresholdQ
     integer                       :: num_1, num_2
-
-    ! correction for P_12 if tile is smaller than tileX, tileY, tileZ:
-    tile_corr_x = REAL(species(1)%tile_sx) / &
-                & REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
-                     & species(1)%prtl_tile(ti, tj, tk)%x1)
-    tile_corr_y = REAL(species(1)%tile_sy) / &
-                & REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
-                     & species(1)%prtl_tile(ti, tj, tk)%y1)
-    tile_corr_z = REAL(species(1)%tile_sz) / &
-                & REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
-                     & species(1)%prtl_tile(ti, tj, tk)%z1)
-    tile_corr   = tile_corr_x * tile_corr_y * tile_corr_z 
 
     if (n_sp_2 .ne. 0) then
       ! two separate BW groups
@@ -281,17 +269,36 @@ contains
                                & pairs_of_photons, num_pairs, num_1)
       num_2 = num_1
     end if
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! calculate prob. correction factor to match with binary pairing:
+    tile_x = REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
+                & species(1)%prtl_tile(ti, tj, tk)%x1)
+    tile_y = REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
+                & species(1)%prtl_tile(ti, tj, tk)%y1)
+    tile_z = REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
+                & species(1)%prtl_tile(ti, tj, tk)%z1)
+    if (n_sp_2 .ne. 0) then
+      P_corr = REAL(max(num_1, num_2)) / (tile_x * tile_y * tile_z)
+    else
+      P_corr = REAL(num_1 - 1) / (tile_x * tile_y * tile_z)
+    endif
+    if (num_pairs > CEILING(10.0 * ppc0 * tile_x * tile_y * tile_z)) then
+      ! reduce the # pairs to loop over in dense regions...
+      !... but still keeping any single scattering P_12 < 1
+      num_pairs_max = CEILING(REAL(num_pairs) * min(10.0 * BW_tau * P_corr, 1.0))
+    else
+      num_pairs_max = num_pairs
+    endif
+    P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    do ph = 1, num_pairs
+    do ph = 1, num_pairs_max
       ! compute P_12 for each pair of photons `pairs_of_photons(ph)`
       call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph),&
                                & P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
-      if (n_sp_2 .ne. 0) then
-        P_12 = P_12 * REAL(max(num_1, num_2)) * tile_corr
-      else
-        P_12 = P_12 * REAL(num_1 - 1) * tile_corr ! num_1 - 1 to exclude the self-pair
-      endif
+      P_12 = P_12 * P_corr
+
       rnd = random(dseed)
       if ((rnd .le. P_12) .and. (thresholdQ)) then
         ! pair produce

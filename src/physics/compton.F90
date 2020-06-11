@@ -96,33 +96,42 @@ contains
     integer, intent(in)       :: n_sp_2 ! # of species in set
     integer, intent(in)       :: sp_arr_2(n_sp_2) ! photons
     type(couple), allocatable :: el_photon_pairs(:)
-    integer                   :: num_pairs, el_ph, s1, s2, p1, p2
+    integer                   :: num_pairs, num_pairs_max, el_ph, s1, s2, p1, p2
     real                      :: rnd, P_12
-    real                      :: tile_corr_x, tile_corr_y, tile_corr_z, tile_corr
+    real                      :: tile_x, tile_y, tile_z, P_corr
     logical                   :: KleinNishina
     integer                   :: num_1, num_2
     real(kind=8)              :: el_gamma, pel_x, pel_y, pel_z
     real(kind=8)              :: eph, kph_x, kph_y, kph_z
     real(kind=8)              :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
-    real, pointer             :: u_el, v_el, w_el, u_ph, v_ph, w_ph
+    real, pointer             :: u_el, v_el, w_el, weight_el
+    real, pointer             :: u_ph, v_ph, w_ph, weight_ph
+    real                      :: u_el_new, v_el_new, w_el_new
+    real                      :: u_ph_new, v_ph_new, w_ph_new
 
     ! couple the electrons/positrons (group1) and photons (group2): 
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
                              & el_photon_pairs, num_pairs, num_1, num_2)
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! calculate prob. correction factor to match with binary pairing:
+    tile_x = REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
+                & species(1)%prtl_tile(ti, tj, tk)%x1)
+    tile_y = REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
+                & species(1)%prtl_tile(ti, tj, tk)%y1)
+    tile_z = REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
+                & species(1)%prtl_tile(ti, tj, tk)%z1)
+    P_corr = REAL(max(num_1, num_2)) / (tile_x * tile_y * tile_z)  
+    if (num_pairs > CEILING(10.0 * ppc0 * tile_x * tile_y * tile_z)) then
+      ! reduce the # pairs to loop over in dense regions...
+      !... but still keeping any single scattering P_12 < 1
+      num_pairs_max = CEILING(REAL(num_pairs) * min(10.0 * Compton_tau * P_corr, 1.0))
+    else
+      num_pairs_max = num_pairs
+    endif
+    P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    ! correction for P_12 if tile is smaller than tileX, tileY, tileZ:
-    tile_corr_x = REAL(species(1)%tile_sx) / &
-                & REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
-                     & species(1)%prtl_tile(ti, tj, tk)%x1)
-    tile_corr_y = REAL(species(1)%tile_sy) / &
-                & REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
-                     & species(1)%prtl_tile(ti, tj, tk)%y1)
-    tile_corr_z = REAL(species(1)%tile_sz) / &
-                & REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
-                     & species(1)%prtl_tile(ti, tj, tk)%z1)
-    tile_corr   = tile_corr_x * tile_corr_y * tile_corr_z 
-
-    do el_ph = 1, num_pairs
+    do el_ph = 1, num_pairs_max
       ! "extract" the el-photon pair:
       s1 = el_photon_pairs(el_ph)%part_1%spec
       p1 = el_photon_pairs(el_ph)%part_1%index
@@ -138,12 +147,14 @@ contains
         end if
       #endif
 
-      u_el => species(s1)%prtl_tile(ti, tj, tk)%u(p1)
-      v_el => species(s1)%prtl_tile(ti, tj, tk)%v(p1)
-      w_el => species(s1)%prtl_tile(ti, tj, tk)%w(p1)
-      u_ph => species(s2)%prtl_tile(ti, tj, tk)%u(p2)
-      v_ph => species(s2)%prtl_tile(ti, tj, tk)%v(p2)
-      w_ph => species(s2)%prtl_tile(ti, tj, tk)%w(p2)
+      u_el      => species(s1)%prtl_tile(ti, tj, tk)%u(p1)
+      v_el      => species(s1)%prtl_tile(ti, tj, tk)%v(p1)
+      w_el      => species(s1)%prtl_tile(ti, tj, tk)%w(p1)
+      weight_el => species(s1)%prtl_tile(ti, tj, tk)%weight(p1)
+      u_ph      => species(s2)%prtl_tile(ti, tj, tk)%u(p2)
+      v_ph      => species(s2)%prtl_tile(ti, tj, tk)%v(p2)
+      w_ph      => species(s2)%prtl_tile(ti, tj, tk)%w(p2)
+      weight_ph => species(s2)%prtl_tile(ti, tj, tk)%weight(p2)
 
       pel_x = REAL(u_el, 8); pel_y = REAL(v_el, 8); pel_z = REAL(w_el, 8)
       kph_x = REAL(u_ph, 8); kph_y = REAL(v_ph, 8); kph_z = REAL(w_ph, 8)
@@ -158,13 +169,8 @@ contains
 
       ! compute cross section:
       call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
-
-      ! TODO: rescale probability taking into account random pairing and weights...
-      ! ... need to make sure here that P_12 for any particular scattering... 
-      ! ... of a (possibly split) particle is < 1
-
-      P_12 = P_12 * REAL(max(num_1, num_2)) * tile_corr
-
+      ! rescale probability taking into account random pairing and weights:
+      P_12 = P_12 * P_corr
       #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
           print *, 'P_12 = ', P_12
@@ -178,8 +184,6 @@ contains
 
       rnd = random(dseed)
       if (rnd .le. P_12) then
-        ! TODO: Split particles if el and photon weight are not equal!
-
         ! scatter the photon in the electron rest frame:
         call scatterPhoton(KleinNishina, eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
 
@@ -188,19 +192,54 @@ contains
         call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
                             & eph_RF, kph_RF_x, kph_RF_y, kph_RF_z, &
                             & eph, kph_x, kph_y, kph_z)
+        u_ph_new = REAL(kph_x)
+        v_ph_new = REAL(kph_y)
+        w_ph_new = REAL(kph_z)
         ! obtain the recoil on the electron via momentum conservation:
-        if (Compton_el_recoil) then
-          u_el = u_el + u_ph - REAL(kph_x)
-          v_el = v_el + v_ph - REAL(kph_y)
-          w_el = w_el + w_ph - REAL(kph_z)
+        u_el_new = u_el + u_ph - u_ph_new
+        v_el_new = v_el + v_ph - v_ph_new
+        w_el_new = w_el + w_ph - w_ph_new
+
+        if ((weight_el .eq. 1.0) .and. (weight_ph .eq. 1.0)) then
+          ! store the new electron and photon momentum:
+          if (Compton_el_recoil) then
+            u_el = u_el_new
+            v_el = v_el_new
+            w_el = w_el_new
+          endif
+          u_ph = u_ph_new
+          v_ph = v_ph_new
+          w_ph = w_ph_new
+        else ! split the particles and subtract weights:
+          ! create the scattered el/positron - photon pair:
+          if (Compton_el_recoil) then
+            weight_el = weight_el - 1.0
+            if (weight_el .lt. 1e-4) then
+              species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
+            end if
+            call createParticle(s1, species(s1)%prtl_tile(ti, tj, tk)%xi(p1), &
+                                  & species(s1)%prtl_tile(ti, tj, tk)%yi(p1), &
+                                  & species(s1)%prtl_tile(ti, tj, tk)%zi(p1), &
+                                  & species(s1)%prtl_tile(ti, tj, tk)%dx(p1), &
+                                  & species(s1)%prtl_tile(ti, tj, tk)%dy(p1), &
+                                  & species(s1)%prtl_tile(ti, tj, tk)%dz(p1), &
+                                  & u_el_new, v_el_new, w_el_new)
+          endif
+          weight_ph = weight_ph - 1.0
+          if (weight_ph .lt. 1e-4) then
+            species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
+          end if
+          call createParticle(s2, species(s2)%prtl_tile(ti, tj, tk)%xi(p2), &
+                                & species(s2)%prtl_tile(ti, tj, tk)%yi(p2), &
+                                & species(s2)%prtl_tile(ti, tj, tk)%zi(p2), &
+                                & species(s2)%prtl_tile(ti, tj, tk)%dx(p2), &
+                                & species(s2)%prtl_tile(ti, tj, tk)%dy(p2), &
+                                & species(s2)%prtl_tile(ti, tj, tk)%dz(p2), &
+                                & u_ph_new, v_ph_new, w_ph_new)
         endif
-        ! store the new photon momentum:
-        u_ph = REAL(kph_x)
-        v_ph = REAL(kph_y)
-        w_ph = REAL(kph_z)
       end if
-      u_el => null(); v_el => null(); w_el => null()
-      u_ph => null(); v_ph => null(); w_ph => null()
+      u_el => null(); v_el => null(); w_el => null(); weight_el => null()
+      u_ph => null(); v_ph => null(); w_ph => null(); weight_ph => null()
     end do
   end subroutine comptonOnTile_mc
 
