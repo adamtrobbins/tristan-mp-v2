@@ -247,9 +247,10 @@ contains
     integer, intent(in)           :: n_sp_2 ! # of species in set
     integer, optional, intent(in) :: sp_arr_2(n_sp_2)
     type(couple), allocatable     :: pairs_of_photons(:)
-    integer                       :: num_pairs, num_pairs_max, ph, s1, s2, p1, p2
+    integer                       :: num_pairs, ph, s1, s2, p1, p2
+    integer                       :: tile_x, tile_y, tile_z, num_pairs_max
     real                          :: rnd, P_12
-    real                          :: tile_x, tile_y, tile_z, P_corr
+    real                          :: P_corr, P_max, ppt0
     logical                       :: thresholdQ
     integer                       :: num_1, num_2
 
@@ -269,23 +270,31 @@ contains
                                & pairs_of_photons, num_pairs, num_1)
       num_2 = num_1
     end if
+
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    ! calculate prob. correction factor to match with binary pairing:
-    tile_x = REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
-                & species(1)%prtl_tile(ti, tj, tk)%x1)
-    tile_y = REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
-                & species(1)%prtl_tile(ti, tj, tk)%y1)
-    tile_z = REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
-                & species(1)%prtl_tile(ti, tj, tk)%z1)
+    ! calculate prob. correction factor:
+    tile_x = species(1)%prtl_tile(ti, tj, tk)%x2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%x1
+    tile_y = species(1)%prtl_tile(ti, tj, tk)%y2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%y1
+    tile_z = species(1)%prtl_tile(ti, tj, tk)%z2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%z1
+    ! reference # pairs on a tile:
+    ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
+    ! make it independent of ppt0 & qed step:
+    P_corr = REAL(BW_interval) / ppt0
+    ! match with binary pairing:
     if (n_sp_2 .ne. 0) then
-      P_corr = REAL(max(num_1, num_2)) / (tile_x * tile_y * tile_z)
+      P_corr = P_corr * max(num_1, num_2)
     else
-      P_corr = REAL(num_1 - 1) / (tile_x * tile_y * tile_z)
+      P_corr = P_corr * (num_1 - 1)
     endif
-    if (num_pairs > CEILING(10.0 * ppc0 * tile_x * tile_y * tile_z)) then
-      ! reduce the # pairs to loop over in dense regions...
-      !... but still keeping any single scattering P_12 < 1
-      num_pairs_max = CEILING(REAL(num_pairs) * min(10.0 * BW_tau * P_corr, 1.0))
+    if (num_pairs .gt. INT(ppt0)) then
+      ! reduce # pairs to loop over in dense regions:
+      P_max = 0.26 * BW_tau * P_corr ! tight upper bound on max P_12 for BW
+      num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
+      ! limit from below to ppt0 to avoid excessive undersampling:
+      num_pairs_max = max(num_pairs_max, INT(ppt0))
     else
       num_pairs_max = num_pairs
     endif
@@ -298,6 +307,16 @@ contains
                                & P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
       P_12 = P_12 * P_corr
+      #ifdef DEBUG
+        if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
+          print *, 'P_12 = ', P_12
+          call throwError('BW cross section P_12 out of bounds!')
+        end if
+      #else
+        if ((P_12 .gt. 1.0)) then
+          print '(1X,A,ES10.3,A)', 'Warning: BW cross section P_12 = ', P_12, ' > 1 !!'
+        endif
+      #endif
 
       rnd = random(dseed)
       if ((rnd .le. P_12) .and. (thresholdQ)) then

@@ -96,9 +96,10 @@ contains
     integer, intent(in)       :: n_sp_2 ! # of species in set
     integer, intent(in)       :: sp_arr_2(n_sp_2) ! photons
     type(couple), allocatable :: el_photon_pairs(:)
-    integer                   :: num_pairs, num_pairs_max, el_ph, s1, s2, p1, p2
+    integer                   :: num_pairs, el_ph, s1, s2, p1, p2
     real                      :: rnd, P_12
-    real                      :: tile_x, tile_y, tile_z, P_corr
+    integer                   :: tile_x, tile_y, tile_z, num_pairs_max
+    real                      :: P_corr, P_max, ppt0
     logical                   :: KleinNishina
     integer                   :: num_1, num_2
     real(kind=8)              :: el_gamma, pel_x, pel_y, pel_z
@@ -112,19 +113,27 @@ contains
     ! couple the electrons/positrons (group1) and photons (group2): 
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
                              & el_photon_pairs, num_pairs, num_1, num_2)
+
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    ! calculate prob. correction factor to match with binary pairing:
-    tile_x = REAL(species(1)%prtl_tile(ti, tj, tk)%x2 - &
-                & species(1)%prtl_tile(ti, tj, tk)%x1)
-    tile_y = REAL(species(1)%prtl_tile(ti, tj, tk)%y2 - &
-                & species(1)%prtl_tile(ti, tj, tk)%y1)
-    tile_z = REAL(species(1)%prtl_tile(ti, tj, tk)%z2 - &
-                & species(1)%prtl_tile(ti, tj, tk)%z1)
-    P_corr = REAL(max(num_1, num_2)) / (tile_x * tile_y * tile_z)  
-    if (num_pairs > CEILING(10.0 * ppc0 * tile_x * tile_y * tile_z)) then
-      ! reduce the # pairs to loop over in dense regions...
-      !... but still keeping any single scattering P_12 < 1
-      num_pairs_max = CEILING(REAL(num_pairs) * min(10.0 * Compton_tau * P_corr, 1.0))
+    ! calculate prob. correction factor:
+    tile_x = species(1)%prtl_tile(ti, tj, tk)%x2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%x1
+    tile_y = species(1)%prtl_tile(ti, tj, tk)%y2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%y1
+    tile_z = species(1)%prtl_tile(ti, tj, tk)%z2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%z1
+    ! reference # pairs on a tile:
+    ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
+    ! make it independent of ppt0 & qed step:
+    P_corr = REAL(Compton_interval) / ppt0
+    ! match with binary pairing:
+    P_corr = P_corr * max(num_1, num_2)
+    if (num_pairs .gt. INT(ppt0)) then
+      ! reduce # pairs to loop over in dense regions:
+      P_max = 2.0 * Compton_tau * P_corr ! tight upper bound on max P_12 for Compton
+      num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
+      ! limit from below to ppt0 to avoid excessive undersampling:
+      num_pairs_max = max(num_pairs_max, INT(ppt0))
     else
       num_pairs_max = num_pairs
     endif
@@ -169,7 +178,7 @@ contains
 
       ! compute cross section:
       call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
-      ! rescale probability taking into account random pairing and weights:
+      ! to match the optical depth with the binary pairing case:
       P_12 = P_12 * P_corr
       #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
@@ -200,19 +209,13 @@ contains
         v_el_new = v_el + v_ph - v_ph_new
         w_el_new = w_el + w_ph - w_ph_new
 
-        if ((weight_el .eq. 1.0) .and. (weight_ph .eq. 1.0)) then
-          ! store the new electron and photon momentum:
-          if (Compton_el_recoil) then
+        ! el update:
+        if (Compton_el_recoil) then
+          if (weight_el .eq. 1.0) then
             u_el = u_el_new
             v_el = v_el_new
             w_el = w_el_new
-          endif
-          u_ph = u_ph_new
-          v_ph = v_ph_new
-          w_ph = w_ph_new
-        else ! split the particles and subtract weights:
-          ! create the scattered el/positron - photon pair:
-          if (Compton_el_recoil) then
+          else ! split electron:
             weight_el = weight_el - 1.0
             if (weight_el .lt. 1e-4) then
               species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
@@ -225,6 +228,13 @@ contains
                                   & species(s1)%prtl_tile(ti, tj, tk)%dz(p1), &
                                   & u_el_new, v_el_new, w_el_new)
           endif
+        endif
+        ! photon update:
+        if (weight_ph .eq. 1.0) then
+          u_ph = u_ph_new
+          v_ph = v_ph_new
+          w_ph = w_ph_new
+        else ! split photon:
           weight_ph = weight_ph - 1.0
           if (weight_ph .lt. 1e-4) then
             species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
