@@ -107,7 +107,7 @@ contains
       !-------------------------------------------------
       ! Advancing 1st halfstep of `dB / dt = curl E`
         t_fldslvrstep = MPI_WTIME()
-      call advanceBHalfstep()
+      if (enable_fieldsolver) call advanceBHalfstep()
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       !.................................................
 
@@ -145,7 +145,7 @@ contains
       !-------------------------------------------------
       ! Advancing 2nd halfstep of `dB / dt = curl E`
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
-      call advanceBHalfstep()
+      if (enable_fieldsolver) call advanceBHalfstep()
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       !.................................................
 
@@ -166,7 +166,7 @@ contains
       !-------------------------------------------------
       ! Advancing fullstep of `dE / dt = -curl B`
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
-      call advanceEFullstep()
+      if (enable_fieldsolver) call advanceEFullstep()
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       !.................................................
 
@@ -180,7 +180,7 @@ contains
       !-------------------------------------------------
       ! Depositing current: `j_s = rho_s * v_s`
         t_depositstep = MPI_WTIME()
-      call depositCurrents()
+      if (enable_currentdeposit) call depositCurrents()
         t_depositstep = MPI_WTIME() - t_depositstep
       !.................................................
 
@@ -201,7 +201,7 @@ contains
       !-------------------------------------------------
       ! Adding currents: `dE / dt += -j`
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
-      call addCurrents()
+      if (enable_fieldsolver) call addCurrents()
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       !.................................................
 

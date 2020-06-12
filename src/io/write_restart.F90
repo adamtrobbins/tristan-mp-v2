@@ -156,6 +156,14 @@ contains
             write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%weight(1:num)
             write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%ind(1:num)
             write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%proc(1:num)
+            #ifdef GCA
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz_past(1:num)
+            #endif
           end do
         end do
       end do

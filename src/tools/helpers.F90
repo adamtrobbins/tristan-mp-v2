@@ -49,20 +49,20 @@ contains
   end subroutine checkNpart
 
   subroutine globalToLocalCoords(x_glob, y_glob, z_glob,&
-                               & x_loc, y_loc, z_loc, adjustQ_, containedQ)
+                               & x_loc, y_loc, z_loc, adjustQ, containedQ)
     implicit none
     real, intent(in)              :: x_glob, y_glob, z_glob
     real, intent(out)             :: x_loc, y_loc, z_loc
-    logical, optional, intent(in) :: adjustQ_
+    logical, optional, intent(in) :: adjustQ
     logical, optional, intent(out):: containedQ
-    logical                       :: adjustQ
-    if (present(adjustQ_)) then
-      adjustQ = adjustQ_
+    logical                       :: adjustQ_
+    if (present(adjustQ)) then
+      adjustQ_ = adjustQ
     else
-      adjustQ = .false.
+      adjustQ_ = .false.
     end if
 
-    if (adjustQ) then
+    if (adjustQ_) then
       x_loc = x_glob; y_loc = y_glob; z_loc = z_glob
       #if defined(oneD) || defined (twoD) || defined (threeD)
         x_loc = MAX(0.0, MIN(x_glob - REAL(this_meshblock%ptr%x0), REAL(this_meshblock%ptr%sx)))

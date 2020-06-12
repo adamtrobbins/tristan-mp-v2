@@ -17,6 +17,12 @@ module m_particles
     real, allocatable, dimension(:)             :: weight
     integer, allocatable, dimension(:)          :: ind, proc
     !dir$ attributes align: 64 :: xi, yi, zi, dx, dy, dz, u, v, w, weight, ind, proc
+    #ifdef GCA
+      ! GCA specific variables
+      integer(kind=2), allocatable, dimension(:)  :: xi_past, yi_past, zi_past
+      real, allocatable, dimension(:)             :: dx_past, dy_past, dz_past
+      !dir$ attributes align: 64 :: xi_past, yi_past, zi_past, dx_past, dy_past, dz_past
+    #endif
     ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
 
@@ -28,6 +34,15 @@ module m_particles
     ! numbers of the tiles in each direction
     integer     :: tile_nx, tile_ny, tile_nz
     type (particle_tile), allocatable, dimension(:,:,:) :: prtl_tile
+    ! `true/false` - whether this species deposit currents or not
+    logical     :: deposit_sp
+    ! `true/false` - whether this species moves or not
+    logical     :: move_sp
+
+    #ifdef GCA
+      ! `true/false` - either this species can be treated in a GCA mover, or not
+      logical     :: gca_sp
+    #endif
 
     ! extra physics properties
     #ifdef RADIATION
@@ -48,14 +63,25 @@ module m_particles
   end type particle_species
 
   ! particle types for exchange between processors />
-  type :: prtl_enroute
-    ! DEP_PRT [particle-dependent]
-    integer(kind=2)   :: xi, yi, zi
-    real              :: dx, dy, dz
-    real              :: u, v, w
-    real              :: weight
-    integer           :: ind, proc
-  end type prtl_enroute
+  #ifndef GCA
+    type :: prtl_enroute
+      ! DEP_PRT [particle-dependent]
+      integer(kind=2)   :: xi, yi, zi
+      real              :: dx, dy, dz
+      real              :: u, v, w
+      real              :: weight
+      integer           :: ind, proc
+    end type prtl_enroute
+  #else
+    type :: prtl_enroute
+      ! DEP_PRT [particle-dependent]
+      integer(kind=2)   :: xi, yi, zi, xi_past, yi_past, zi_past
+      real              :: dx, dy, dz, dx_past, dy_past, dz_past
+      real              :: u, v, w
+      real              :: weight
+      integer           :: ind, proc
+    end type prtl_enroute
+  #endif
 
   type :: enroute_array
     type(prtl_enroute), allocatable     :: send_enroute(:)

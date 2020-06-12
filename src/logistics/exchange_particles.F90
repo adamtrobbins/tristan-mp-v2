@@ -106,6 +106,46 @@ contains
                   new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
                   enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi = new_xyz
                 #endif
+
+                #ifdef GCA
+                  ! this thing below can probably be done better
+                  ! shift past coordinates to fit the new grid
+                  #if defined(oneD) || defined(twoD) || defined(threeD)
+                    if (send_x .eq. 1) then
+                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past -&
+                              & this_meshblock%ptr%sx
+                    else if (send_x .eq. -1) then
+                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past +&
+                              & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
+                    end if
+                  #endif
+
+                  #if defined(twoD) || defined(threeD)
+                    if (send_y .eq. 1) then
+                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past -&
+                              & this_meshblock%ptr%sy
+                    else if (send_y .eq. -1) then
+                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past +&
+                              & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
+                    end if
+                  #endif
+
+                  #if defined(threeD)
+                    if (send_z .eq. 1) then
+                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past -&
+                              & this_meshblock%ptr%sz
+                    else if (send_z .eq. -1) then
+                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past +&
+                              & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
+                    end if
+                  #endif
+                #endif
               end if
             end do ! particles
             pt_xi => null(); pt_yi => null(); pt_zi => null()
@@ -182,13 +222,6 @@ contains
                   & (pt_yi(p) .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
                   & (pt_zi(p) .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
                   & (pt_zi(p) .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
-                  print *, pt_xi(p), pt_yi(p), pt_zi(p)
-                  print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
-                       & species(s)%prtl_tile(ti, tj, tk)%x2,&
-                       & species(s)%prtl_tile(ti, tj, tk)%y1,&
-                       & species(s)%prtl_tile(ti, tj, tk)%y2,&
-                       & species(s)%prtl_tile(ti, tj, tk)%z1,&
-                       & species(s)%prtl_tile(ti, tj, tk)%z2
                   call throwError('ERROR: particle in wrong tile after exchange')
                 end if
               end do
@@ -266,6 +299,14 @@ contains
     enroute%w = species(spec_id)%prtl_tile(ti, tj, tk)%w(prtl_id)
     enroute%ind = species(spec_id)%prtl_tile(ti, tj, tk)%ind(prtl_id)
     enroute%proc = species(spec_id)%prtl_tile(ti, tj, tk)%proc(prtl_id)
+    #ifdef GCA
+      enroute%xi_past = species(spec_id)%prtl_tile(ti, tj, tk)%xi_past(prtl_id)
+      enroute%yi_past = species(spec_id)%prtl_tile(ti, tj, tk)%yi_past(prtl_id)
+      enroute%zi_past = species(spec_id)%prtl_tile(ti, tj, tk)%zi_past(prtl_id)
+      enroute%dx_past = species(spec_id)%prtl_tile(ti, tj, tk)%dx_past(prtl_id)
+      enroute%dy_past = species(spec_id)%prtl_tile(ti, tj, tk)%dy_past(prtl_id)
+      enroute%dz_past = species(spec_id)%prtl_tile(ti, tj, tk)%dz_past(prtl_id)
+    #endif
   end subroutine copyToEnroute
 
   subroutine copyFromEnroute(enroute, spec_id)
@@ -273,31 +314,61 @@ contains
     type(prtl_enroute), intent(in)  :: enroute
     integer, intent(in)             :: spec_id
     ! DEP_PRT [particle-dependent]
-    call createParticle(spec_id, enroute%xi, enroute%yi, enroute%zi, &
-                               & enroute%dx, enroute%dy, enroute%dz, &
-                               & enroute%u, enroute%v, enroute%w, &
-                               & enroute%ind, enroute%proc, enroute%weight)
+    #ifndef GCA
+      call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi, &
+                                               & enroute%dx, enroute%dy, enroute%dz, &
+                                               & enroute%u, enroute%v, enroute%w, &
+                                               & enroute%ind, enroute%proc, enroute%weight)
+    #else
+      call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi, &
+                                               & enroute%dx, enroute%dy, enroute%dz, &
+                                               & enroute%xi_past, enroute%yi_past, enroute%zi_past, &
+                                               & enroute%dx_past, enroute%dy_past, enroute%dz_past, &
+                                               & enroute%u, enroute%v, enroute%w, &
+                                               & enroute%ind, enroute%proc, enroute%weight)
+    #endif
   end subroutine copyFromEnroute
 
   subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: s, ti, tj, tk, p
-    call createParticle(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%u(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%v(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%w(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
-                         & species(s)%prtl_tile(ti, tj, tk)%weight(p))
+    #ifndef GCA
+      call createParticleFromAttributes(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%u(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%v(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%weight(p))
+    #else
+      call createParticleFromAttributes(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%xi_past(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%yi_past(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%zi_past(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dx_past(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dy_past(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%dz_past(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%u(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%v(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%weight(p))
+    #endif
     ! schedule particle for deletion
     species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
-  end subroutine
+  end subroutine moveParticleBetweenTiles
 
   subroutine extractParticlesFromEnroute(cnt, spec_id)
     implicit none

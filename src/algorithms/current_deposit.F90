@@ -13,8 +13,7 @@ contains
     implicit none
     integer :: s, p, ti, tj, tk
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
-    real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
-                                           & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
+    real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:), pt_wei(:)
     real                                  :: xr, yr, zr, x1, y1, z1, x2, y2, z2
     real                                  :: gamma_inv, temp_charge
     integer(kind=2)                       :: i1, i2, j1, j2, k1, k2
@@ -22,11 +21,17 @@ contains
     real                                  :: Wx1, Wy1, Wz1, Wx2, Wy2, Wz2
     real                                  :: onemWx1, onemWy1, onemWz1, onemWx2, onemWy2, onemWz2
     real                                  :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2
+    #ifndef GCA
+      real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:)
+    #else
+      integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
+      real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
+    #endif
 
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
     do s = 1, nspec ! loop over species
-      if (species(s)%ch_sp .eq. 0) cycle
+      if ((species(s)%ch_sp .eq. 0) .or. (.not. species(s)%deposit_sp)) cycle
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
@@ -38,19 +43,34 @@ contains
             pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
             pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
 
-            pt_u => species(s)%prtl_tile(ti, tj, tk)%u
-            pt_v => species(s)%prtl_tile(ti, tj, tk)%v
-            pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+            #ifndef GCA
+              pt_u => species(s)%prtl_tile(ti, tj, tk)%u
+              pt_v => species(s)%prtl_tile(ti, tj, tk)%v
+              pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+            #else
+              pt_xi_past => species(s)%prtl_tile(ti, tj, tk)%xi_past
+              pt_yi_past => species(s)%prtl_tile(ti, tj, tk)%yi_past
+              pt_zi_past => species(s)%prtl_tile(ti, tj, tk)%zi_past
 
+              pt_dx_past => species(s)%prtl_tile(ti, tj, tk)%dx_past
+              pt_dy_past => species(s)%prtl_tile(ti, tj, tk)%dy_past
+              pt_dz_past => species(s)%prtl_tile(ti, tj, tk)%dz_past
+            #endif
             pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
             temp_charge = species(s)%ch_sp * unit_ch / B_norm
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              ! push the particle back
-              gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
-
-              x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
-              x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv;   z1 = z2 - pt_w(p) * CC * gamma_inv
+              #ifndef GCA
+                ! push the particle back
+                gamma_inv = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
+                x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv;   z1 = z2 - pt_w(p) * CC * gamma_inv
+              #else
+                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
+                x1 = REAL(pt_xi_past(p)) + pt_dx_past(p)
+                y1 = REAL(pt_yi_past(p)) + pt_dy_past(p)
+                z1 = REAL(pt_zi_past(p)) + pt_dz_past(p)
+              #endif
 
               #ifdef oneD
                 i1 = INT(x1, 2);  i2 = pt_xi(p)
@@ -74,7 +94,7 @@ contains
                 Fx2 = -temp_charge * (x2 - xr) * pt_wei(p)
                 Fy2 = -temp_charge * (y2 - yr) * pt_wei(p)
                 Fz2 = -temp_charge * (z2 - zr) * pt_wei(p)
-                
+
                 jx(i1  , j1  , k1) = jx(i1  , j1  , k1) + Fx1
                 jx(i2  , j2  , k2) = jx(i2  , j2  , k2) + Fx2
 
@@ -190,8 +210,13 @@ contains
             end do
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
-            pt_u => null(); pt_v => null(); pt_w => null()
             pt_wei => null()
+            #ifndef GCA
+              pt_u => null(); pt_v => null(); pt_w => null()
+            #else
+              pt_xi_past => null(); pt_yi_past => null(); pt_zi_past => null()
+              pt_dx_past => null(); pt_dy_past => null(); pt_dz_past => null()
+            #endif
           end do
         end do
       end do

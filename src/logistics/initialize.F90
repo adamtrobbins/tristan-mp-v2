@@ -363,10 +363,17 @@ contains
     call getInput('algorithm', 'nfilter', nfilter, 16)
     call getInput('algorithm', 'c', CC, 0.45)
     call getInput('algorithm', 'corr', CORR, 1.025)
+    call getInput('algorithm', 'fieldsolver', enable_fieldsolver, .true.)
+    call getInput('algorithm', 'currdeposit', enable_currentdeposit, .true.)
     call getInput('plasma', 'ppc0', ppc0)
     call getInput('plasma', 'sigma', sigma)
     call getInput('plasma', 'c_omp', c_omp)
     call renormalizeUnits()
+
+    #ifdef GCA
+      call getInput('algorithm', 'gca_rhoL', gca_rhomin)
+      call getInput('algorithm', 'gca_EoverB', gca_eoverbmin)
+    #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
@@ -376,7 +383,7 @@ contains
     implicit none
     integer                 :: s, ti, tj, tk
     character(len=STR_MAX)  :: var_name
-    integer                  :: maxptl_
+    integer                 :: maxptl_
 
     call getInput('particles', 'nspec', nspec, 2)
 
@@ -407,6 +414,29 @@ contains
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
 
+      write (var_name, "(A7,I1)") "deposit", s
+      call getInput('particles', var_name, species(s)%deposit_sp, (species(s)%ch_sp .ne. 0))
+      write (var_name, "(A4,I1)") "move", s
+      call getInput('particles', var_name, species(s)%move_sp, .true.)
+
+      if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .ne. 0)) then
+        call throwError('ERROR: massless charged particles are not allowed')
+      end if
+      if ((species(s)%m_sp .ne. 0) .and. (species(s)%ch_sp .eq. 0)) then
+        call throwError('ERROR: massive zero-charge particles are not allowed')
+      end if
+      if ((species(s)%ch_sp .eq. 0) .and. (species(s)%deposit_sp .ne. 0)) then
+        call throwError('ERROR: zero-charged particles cannot deposit current')
+      end if
+
+      #ifdef GCA
+        write (var_name, "(A3,I1)") "gca", s
+        call getInput('particles', var_name, species(s)%gca_sp, (species(s)%ch_sp .ne. 0))
+        if ((species(s)%ch_sp .eq. 0) .and. species(s)%gca_sp) then
+          call throwError('ERROR: massless/zero-charged particles cannot be treated with a GCA pusher')
+        end if
+      #endif
+
       #ifdef DOWNSAMPLING
         write (var_name, "(A3,I1)") "dwn", s
         call getInput('particles', var_name, species(s)%dwn_sp, .false.)
@@ -436,37 +466,7 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            species(s)%prtl_tile(ti, tj, tk)%spec = s
-            species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = maxptl_ / &
-                              & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
-            species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
-
-            species(s)%prtl_tile(ti, tj, tk)%x1 = (ti - 1) * species(s)%tile_sx
-            species(s)%prtl_tile(ti, tj, tk)%x2 = min(ti * species(s)%tile_sx, this_meshblock%ptr%sx)
-            species(s)%prtl_tile(ti, tj, tk)%y1 = (tj - 1) * species(s)%tile_sy
-            species(s)%prtl_tile(ti, tj, tk)%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
-            species(s)%prtl_tile(ti, tj, tk)%z1 = (tk - 1) * species(s)%tile_sz
-            species(s)%prtl_tile(ti, tj, tk)%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
-            #ifdef DEBUG
-              if ((species(s)%prtl_tile(ti, tj, tk)%x1 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%x2 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%y1 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%y2 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%z1 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%z2 .eq. 0)) then
-                print *, ti, tj, tk
-                print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%x2,&
-                 & species(s)%prtl_tile(ti, tj, tk)%y1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%y2,&
-                 & species(s)%prtl_tile(ti, tj, tk)%z1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%z2
-               call throwError('ERROR IN PRTLINIT')
-              end if
-            #endif
-
-            call allocateParticles(species(s)%prtl_tile(ti, tj, tk),&
-                                 & species(s)%prtl_tile(ti, tj, tk)%maxptl_sp)
+            call createEmptyTile(s, ti, tj, tk, maxptl_)
           end do
         end do
       end do
@@ -555,19 +555,31 @@ contains
 
     ! DEP_PRT [particle-dependent]
     ! new type for myMPI_ENROUTE
-    !   BY DEFAULT:
-    !     # of blockcounts = 3:
-    !       3 x integer2  [xi, yi, zi]
-    !       7 x real      [dx, dy, dz, u, v, w, weight]
-    !       2 x integer   [ind, proc]
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
-    blockcounts(0) = 3
-    oldtypes(0) = MPI_INTEGER2
-    blockcounts(1) = 7
-    oldtypes(1) = MPI_REAL
-    blockcounts(2) = 2
-    oldtypes(2) = MPI_INTEGER
+    #ifndef GCA
+      !     # of blockcounts = 3:
+      !       3  x integer2  [xi, yi, zi]
+      !       7  x real      [dx, dy, dz, u, v, w, weight]
+      !       2  x integer   [ind, proc]
+      blockcounts(0) = 3
+      oldtypes(0) = MPI_INTEGER2
+      blockcounts(1) = 7
+      oldtypes(1) = MPI_REAL
+      blockcounts(2) = 2
+      oldtypes(2) = MPI_INTEGER
+    #else
+      !     # of blockcounts = 3:
+      !       6  x integer2  [xi, yi, zi, xi_past, yi_past, zi_past]
+      !       10 x real      [dx, dy, dz, dx_past, dy_past, dz_past, u, v, w, weight]
+      !       2  x integer   [ind, proc]
+      blockcounts(0) = 6
+      oldtypes(0) = MPI_INTEGER2
+      blockcounts(1) = 10
+      oldtypes(1) = MPI_REAL
+      blockcounts(2) = 2
+      oldtypes(2) = MPI_INTEGER
+    #endif
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
@@ -769,7 +781,7 @@ contains
             ! reallocate the tile if necessary
             read(UNIT_restart_prtl) dummy_int1
             if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-              call reallocEmptyTile(species(s)%prtl_tile(ti, tj, tk), dummy_int1)
+              call allocateParticlesOnEmptyTile(s, species(s)%prtl_tile(ti, tj, tk), dummy_int1)
             end if
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%npart_sp
             num = species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -801,6 +813,7 @@ contains
             end if
 
             ! finally read out all the particles
+            ! DEP_PRT [particle-dependent]
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi(1:num)
@@ -813,6 +826,14 @@ contains
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%weight(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%ind(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%proc(1:num)
+            #ifdef GCA
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz_past(1:num)
+            #endif
           end do
         end do
       end do

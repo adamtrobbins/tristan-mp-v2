@@ -83,6 +83,11 @@ parser.add_argument('-debug',
                     default=False,
                     help='enable DEBUG flag')
 
+parser.add_argument('-gca',
+                    action='store_true',
+                    default=False,
+                    help='enable GCA mover')
+
 dim_group = parser.add_mutually_exclusive_group(required=True)
 dim_group.add_argument('-1d',
                        action='store_true',
@@ -185,7 +190,7 @@ if args['debug'] and args['intel']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
   makefile_options['COMPILER_FLAGS'] += '-traceback '
 
-# compilar (+ vectorization etc)
+# compiler (+ vectorization etc)
 if args['intel']:
   makefile_options['MODULE'] = '-module '
   makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -xHost -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
@@ -214,6 +219,8 @@ if args['alb'] and (not args['slb']):
 if args['slb']:
   args['alb'] = False
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
+if args['gca']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DGCA '
 
 # extra physics
 if args['extfields']:
@@ -260,6 +267,7 @@ print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
+print('  Particle pusher:         ' + ('Boris/GCA' if args['gca'] else 'Boris'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
