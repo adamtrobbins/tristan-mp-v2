@@ -102,10 +102,21 @@ contains
     integer                                       :: set_p_1, set_p_2, s1, s2, p1, p2
     integer                                       :: set_size, set_size_1, set_size_2
     type(couple)                                  :: pair_of_photons
-    real                                          :: rnd, P_12, P_1, delta_P_12
+    integer                                       :: tile_x, tile_y, tile_z
+    real                                          :: rnd, P_12, P_1, delta_P_12, ppt0
     logical                                       :: thresholdQ
     real                                          :: weight1, weight2, min_weight
     integer                                       :: npairs_produced, npp
+
+
+    tile_x = species(1)%prtl_tile(ti, tj, tk)%x2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%x1
+    tile_y = species(1)%prtl_tile(ti, tj, tk)%y2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%y1
+    tile_z = species(1)%prtl_tile(ti, tj, tk)%z2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%z1
+    ! reference # particles on a tile:
+    ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
 
     if (n_sp_2 .ne. 0) then
       ! two separate groups of photons interacting with each other
@@ -149,6 +160,7 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
+          P_12 = P_12 * REAL(BW_interval) / ppt0 ! make rate indep. of ppt0 & qed step
           min_weight = FLOOR(MIN(weight1, weight2))
           delta_P_12 = P_12 * min_weight * min_weight
           P_1 = P_1 + delta_P_12
@@ -211,6 +223,7 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
+          P_12 = P_12 * REAL(BW_interval) / ppt0 ! make rate indep. of ppt0 & qed step
           min_weight = FLOOR(MIN(weight1, weight2))
           delta_P_12 = P_12 * min_weight * min_weight
           P_1 = P_1 + delta_P_12
