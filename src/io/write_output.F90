@@ -28,7 +28,7 @@ module m_writeoutput
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   real, allocatable, dimension(:,:) :: glob_spectra
-  logical                 :: flds_at_prtl, write_xdmf
+  logical                 :: output_enable, flds_at_prtl, write_xdmf
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -56,18 +56,18 @@ contains
     step = output_index
     #ifdef HDF5
       call writeParams_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
       call writeParticles_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
       call writeFields_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
       call writeSpectra_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
       call writeDomain_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
     #else
       call writeParams(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeParams()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeParams()", .true.)
     #endif
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
@@ -236,33 +236,37 @@ contains
 
     spectra(:,:) = 0
     do s = 1, nspec
-     do ti = 1, species(s)%tile_nx
-       do tj = 1, species(s)%tile_ny
-         do tk = 1, species(s)%tile_nz
-           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-             u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
-             v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
-             w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
-             if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
-               energy = sqrt(u_**2 + v_**2 + w_**2)
-             else
-               energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
-             end if
-             energy = log(energy)
-             if (energy .le. spec_min) then
-               spec_index = 1
-             else if (energy .ge. spec_max) then
-               spec_index = spec_num
-             else
-               spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
-               if (spec_index .lt. 1) spec_index = 1
-               if (spec_index .gt. spec_num) spec_index = spec_num
-             end if
-             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
-           end do
-         end do
-       end do
-     end do
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+              w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+              if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+                energy = sqrt(u_**2 + v_**2 + w_**2)
+              else
+                energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
+              end if
+              if (energy .eq. 0) then
+                energy = spec_min
+              else
+                energy = log(energy)
+              end if
+              if (energy .le. spec_min) then
+                spec_index = 1
+              else if (energy .ge. spec_max) then
+                spec_index = spec_num
+              else
+                spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+                if (spec_index .lt. 1) spec_index = 1
+                if (spec_index .gt. spec_num) spec_index = spec_num
+              end if
+              spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+            end do
+          end do
+        end do
+      end do
     end do
 
     ! send to root rank
@@ -495,31 +499,67 @@ contains
             k = k_start + k1 * output_istep
             select case (trim(fld_vars(f)))
             case('ex')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
+              #ifndef debug
+                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
+              #else
+                ex0 = ex(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = ex0 * B_norm
             case('ey')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
+              #ifndef debug
+                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
+              #else
+                ey0 = ey(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = ey0 * B_norm
             case('ez')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
+              #ifndef debug
+                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
+              #else
+                ez0 = ez(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = ez0 * B_norm
             case('bx')
-              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
+              #ifndef debug
+                call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
+              #else
+                bx0 = bx(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = bx0 * B_norm
             case('by')
-              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
+              #ifndef debug
+                call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
+              #else
+                by0 = by(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = by0 * B_norm
             case('bz')
-              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
+              #ifndef debug
+                call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
+              #else
+                bz0 = bz(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = bz0 * B_norm
             case('jx')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              #ifndef debug
+                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              #else
+                jx0 = jx(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = -jx0 * B_norm
             case('jy')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              #ifndef debug
+                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              #else
+                jy0 = jy(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = -jy0 * B_norm
             case('jz')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              #ifndef debug
+                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
+              #else
+                jz0 = jz(i, j, k)
+              #endif
               sm_arr(i1, j1, k1) = -jz0 * B_norm
             case('xx')
               sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
@@ -575,6 +615,7 @@ contains
     ! number of strided particles per each species
     do s = 1, nspec
       npart_stride(s) = 0
+      if (.not. species(s)%output_sp) cycle
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
@@ -617,22 +658,25 @@ contains
       allocate(stride_ti_arr(npart_stride(s)))
       allocate(stride_tj_arr(npart_stride(s)))
       allocate(stride_tk_arr(npart_stride(s)))
-      j = 1
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
-                stride_indices_arr(j) = p
-                stride_ti_arr(j) = ti
-                stride_tj_arr(j) = tj
-                stride_tk_arr(j) = tk
-                j = j + 1
-              end if
-            end do ! particles
-          end do ! tk
-        end do ! tj
-      end do ! ti
+
+      if (npart_stride(s) .gt. 0) then
+        j = 1
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+                  stride_indices_arr(j) = p
+                  stride_ti_arr(j) = ti
+                  stride_tj_arr(j) = tj
+                  stride_tk_arr(j) = tk
+                  j = j + 1
+                end if
+              end do ! particles
+            end do ! tk
+          end do ! tj
+        end do ! ti
+      end if
 
       do p = 1, n_prtl_vars
         call h5screate_simple_f(dataset_rank, global_dims, filespace(p), error)
