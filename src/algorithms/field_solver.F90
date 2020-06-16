@@ -300,16 +300,16 @@ contains
 
     #ifdef oneD
       xmax = this_meshblock%ptr%sx - 1
-      zmax = 0
       ymax = 0
+      zmax = 0
     #elif twoD
       xmax = this_meshblock%ptr%sx - 1
-      zmax = this_meshblock%ptr%sz - 1
-      ymax = 0
+      ymax = this_meshblock%ptr%sy - 1
+      zmax = 0
     #elif threeD
       xmax = this_meshblock%ptr%sx - 1
-      zmax = this_meshblock%ptr%sz - 1
       ymax = this_meshblock%ptr%sy - 1
+      zmax = this_meshblock%ptr%sz - 1
     #endif
     ! "-" sign is taken care of in the deposit
     ex(xmin:xmax, ymin:ymax, zmin:zmax) = &
@@ -365,7 +365,7 @@ contains
           if (x0 .lt. ds_abs) then
             lambdaAbsorb = -K_abs * ((ds_abs - x0) / ds_abs)**3
           else if (x0 .gt. global_mesh%sx - ds_abs) then
-            lambdaAbsorb = -K_abs * ((x0 - (global_mesh%sx - ds_abs)) / ds_abs)**3
+            lambdaAbsorb = -K_abs * ((x0 - (global_mesh%sx - 1.0 - ds_abs)) / ds_abs)**3
           end if
         end if
       #endif
@@ -375,7 +375,7 @@ contains
           if (y0 .lt. ds_abs) then
             lambdaAbsorb = -K_abs * ((ds_abs - y0) / ds_abs)**3
           else if (y0 .gt. global_mesh%sy - ds_abs) then
-            lambdaAbsorb = -K_abs * ((y0 - (global_mesh%sy - ds_abs)) / ds_abs)**3
+            lambdaAbsorb = -K_abs * ((y0 - (global_mesh%sy - 1.0 - ds_abs)) / ds_abs)**3
           end if
         end if
       #endif
@@ -385,7 +385,7 @@ contains
           if (z0 .lt. ds_abs) then
             lambdaAbsorb = -K_abs * ((ds_abs - z0) / ds_abs)**3
           else if (z0 .gt. global_mesh%sz - ds_abs) then
-            lambdaAbsorb = -K_abs * ((z0 - (global_mesh%sz - ds_abs)) / ds_abs)**3
+            lambdaAbsorb = -K_abs * ((z0 - (global_mesh%sz - 1.0 - ds_abs)) / ds_abs)**3
           end if
         end if
       #endif
