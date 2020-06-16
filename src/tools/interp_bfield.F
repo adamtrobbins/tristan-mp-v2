@@ -124,32 +124,3 @@
   c1 = c01 * (1.0 - dy) + c11 * dy
   bz0 = c0 * (1.0 - dz) + c1 * dz
 #endif
-
-
-! c000=0.5*(bx(pt_xi(p),pt_yi(p),pt_zi(p))+bx(pt_xi(p),pt_yi(p)-1,pt_zi(p)))
-! c100=0.5*(bx(pt_xi(p)+1,pt_yi(p),pt_zi(p))+bx(pt_xi(p)+1,pt_yi(p)-1,pt_zi(p)))
-! c010=0.5*(bx(pt_xi(p),pt_yi(p),pt_zi(p))+bx(pt_xi(p),pt_yi(p)+1,pt_zi(p)))
-! c110=0.5*(bx(pt_xi(p)+1,pt_yi(p),pt_zi(p))+bx(pt_xi(p)+1,pt_yi(p)+1,pt_zi(p)))
-! c00=c000*(1.0-dx)+c100*dx
-! c10=c010*(1.0-dx)+c110*dx
-! bx0=c00*(1.0-dy)+c10*dy
-!
-! c000=0.5*(by(pt_xi(p)-1,pt_yi(p),pt_zi(p))+by(pt_xi(p),pt_yi(p),pt_zi(p)))
-! c100=0.5*(by(pt_xi(p),pt_yi(p),pt_zi(p))+by(pt_xi(p)+1,pt_yi(p),pt_zi(p)))
-! c010=0.5*(by(pt_xi(p)-1,pt_yi(p)+1,pt_zi(p))+by(pt_xi(p),pt_yi(p)+1,pt_zi(p)))
-! c110=0.5*(by(pt_xi(p),pt_yi(p)+1,pt_zi(p))+by(pt_xi(p)+1,pt_yi(p)+1,pt_zi(p)))
-! c00=c000*(1.0-dx)+c100*dx
-! c10=c010*(1.0-dx)+c110*dx
-! by0=c00*(1.0-dy)+c10*dy
-!
-! c000=0.25*(bz(pt_xi(p)-1,pt_yi(p)-1,pt_zi(p))+bz(pt_xi(p)-1,pt_yi(p),pt_zi(p))+&
-! &bz(pt_xi(p),pt_yi(p)-1,pt_zi(p))+bz(pt_xi(p),pt_yi(p),pt_zi(p)))
-! c100=0.25*(bz(pt_xi(p),pt_yi(p)-1,pt_zi(p))+bz(pt_xi(p),pt_yi(p),pt_zi(p))+&
-! &bz(pt_xi(p)+1,pt_yi(p)-1,pt_zi(p))+bz(pt_xi(p)+1,pt_yi(p),pt_zi(p)))
-! c010=0.25*(bz(pt_xi(p)-1,pt_yi(p),pt_zi(p))+bz(pt_xi(p)-1,pt_yi(p)+1,pt_zi(p))+&
-! &bz(pt_xi(p),pt_yi(p),pt_zi(p))+bz(pt_xi(p),pt_yi(p)+1,pt_zi(p)))
-! c110=0.25*(bz(pt_xi(p),pt_yi(p),pt_zi(p))+bz(pt_xi(p),pt_yi(p)+1,pt_zi(p))+&
-! &bz(pt_xi(p)+1,pt_yi(p),pt_zi(p))+bz(pt_xi(p)+1,pt_yi(p)+1,pt_zi(p)))
-! c00=c000*(1.0-dx)+c100*dx
-! c10=c010*(1.0-dx)+c110*dx
-! bz0=c00*(1.0-dy)+c10*dy
