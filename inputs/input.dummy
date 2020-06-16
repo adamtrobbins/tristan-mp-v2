@@ -51,6 +51,7 @@
 
 <output>
 
+  enable        = 1              # enable/disable output [defaults to TRUE]
   start         = 0              # first output step
   interval      = 10             # interval between output steps
   stride        = 100            # particle stride
@@ -111,6 +112,7 @@
   deposit1      = 1             # [defaults to TRUE if charge != 0]
   move1         = 1             # [defaults to TRUE]
   cool1         = 1             # turn ON/OFF cooling for this species
+  output1       = 0             # save particles to `prtl` output or not [defaults to TRUE]
 
   maxptl2       = 1e6           # max number of particles per core
   m2            = 1
