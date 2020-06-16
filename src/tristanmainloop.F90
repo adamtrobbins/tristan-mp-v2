@@ -114,14 +114,14 @@ contains
       !-------------------------------------------------
       ! User defined boundary conditions for B-field
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
-      call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
+      if (enable_fieldsolver) call userFieldBoundaryConditions(timestep, updateE=.false., updateB=.true.)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 
       !-------------------------------------------------
       ! Exchanging `B`-fields
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeFields(exchangeE=.false., exchangeB=.true.)
+      if (enable_fieldsolver) call exchangeFields(exchangeE=.false., exchangeB=.true.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -138,7 +138,7 @@ contains
       !-------------------------------------------------
       ! Pushing particles
         t_movestep = MPI_WTIME()
-      call moveParticles()
+      call moveParticles(timestep)
         t_movestep = MPI_WTIME() - t_movestep
       !.................................................
 
@@ -173,7 +173,7 @@ contains
       !-------------------------------------------------
       ! Exchanging `E`-fields
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeFields(exchangeE=.true., exchangeB=.false.)
+      if (enable_fieldsolver) call exchangeFields(exchangeE=.true., exchangeB=.false.)
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
@@ -187,14 +187,14 @@ contains
       !-------------------------------------------------
       ! Exchanging currents
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
-      call exchangeCurrents()
+      if (enable_currentdeposit) call exchangeCurrents()
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       !.................................................
 
       !-------------------------------------------------
       ! Filtering currents
         t_filterstep = MPI_WTIME()
-      call filterCurrents()
+      if (enable_currentdeposit) call filterCurrents()
         t_filterstep = MPI_WTIME() - t_filterstep
       !.................................................
 
@@ -251,7 +251,8 @@ contains
       !-------------------------------------------------
       ! Output
       t_outputstep = 0
-      if ((modulo(timestep, output_interval) .eq. 0) .and.&
+      if ((output_enable) .and.&
+        & (modulo(timestep, output_interval) .eq. 0) .and.&
         & (timestep .ge. output_start)) then
         t_outputstep = MPI_WTIME()
         call writeOutput(timestep)
@@ -268,7 +269,7 @@ contains
 
       !-------------------------------------------------
       ! Restart
-      if ((rst_enabled) .and.&
+      if ((rst_enable) .and.&
         & (timestep .ge. rst_start) .and.&
         & (modulo(timestep - rst_start, rst_interval) .eq. 0) .and.&
         & (timestep .gt. 0)) then
