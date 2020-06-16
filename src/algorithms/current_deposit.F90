@@ -24,8 +24,7 @@ contains
     #ifndef GCA
       real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:)
     #else
-      integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
-      real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
+      real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:)
     #endif
 
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
@@ -48,13 +47,9 @@ contains
               pt_v => species(s)%prtl_tile(ti, tj, tk)%v
               pt_w => species(s)%prtl_tile(ti, tj, tk)%w
             #else
-              pt_xi_past => species(s)%prtl_tile(ti, tj, tk)%xi_past
-              pt_yi_past => species(s)%prtl_tile(ti, tj, tk)%yi_past
-              pt_zi_past => species(s)%prtl_tile(ti, tj, tk)%zi_past
-
-              pt_dx_past => species(s)%prtl_tile(ti, tj, tk)%dx_past
-              pt_dy_past => species(s)%prtl_tile(ti, tj, tk)%dy_past
-              pt_dz_past => species(s)%prtl_tile(ti, tj, tk)%dz_past
+              pt_u_eff => species(s)%prtl_tile(ti, tj, tk)%u_eff
+              pt_v_eff => species(s)%prtl_tile(ti, tj, tk)%v_eff
+              pt_w_eff => species(s)%prtl_tile(ti, tj, tk)%w_eff
             #endif
             pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
@@ -66,10 +61,9 @@ contains
                 x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
                 x1 = x2 - pt_u(p) * CC * gamma_inv;   y1 = y2 - pt_v(p) * CC * gamma_inv;   z1 = z2 - pt_w(p) * CC * gamma_inv
               #else
-                x2 = REAL(pt_xi(p)) + pt_dx(p);       y2 = REAL(pt_yi(p)) + pt_dy(p);       z2 = REAL(pt_zi(p)) + pt_dz(p)
-                x1 = REAL(pt_xi_past(p)) + pt_dx_past(p)
-                y1 = REAL(pt_yi_past(p)) + pt_dy_past(p)
-                z1 = REAL(pt_zi_past(p)) + pt_dz_past(p)
+                ! push the particle back
+                x2 = REAL(pt_xi(p)) + pt_dx(p);   y2 = REAL(pt_yi(p)) + pt_dy(p);   z2 = REAL(pt_zi(p)) + pt_dz(p)
+                x1 = x2 - pt_u_eff(p);            y1 = y2 - pt_v_eff(p);            z1 = z2 - pt_w_eff(p)
               #endif
 
               #ifdef oneD
@@ -214,8 +208,7 @@ contains
             #ifndef GCA
               pt_u => null(); pt_v => null(); pt_w => null()
             #else
-              pt_xi_past => null(); pt_yi_past => null(); pt_zi_past => null()
-              pt_dx_past => null(); pt_dy_past => null(); pt_dz_past => null()
+              pt_u_eff => null(); pt_v_eff => null(); pt_w_eff => null()
             #endif
           end do
         end do
