@@ -16,11 +16,12 @@ module m_mover
 
   implicit none
 contains
-  subroutine moveParticles()
+  subroutine moveParticles(timestep)
     ! DEP_PRT [particle-dependent]
     implicit none
+    integer, intent(in)                   :: timestep
     integer                               :: s, p, temp_i, ti, tj, tk
-    real                                  :: g_temp, over_g_temp, over_e_temp, temp_r
+    real                                  :: g_temp, over_e_temp, temp_r
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
@@ -41,17 +42,19 @@ contains
       ! ... variables with `_n1` at the end correspond to `t = n+1` ...
       integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
       real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
+      real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:)
       integer(kind=2)                       :: xi_, yi_, zi_
-      integer                               :: iter
-      real                                  :: x_, y_, z_, dx_, dy_, dz_, Gamma_, Gamma_n, Gamma_n1, e0sqr, b0sqr
-      real                                  :: ex0_n, ey0_n, ez0_n, bx0_n, by0_n, bz0_n, b0sqr_n
-      real                                  :: ex0_n1, ey0_n1, ez0_n1, bx0_n1, by0_n1, bz0_n1, b0sqr_n1
-      real                                  :: u_par, epar0_n, bpar_x, bpar_y, bpar_z, bperp_x, bperp_y, bperp_z
-      real                                  :: uperp_g_x, uperp_g_y, uperp_g_z, uperp_g, mu_
-      real                                  :: vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wEsqr
-      real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wEsqr_n
-      real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wEsqr_n1
+      real                                  :: x_, y_, z_, dx_, dy_, dz_, Gamma_, mu_
       real                                  :: x_n1, y_n1, z_n1, x_n, y_n, z_n
+      real                                  :: Gamma_n, Gamma_n1, e0_SQR, b0_SQR, ee0, bb0
+      real                                  :: ex0_n, ey0_n, ez0_n, bx0_n, by0_n, bz0_n, b0_SQR_n, bb0_n
+      real                                  :: ex0_n1, ey0_n1, ez0_n1, bx0_n1, by0_n1, bz0_n1, b0_SQR_n1, bb0_n1
+      real                                  :: u_par, epar0_n, bpar_x, bpar_y, bpar_z, bperp_x, bperp_y, bperp_z
+      real                                  :: uperp_g_x, uperp_g_y, uperp_g_z, uperp_g
+      real                                  :: vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR
+      real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n
+      real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
+      integer                               :: iter
     #endif
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
@@ -101,9 +104,9 @@ contains
                 ! ... and updates the particle position `pt_*(p)`
                 include "boris_update.F"
               end do ! p
-              pt_xi => null(); pt_yi => null(); pt_zi => null()
-              pt_dx => null(); pt_dy => null(); pt_dz => null()
-              pt_u => null(); pt_v => null(); pt_w => null()
+              pt_xi => null();  pt_yi => null();  pt_zi => null()
+              pt_dx => null();  pt_dy => null();  pt_dz => null()
+              pt_u => null();   pt_v => null();   pt_w => null()
             end do ! tk
           end do ! tj
         end do ! ti
@@ -133,16 +136,39 @@ contains
                 pt_dx_past => species(s)%prtl_tile(ti, tj, tk)%dx_past
                 pt_dy_past => species(s)%prtl_tile(ti, tj, tk)%dy_past
                 pt_dz_past => species(s)%prtl_tile(ti, tj, tk)%dz_past
+
+                pt_u_eff => species(s)%prtl_tile(ti, tj, tk)%u_eff
+                pt_v_eff => species(s)%prtl_tile(ti, tj, tk)%v_eff
+                pt_w_eff => species(s)%prtl_tile(ti, tj, tk)%w_eff
               #endif
 
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
-              #if !defined(RADIATION) && !defined(EXTERNALFIELDS)
-              !$omp simd private(lind, dummy_, g_temp, over_g_temp,&
+              #if !defined(RADIATION) && !defined(EXTERNALFIELDS) && !defined(GCA)
+              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
               !$omp  c00, c01, c10, c11, c0, c1)
+              !dir$ vector aligned
+              #endif
+              #ifdef GCA
+              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
+              !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
+              !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
+              !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
+              !$omp  c00, c01, c10, c11, c0, c1,&
+              !$omp  xi_, yi_, zi_, x_, y_, z_, dx_, dy_, dz_, Gamma_, mu_,&
+              !$omp  x_n1, y_n1, z_n1, x_n, y_n, z_n,&
+              !$omp  Gamma_n, Gamma_n1, e0_SQR, b0_SQR, ee0, bb0,&
+              !$omp  ex0_n, ey0_n, ez0_n, bx0_n, by0_n, bz0_n, b0_SQR_n, bb0_n,&
+              !$omp  ex0_n1, ey0_n1, ez0_n1, bx0_n1, by0_n1, bz0_n1, b0_SQR_n1, bb0_n1,&
+              !$omp  u_par, epar0_n, bpar_x, bpar_y, bpar_z, bperp_x, bperp_y, bperp_z,&
+              !$omp  uperp_g_x, uperp_g_y, uperp_g_z, uperp_g,&
+              !$omp  vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR,&
+              !$omp  vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n,&
+              !$omp  vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1,&
+              !$omp  iter)
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -235,6 +261,7 @@ contains
               #ifdef GCA
                 pt_xi_past => null();   pt_yi_past => null();   pt_zi_past => null()
                 pt_dx_past => null();   pt_dy_past => null();   pt_dz_past => null()
+                pt_u_eff => null();     pt_v_eff => null();     pt_w_eff => null()
               #endif
             end do ! tk
           end do ! tj
