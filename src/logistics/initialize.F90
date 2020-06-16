@@ -316,6 +316,7 @@ contains
 
   subroutine initializeOutput()
     implicit none
+    call getInput('output', 'enable', output_enable, .true.)
     call getInput('output', 'start', output_start, 0)
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
@@ -350,7 +351,7 @@ contains
 
   subroutine initializeRestart()
     implicit none
-    call getInput('restart', 'enable', rst_enabled, .false.)
+    call getInput('restart', 'enable', rst_enable, .false.)
     call getInput('restart', 'start', rst_start, 0)
     call getInput('restart', 'interval', rst_interval, 10000)
     call getInput('restart', 'rewrite', rst_separate, .false.)
@@ -418,6 +419,8 @@ contains
       call getInput('particles', var_name, species(s)%deposit_sp, (species(s)%ch_sp .ne. 0))
       write (var_name, "(A4,I1)") "move", s
       call getInput('particles', var_name, species(s)%move_sp, .true.)
+      write (var_name, "(A6,I1)") "output", s
+      call getInput('particles', var_name, species(s)%output_sp, .true.)
 
       if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .ne. 0)) then
         call throwError('ERROR: massless charged particles are not allowed')
@@ -571,11 +574,11 @@ contains
     #else
       !     # of blockcounts = 3:
       !       6  x integer2  [xi, yi, zi, xi_past, yi_past, zi_past]
-      !       10 x real      [dx, dy, dz, dx_past, dy_past, dz_past, u, v, w, weight]
+      !       13 x real      [dx, dy, dz, dx_past, dy_past, dz_past, u, v, w, u_eff, v_eff, w_eff, weight]
       !       2  x integer   [ind, proc]
       blockcounts(0) = 6
       oldtypes(0) = MPI_INTEGER2
-      blockcounts(1) = 10
+      blockcounts(1) = 13
       oldtypes(1) = MPI_REAL
       blockcounts(2) = 2
       oldtypes(2) = MPI_INTEGER
@@ -711,13 +714,17 @@ contains
     !     note: some compilers may not support IFPORT
     #ifdef IFPORT
       logical :: result
-      result = makedirqq(trim(output_dir_name))
-      if (rst_enabled) then
+      if (output_enable) then
+        result = makedirqq(trim(output_dir_name))
+      end if
+      if (rst_enable) then
         result = makedirqq(trim(restart_dir_name))
       end if
     #else
-      call system('mkdir -p ' // trim(output_dir_name))
-      if (rst_enabled) then
+      if (output_enable) then
+        call system('mkdir -p ' // trim(output_dir_name))
+      end if
+      if (rst_enable) then
         call system('mkdir -p ' // trim(restart_dir_name))
       end if
     #endif
@@ -833,6 +840,9 @@ contains
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx_past(1:num)
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy_past(1:num)
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
             #endif
           end do
         end do

@@ -306,6 +306,9 @@ contains
       enroute%dx_past = species(spec_id)%prtl_tile(ti, tj, tk)%dx_past(prtl_id)
       enroute%dy_past = species(spec_id)%prtl_tile(ti, tj, tk)%dy_past(prtl_id)
       enroute%dz_past = species(spec_id)%prtl_tile(ti, tj, tk)%dz_past(prtl_id)
+      enroute%u_eff = species(spec_id)%prtl_tile(ti, tj, tk)%u_eff(prtl_id)
+      enroute%v_eff = species(spec_id)%prtl_tile(ti, tj, tk)%v_eff(prtl_id)
+      enroute%w_eff = species(spec_id)%prtl_tile(ti, tj, tk)%w_eff(prtl_id)
     #endif
   end subroutine copyToEnroute
 
@@ -325,6 +328,7 @@ contains
                                                & enroute%xi_past, enroute%yi_past, enroute%zi_past, &
                                                & enroute%dx_past, enroute%dy_past, enroute%dz_past, &
                                                & enroute%u, enroute%v, enroute%w, &
+                                               & enroute%u_eff, enroute%v_eff, enroute%w_eff, &
                                                & enroute%ind, enroute%proc, enroute%weight)
     #endif
   end subroutine copyFromEnroute
@@ -362,6 +366,9 @@ contains
                                          & species(s)%prtl_tile(ti, tj, tk)%u(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%v(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%u_eff(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%v_eff(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%w_eff(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%weight(p))

@@ -21,7 +21,8 @@ module m_particles
       ! GCA specific variables
       integer(kind=2), allocatable, dimension(:)  :: xi_past, yi_past, zi_past
       real, allocatable, dimension(:)             :: dx_past, dy_past, dz_past
-      !dir$ attributes align: 64 :: xi_past, yi_past, zi_past, dx_past, dy_past, dz_past
+      real, allocatable, dimension(:)             :: u_eff, v_eff, w_eff
+      !dir$ attributes align: 64 :: xi_past, yi_past, zi_past, dx_past, dy_past, dz_past, u_eff, v_eff, w_eff
     #endif
     ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
@@ -38,6 +39,8 @@ module m_particles
     logical     :: deposit_sp
     ! `true/false` - whether this species moves or not
     logical     :: move_sp
+    ! `true/false` - whether this species is saved into particle output
+    logical     :: output_sp
 
     #ifdef GCA
       ! `true/false` - either this species can be treated in a GCA mover, or not
@@ -77,7 +80,7 @@ module m_particles
       ! DEP_PRT [particle-dependent]
       integer(kind=2)   :: xi, yi, zi, xi_past, yi_past, zi_past
       real              :: dx, dy, dz, dx_past, dy_past, dz_past
-      real              :: u, v, w
+      real              :: u, v, w, u_eff, v_eff, w_eff
       real              :: weight
       integer           :: ind, proc
     end type prtl_enroute

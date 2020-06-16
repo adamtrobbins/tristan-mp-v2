@@ -71,14 +71,15 @@ contains
   #else
     subroutine createParticleFromAttributes(s, xi, yi, zi, dx, dy, dz,&
                                              & xi_past, yi_past, zi_past, dx_past, dy_past, dz_past,&
-                                             & u, v, w, ind, proc, weight)
+                                             & u, v, w, u_eff, v_eff, w_eff,&
+                                             & ind, proc, weight)
       ! DEP_PRT [particle-dependent]
       implicit none
       integer, intent(in)                     :: s
       integer(kind=2), intent(in)             :: xi, yi, zi
       real, intent(in)                        :: dx, dy, dz, u, v, w
       integer(kind=2), intent(in)             :: xi_past, yi_past, zi_past
-      real, intent(in)                        :: dx_past, dy_past, dz_past
+      real, intent(in)                        :: dx_past, dy_past, dz_past, u_eff, v_eff, w_eff
       integer                                 :: p
       integer                                 :: ti, tj, tk
       integer, intent(in)                     :: ind, proc
@@ -145,13 +146,16 @@ contains
 
       #ifdef GCA
         species(s)%prtl_tile(ti, tj, tk)%xi_past(p) = xi_past
-        species(s)%prtl_tile(ti, tj, tk)%dx_past(p) = dx_past
-
         species(s)%prtl_tile(ti, tj, tk)%yi_past(p) = yi_past
-        species(s)%prtl_tile(ti, tj, tk)%dy_past(p) = dy_past
-
         species(s)%prtl_tile(ti, tj, tk)%zi_past(p) = zi_past
+
+        species(s)%prtl_tile(ti, tj, tk)%dx_past(p) = dx_past
+        species(s)%prtl_tile(ti, tj, tk)%dy_past(p) = dy_past
         species(s)%prtl_tile(ti, tj, tk)%dz_past(p) = dz_past
+
+        species(s)%prtl_tile(ti, tj, tk)%u_eff(p) = u_eff
+        species(s)%prtl_tile(ti, tj, tk)%v_eff(p) = v_eff
+        species(s)%prtl_tile(ti, tj, tk)%w_eff(p) = w_eff
       #endif
     end subroutine createParticleFromAttributes
   #endif
@@ -186,6 +190,10 @@ contains
       species(s)%prtl_tile(ti, tj, tk)%dx_past(p_to) = species(s)%prtl_tile(ti, tj, tk)%dx_past(p_from)
       species(s)%prtl_tile(ti, tj, tk)%dy_past(p_to) = species(s)%prtl_tile(ti, tj, tk)%dy_past(p_from)
       species(s)%prtl_tile(ti, tj, tk)%dz_past(p_to) = species(s)%prtl_tile(ti, tj, tk)%dz_past(p_from)
+
+      species(s)%prtl_tile(ti, tj, tk)%u_eff(p_to) = species(s)%prtl_tile(ti, tj, tk)%u_eff(p_from)
+      species(s)%prtl_tile(ti, tj, tk)%v_eff(p_to) = species(s)%prtl_tile(ti, tj, tk)%v_eff(p_from)
+      species(s)%prtl_tile(ti, tj, tk)%w_eff(p_to) = species(s)%prtl_tile(ti, tj, tk)%w_eff(p_from)
     #endif
   end subroutine copyParticleFromTo
 
@@ -253,8 +261,12 @@ contains
       if (allocated(tile%dx_past)) deallocate(tile%dx_past)
       if (allocated(tile%dy_past)) deallocate(tile%dy_past)
       if (allocated(tile%dz_past)) deallocate(tile%dz_past)
+      if (allocated(tile%u_eff)) deallocate(tile%u_eff)
+      if (allocated(tile%v_eff)) deallocate(tile%v_eff)
+      if (allocated(tile%w_eff)) deallocate(tile%w_eff)
       allocate(tile%xi_past(sz)); allocate(tile%yi_past(sz)); allocate(tile%zi_past(sz))
       allocate(tile%dx_past(sz)); allocate(tile%dy_past(sz)); allocate(tile%dz_past(sz))
+      allocate(tile%u_eff(sz)); allocate(tile%v_eff(sz)); allocate(tile%w_eff(sz))
     #endif
   end subroutine allocateParticlesOnEmptyTile
 
@@ -409,7 +421,9 @@ contains
     #ifndef GCA
       call createParticleFromAttributes(s, xi, yi, zi, dx, dy, dz, u, v, w, ind_, proc_, weight_)
     #else
-      call createParticleFromAttributes(s, xi, yi, zi, dx, dy, dz, xi, yi, zi, dx, dy, dz, u, v, w, ind_, proc_, weight_)
+      call createParticleFromAttributes(s, xi, yi, zi, dx, dy, dz,&
+                                         & xi, yi, zi, dx, dy, dz,&
+                                         & u, v, w, u, v, w, ind_, proc_, weight_)
     #endif
   end subroutine createParticle
 
