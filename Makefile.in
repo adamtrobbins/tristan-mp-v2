@@ -61,8 +61,7 @@ INCL_FILES := $(SRC_DIR)tools/interp_efield.F \
 							$(SRC_DIR)algorithms/boris/boris_push.F \
 							$(SRC_DIR)algorithms/boris/boris_update.F \
 							$(SRC_DIR)algorithms/gca/gca_routine.F \
-							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F \
-							$(SRC_DIR)algorithms/gca/gca_nonlin.F
+							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F
 
 PREC_SRC_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(SRC_FILES:.F90=_.F90)))
 
