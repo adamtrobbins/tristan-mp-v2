@@ -3,9 +3,11 @@
 ! ... their norms `e0_SQR` and `b0_SQR` ...
 ! ... and returns the `vE` components and the `gammaE`
 
-wE_x = (bz0 * ey0 - by0 * ez0) / (e0_SQR + b0_SQR + TINYFLD)
-wE_y = (-bz0 * ex0 + bx0 * ez0) / (e0_SQR + b0_SQR + TINYFLD)
-wE_z = (by0 * ex0 - bx0 * ey0) / (e0_SQR + b0_SQR + TINYFLD)
+dummy_ = 1.0 / (e0_SQR + b0_SQR + TINYFLD)
+
+wE_x = (bz0 * ey0 - by0 * ez0) * dummy_
+wE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
+wE_z = (by0 * ex0 - bx0 * ey0) * dummy_
 wE_SQR = wE_x**2 + wE_y**2 + wE_z**2
 
 dummy_ = sign(1.0, wE_SQR - 0.01)

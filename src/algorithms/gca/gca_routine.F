@@ -76,8 +76,6 @@ if ((.not. species(s)%gca_sp) .or. (bb0 * bb0_n .eq. 0.0) .or.&
   & ((CC**2 * Gamma_ / (q_over_m * bb0 * B_norm)) .ge. gca_rhomin) .or.&
   & (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0)) then
   ! use Boris here
-  pt_wei(p) = 1.0
-
   ex0 = ex0_n; ey0 = ey0_n; ez0 = ez0_n
   bx0 = bx0_n; by0 = by0_n; bz0 = bz0_n
   include "boris_push.F"
@@ -90,10 +88,8 @@ if ((.not. species(s)%gca_sp) .or. (bb0 * bb0_n .eq. 0.0) .or.&
   pt_w_eff(p) = w0 * CC * over_e_temp
 else
   ! use GCA here
-  pt_wei(p) = -1.0
-  dummy_ = 1.0 / (uperp_g + TINYFLD)
-
   ! at time `t = n-1/2`
+  dummy_ = 1.0 / (uperp_g + TINYFLD)
   bperp_x = uperp_g_x * dummy_
   bperp_y = uperp_g_y * dummy_
   bperp_z = uperp_g_z * dummy_
@@ -188,18 +184,18 @@ else
   ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
   ! compute "effective" velocities for the deposit
-  #if defined(oneD)
+  #ifdef oneD
     pt_u_eff(p) = x_n1 - x_n
     pt_v_eff(p) = 0.5 * ((by0_n / bb0_n) / Gamma_n + (by0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
                 & 0.5 * (vE_y_n + vE_y_n1) * CC
     pt_w_eff(p) = 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
                 & 0.5 * (vE_z_n + vE_z_n1) * CC
-  #elif defined(twoD)
+  #elif twoD
     pt_u_eff(p) = x_n1 - x_n
     pt_v_eff(p) = y_n1 - y_n
     pt_w_eff(p) = 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
                 & 0.5 * (vE_z_n + vE_z_n1) * CC
-  #else
+  #elif threeD
     pt_u_eff(p) = x_n1 - x_n
     pt_v_eff(p) = y_n1 - y_n
     pt_w_eff(p) = z_n1 - z_n
