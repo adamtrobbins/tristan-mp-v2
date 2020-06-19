@@ -188,7 +188,7 @@ if args['debug'] and (not args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 if args['debug'] and args['intel']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe-all=3 '
+  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
 
 # compiler (+ vectorization etc)
 if args['intel']:
