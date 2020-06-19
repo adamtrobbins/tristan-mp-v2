@@ -468,12 +468,22 @@ contains
       if (fld_vars(f)(1:4) .eq. 'dens') then
         writing_lgarrQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeDensity(s, reset=.true.) ! filled `lg_arr` with density of species `s`
+        ! fill `lg_arr` with density of species `s`
+        #ifndef DEBUG
+          call computeDensity(s, reset=.true.)
+        #else
+          call computeDensity(s, reset=.true., ds=0)
+        #endif
         call exchangeArray()
       else if (fld_vars(f)(1:4) .eq. 'enrg') then
         writing_lgarrQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeEnergy(s, reset=.true.) ! filled `lg_arr` with energies of species `s`
+        ! fill `lg_arr` with energy density of species `s`
+        #ifndef DEBUG
+          call computeEnergy(s, reset=.true.)
+        #else
+          call computeEnergy(s, reset=.true., ds=0)
+        #endif
         call exchangeArray()
       else
         writing_lgarrQ = .false.
