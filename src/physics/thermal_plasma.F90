@@ -18,7 +18,7 @@ module m_thermalplasma
     real                            :: temperature, shift_gamma
     real, allocatable, dimension(:) :: DF_table
     real, allocatable, dimension(:) :: u_table
-    logical                         :: generated, shift_flag
+    logical                         :: generated = .false., shift_flag = .false.
     integer                         :: npoints, shift_dir
     integer                         :: dimension = 3
   end type maxwellian
@@ -330,7 +330,7 @@ contains
       else
         rnd = 1.0
       end if
-      if (random(dseed) .lt. rnd) then
+      if ((.not. present(spat_distr_ptr)) .or. (random(dseed) .lt. rnd)) then
         do s = 1, num_species
           ! generate momenta for every species individually
           spec_ = fill_species(s)
