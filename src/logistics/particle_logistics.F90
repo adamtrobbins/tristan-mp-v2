@@ -20,20 +20,20 @@ contains
       integer                                 :: ti, tj, tk
       integer, intent(in)                     :: ind, proc
       real                                    :: weight
-      ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
-      tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
-      tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
+      ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
+      tj = FLOOR(REAL(yi) / REAL(species(s)%tile_sy)) + 1
+      tk = FLOOR(REAL(zi) / REAL(species(s)%tile_sz)) + 1
       ! if the debug flag is enabled ...
       ! ... check that the particle is within the boundaries ...
       ! ... of that tile and that the tile exists
       #ifdef DEBUG
         if ((s .le. 0) .or. (s .gt. nspec)) then
-          call throwError('Wrong species in `createParticle`.')
+          call throwError('Wrong species in `createParticleFromAttributes`.')
         end if
         if ((ti .gt. species(s)%tile_nx) .or. &
           & (tj .gt. species(s)%tile_ny) .or. &
           & (tk .gt. species(s)%tile_nz)) then
-          call throwError('ERROR: wrong ti, tj, tk in `createParticle`')
+          call throwError('ERROR: wrong ti, tj, tk in `createParticleFromAttributes`')
         end if
         if ((xi .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
           & (xi .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
@@ -41,11 +41,11 @@ contains
           & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
           & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
           & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
-          call throwError('ERROR: wrong ti, tj, tk in `createParticle` according to x1,x2,etc')
+          call throwError('ERROR: wrong ti, tj, tk in `createParticleFromAttributes` according to x1,x2,etc')
         end if
       #endif
       if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .eq. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-        call throwError('ERROR: npart_sp > maxptl_sp in createParticle')
+        call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes')
       end if
       species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
       p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -84,22 +84,22 @@ contains
       integer                                 :: ti, tj, tk
       integer, intent(in)                     :: ind, proc
       real                                    :: weight
-      ti = INT(FLOOR(REAL(xi) / REAL(species(s)%tile_sx))) + 1
-      tj = INT(FLOOR(REAL(yi) / REAL(species(s)%tile_sy))) + 1
-      tk = INT(FLOOR(REAL(zi) / REAL(species(s)%tile_sz))) + 1
+      ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
+      tj = FLOOR(REAL(yi) / REAL(species(s)%tile_sy)) + 1
+      tk = FLOOR(REAL(zi) / REAL(species(s)%tile_sz)) + 1
       ! if the debug flag is enabled ...
       ! ... check that the particle is within the boundaries ...
       ! ... of that tile and that the tile exists
       #ifdef DEBUG
         if ((s .le. 0) .or. (s .gt. nspec)) then
-          call throwError('Wrong species in `createParticle`.')
+          call throwError('Wrong species in `createParticleFromAttributes`.')
         end if
         if ((ti .gt. species(s)%tile_nx) .or. &
           & (tj .gt. species(s)%tile_ny) .or. &
           & (tk .gt. species(s)%tile_nz)) then
           print *, mpi_rank, xi, yi, zi, ti, tj, tk
           print *, species(s)%tile_nx, species(s)%tile_ny, species(s)%tile_nz
-          call throwError('ERROR: wrong ti, tj, tk in `createParticle`')
+          call throwError('ERROR: wrong ti, tj, tk in `createParticleFromAttributes`')
         end if
         if ((xi .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or. &
           & (xi .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or. &
@@ -117,11 +117,11 @@ contains
           print *, ti, tj, tk
           print *, species(s)%tile_nx, species(s)%tile_ny, species(s)%tile_nz
           print *, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz
-          call throwError('ERROR: wrong ti, tj, tk in `createParticle` according to x1,x2,etc')
+          call throwError('ERROR: wrong ti, tj, tk in `createParticleFromAttributes` according to x1,x2,etc')
         end if
       #endif
       if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .eq. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-        call throwError('ERROR: npart_sp > maxptl_sp in createParticle')
+        call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes')
       end if
       species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
       p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -307,85 +307,122 @@ contains
     integer, allocatable, dimension(:)          :: dummy_int
     real, allocatable, dimension(:)             :: dummy_real
     integer                                     :: current_npart
-    !!!! THIS ROUTINE NEEDS TO BE UPDATED !!!!
-    ! if (increase_flag) then
-    !   ! increase twice
-    !   tile%maxptl_sp = INT(tile%maxptl_sp * 1.5)
-    ! else
-    !   ! decrease twice
-    !   tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
-    ! end if
-    !
-    ! if (tile%npart_sp .gt. tile%maxptl_sp) then
-    !   call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
-    ! end if
-    !
-    ! allocate(dummy_int2(tile%maxptl_sp))
-    ! allocate(dummy_int(tile%maxptl_sp))
-    ! allocate(dummy_real(tile%maxptl_sp))
-    !
-    ! current_npart = tile%npart_sp
-    !
-    ! dummy_int2(1 : current_npart) = tile%xi(1 : current_npart)
-    ! deallocate(tile%xi); allocate(tile%xi(tile%maxptl_sp))
-    ! tile%xi(1 : current_npart) = dummy_int2(1 : current_npart)
-    !
-    ! dummy_int2(1 : current_npart) = tile%yi(1 : current_npart)
-    ! deallocate(tile%yi); allocate(tile%yi(tile%maxptl_sp))
-    ! tile%yi(1 : current_npart) = dummy_int2(1 : current_npart)
-    !
-    ! dummy_int2(1 : current_npart) = tile%zi(1 : current_npart)
-    ! deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
-    ! tile%zi(1 : current_npart) = dummy_int2(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%weight(1 : current_npart)
-    ! deallocate(tile%weight); allocate(tile%weight(tile%maxptl_sp))
-    ! tile%weight(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%dx(1 : current_npart)
-    ! deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
-    ! tile%dx(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%dy(1 : current_npart)
-    ! deallocate(tile%dy); allocate(tile%dy(tile%maxptl_sp))
-    ! tile%dy(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%dz(1 : current_npart)
-    ! deallocate(tile%dz); allocate(tile%dz(tile%maxptl_sp))
-    ! tile%dz(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%u(1 : current_npart)
-    ! deallocate(tile%u); allocate(tile%u(tile%maxptl_sp))
-    ! tile%u(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%v(1 : current_npart)
-    ! deallocate(tile%v); allocate(tile%v(tile%maxptl_sp))
-    ! tile%v(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_real(1 : current_npart) = tile%w(1 : current_npart)
-    ! deallocate(tile%w); allocate(tile%w(tile%maxptl_sp))
-    ! tile%w(1 : current_npart) = dummy_real(1 : current_npart)
-    !
-    ! dummy_int(1 : current_npart) = tile%ind(1 : current_npart)
-    ! deallocate(tile%ind); allocate(tile%ind(tile%maxptl_sp))
-    ! tile%ind(1 : current_npart) = dummy_int(1 : current_npart)
-    !
-    ! dummy_int(1 : current_npart) = tile%proc(1 : current_npart)
-    ! deallocate(tile%proc); allocate(tile%proc(tile%maxptl_sp))
-    ! tile%proc(1 : current_npart) = dummy_int(1 : current_npart)
-    !
-    ! deallocate(dummy_int2)
-    ! deallocate(dummy_int)
-    ! deallocate(dummy_real)
-    ! if (increase_flag) then
-    !   call printDiag(.true., "...reallocTileSize(+).."//trim(STR(tile%npart_sp))&
-    !                 & //".."//trim(STR(tile%maxptl_sp)),&
-    !                 & .true.)
-    ! else
-    !   call printDiag(.true., "...reallocTileSize(-).."//trim(STR(tile%npart_sp))&
-    !                 & //".."//trim(STR(tile%maxptl_sp)),&
-    !                 & .true.)
-    ! end if
+    if (increase_flag) then
+      ! increase twice
+      tile%maxptl_sp = INT(tile%maxptl_sp * 1.5)
+    else
+      ! decrease twice
+      tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
+    end if
+
+    if (tile%npart_sp .gt. tile%maxptl_sp) then
+      call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
+    end if
+
+    allocate(dummy_int2(tile%maxptl_sp))
+    allocate(dummy_int(tile%maxptl_sp))
+    allocate(dummy_real(tile%maxptl_sp))
+
+    current_npart = tile%npart_sp
+
+    dummy_int2(1 : current_npart) = tile%xi(1 : current_npart)
+    deallocate(tile%xi); allocate(tile%xi(tile%maxptl_sp))
+    tile%xi(1 : current_npart) = dummy_int2(1 : current_npart)
+
+    dummy_int2(1 : current_npart) = tile%yi(1 : current_npart)
+    deallocate(tile%yi); allocate(tile%yi(tile%maxptl_sp))
+    tile%yi(1 : current_npart) = dummy_int2(1 : current_npart)
+
+    dummy_int2(1 : current_npart) = tile%zi(1 : current_npart)
+    deallocate(tile%zi); allocate(tile%zi(tile%maxptl_sp))
+    tile%zi(1 : current_npart) = dummy_int2(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%weight(1 : current_npart)
+    deallocate(tile%weight); allocate(tile%weight(tile%maxptl_sp))
+    tile%weight(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%dx(1 : current_npart)
+    deallocate(tile%dx); allocate(tile%dx(tile%maxptl_sp))
+    tile%dx(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%dy(1 : current_npart)
+    deallocate(tile%dy); allocate(tile%dy(tile%maxptl_sp))
+    tile%dy(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%dz(1 : current_npart)
+    deallocate(tile%dz); allocate(tile%dz(tile%maxptl_sp))
+    tile%dz(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%u(1 : current_npart)
+    deallocate(tile%u); allocate(tile%u(tile%maxptl_sp))
+    tile%u(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%v(1 : current_npart)
+    deallocate(tile%v); allocate(tile%v(tile%maxptl_sp))
+    tile%v(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_real(1 : current_npart) = tile%w(1 : current_npart)
+    deallocate(tile%w); allocate(tile%w(tile%maxptl_sp))
+    tile%w(1 : current_npart) = dummy_real(1 : current_npart)
+
+    dummy_int(1 : current_npart) = tile%ind(1 : current_npart)
+    deallocate(tile%ind); allocate(tile%ind(tile%maxptl_sp))
+    tile%ind(1 : current_npart) = dummy_int(1 : current_npart)
+
+    dummy_int(1 : current_npart) = tile%proc(1 : current_npart)
+    deallocate(tile%proc); allocate(tile%proc(tile%maxptl_sp))
+    tile%proc(1 : current_npart) = dummy_int(1 : current_npart)
+
+    #ifdef GCA
+      dummy_int2(1 : current_npart) = tile%xi_past(1 : current_npart)
+      deallocate(tile%xi_past); allocate(tile%xi_past(tile%maxptl_sp))
+      tile%xi_past(1 : current_npart) = dummy_int2(1 : current_npart)
+
+      dummy_int2(1 : current_npart) = tile%yi_past(1 : current_npart)
+      deallocate(tile%yi_past); allocate(tile%yi_past(tile%maxptl_sp))
+      tile%yi_past(1 : current_npart) = dummy_int2(1 : current_npart)
+
+      dummy_int2(1 : current_npart) = tile%zi_past(1 : current_npart)
+      deallocate(tile%zi_past); allocate(tile%zi_past(tile%maxptl_sp))
+      tile%zi_past(1 : current_npart) = dummy_int2(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%dx_past(1 : current_npart)
+      deallocate(tile%dx_past); allocate(tile%dx_past(tile%maxptl_sp))
+      tile%dx_past(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%dy_past(1 : current_npart)
+      deallocate(tile%dy_past); allocate(tile%dy_past(tile%maxptl_sp))
+      tile%dy_past(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%dz_past(1 : current_npart)
+      deallocate(tile%dz_past); allocate(tile%dz_past(tile%maxptl_sp))
+      tile%dz_past(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%u_eff(1 : current_npart)
+      deallocate(tile%u_eff); allocate(tile%u_eff(tile%maxptl_sp))
+      tile%u_eff(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%v_eff(1 : current_npart)
+      deallocate(tile%v_eff); allocate(tile%v_eff(tile%maxptl_sp))
+      tile%v_eff(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%w_eff(1 : current_npart)
+      deallocate(tile%w_eff); allocate(tile%w_eff(tile%maxptl_sp))
+      tile%w_eff(1 : current_npart) = dummy_real(1 : current_npart)
+    #endif
+
+    deallocate(dummy_int2)
+    deallocate(dummy_int)
+    deallocate(dummy_real)
+    if (increase_flag) then
+      call printDiag(.true., "...reallocTileSize(+).."//trim(STR(tile%npart_sp))&
+                    & //".."//trim(STR(tile%maxptl_sp)),&
+                    & .true.)
+    else
+      call printDiag(.true., "...reallocTileSize(-).."//trim(STR(tile%npart_sp))&
+                    & //".."//trim(STR(tile%maxptl_sp)),&
+                    & .true.)
+    end if
   end subroutine reallocTileSize
 
   ! Subroutine to create brand new particles

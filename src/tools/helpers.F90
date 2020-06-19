@@ -112,9 +112,9 @@ contains
     real, intent(out)             :: dx, dy, dz
     integer(kind=2), intent(out)  :: xi, yi, zi
 
-    xi = INT(FLOOR(x_loc), 2); dx = x_loc - FLOOR(x_loc)
-    yi = INT(FLOOR(y_loc), 2); dy = y_loc - FLOOR(y_loc)
-    zi = INT(FLOOR(z_loc), 2); dz = z_loc - FLOOR(z_loc)
+    xi = FLOOR(x_loc); dx = x_loc - FLOOR(x_loc)
+    yi = FLOOR(y_loc); dy = y_loc - FLOOR(y_loc)
+    zi = FLOOR(z_loc); dz = z_loc - FLOOR(z_loc)
   end subroutine localToCellBasedCoords
 
   subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax,&
@@ -131,7 +131,7 @@ contains
     #if defined(oneD) || defined (twoD) || defined (threeD)
       rnd = random(dseed)
       x_ = xmin + rnd * (xmax - xmin)
-      xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
+      xi_ = FLOOR(x_); dx_ = x_ - FLOOR(x_)
       if (xi_ .eq. this_meshblock%ptr%sx) then
         xi_ = xi_ - 1; dx_ = dx_ + 1.0
       end if
@@ -139,7 +139,7 @@ contains
     #if defined (twoD) || defined (threeD)
       rnd = random(dseed)
       y_ = ymin + rnd * (ymax - ymin)
-      yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
+      yi_ = FLOOR(y_); dy_ = y_ - FLOOR(y_)
       if (yi_ .eq. this_meshblock%ptr%sy) then
         yi_ = yi_ - 1; dy_ = dy_ + 1.0
       end if
@@ -147,7 +147,7 @@ contains
     #if defined(threeD)
       rnd = random(dseed)
       z_ = zmin + rnd * (zmax - zmin)
-      zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
+      zi_ = FLOOR(z_); dz_ = z_ - FLOOR(z_)
       if (zi_ .eq. this_meshblock%ptr%sz) then
         zi_ = zi_ - 1; dz_ = dz_ + 1.0
       end if

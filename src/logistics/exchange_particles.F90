@@ -192,9 +192,9 @@ contains
             ! FIX1 make sure this is vectorized
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               if (pt_proc(p) .eq. -1) cycle
-              ti_p = INT(FLOOR(REAL(pt_xi(p)) / REAL(species(s)%tile_sx))) + 1
-              tj_p = INT(FLOOR(REAL(pt_yi(p)) / REAL(species(s)%tile_sy))) + 1
-              tk_p = INT(FLOOR(REAL(pt_zi(p)) / REAL(species(s)%tile_sz))) + 1
+              ti_p = FLOOR(REAL(pt_xi(p)) / REAL(species(s)%tile_sx)) + 1
+              tj_p = FLOOR(REAL(pt_yi(p)) / REAL(species(s)%tile_sy)) + 1
+              tk_p = FLOOR(REAL(pt_zi(p)) / REAL(species(s)%tile_sz)) + 1
               if ((ti_p .ne. ti) .or. (tj_p .ne. tj) .or. (tk_p .ne. tk)) then
                 call moveParticleBetweenTiles(s, ti, tj, tk, p)
               end if
