@@ -67,7 +67,7 @@ contains
               #endif
 
               #ifdef oneD
-                i1 = INT(x1, 2);  i2 = pt_xi(p)
+                i1 = FLOOR(x1);   i2 = pt_xi(p)
                 j1 = 0;           j2 = 0
                 k1 = 0;           k2 = 0
                 i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
@@ -102,8 +102,8 @@ contains
                 jz(i2  , j2  , k2) = jz(i2  , j2  , k2) + Fz2 * onemWx2
                 jz(i2p1, j2  , k2) = jz(i2p1, j2  , k2) + Fz2 * Wx2
               #elif twoD
-                i1 = INT(x1, 2);  i2 = pt_xi(p)
-                j1 = INT(y1, 2);  j2 = pt_yi(p)
+                i1 = FLOOR(x1);  i2 = pt_xi(p)
+                j1 = FLOOR(y1);  j2 = pt_yi(p)
                 k1 = 0;           k2 = 0
                 i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
                 j1p1 = j1 + 1_2;  j2p1 = j2 + 1_2
@@ -147,9 +147,9 @@ contains
                 jz(i2  , j2p1, k2) = jz(i2  , j2p1, k2) + Fz2 * onemWx2 * Wy2
                 jz(i2p1, j2p1, k2) = jz(i2p1, j2p1, k2) + Fz2 * Wx2 * Wy2
               #elif threeD
-                i1 = INT(x1, 2);  i2 = pt_xi(p)
-                j1 = INT(y1, 2);  j2 = pt_yi(p)
-                k1 = INT(z1, 2);  k2 = pt_zi(p)
+                i1 = FLOOR(x1);  i2 = pt_xi(p)
+                j1 = FLOOR(y1);  j2 = pt_yi(p)
+                k1 = FLOOR(z1);  k2 = pt_zi(p)
                 i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
                 j1p1 = j1 + 1_2;  j2p1 = j2 + 1_2
                 k1p1 = k1 + 1_2;  k2p1 = k2 + 1_2
