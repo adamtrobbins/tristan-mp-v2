@@ -223,6 +223,7 @@ contains
         if (e_par_method .eq. 1) then
           ! ... measured `e_dr` cells above the injection point
           call getEparAt(e_dot_b, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
+          b_sqr = b_sqr + TINYFLD
           e_b_scale = abs(e_dot_b) / b_sqr
           weight = inj_mult * (B_norm * abs(e_dot_b) / sqrt(b_sqr)) / (unit_ch * ppc * shell_width)
         else if (e_par_method .eq. 2) then
@@ -242,15 +243,7 @@ contains
                                         & xi, yi, zi, dx, dy, dz)
               dens = lg_arr(xi, yi, zi)
               dens_GJ = 2.0 * psr_omega * bz(xi, yi, zi) * B_norm / (CC * unit_ch)
-
-              if (inj_method .eq. 2) then
-                u_ = nx * prtl_kick
-                v_ = ny * prtl_kick
-                w_ = nz * prtl_kick
-              else
-                u_ = 0.0; v_ = 0.0; w_ = 0.0
-              end if
-
+              u_ = 0.0; v_ = 0.0; w_ = 0.0
             end if
             if ((nGJ_limiter .eq. 0) .or.&
               & ((dens_GJ .lt. 0) .and. (dens .gt. dens_GJ)) .or.&

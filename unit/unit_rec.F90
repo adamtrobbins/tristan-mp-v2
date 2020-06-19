@@ -154,53 +154,6 @@ contains
     integer, optional, intent(in)             :: step
     procedure (spatialDistribution), pointer  :: spat_distr_ptr => null()
 
-    ntest = 100
-    deltaX = (/-100.0, 100.0/)
-
-    if (step .eq. 2000) then
-      species(1)%move_sp = .false.
-      species(2)%move_sp = .false.
-      species(1)%deposit_sp = .false.
-      species(2)%deposit_sp = .false.
-      enable_fieldsolver = .false.
-      enable_currentdeposit = .false.
-
-      xg_ = 400
-      yg_ = 900
-      zg_ = 0.5
-      call globalToLocalCoords(xg_, yg_, zg_, xl_, yl_, zl_, containedQ=dummy_flag)
-      if (dummy_flag) then
-        call localToCellBasedCoords(xl_, yl_, zl_, xi_, yi_, zi_, dx_, dy_, dz_)
-        call interpFromEdges(dx_, dy_, dz_, xi_, yi_, zi_, ex, ey, ez, ex0, ey0, ez0)
-        call interpFromFaces(dx_, dy_, dz_, xi_, yi_, zi_, bx, by, bz, bx0, by0, bz0)
-        u_ = (bz0 * ey0 - by0 * ez0) / (bx0**2 + by0**2 + bz0**2 + TINYFLD)
-        v_ = (-bz0 * ex0 + bx0 * ez0) / (bx0**2 + by0**2 + bz0**2 + TINYFLD)
-        w_ = (by0 * ex0 - bx0 * ey0) / (bx0**2 + by0**2 + bz0**2 + TINYFLD)
-        call injectParticleGlobally(3, xg_, yg_, zg_, u_, v_, w_)
-        call injectParticleGlobally(4, xg_, yg_, zg_, u_, v_, w_)
-      end if
-    end if
-
-    !   do p = 1, ntest
-    !     do k = 1, 2
-    !       xg_ = REAL(global_mesh%sx) * cs_x + deltaX(k)
-    !       yg_ = REAL(global_mesh%sy) * REAL(p) / REAL(ntest + 1)
-    !       zg_ = 0.5
-    !       call globalToLocalCoords(xg_, yg_, zg_, xl_, yl_, zl_, containedQ=dummy_flag)
-    !       if (dummy_flag) then
-    !         call localToCellBasedCoords(xl_, yl_, zl_, xi_, yi_, zi_, dx_, dy_, dz_)
-    !         call interpFromEdges(dx_, dy_, dz_, xi_, yi_, zi_, ex, ey, ez, ex0, ey0, ez0)
-    !         call interpFromFaces(dx_, dy_, dz_, xi_, yi_, zi_, bx, by, bz, bx0, by0, bz0)
-    !         u_ = (bz0 * ey0 - by0 * ez0) / (bx0**2 + by0**2 + bz0**2 + TINYFLD)
-    !         v_ = (-bz0 * ex0 + bx0 * ez0) / (bx0**2 + by0**2 + bz0**2 + TINYFLD)
-    !         w_ = (by0 * ex0 - bx0 * ey0) / (bx0**2 + by0**2 + bz0**2 + TINYFLD)
-    !         call injectParticleGlobally(3, xg_, yg_, zg_, u_, v_, w_)
-    !       end if
-    !     end do
-    !   end do
-    ! end if
-
-
     ! reset the injector position every once in a while
     if ((modulo(step, injector_reset_interval) .eq. 0) .and. (step .gt. 0)) then
       injector_x1 = injector_x1 +&
@@ -208,29 +161,6 @@ contains
       injector_x2 = injector_x2 -&
                         & REAL(injector_reset_interval) * CC * injector_betax
     end if
-
-    ! ! hack
-    ! s = 3
-    ! do ti = 1, species(s)%tile_nx
-    !   do tj = 1, species(s)%tile_ny
-    !     do tk = 1, species(s)%tile_nz
-    !       do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-    !         x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
-    !                & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-    !         y_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(p) + this_meshblock%ptr%y0)&
-    !                & + species(s)%prtl_tile(ti, tj, tk)%dy(p)
-    !         if ((species(s)%prtl_tile(ti, tj, tk)%proc(p) .ne. 20) .or.&
-    !           & (species(s)%prtl_tile(ti, tj, tk)%ind(p) .ne. 5)) then
-    !           species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
-    !         else
-    !           if (step .eq. 2000) then
-    !             print *, 'COOOOORDS:', x_glob, y_glob
-    !           end if
-    !         end if
-    !       end do
-    !     end do
-    !   end do
-    ! end do
 
     ! move the injectors
     old_x1 = injector_x1; old_x2 = injector_x2
