@@ -53,6 +53,8 @@ module m_momentumbinning
   integer                         :: n_angular_bins, n_energy_bins
   ! min & max energy for merging particles
   real                            :: dwn_energy_min, dwn_energy_max
+  ! log or linearly distributed energy bins
+  logical                         :: log_e_bins
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: findEnergyBin, findThetaBin, findPhiBin
@@ -72,7 +74,6 @@ contains
     integer :: p
     integer :: energy_ind, theta_ind, phi_ind
     real    :: prtl_ux, prtl_uy, prtl_uz, prtl_energy, prtl_gamma
-    real    :: log10_e_max, log10_e_min
     real    :: u_theta, u_phi
     integer :: dummy_int
 
@@ -187,21 +188,31 @@ contains
     integer, intent(in)                         :: nparts_in_tile
     type(momentumBin), intent(out), allocatable :: momentum_bins(:)
     integer                                     :: e_b
-    real, allocatable                           :: lognorm(:)
+    real, allocatable                           :: normbins(:)
     real                                        :: e_min, e_max
 
-    ! initializing randomized energy bins ...
-    ! ... intervals of which have lognormal distribution
-    call log_normal(n_energy_bins + 1, lognorm)
-    ! randomize maximum energy bin from `E` to `10 * E`...
-    ! ... for more randomness
-    e_min = dwn_energy_min
-    e_max = 10**log10(dwn_energy_max) + random(dseed)
+    if (log_e_bins) then
+      ! initializing randomized energy bins ...
+      ! ... intervals of which have lognormal distribution
+      call log_normal(n_energy_bins + 1, normbins)
+      ! randomize maximum energy bin from `E` to `10 * E`...
+      ! ... for more randomness
+      e_min = dwn_energy_min
+      e_max = 10**log10(dwn_energy_max) + random(dseed)
+    else
+      ! initializing randomized energy bins ...
+      ! ... intervals of which have linear distribution
+      call lin_normal(n_energy_bins + 1, normbins)
+      ! randomize maximum energy bin from `E` to `2 * E`...
+      ! ... for more randomness
+      e_min = dwn_energy_min
+      e_max = dwn_energy_max * (1.0 + random(dseed))
+    end if
 
     allocate(momentum_bins(0 : n_energy_bins - 1))
     do e_b = 0, n_energy_bins - 1
-      momentum_bins(e_b)%e_min = (e_min + (e_max - e_min) * lognorm(e_b))
-      momentum_bins(e_b)%e_max = (e_min + (e_max - e_min) * lognorm(e_b + 1))
+      momentum_bins(e_b)%e_min = (e_min + (e_max - e_min) * normbins(e_b + 1))
+      momentum_bins(e_b)%e_max = (e_min + (e_max - e_min) * normbins(e_b + 2))
       momentum_bins(e_b)%th0_bin = 0.5 * M_PI / n_angular_bins
       momentum_bins(e_b)%n_theta_bins = n_angular_bins
       call initializeThetaBins(momentum_bins(e_b), nparts_in_tile)
