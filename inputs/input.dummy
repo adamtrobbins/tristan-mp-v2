@@ -30,7 +30,7 @@
   tileX         = 5              # tile dimension in x
   tileY         = 5              # tile dimension in y
   tileZ         = 1              # tile dimension in z
-  
+
 <algorithm>
 
   c             = 0.45           # speed of light
@@ -137,6 +137,7 @@
   energy_bins   = 5             # number of log energy bins
   energy_min    = 1e-1          # min energy of merged particle
   energy_max    = 1e1           # max energy of merged particle
+  log_e_bins    = 1             # log or linear energy bins
 
 <radiation>
 
