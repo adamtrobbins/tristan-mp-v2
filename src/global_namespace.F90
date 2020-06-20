@@ -44,6 +44,7 @@ module m_globalnamespace
 
   integer       :: nfilter, spec_num
   real          :: spec_min, spec_max
+  logical       :: spec_log_bins
 
   ! mpi variables
   integer       :: mpi_rank, mpi_size, mpi_statsize

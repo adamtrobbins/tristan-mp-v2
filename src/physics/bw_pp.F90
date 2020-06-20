@@ -102,10 +102,21 @@ contains
     integer                                       :: set_p_1, set_p_2, s1, s2, p1, p2
     integer                                       :: set_size, set_size_1, set_size_2
     type(couple)                                  :: pair_of_photons
-    real                                          :: rnd, P_12, P_1, delta_P_12
+    integer                                       :: tile_x, tile_y, tile_z
+    real                                          :: rnd, P_12, P_1, delta_P_12, ppt0
     logical                                       :: thresholdQ
     real                                          :: weight1, weight2, min_weight
     integer                                       :: npairs_produced, npp
+
+
+    tile_x = species(1)%prtl_tile(ti, tj, tk)%x2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%x1
+    tile_y = species(1)%prtl_tile(ti, tj, tk)%y2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%y1
+    tile_z = species(1)%prtl_tile(ti, tj, tk)%z2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%z1
+    ! reference # particles on a tile:
+    ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
 
     if (n_sp_2 .ne. 0) then
       ! two separate groups of photons interacting with each other
@@ -149,6 +160,7 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
+          P_12 = P_12 * REAL(BW_interval) / ppt0 ! make rate indep. of ppt0 & qed step
           min_weight = FLOOR(MIN(weight1, weight2))
           delta_P_12 = P_12 * min_weight * min_weight
           P_1 = P_1 + delta_P_12
@@ -211,6 +223,7 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
+          P_12 = P_12 * REAL(BW_interval) / ppt0 ! make rate indep. of ppt0 & qed step
           min_weight = FLOOR(MIN(weight1, weight2))
           delta_P_12 = P_12 * min_weight * min_weight
           P_1 = P_1 + delta_P_12
@@ -248,7 +261,9 @@ contains
     integer, optional, intent(in) :: sp_arr_2(n_sp_2)
     type(couple), allocatable     :: pairs_of_photons(:)
     integer                       :: num_pairs, ph, s1, s2, p1, p2
+    integer                       :: tile_x, tile_y, tile_z, num_pairs_max
     real                          :: rnd, P_12
+    real                          :: P_corr, P_max, ppt0
     logical                       :: thresholdQ
     integer                       :: num_1, num_2
 
@@ -269,12 +284,53 @@ contains
       num_2 = num_1
     end if
 
-    do ph = 1, num_pairs
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! calculate prob. correction factor:
+    tile_x = species(1)%prtl_tile(ti, tj, tk)%x2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%x1
+    tile_y = species(1)%prtl_tile(ti, tj, tk)%y2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%y1
+    tile_z = species(1)%prtl_tile(ti, tj, tk)%z2 - &
+           & species(1)%prtl_tile(ti, tj, tk)%z1
+    ! reference # pairs on a tile:
+    ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
+    ! make it independent of ppt0 & qed step:
+    P_corr = REAL(BW_interval) / ppt0
+    ! match with binary pairing:
+    if (n_sp_2 .ne. 0) then
+      P_corr = P_corr * max(num_1, num_2)
+    else
+      P_corr = P_corr * (num_1 - 1)
+    endif
+    if (num_pairs .gt. INT(ppt0)) then
+      ! reduce # pairs to loop over in dense regions:
+      P_max = 0.26 * BW_tau * P_corr ! tight upper bound on max P_12 for BW
+      num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
+      ! limit from below to ppt0 to avoid excessive undersampling:
+      num_pairs_max = max(num_pairs_max, INT(ppt0))
+    else
+      num_pairs_max = num_pairs
+    endif
+    P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    do ph = 1, num_pairs_max
       ! compute P_12 for each pair of photons `pairs_of_photons(ph)`
       call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph),&
                                & P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
-      P_12 = P_12 * num_2
+      P_12 = P_12 * P_corr
+      #ifdef DEBUG
+        if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
+          print *, 'P_12 = ', P_12
+          call throwError('BW cross section P_12 out of bounds!')
+        end if
+      #else
+        if ((P_12 .gt. 1.0)) then
+          print '(1X,A,ES10.3,A)', 'Warning: BW cross section P_12 = ', P_12, ' > 1 !!'
+        endif
+      #endif
+
       rnd = random(dseed)
       if ((rnd .le. P_12) .and. (thresholdQ)) then
         ! pair produce
@@ -325,23 +381,23 @@ contains
     eps1 = sqrt(ph1_u**2 + ph1_v**2 + ph1_w**2)
     eps2 = sqrt(ph2_u**2 + ph2_v**2 + ph2_w**2)
 
-    if (eps1 * eps2 .lt. 1.0) then
+    if (eps1 * eps2 .lt. 1.0d0) then
       thresholdQ = .false.
     else
       ! photon k-vectors
       k1_x = ph1_u / eps1; k1_y = ph1_v / eps1; k1_z = ph1_w / eps1
       k2_x = ph2_u / eps2; k2_y = ph2_v / eps2; k2_z = ph2_w / eps2
       cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
-      SS = eps1 * eps2 * (1.0 - cos_phi) * 0.5
+      SS = eps1 * eps2 * (1.0d0 - cos_phi) * 0.5d0
       thresholdQ = (SS .gt. 1.0000001)
     end if
     if (thresholdQ) then
-      beta2 = 1.0 - 1.0 / SS
+      beta2 = 1.0d0 - 1.0d0 / SS
       beta = sqrt(beta2)
-      fs = (1.0 - beta2) *&
-         & (-2.0 * beta * (2.0 - beta2) + (3.0 - beta2**2) *&
-         & log((1.0 + beta) / (1.0 - beta)))
-      P_12 = REAL(BW_interval) * BW_tau * fs
+      fs = 0.1875d0 * (1.0d0 - beta2) *&
+         & (-2.0d0 * beta * (2.0d0 - beta2) + (3.0d0 - beta2**2) *&
+         & log((1.0d0 + beta) / (1.0d0 - beta))) ! ==> normalized to sigma_T
+      P_12 = BW_tau * REAL(fs)
     else
       P_12 = 0.0
     end if
@@ -359,20 +415,20 @@ contains
     real(kind=8), intent(out) :: new_k_x, new_k_y, new_k_z
     real(kind=8)              :: gamma_frame_m1
 
-    if (beta_frame_sq .gt. 0.0) then
-      gamma_frame_m1 = gamma_frame - 1.0
+    if (beta_frame_sq .gt. 0.0d0) then
+      gamma_frame_m1 = gamma_frame - 1.0d0
       new_k_x = -beta_frame_x * gamma_frame * old_k_0 +&
-              & old_k_x * (1.0 + (beta_frame_x**2 / beta_frame_sq) * gamma_frame_m1) +&
+              & old_k_x * (1.0d0 + (beta_frame_x**2 / beta_frame_sq) * gamma_frame_m1) +&
               & old_k_y * (beta_frame_x * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
               & old_k_z * (beta_frame_x * beta_frame_z / beta_frame_sq) * gamma_frame_m1
       new_k_y = -beta_frame_y * gamma_frame * old_k_0 +&
               & old_k_x * (beta_frame_y * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
-              & old_k_y * (1.0 + (beta_frame_y**2 / beta_frame_sq) * gamma_frame_m1) +&
+              & old_k_y * (1.0d0 + (beta_frame_y**2 / beta_frame_sq) * gamma_frame_m1) +&
               & old_k_z * (beta_frame_y * beta_frame_z / beta_frame_sq) * gamma_frame_m1
       new_k_z = -beta_frame_z * gamma_frame * old_k_0 +&
               & old_k_x * (beta_frame_z * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
               & old_k_y * (beta_frame_z * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
-              & old_k_z * (1.0 + (beta_frame_z**2 / beta_frame_sq) * gamma_frame_m1)
+              & old_k_z * (1.0d0 + (beta_frame_z**2 / beta_frame_sq) * gamma_frame_m1)
     else
       new_k_x = old_k_x; new_k_y = old_k_y; new_k_z = old_k_z
     end if
@@ -430,15 +486,15 @@ contains
     ! angle between photons in lab frame
     cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
     ! `S` parameter
-    SS = eps1 * eps2 * (1.0 - cos_phi) * 0.5
+    SS = eps1 * eps2 * (1.0d0 - cos_phi) * 0.5d0
     #ifdef DEBUG
-      if (SS .le. 1.0) then
+      if (SS .le. 1.0d0) then
         call throwError('`S` <= 1 when creating BW pairs.')
       end if
     #endif
     ! Lorentz-factor of electron/positron in CoM frame
     gamma_prtl_CM = sqrt(SS)
-    beta_prtl_CM = sqrt(1.0 - 1.0 / SS)
+    beta_prtl_CM = sqrt(1.0d0 - 1.0d0 / SS)
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! 3-velocity of the CoM frame
@@ -448,18 +504,18 @@ contains
     beta_CM_sq = beta_CM_x**2 + beta_CM_y**2 + beta_CM_z**2
 
     #ifdef DEBUG
-      if (beta_CM_sq .ge. 1.0) then
+      if (beta_CM_sq .ge. 1.0d0) then
         call throwError('`beta_CM_sq` >= 1 in `PPfromTwoPhotons()`.')
       end if
     #endif
 
-    gamma_CM = 1.0 / sqrt(1.0 - beta_CM_sq)
+    gamma_CM = 1.0d0 / sqrt(1.0d0 - beta_CM_sq)
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! Lorentz boost `k1` from lab to CoM frame
     call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
                     & beta_CM_sq, gamma_CM,&
-                    & REAL(1.0, 8), k1_x, k1_y, k1_z,&
+                    & REAL(1.0d0, 8), k1_x, k1_y, k1_z,&
                     & k1_CM_x, k1_CM_y, k1_CM_z)
 
     k1_CM = sqrt(k1_CM_x**2 + k1_CM_y**2 + k1_CM_z**2)
@@ -469,12 +525,12 @@ contains
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! Define a basis in in CoM frame: `k1_CM`, `a_CM` and `b_CM`
-    if (k1_CM_x .ne. 0.0) then
-      a_CM_x = -k1_CM_y / k1_CM_x; a_CM_y = 1.0; a_CM_z = 0.0
+    if (k1_CM_x .ne. 0.0d0) then
+      a_CM_x = -k1_CM_y / k1_CM_x; a_CM_y = 1.0d0; a_CM_z = 0.0d0
       a_CM = sqrt(a_CM_x**2 + a_CM_y**2)
       a_CM_x = a_CM_x / a_CM; a_CM_y = a_CM_y / a_CM
     else
-      a_CM_x = 1.0; a_CM_y = 0.0; a_CM_z = 0.0
+      a_CM_x = 1.0d0; a_CM_y = 0.0d0; a_CM_z = 0.0d0
     end if
     b_CM_x = a_CM_z * k1_CM_y - a_CM_y * k1_CM_z
     b_CM_y = -a_CM_z * k1_CM_x + a_CM_x * k1_CM_z
@@ -487,7 +543,7 @@ contains
     ! ... respecting the differential cross section ...
     ! ... at angle `theta` w.r.t. `k1_CM`
     call generateRandomThetaBW(SS, rand_theta_CM)
-    rand_phi_CM = 2.0 * M_PI * random(dseed)
+    rand_phi_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
     cos_rand_theta_CM = cos(rand_theta_CM)
     sin_rand_theta_CM = sin(rand_theta_CM)
     cos_rand_phi_CM = cos(rand_phi_CM)
@@ -549,13 +605,20 @@ contains
     implicit none
     real(kind=8), intent(in)  :: SS
     real(kind=8), intent(out) :: theta_final
-    real(kind=8)              :: rand_prob, rand_theta
+    real(kind=8)              :: rand_theta
+    real                      :: rand_prob
+    real(kind=8)              :: beta, beta2, beta4, asinh_beta
     integer                   :: iter
     iter = 0
+    ! precompute the coefs:
+    beta2 = 1.0d0 - 1.0d0 / SS
+    beta4 = beta2**2
+    beta = sqrt(beta2)
+    asinh_beta = asinh(beta / sqrt(1.0d0 - beta2))
     do while (.true.)
       rand_prob = random(dseed)
-      rand_theta = M_PI * random(dseed)
-      if (rand_prob .le. dSdO_BW(SS, rand_theta)) then
+      rand_theta = REAL(M_PI * random(dseed), 8)
+      if (rand_prob .le. dSdO_BW(SS, rand_theta, beta, beta2, beta4, asinh_beta)) then
         exit
       end if
       iter = iter + 1
@@ -568,18 +631,15 @@ contains
     theta_final = rand_theta
   end subroutine generateRandomThetaBW
 
-  real function dSdO_BW(s, theta)
+  real function dSdO_BW(s, theta, beta, beta2, beta4, asinh_beta)
     implicit none
     real(kind=8), intent(in)  :: s, theta
-    real(kind=8)              :: beta, beta2, beta4
-    beta2 = 1.0 - 1.0 / s
-    beta4 = beta2**2
-    beta = sqrt(beta2)
-    dSdO_BW = (beta * (-8.0 - 8.0 * beta2 + 11.0 * beta4 -&
-            & 4.0 * beta2 * (-2.0 + beta2) * cos(2.0 * theta) +&
-            & beta4 * cos(4.0 * theta)) * sin(theta)) /&
-            & (4.0 * (-(beta * (-2.0 + beta2)) + (-3.0 + beta4) * asinh(beta / sqrt(1.0 - beta2))) *&
-            & (-2.0 + beta2 + beta2 * cos(2.0 * theta))**2)
+    real(kind=8), intent(in)  :: beta, beta2, beta4, asinh_beta
+    dSdO_BW = REAL((beta * (-8.0d0 - 8.0d0 * beta2 + 11.0d0 * beta4 -&
+            & 4.0d0 * beta2 * (-2.0d0 + beta2) * cos(2.0d0 * theta) +&
+            & beta4 * cos(4.0d0 * theta)) * sin(theta)) /&
+            & (4.0d0 * (-(beta * (-2.0d0 + beta2)) + (-3.0d0 + beta4) * asinh_beta) *&
+            & (-2.0d0 + beta2 + beta2 * cos(2.0d0 * theta))**2))
   end function dSdO_BW
 
 #endif

@@ -86,11 +86,11 @@ contains
     write(dummy, '(I10)') w_
 
     if ((abs(value) .ge. 100000) .or.&
-      & ((abs(value) .lt. 1e-4) .and.&
+      & ((abs(value) .lt. 1e-2) .and.&
         & (abs(value) .ne. 0.0))) then
-      FMT = 'ES' // trim(dummy) // '.2'
+      FMT = 'ES' // trim(dummy) // '.3'
     else
-      FMT = 'F' // trim(dummy) // '.2'
+      FMT = 'F' // trim(dummy) // '.3'
     end if
   end function getFMTForReal
 
@@ -364,28 +364,49 @@ contains
     allocate(lognorm(n_bins))
     sum = 0.0
     do i = 1, n_bins
-        x = random(dseed)
-        y = random(dseed)
-        z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
-        z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
-        lognorm(i) = z
-        sum = sum + z
+      x = random(dseed)
+      y = random(dseed)
+      z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
+      z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
+      lognorm(i) = z
+      sum = sum + z
     end do
-    ! this ensures lognorm(max) = 1/
-    ! lognorm(1) = lognorm(1) / sum
-    ! do i = 2, n_bins
-    !     lognorm(i) = lognorm(i) / sum + lognorm(i - 1)
-    ! end do
-    ! /this ensures lognorm(max) = 1
 
     ! this allows having lognorm(max) != 1/
     !   in this case bins are not fixed in upper limit
     lognorm(1) = lognorm(1) / (n_bins + 1.)
     do i = 2, n_bins
-        lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
+      lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
     end do
     ! /this allows having lognorm(max) != 1
   end subroutine log_normal
+
+  subroutine lin_normal(n_bins, linnorm)
+    integer, intent(in)               :: n_bins
+    real, allocatable, intent(inout)  :: linnorm(:)
+    real                              :: x, sum
+    integer                           :: i
+
+    allocate(linnorm(n_bins))
+    sum = 0.0
+    do i = 1, n_bins
+      x = random(dseed)
+      linnorm(i) = x
+      sum = sum + x
+    end do
+
+    ! this allows having linnorm(max) != 1/
+    !   in this case bins are not fixed in upper limit
+    linnorm(1) = linnorm(1) / (n_bins + 1.0)
+    do i = 2, n_bins
+      linnorm(i) = linnorm(i) / (n_bins + 1.0) + linnorm(i - 1)
+    end do
+    
+    do i = 1, n_bins
+      linnorm(i) = 2.0 * linnorm(i)
+    end do
+    ! /this allows having linnorm(max) != 1
+  end subroutine lin_normal
 
   recursive function factorial(n) result(fact)
     implicit none

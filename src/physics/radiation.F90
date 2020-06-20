@@ -91,7 +91,7 @@ contains
         end if
       #endif
 
-      eph_emit = log(eph_emit)
+      if (spec_log_bins) eph_emit = log(eph_emit)
       if (eph_emit .le. spec_min) then
         spec_index = 1
       else if (eph_emit .ge. spec_max) then
@@ -159,7 +159,7 @@ contains
         end if
       #endif
 
-      eph_emit = log(eph_emit)
+      if (spec_log_bins) eph_emit = log(eph_emit)
       if (eph_emit .le. spec_min) then
         spec_index = 1
       else if (eph_emit .ge. spec_max) then

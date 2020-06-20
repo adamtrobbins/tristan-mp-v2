@@ -20,9 +20,16 @@ contains
       integer                                 :: ti, tj, tk
       integer, intent(in)                     :: ind, proc
       real                                    :: weight
-      ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
-      tj = FLOOR(REAL(yi) / REAL(species(s)%tile_sy)) + 1
-      tk = FLOOR(REAL(zi) / REAL(species(s)%tile_sz)) + 1
+      ti = 1; tj = 1; tk = 1
+      #if defined(oneD) || defined (twoD) || defined (threeD)
+        ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
+      #endif
+      #if defined (twoD) || defined (threeD)
+        tj = FLOOR(REAL(yi) / REAL(species(s)%tile_sy)) + 1
+      #endif
+      #if defined (threeD)
+        tk = FLOOR(REAL(zi) / REAL(species(s)%tile_sz)) + 1
+      #endif
       ! if the debug flag is enabled ...
       ! ... check that the particle is within the boundaries ...
       ! ... of that tile and that the tile exists
@@ -84,9 +91,16 @@ contains
       integer                                 :: ti, tj, tk
       integer, intent(in)                     :: ind, proc
       real                                    :: weight
-      ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
-      tj = FLOOR(REAL(yi) / REAL(species(s)%tile_sy)) + 1
-      tk = FLOOR(REAL(zi) / REAL(species(s)%tile_sz)) + 1
+      ti = 1; tj = 1; tk = 1
+      #if defined(oneD) || defined (twoD) || defined (threeD)
+        ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
+      #endif
+      #if defined (twoD) || defined (threeD)
+        tj = FLOOR(REAL(yi) / REAL(species(s)%tile_sy)) + 1
+      #endif
+      #if defined (threeD)
+        tk = FLOOR(REAL(zi) / REAL(species(s)%tile_sz)) + 1
+      #endif
       ! if the debug flag is enabled ...
       ! ... check that the particle is within the boundaries ...
       ! ... of that tile and that the tile exists

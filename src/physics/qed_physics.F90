@@ -5,7 +5,12 @@ module m_qedphysics
 
   use m_aux
   use m_globalnamespace
-  use m_bwpairproduction
+  #ifdef BWPAIRPRODUCTION
+    use m_bwpairproduction
+  #endif
+  #ifdef COMPTONSCATTERING
+    use m_compton
+  #endif
   implicit none
 
   !--- PRIVATE variables/functions -------------------------------!
@@ -14,9 +19,19 @@ contains
   subroutine QEDstep(timestep)
     implicit none
     integer, intent(in) :: timestep
-    if (modulo(timestep, BW_interval) .eq. 0) then
-      call bwPairProduction()
-    end if
+
+    #ifdef COMPTONSCATTERING
+      if (modulo(timestep, Compton_interval) .eq. 0) then
+        call comptonScattering()
+      end if
+    #endif
+
+    #ifdef BWPAIRPRODUCTION
+      if (modulo(timestep, BW_interval) .eq. 0) then
+        call bwPairProduction()
+      end if
+    #endif
+
     call printDiag((mpi_rank .eq. 0), "QEDstep()", .true.)
   end subroutine QEDstep
 
