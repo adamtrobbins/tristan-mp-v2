@@ -433,7 +433,7 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
-      
+
       write (var_name, "(A7,I1)") "deposit", s
       call getInput('particles', var_name, species(s)%deposit_sp, (species(s)%ch_sp .ne. 0))
       write (var_name, "(A4,I1)") "move", s
@@ -912,6 +912,7 @@ contains
       call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
       call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
+      call getInput('downsampling', 'log_e_bins', log_e_bins, .true.)
     end subroutine initializeDownsampling
   #endif
 
