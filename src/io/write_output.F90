@@ -22,6 +22,10 @@ module m_writeoutput
     use m_bwpairproduction
   #endif
 
+  #ifdef COMPTONSCATTERING
+    use m_compton
+  #endif
+
   implicit none
 
   integer                 :: output_start, output_interval, output_stride, output_istep
@@ -236,37 +240,33 @@ contains
 
     spectra(:,:) = 0
     do s = 1, nspec
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
-              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
-              w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
-              if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
-                energy = sqrt(u_**2 + v_**2 + w_**2)
-              else
-                energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
-              end if
-              if (energy .eq. 0) then
-                energy = spec_min
-              else
-                energy = log(energy)
-              end if
-              if (energy .le. spec_min) then
-                spec_index = 1
-              else if (energy .ge. spec_max) then
-                spec_index = spec_num
-              else
-                spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
-                if (spec_index .lt. 1) spec_index = 1
-                if (spec_index .gt. spec_num) spec_index = spec_num
-              end if
-              spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
-            end do
-          end do
-        end do
-      end do
+     do ti = 1, species(s)%tile_nx
+       do tj = 1, species(s)%tile_ny
+         do tk = 1, species(s)%tile_nz
+           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+             u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+             v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+             w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+             if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+               energy = sqrt(u_**2 + v_**2 + w_**2)
+             else
+               energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
+             end if
+             if (spec_log_bins) energy = log(energy)
+             if (energy .le. spec_min) then
+               spec_index = 1
+             else if (energy .ge. spec_max) then
+               spec_index = spec_num
+             else
+               spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+               if (spec_index .lt. 1) spec_index = 1
+               if (spec_index .gt. spec_num) spec_index = spec_num
+             end if
+             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+           end do
+         end do
+       end do
+     end do
     end do
 
     ! send to root rank
@@ -886,7 +886,9 @@ contains
       allocate(bin_data(spec_num))
       do i = 1, spec_num
         bin_data(i) = spec_min + (REAL(i - 0.5) / REAL(spec_num)) * (spec_max - spec_min)
-        bin_data(i) = exp(bin_data(i))
+        if (spec_log_bins) then
+          bin_data(i) = exp(bin_data(i))
+        endif
       end do
 
       write(stepchar, "(i5.5)") step

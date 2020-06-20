@@ -33,6 +33,10 @@ module m_initialize
     use m_bwpairproduction
   #endif
 
+  #ifdef COMPTONSCATTERING
+    use m_compton
+  #endif
+
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -53,6 +57,10 @@ module m_initialize
 
   #ifdef BWPAIRPRODUCTION
     private :: initializeBWPairProduction
+  #endif
+
+  #ifdef COMPTONSCATTERING
+    private :: initializeComptonScattering
   #endif
   !...............................................................!
 contains
@@ -112,6 +120,11 @@ contains
     #ifdef BWPAIRPRODUCTION
       call initializeBWPairProduction()
         call printDiag((mpi_rank .eq. 0), "initializeBWPairProduction()", .true.)
+    #endif
+
+    #ifdef COMPTONSCATTERING
+      call initializeComptonScattering()
+        call printDiag((mpi_rank .eq. 0), "initializeComptonScattering()", .true.)
     #endif
 
     call initializePrtlExchange()
@@ -325,11 +338,14 @@ contains
     call getInput('output', 'hst_enable', hst_enable, .false.)
     call getInput('output', 'hst_interval', hst_interval, 1)
 
+    call getInput('output', 'spec_log_bins', spec_log_bins, .true.)
     call getInput('output', 'spec_min', spec_min, 1e-2)
     call getInput('output', 'spec_max', spec_max, 1e2)
     call getInput('output', 'spec_num', spec_num, 100)
-    spec_min = log(spec_min)
-    spec_max = log(spec_max)
+    if (spec_log_bins) then
+      spec_min = log(spec_min)
+      spec_max = log(spec_max)
+    endif
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
     call getInput('output', 'write_xdmf', write_xdmf, .true.)
@@ -367,7 +383,10 @@ contains
     call getInput('algorithm', 'fieldsolver', enable_fieldsolver, .true.)
     call getInput('algorithm', 'currdeposit', enable_currentdeposit, .true.)
     call getInput('plasma', 'ppc0', ppc0)
-    call getInput('plasma', 'sigma', sigma)
+    call getInput('plasma', 'sigma', sigma, 1.0)
+    if (sigma .le. 0.0) then
+          call throwError('Reference sigma value must be > 0.')
+    endif
     call getInput('plasma', 'c_omp', c_omp)
     call renormalizeUnits()
 
@@ -414,7 +433,7 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
-
+      
       write (var_name, "(A7,I1)") "deposit", s
       call getInput('particles', var_name, species(s)%deposit_sp, (species(s)%ch_sp .ne. 0))
       write (var_name, "(A4,I1)") "move", s
@@ -464,6 +483,17 @@ contains
         if ((species(s)%bw_sp .gt. 2)) then
           call throwError('only two BW photon populations are allowed.')
         end if
+      #endif
+
+      #ifdef COMPTONSCATTERING
+        write (var_name, "(A7,I1)") "compton", s
+        call getInput('particles', var_name, species(s)%compton_sp, .false.)
+        if (species(s)%compton_sp) then
+          if ( .not. (((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) .or. &
+             & ((species(s)%m_sp .eq. 1.0) .and. (abs(species(s)%ch_sp) .eq. 1.0))) ) then
+            call throwError('`Only electron/positron and photon species can Compton scatter.')
+          endif
+        endif
       #endif
 
       do ti = 1, species(s)%tile_nx
@@ -916,12 +946,26 @@ contains
   #ifdef BWPAIRPRODUCTION
     subroutine initializeBWPairProduction()
       implicit none
-      call getInput('bw_pp', 'tau_BW', BW_tau)
       call getInput('bw_pp', 'interval', BW_interval, 1)
-      call getInput('bw_pp', 'algorithm', BW_algorithm)
+      call getInput('bw_pp', 'tau_BW', BW_tau, 0.1)
+      call getInput('bw_pp', 'algorithm', BW_algorithm, 2)
       call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
       call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
     end subroutine initializeBWPairProduction
+  #endif
+
+  #ifdef COMPTONSCATTERING
+    subroutine initializeComptonScattering()
+      implicit none
+      call getInput('compton', 'interval', Compton_interval, 1)
+      call getInput('compton', 'tau_Compton', Compton_tau, 0.1)
+      call getInput('compton', 'algorithm', Compton_algorithm, 2)
+      if (Compton_algorithm .ne. 2) then
+        call throwError('Compton scattering currently only supports the MC algorithm.')
+      endif
+      call getInput('compton', 'el_recoil', Compton_el_recoil, .true.)
+      call getInput('compton', 'Thomson_lim', Thomson_lim, 1d-6)
+    end subroutine initializeComptonScattering
   #endif
 
 end module m_initialize

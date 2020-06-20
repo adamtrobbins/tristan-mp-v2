@@ -35,6 +35,7 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)load_balancing/adaptive_lb.F90 \
              $(SRC_DIR)load_balancing/loadbalancing.F90 \
 						 $(SRC_DIR)physics/bw_pp.F90 \
+						 $(SRC_DIR)physics/compton.F90 \
              $(SRC_DIR)physics/radiation.F90 \
              $(SRC_DIR)physics/thermal_plasma.F90 \
              $(SRC_DIR)physics/powerlaw_plasma.F90 \

@@ -138,6 +138,11 @@ parser.add_argument('-bwpp',
                     default=False,
                     help='enable Breit-Wheeler pair production')
 
+parser.add_argument('-compton',
+                    action='store_true',
+                    default=False,
+                    help='enable Compton scattering')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -243,6 +248,9 @@ if args['qed']:
 if args['bwpp']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
 
+if args['compton']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DCOMPTONSCATTERING '
+
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
 # Step 3. Create new files, finish up
@@ -276,6 +284,7 @@ print('  Cooling:                 ' + args['radiation'])
 print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
 print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
 print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
+print('  Compton scattering       ' + ('ON' if args['compton'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 

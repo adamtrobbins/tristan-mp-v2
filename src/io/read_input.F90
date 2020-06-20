@@ -126,6 +126,8 @@ contains
       bname = 'dwn'
     else if (trim(blockname) .eq. 'bw_pp') then
       bname = 'bwp'
+    else if (trim(blockname) .eq. 'compton') then
+      bname = 'cmp'
     else if (trim(blockname) .eq. 'problem') then
       bname = 'prb'
     else
