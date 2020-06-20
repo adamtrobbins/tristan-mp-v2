@@ -14,8 +14,8 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: Te, eph0, delta_eph0
-  private   :: Te, eph0, delta_eph0
+  real      :: gamma_up, dgamma_up
+  private   :: gamma_up, dgamma_up
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -25,9 +25,8 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'Te', Te)
-    call getInput('problem', 'eph0', eph0)
-    call getInput('problem', 'delta_eph0', delta_eph0)
+    call getInput('problem', 'gamma', gamma_up)
+    call getInput('problem', 'dgamma', dgamma_up)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -55,36 +54,53 @@ contains
     type(region)    :: back_region
     real            :: eph, xg, yg, zg, kx, ky, kz, U_, TH_
     integer         :: ntot, n
+    real            :: p_dot_k, px
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    ! the electron and positron thermal background:
     dens = 0.5 * ppc0
-    back_region%x_min = 0.0
-    back_region%x_max = REAL(global_mesh%sx)
     #if defined(twoD) || defined (threeD)
       back_region%y_min = 0.0
       back_region%y_max = REAL(global_mesh%sy)
     #endif
-    #if defined(threeD)
-      back_region%z_min = 0.0
-      back_region%z_max = REAL(global_mesh%sz)
-    #endif
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, dens, Te)
+    back_region%x_min = 0.0
+    back_region%x_max = 0.5 * REAL(global_mesh%sx)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, dens, dgamma_up, &
+                                   & shift_gamma = gamma_up, shift_dir = 1, zero_current = .true.)
+    back_region%x_min = 0.5 * REAL(global_mesh%sx)
+    back_region%x_max = REAL(global_mesh%sx)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, dens, dgamma_up, &
+                                   & shift_gamma = gamma_up, shift_dir = -1, zero_current = .true.)
 
-    ! the isotropic photon field:
-    ntot = global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0
+    ntot = global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0 * 0.5
     do n = 1, ntot
-      xg = random(dseed) * (global_mesh%sx)
+      xg = random(dseed) * (global_mesh%sx) * 0.5
       yg = random(dseed) * (global_mesh%sy)
-      ! zg = random(dseed) * (global_mesh%sz)
       zg = 0.5
       U_ = 2 * (random(dseed) - 0.5)
       TH_ = 2 * M_PI * random(dseed)
-      eph = eph0 + delta_eph0 * 2 * (random(dseed) - 0.5)
+      eph = dgamma_up
       kx = eph * sqrt(1 - U_**2) * cos(TH_)
       ky = eph * sqrt(1 - U_**2) * sin(TH_)
       kz = eph * U_
+      px =  - sqrt(gamma_up**2 - 1.0)
+      p_dot_k = kx * px
+      kx = kx + (p_dot_k / (gamma_up + 1.0) - eph) * px
+      call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz)
+    end do
+    do n = 1, ntot
+      xg = (random(dseed) + 1.0) * (global_mesh%sx) * 0.5
+      yg = random(dseed) * (global_mesh%sy)
+      zg = 0.5
+      U_ = 2 * (random(dseed) - 0.5)
+      TH_ = 2 * M_PI * random(dseed)
+      eph = dgamma_up
+      kx = eph * sqrt(1 - U_**2) * cos(TH_)
+      ky = eph * sqrt(1 - U_**2) * sin(TH_)
+      kz = eph * U_
+      px = sqrt(gamma_up**2 - 1.0)
+      p_dot_k = kx * px
+      kx = kx + (p_dot_k / (gamma_up + 1.0) - eph) * px
       call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz)
     end do
   end subroutine userInitParticles
