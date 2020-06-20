@@ -31,9 +31,13 @@ contains
     call getInput('problem', 'upstream_T', upstream_T)
     call getInput('problem', 'nCS_nUP', nCS_over_nUP)
     call getInput('problem', 'current_width', current_width)
-    call getInput('problem', 'injector_sx', injector_sx)
-    call getInput('problem', 'injector_betax', injector_betax)
+    injector_sx = 50
+    injector_betax = 0.9995
     cs_x = 0.5
+
+    injector_x1 = injector_sx - 1.0e-5
+    injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
+    injector_reset_interval = INT(injector_sx / (injector_betax * CC))
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -65,14 +69,9 @@ contains
 
     back_region%x_min = 0.0
     back_region%y_min = 0.0
-    back_region%x_max = sx_glob * cs_x
-    back_region%y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
-    back_region%x_min = sx_glob * cs_x
-    back_region%y_min = 0.0
     back_region%x_max = sx_glob
     back_region%y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
 
     shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
     if (shift_beta .ge. 1) then
@@ -85,7 +84,7 @@ contains
     back_region%x_max = sx_glob * cs_x + 10 * current_width
     back_region%y_min = 0.0
     back_region%y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/5, 6/), 2, nCS, current_sheet_T,&
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nCS, current_sheet_T,&
                                    & shift_gamma = shift_gamma, shift_dir = 3,&
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = cs_x * sx_glob, dummy2 = current_width)
@@ -100,18 +99,10 @@ contains
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
-    injector_x1 = injector_sx - 1.0e-5
-    injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
-    injector_reset_interval = INT(injector_sx / (injector_betax * CC))
-
-    k = 0
     sx_glob = REAL(global_mesh%sx)
     do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
-      i_glob = i + this_meshblock%ptr%x0
-      x_glob = REAL(i_glob) + 0.5
-      !do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
+      x_glob = REAL(i + this_meshblock%ptr%x0) + 0.5
       by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
-      !end do
     end do
   end subroutine userInitFields
   !............................................................!
@@ -151,9 +142,14 @@ contains
   !--- boundaries ---------------------------------------------!
   subroutine userParticleBoundaryConditions(step)
     implicit none
-    real                            :: nUP, old_x1, old_x2, x_glob
-    integer                         :: s, ti, tj, tk, p, nUP_tot
+    real                            :: nUP, old_x1, old_x2, x_glob, y_glob
+    integer                         :: s, ti, tj, tk, p, nUP_tot, k, ntest
     integer                         :: injector_i1_glob, injector_i2_glob
+    integer(kind=2)                 :: xi_, yi_, zi_
+    real                            :: xg_, yg_, zg_, u_, v_, w_, dx_, dy_, dz_
+    real                            :: ex0, ey0, ez0, bx0, by0, bz0, xl_, yl_, zl_
+    real                            :: deltaX(2)
+    logical                         :: dummy_flag
     type(region)                    :: back_region
     integer, optional, intent(in)             :: step
     procedure (spatialDistribution), pointer  :: spat_distr_ptr => null()
@@ -199,29 +195,29 @@ contains
       end if
     end if
 
-    ! inject background particles at the injectors' positions
-    nUP = 0.5 * ppc0
-
-    ! left injector
-    back_region%x_min = injector_x1
-    back_region%x_max = old_x1
-    back_region%y_min = 0.0
-    back_region%y_max = REAL(global_mesh%sy)
-
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
-
-    ! right injector
-    back_region%x_min = old_x2
-    back_region%x_max = injector_x2
-    back_region%y_min = 0.0
-    back_region%y_max = REAL(global_mesh%sy)
-
-    call fillRegionWithThermalPlasma(back_region, (/3, 4/), 2, nUP, upstream_T)
+    ! ! inject background particles at the injectors' positions
+    ! nUP = 0.5 * ppc0
+    !
+    ! ! left injector
+    ! back_region%x_min = injector_x1
+    ! back_region%x_max = old_x1
+    ! back_region%y_min = 0.0
+    ! back_region%y_max = REAL(global_mesh%sy)
+    !
+    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    !
+    ! ! right injector
+    ! back_region%x_min = old_x2
+    ! back_region%x_max = injector_x2
+    ! back_region%y_min = 0.0
+    ! back_region%y_max = REAL(global_mesh%sy)
+    !
+    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
-    real                          :: sx_glob, x_glob
+    real                          :: sx_glob, x_glob, delta_x
     integer                       :: i, j, k
     integer                       :: i_glob, injector_i1_glob, injector_i2_glob
     integer, optional, intent(in) :: step
@@ -250,10 +246,19 @@ contains
         sx_glob = REAL(global_mesh%sx)
         do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
           i_glob = i + this_meshblock%ptr%x0
-          x_glob = REAL(i_glob)
-          if ((i_glob .lt. injector_i1_glob) .or. (i_glob .gt. injector_i2_glob)) then
-            bx(i, :, :) = 0.0; bz(i, :, :) = 0.0
-            by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
+          x_glob = REAL(i_glob) + 0.5
+          if (i_glob .lt. injector_i1_glob) then
+            delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
+            bx(i, :, :) = tanh(delta_x) * bx(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+            bz(i, :, :) = tanh(delta_x) * bz(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+            by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
+                    & tanh(delta_x) * by(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+          else if (i_glob .gt. injector_i2_glob) then
+            delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
+            bx(i, :, :) = tanh(delta_x) * bx(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+            bz(i, :, :) = tanh(delta_x) * bz(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+            by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
+                    & tanh(delta_x) * by(injector_i2_glob - this_meshblock%ptr%x0, :, :)
           end if
         end do
       end if
@@ -261,9 +266,16 @@ contains
         sx_glob = REAL(global_mesh%sx)
         do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
           i_glob = i + this_meshblock%ptr%x0
-          x_glob = REAL(i_glob)
-          if ((i_glob .lt. injector_i1_glob) .or. (i_glob .gt. injector_i2_glob)) then
-            ex(i, :, :) = 0.0; ey(i, :, :) = 0.0; ez(i, :, :) = 0.0
+          if (i_glob .lt. injector_i1_glob) then
+            delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
+            ex(i, :, :) = tanh(delta_x) * ex(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+            ey(i, :, :) = tanh(delta_x) * ey(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+            ez(i, :, :) = tanh(delta_x) * ez(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+          else if (i_glob .gt. injector_i2_glob) then
+            delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
+            ex(i, :, :) = tanh(delta_x) * ex(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+            ey(i, :, :) = tanh(delta_x) * ey(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+            ez(i, :, :) = tanh(delta_x) * ez(injector_i2_glob - this_meshblock%ptr%x0, :, :)
           end if
         end do
       end if

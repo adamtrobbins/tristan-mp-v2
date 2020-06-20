@@ -95,7 +95,7 @@ subroutine userInitFields()
 
   sx_glob = REAL(global_mesh%sx)
   do i = 0, this_meshblock%ptr%sx - 1
-    x_glob = i + this_meshblock%ptr%x0
+    x_glob = i + this_meshblock%ptr%x0 + 0.5
     do j = 0, this_meshblock%ptr%sy - 1
       do k = 0, this_meshblock%ptr%sz - 1
         by(i, j, k) = tanh((x_glob - cs_x1 * sx_glob) / current_width) -&

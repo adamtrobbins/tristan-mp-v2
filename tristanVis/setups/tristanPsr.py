@@ -31,6 +31,10 @@ class PulsarSimulation(Simulation):
         self.data.attrs['nGJ'] = 2 * self.data.attrs['OMEGA'] * self.data.attrs['B0'] / (self.data.attrs['CC'] * self.data.attrs['qe'])
 
         b_sqr = (fields['bx'][:] * fields['bx'][:] + fields['by'][:] * fields['by'][:] + fields['bz'][:] * fields['bz'][:])
+        self.data['jx'] = (axes, fields['jx'][:])
+        self.data['jy'] = (axes, fields['jy'][:])
+        self.data['jz'] = (axes, fields['jz'][:])
+
         self.data['b'] = (axes, np.sqrt(b_sqr))
         self.data['rho+'] = (axes, fields['dens2'][:])
         self.data['rho-'] = (axes, fields['dens1'][:])
@@ -54,27 +58,34 @@ class PulsarSimulation(Simulation):
         self.data.coords['y'] = (('y'), (fields['yy'][:][0,:,0] - self.data.attrs['sy'] / 2) / self.data.attrs['RLC'])
         self.data.coords['z'] = (('z'), (fields['zz'][:][:,0,0] - self.data.attrs['sz'] / 2) / self.data.attrs['RLC'])
 
-  def drawData(self, savefig=None):
+  def drawData(self, savefig=None, fontsize=None, figsize=None):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from matplotlib.patches import Circle
     import numpy as np
     from matplotlib import rc
 
-    if savefig is not None:
-      fontsize = 25
-      dims = (40, 24)
+    if figsize is not None:
+      dims = figsize
     else:
-      fontsize = 12
-      dims = (46, 24)
+      if savefig is not None:
+        dims = (40, 24)
+      else:
+        dims = (46, 24)
+    if fontsize is not None:
+      fontsize = fontsize
+    else:
+      if savefig is not None:
+        fontsize = 25
+      else:
+        fontsize = 12
 
-    rc('font',**{'family':'monospace','sans-serif':['Verdana'],'size':fontsize})
-    rc('text', usetex=True)
-    np.seterr(divide='ignore', invalid='ignore')
     super().drawData()
+    rc('font',**{'size':fontsize})
+    np.seterr(divide='ignore', invalid='ignore')
     # integrating fieldlines
     def stopIf(point):
-      return (np.linalg.norm(point) < self.data.attrs['RADIUS'] / self.data.attrs['RLC']) or (np.linalg.norm(point) > 2)
+      return (np.linalg.norm(point) < self.data.attrs['RADIUS'] / self.data.attrs['RLC']) or (np.linalg.norm(point) > (0.5 * (self.data.attrs['sx'] - 40) / self.data.attrs['RLC']))
 
     fieldlines_xz = []
     RR = self.data.attrs['RADIUS'] / self.data.attrs['RLC']
@@ -166,8 +177,4 @@ class PulsarSimulation(Simulation):
     plt.suptitle('t = ' + str(self.data.attrs['t'] / self.data.attrs['PERIOD']) + ' rotations', fontsize=int(fontsize*2));
     plt.tight_layout(rect=[0.04, 0.04, 0.94, 0.94])
     fig.subplots_adjust(hspace=0.2, wspace=0.3)
-    if savefig is not None:
-      plt.savefig(savefig)
-      plt.close()
-    else:
-      plt.show()
+    self.saveFig(savefig)

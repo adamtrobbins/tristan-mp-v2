@@ -52,7 +52,9 @@ contains
       do ind2 = -1, 1
         do ind3 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifndef threeD
+          #ifdef oneD
+            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+          #elif twoD
             if (ind3 .ne. 0) cycle
           #endif
           if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
@@ -85,7 +87,10 @@ contains
             else if (ind3 .eq. 1) then
               kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
             end if
-            #ifndef threeD
+            #ifdef oneD
+              jmin = 0; jmax = 0
+              kmin = 0; kmax = 0
+            #elif twoD
               kmin = 0; kmax = 0
             #endif
           else
@@ -111,7 +116,10 @@ contains
             else if (ind3 .eq. 1) then
               kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz - 1
             end if
-            #ifndef threeD
+            #ifdef oneD
+              jmin = 0; jmax = 0
+              kmin = 0; kmax = 0
+            #elif twoD
               kmin = 0; kmax = 0
             #endif
           end if
@@ -150,7 +158,9 @@ contains
         do ind2 = -1, 1
           do ind3 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-            #ifndef threeD
+            #ifdef oneD
+              if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+            #elif twoD
               if (ind3 .ne. 0) cycle
             #endif
             if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
@@ -199,7 +209,10 @@ contains
                   else if (ind3 .eq. 1) then
                     kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
                   end if
-                  #ifndef threeD
+                  #ifdef oneD
+                    jmin = 0; jmax = 0
+                    kmin = 0; kmax = 0
+                  #elif twoD
                     kmin = 0; kmax = 0
                   #endif
                 else
@@ -225,7 +238,10 @@ contains
                   else if (ind3 .eq. 1) then
                     kmin = this_meshblock%ptr%sz; kmax = this_meshblock%ptr%sz + NGHOST - 1
                   end if
-                  #ifndef threeD
+                  #ifdef oneD
+                    jmin = 0; jmax = 0
+                    kmin = 0; kmax = 0
+                  #elif twoD
                     kmin = 0; kmax = 0
                   #endif
                 end if

@@ -196,22 +196,21 @@ contains
 
   subroutine initializeDomain()
     implicit none
-    call getInput('node_configuration', 'sizex', sizex)
-    call getInput('node_configuration', 'sizey', sizey)
-    #ifdef threeD
-      call getInput('node_configuration', 'sizez', sizez)
-    #else
-      sizez = 1
+    sizex = 1; sizey = 1; sizez = 1
+    global_mesh%x0 = 0; global_mesh%y0 = 0; global_mesh%z0 = 0
+    global_mesh%sx = 1; global_mesh%sy = 1; global_mesh%sz = 1
+
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      call getInput('node_configuration', 'sizex', sizex)
+      call getInput('grid', 'mx0', global_mesh%sx)
     #endif
-    global_mesh%x0 = 0
-    global_mesh%y0 = 0
-    global_mesh%z0 = 0
-    call getInput('grid', 'mx0', global_mesh%sx)
-    call getInput('grid', 'my0', global_mesh%sy)
-    #ifdef threeD
+    #if defined(twoD) || defined (threeD)
+      call getInput('node_configuration', 'sizey', sizey)
+      call getInput('grid', 'my0', global_mesh%sy)
+    #endif
+    #if defined(threeD)
+      call getInput('node_configuration', 'sizez', sizez)
       call getInput('grid', 'mz0', global_mesh%sz)
-    #else
-      global_mesh%sz = 1
     #endif
 
     if ((modulo(global_mesh%sx, sizex) .ne. 0) .or.&
@@ -224,25 +223,33 @@ contains
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
     call getInput('grid', 'boundary_z', boundary_z, 1)
-    #ifdef threeD
-      call getInput('grid', 'boundary_z', boundary_z, 1)
-      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
-        boundary_x = 2
-        boundary_y = 2
-        boundary_z = 2
+    #ifdef oneD
+      boundary_y = 1
+      boundary_z = 1
+      if (boundary_x .eq. 2) then
+        #ifndef ABSORB
+          call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+        #endif
       end if
-    #else
+    #elif twoD
       boundary_z = 1
       if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2)) then
         boundary_x = 2
         boundary_y = 2
+        #ifndef ABSORB
+          call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+        #endif
+      end if
+    #elif threeD
+      if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
+        boundary_x = 2
+        boundary_y = 2
+        boundary_z = 2
+        #ifndef ABSORB
+          call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
+        #endif
       end if
     #endif
-    if ((boundary_x .ne. 1) .or. (boundary_x .ne. 1) .or. (boundary_x .ne. 1)) then
-      #ifndef ABSORB
-        call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
-      #endif
-    end if
   end subroutine initializeDomain
 
   subroutine distributeMeshblocks()
@@ -273,47 +280,46 @@ contains
   subroutine initializeLB()
     implicit none
     ! initializing static LB variables
-    call getInput('static_load_balancing', 'in_x', slb_x, .false.)
-    call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
-    call getInput('static_load_balancing', 'in_y', slb_y, .false.)
-    call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
-    #ifdef threeD
+    slb_x = .false.; slb_sxmin = -1
+    slb_y = .false.; slb_symin = -1
+    slb_z = .false.; slb_szmin = -1
+
+    alb_x = .false.; alb_sxmin = -1; alb_int_x = -1; alb_start_x = -1
+    alb_y = .false.; alb_symin = -1; alb_int_y = -1; alb_start_y = -1
+    alb_z = .false.; alb_szmin = -1; alb_int_z = -1; alb_start_z = -1
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      call getInput('static_load_balancing', 'in_x', slb_x, .false.)
+      call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
+      call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
+      call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
+      call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
+    #endif
+    #if defined(twoD) || defined (threeD)
+      call getInput('static_load_balancing', 'in_y', slb_y, .false.)
+      call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
+      call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
+      call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
+      call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
+    #endif
+    #if defined(threeD)
       call getInput('static_load_balancing', 'in_z', slb_z, .false.)
       call getInput('static_load_balancing', 'sz_min', slb_szmin, 10)
-    #else
-      slb_z = .false.
-      slb_szmin = -1
-    #endif
 
-    ! initializing adaptive LB variables
-    call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
-    call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
-
-    call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
-    call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
-
-    call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
-    call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
-
-    call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
-    call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
-
-    #ifdef threeD
       call getInput('adaptive_load_balancing', 'in_z', alb_z, .false.)
       call getInput('adaptive_load_balancing', 'sz_min', alb_szmin, 10)
       call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
       call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
-    #else
-      alb_z = .false.
-      alb_szmin = -1
-      alb_int_z = -1
-      alb_start_z = -1
+
     #endif
   end subroutine initializeLB
 
   subroutine initializeOutput()
     implicit none
-    call getInput('output', 'enable', output_enabled, .true.)
+    call getInput('output', 'enable', output_enable, .true.)
     call getInput('output', 'start', output_start, 0)
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
@@ -348,7 +354,7 @@ contains
 
   subroutine initializeSlice()
     implicit none
-    call getInput('slice_output', 'enable', slice_enabled, .true.)
+    call getInput('slice_output', 'enable', slice_enable, .false.)
     call getInput('slice_output', 'start', slice_start, 0)
     call getInput('slice_output', 'interval', slice_interval, 10)
 
@@ -371,7 +377,7 @@ contains
 
   subroutine initializeRestart()
     implicit none
-    call getInput('restart', 'enable', rst_enabled, .false.)
+    call getInput('restart', 'enable', rst_enable, .false.)
     call getInput('restart', 'start', rst_start, 0)
     call getInput('restart', 'interval', rst_interval, 10000)
     call getInput('restart', 'rewrite', rst_separate, .false.)
@@ -384,10 +390,17 @@ contains
     call getInput('algorithm', 'nfilter', nfilter, 16)
     call getInput('algorithm', 'c', CC, 0.45)
     call getInput('algorithm', 'corr', CORR, 1.025)
+    call getInput('algorithm', 'fieldsolver', enable_fieldsolver, .true.)
+    call getInput('algorithm', 'currdeposit', enable_currentdeposit, .true.)
     call getInput('plasma', 'ppc0', ppc0)
     call getInput('plasma', 'sigma', sigma)
     call getInput('plasma', 'c_omp', c_omp)
     call renormalizeUnits()
+
+    #ifdef GCA
+      call getInput('algorithm', 'gca_rhoL', gca_rhomin)
+      call getInput('algorithm', 'gca_EoverB', gca_eoverbmin)
+    #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
@@ -397,7 +410,7 @@ contains
     implicit none
     integer                 :: s, ti, tj, tk
     character(len=STR_MAX)  :: var_name
-    integer                  :: maxptl_
+    integer                 :: maxptl_
 
     call getInput('particles', 'nspec', nspec, 2)
 
@@ -406,7 +419,10 @@ contains
       call getInput('grid', 'tileX', species(s)%tile_sx)
       call getInput('grid', 'tileY', species(s)%tile_sy)
       call getInput('grid', 'tileZ', species(s)%tile_sz)
-      #ifndef threeD
+      #ifdef oneD
+        species(s)%tile_sy = 1
+        species(s)%tile_sz = 1
+      #elif twoD
         species(s)%tile_sz = 1
       #endif
       species(s)%tile_nx = ceiling(real(this_meshblock%ptr%sx) / real(species(s)%tile_sx))
@@ -424,6 +440,31 @@ contains
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
       call getInput('particles', var_name, species(s)%ch_sp)
+
+      write (var_name, "(A7,I1)") "deposit", s
+      call getInput('particles', var_name, species(s)%deposit_sp, (species(s)%ch_sp .ne. 0))
+      write (var_name, "(A4,I1)") "move", s
+      call getInput('particles', var_name, species(s)%move_sp, .true.)
+      write (var_name, "(A6,I1)") "output", s
+      call getInput('particles', var_name, species(s)%output_sp, .true.)
+
+      if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .ne. 0)) then
+        call throwError('ERROR: massless charged particles are not allowed')
+      end if
+      if ((species(s)%m_sp .ne. 0) .and. (species(s)%ch_sp .eq. 0)) then
+        call throwError('ERROR: massive zero-charge particles are not allowed')
+      end if
+      if ((species(s)%ch_sp .eq. 0) .and. (species(s)%deposit_sp .ne. 0)) then
+        call throwError('ERROR: zero-charged particles cannot deposit current')
+      end if
+
+      #ifdef GCA
+        write (var_name, "(A3,I1)") "gca", s
+        call getInput('particles', var_name, species(s)%gca_sp, (species(s)%ch_sp .ne. 0))
+        if ((species(s)%ch_sp .eq. 0) .and. species(s)%gca_sp) then
+          call throwError('ERROR: massless/zero-charged particles cannot be treated with a GCA pusher')
+        end if
+      #endif
 
       #ifdef DOWNSAMPLING
         write (var_name, "(A3,I1)") "dwn", s
@@ -454,37 +495,7 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            species(s)%prtl_tile(ti, tj, tk)%spec = s
-            species(s)%prtl_tile(ti, tj, tk)%maxptl_sp = maxptl_ / &
-                              & (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
-            species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
-
-            species(s)%prtl_tile(ti, tj, tk)%x1 = (ti - 1) * species(s)%tile_sx
-            species(s)%prtl_tile(ti, tj, tk)%x2 = min(ti * species(s)%tile_sx, this_meshblock%ptr%sx)
-            species(s)%prtl_tile(ti, tj, tk)%y1 = (tj - 1) * species(s)%tile_sy
-            species(s)%prtl_tile(ti, tj, tk)%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
-            species(s)%prtl_tile(ti, tj, tk)%z1 = (tk - 1) * species(s)%tile_sz
-            species(s)%prtl_tile(ti, tj, tk)%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
-            #ifdef DEBUG
-              if ((species(s)%prtl_tile(ti, tj, tk)%x1 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%x2 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%y1 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%y2 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%z1 .eq. 0) .and.&
-                & (species(s)%prtl_tile(ti, tj, tk)%z2 .eq. 0)) then
-                print *, ti, tj, tk
-                print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%x2,&
-                 & species(s)%prtl_tile(ti, tj, tk)%y1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%y2,&
-                 & species(s)%prtl_tile(ti, tj, tk)%z1,&
-                 & species(s)%prtl_tile(ti, tj, tk)%z2
-               call throwError('ERROR IN PRTLINIT')
-              end if
-            #endif
-
-            call allocateParticles(species(s)%prtl_tile(ti, tj, tk),&
-                                 & species(s)%prtl_tile(ti, tj, tk)%maxptl_sp)
+            call createEmptyTile(s, ti, tj, tk, maxptl_)
           end do
         end do
       end do
@@ -514,20 +525,29 @@ contains
 
     multiplier = max(INT(ppc0), 1) * 100
     ! FIX this might change over time (due to load balancing)
-    buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
-    buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
-    buffsize_xy = this_meshblock%ptr%sz * multiplier
-    #ifdef threeD
-      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
-
+    buffsize_x = 0
+    buffsize_y = 0; buffsize_xy = 0
+    buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
+    #endif
+    #if defined (twoD) || defined (threeD)
+      buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
+      buffsize_xy = this_meshblock%ptr%sz * multiplier
+    #endif
+    #if defined(threeD)
       buffsize_z = this_meshblock%ptr%sx * this_meshblock%ptr%sy * multiplier
       buffsize_xz = this_meshblock%ptr%sz * multiplier
       buffsize_yz = this_meshblock%ptr%sx * multiplier
       buffsize_xyz = multiplier
-    #else
-      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
+    #endif
 
-      buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #ifdef oneD
+      buffsize = multiplier
+    #elif twoD
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
+    #elif threeD
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
     #endif
 
     allocate(recv_enroute(buffsize))
@@ -536,7 +556,9 @@ contains
       do ind2 = -1, 1
         do ind3 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifndef threeD
+          #ifdef oneD
+            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+          #elif twoD
             if (ind3 .ne. 0) cycle
           #endif
           if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
@@ -562,19 +584,31 @@ contains
 
     ! DEP_PRT [particle-dependent]
     ! new type for myMPI_ENROUTE
-    !   BY DEFAULT:
-    !     # of blockcounts = 3:
-    !       3 x integer2  [xi, yi, zi]
-    !       7 x real      [dx, dy, dz, u, v, w, weight]
-    !       2 x integer   [ind, proc]
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
-    blockcounts(0) = 3
-    oldtypes(0) = MPI_INTEGER2
-    blockcounts(1) = 7
-    oldtypes(1) = MPI_REAL
-    blockcounts(2) = 2
-    oldtypes(2) = MPI_INTEGER
+    #ifndef GCA
+      !     # of blockcounts = 3:
+      !       3  x integer2  [xi, yi, zi]
+      !       7  x real      [dx, dy, dz, u, v, w, weight]
+      !       2  x integer   [ind, proc]
+      blockcounts(0) = 3
+      oldtypes(0) = MPI_INTEGER2
+      blockcounts(1) = 7
+      oldtypes(1) = MPI_REAL
+      blockcounts(2) = 2
+      oldtypes(2) = MPI_INTEGER
+    #else
+      !     # of blockcounts = 3:
+      !       6  x integer2  [xi, yi, zi, xi_past, yi_past, zi_past]
+      !       13 x real      [dx, dy, dz, dx_past, dy_past, dz_past, u, v, w, u_eff, v_eff, w_eff, weight]
+      !       2  x integer   [ind, proc]
+      blockcounts(0) = 6
+      oldtypes(0) = MPI_INTEGER2
+      blockcounts(1) = 13
+      oldtypes(1) = MPI_REAL
+      blockcounts(2) = 2
+      oldtypes(2) = MPI_INTEGER
+    #endif
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
@@ -596,69 +630,108 @@ contains
     if (allocated(jx_buff)) deallocate(jx_buff)
     if (allocated(jy_buff)) deallocate(jy_buff)
     if (allocated(jz_buff)) deallocate(jz_buff)
-    allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-              & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-              & fldBoundZ))
-    allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                   & fldBoundZ))
-    allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                   & fldBoundZ))
-    allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                   & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                   & fldBoundZ))
+    #ifdef oneD
+      allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST, 0:0, 0:0))
+      ! 20 = max # of fields sent in each direction
+      sendrecv_offsetsz = NGHOST * 20
+      ! 2 (~5) directions to send/recv in 1D
+      sendrecv_buffsz = sendrecv_offsetsz * 5
+    #elif twoD
+      allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
+      allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST, 0:0))
 
-    ! exchange fields
-    ! 20 = max # of fields sent in each direction
-    #ifndef threeD
-      sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
-      sendrecv_buffsz = sendrecv_offsetsz * 10
-      ! 8 (~10) directions to send/recv in 2D
-    #else
+     ! 20 = max # of fields sent in each direction
+     sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * NGHOST * 20
+     ! 8 (~10) directions to send/recv in 2D
+     sendrecv_buffsz = sendrecv_offsetsz * 10
+    #elif threeD
+      allocate(ex(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(ey(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(ez(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(bx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(by(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(bz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jx(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jy(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jz(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jx_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jy_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(jz_buff(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                     & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      ! 20 = max # of fields sent in each direction
       sendrecv_offsetsz = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * NGHOST * 20
-      sendrecv_buffsz = sendrecv_offsetsz * 30
       ! 26 (~30) directions to send/recv in 3D
+      sendrecv_buffsz = sendrecv_offsetsz * 30
     #endif
 
-    if (allocated(send_fld)) deallocate(send_fld)
-    allocate(send_fld(sendrecv_buffsz))
-    if (allocated(recv_fld)) deallocate(recv_fld)
-    allocate(recv_fld(sendrecv_offsetsz))
+    allocate(sm_arr(0:this_meshblock%ptr%sx - 1, 0:this_meshblock%ptr%sy - 1, 0:this_meshblock%ptr%sz - 1))
 
-    ! output fields
-    if (allocated(lg_arr)) deallocate(lg_arr)
-    if (allocated(sm_arr)) deallocate(sm_arr)
-    allocate(lg_arr(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                  & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                  & fldBoundZ))
-    allocate(sm_arr(0:this_meshblock%ptr%sx - 1,&
-                  & 0:this_meshblock%ptr%sy - 1,&
-                  & 0:this_meshblock%ptr%sz - 1))
+    if (allocated(send_fld)) deallocate(send_fld)
+    if (allocated(recv_fld)) deallocate(recv_fld)
+    allocate(send_fld(sendrecv_buffsz))
+    allocate(recv_fld(sendrecv_offsetsz))
   end subroutine initializeFields
 
   subroutine firstRankInitialize()
@@ -667,23 +740,23 @@ contains
     !     note: some compilers may not support IFPORT
     #ifdef IFPORT
       logical :: result
-      if (output_enabled) then
+      if (output_enable) then
         result = makedirqq(trim(output_dir_name))
       end if
-      if (rst_enabled) then
+      if (rst_enable) then
         result = makedirqq(trim(restart_dir_name))
       end if
-      if (slice_enabled) then
+      if (slice_enable) then
         result = makedirqq(trim(slice_dir_name))
       end if
     #else
-      if (output_enabled) then
+      if (output_enable) then
         call system('mkdir -p ' // trim(output_dir_name))
       end if
-      if (rst_enabled) then
+      if (rst_enable) then
         call system('mkdir -p ' // trim(restart_dir_name))
       end if
-      if (slice_enabled) then
+      if (slice_enable) then
         call system('mkdir -p ' // trim(slice_dir_name))
       end if
     #endif
@@ -747,7 +820,7 @@ contains
             ! reallocate the tile if necessary
             read(UNIT_restart_prtl) dummy_int1
             if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-              call reallocEmptyTile(species(s)%prtl_tile(ti, tj, tk), dummy_int1)
+              call allocateParticlesOnEmptyTile(s, species(s)%prtl_tile(ti, tj, tk), dummy_int1)
             end if
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%npart_sp
             num = species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -779,6 +852,7 @@ contains
             end if
 
             ! finally read out all the particles
+            ! DEP_PRT [particle-dependent]
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi(1:num)
@@ -791,6 +865,17 @@ contains
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%weight(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%ind(1:num)
             read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%proc(1:num)
+            #ifdef GCA
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz_past(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
+            #endif
           end do
         end do
       end do
@@ -801,12 +886,16 @@ contains
   subroutine checkEverything()
     implicit none
     ! check that the domain size is larger than the number of ghost zones
-    #ifndef threeD
+    #ifdef oneD
+      if (this_meshblock%ptr%sx .lt. NGHOST) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #elif twoD
       if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
         & (this_meshblock%ptr%sy .lt. NGHOST)) then
         call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
       end if
-    #else
+    #elif threeD
       if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
         & (this_meshblock%ptr%sy .lt. NGHOST) .or.&
         & (this_meshblock%ptr%sz .lt. NGHOST)) then
