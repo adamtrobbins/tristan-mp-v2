@@ -75,6 +75,41 @@ contains
   end subroutine initializeSliceOutput
 
   #ifdef HDF5
+  subroutine writeSlices_hdf5(step, time)
+    implicit none
+    integer, intent(in)               :: step, time
+    character(len=STR_MAX)            :: stepchar, filename
+    integer                           :: error
+    integer(HID_T)                    :: file_id, dspace_id, dset_id
+    integer                           :: f, dset_rank = 3
+    integer(HSIZE_T), dimension(2)    :: global_dims
+
+    write(stepchar, "(i5.5)") step
+    filename = trim(slice_dir_name) // '/slices.' // trim(stepchar)
+
+    global_dims(1) = global_mesh%sx
+    global_dims(2) = global_mesh%sz
+
+    ! Initialize FORTRAN interface
+    call H5open_f(error)
+    ! Create a new file using default properties
+    call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+
+    do f = 1, n_fld_vars
+      call H5Screate_simple_f(dset_rank, global_dims, dspace_id, error)
+      call H5Dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, dspace_id, dset_id, error)
+      call H5Dwrite_f(dset_id, H5T_NATIVE_REAL, ..., global_dims, error)
+      call H5Dclose_f(dset_id, error)
+      call H5Sclose_f(dspace_id, error)
+    end do
+
+    ! Close the file
+    call H5Fclose_f(file_id, error)
+    ! Close FORTRAN interface
+    call H5close_f(error)
+  end subroutine writeSlices_hdf5
+
+
   subroutine writeXDMF_hdf5(step, time, ni, nj, nk)
     implicit none
     integer, intent(in)               :: step, time, ni, nj, nk
@@ -143,135 +178,135 @@ contains
     ! close (UNIT_xdmf)
   end subroutine writeXDMF_hdf5
 
-  subroutine writeSlices_hdf5(step, time)
-    implicit none
-    integer, intent(in)               :: step, time
-    character(len=STR_MAX)            :: stepchar, filename
-    integer                           :: error
-    integer(HID_T)                    :: plist_id, file_id, dset_id
-    integer(HID_T)                    :: filespace, memspace
-    integer                           :: dset_rank = 3
-    integer(HSIZE_T), dimension(3)    :: global_dims, chunk_dims
-    integer(HSIZE_T), dimension(3)    :: count_h5
-    integer(HSSIZE_T), dimension(3)   :: offset_h5
-    integer(HSIZE_T), dimension(3)    :: stride_h5
-    integer(HSIZE_T), dimension(3)    :: block_h5
-
-    real, allocatable                 :: dummy_array(:,:,:)
-
-    integer :: i, j, k
-    integer :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz, ymid
-    ! integer(HID_T)                    :: file_id, dset_id(40), filespace(40), memspace, plist_id
-    ! integer                           :: error, f, s
-    ! integer(kind=2)                   :: i, j, k
-    ! logical                           :: writing_intQ, writing_lgarrQ
-
-    ! integer(HSSIZE_T), dimension(3)   :: offsets
-    ! integer(HSIZE_T), dimension(3)    :: global_dims, blocks
-    ! real                              :: ex0, ey0, ez0, bx0, by0, bz0
-    ! real                              :: jx0, jy0, jz0
-
-    ! integer                           :: ymid
-    !
-
-    ! integer :: i_start, i_end, j_start, j_end, k_start, k_end
-    ! integer :: offset_i, offset_j, offset_k, i1, j1, k1
-    ! integer :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
-
-    this_x0 = this_meshblock%ptr%x0
-    this_y0 = this_meshblock%ptr%y0
-    this_z0 = this_meshblock%ptr%z0
-    this_sx = this_meshblock%ptr%sx
-    this_sy = this_meshblock%ptr%sy
-    this_sz = this_meshblock%ptr%sz
-
-    ymid = INT(global_mesh%sy / 2)
-
-    chunk_dims(1) = this_sx
-    chunk_dims(2) = 1
-    chunk_dims(3) = this_sz
-
-    global_dims(1) = global_mesh%sx
-    global_dims(2) = 1
-    global_dims(3) = global_mesh%sz
-
-    write(stepchar, "(i5.5)") step
-    filename = trim(slice_dir_name) // '/slices.' // trim(stepchar)
-
-    ! Initialize HDF5 library and Fortran interfaces
-    call H5open_f(error)
-    ! Setup file access property list with parallel I/O access
-    call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
-    call H5Pset_fapl_mpio_f(plist_id, h5comm, h5info, error)
-
-    ! Create the file collectively
-    call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
-    call H5Pclose_f(plist_id, error)
-
-    ! Create the data space for the dataset
-    call H5Screate_simple_f(dset_rank, global_dims, filespace, error)
-    call H5Screate_simple_f(dset_rank, chunk_dims, memspace, error)
-
-    ! Create chunked dataset
-    call H5Pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
-    call H5Pset_chunk_f(plist_id, dset_rank, chunk_dims, error)
-    call H5Dcreate_f(file_id, fld_vars(1), H5T_NATIVE_REAL, filespace, dset_id, error, plist_id)
-    call H5Sclose_f(filespace, error)
-
-    stride_h5(:) = 1
-    if ((ymid - this_y0 .ge. 0) .and. (ymid - this_y0 .le. this_sy - 1)) then
-      count_h5(:) = 1
-    else
-      count_h5(:) = 0
-    end if
-    block_h5(:) = chunk_dims(:)
-    offset_h5(1) = this_x0
-    offset_h5(2) = 0
-    offset_h5(3) = this_z0
-
-    ! Select hyperslab in the file
-    call H5Dget_space_f(dset_id, filespace, error)
-    call H5Sselect_hyperslab_f(filespace, H5S_SELECT_SET_F, offset_h5, count_h5, error, stride_h5, block_h5)
-
-    allocate(dummy_array(chunk_dims(1), chunk_dims(2), chunk_dims(3)))
-
-    dummy_array(:,:,:) = -10.0
-
-    if ((ymid - this_y0 .ge. 0) .and. (ymid - this_y0 .le. this_sy - 1)) then
-      j = ymid - this_y0
-      do i = 0, this_sx - 1
-        do k = 0, this_sz - 1
-          dummy_array(i + 1, 1, k + 1) = bz(i, j, k)
-        end do
-      end do
-    end if
-
-    ! Create property list for collective dataset write
-    call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
-    call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
-
-    ! Write the dataset collectively
-    call H5Dwrite_f(dset_id, H5T_NATIVE_REAL, dummy_array, global_dims, error,&
-                  & file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
-
-    deallocate(dummy_array)
-
-    ! Close dataspaces
-    call H5Sclose_f(filespace, error)
-    call H5Sclose_f(memspace, error)
-
-    ! Close the dataset
-    call H5Dclose_f(dset_id, error)
-
-    ! Close the property list
-    call H5Pclose_f(plist_id, error)
-
-    ! Close the file
-    call H5Fclose_f(file_id, error)
-
-    ! Close FORTRAN interfaces and HDF5 library
-    call H5close_f(error)
-  end subroutine writeSlices_hdf5
+  ! subroutine writeSlices_hdf5(step, time)
+  !   implicit none
+  !   integer, intent(in)               :: step, time
+  !   character(len=STR_MAX)            :: stepchar, filename
+  !   integer                           :: error
+  !   integer(HID_T)                    :: plist_id, file_id, dset_id
+  !   integer(HID_T)                    :: filespace, memspace
+  !   integer                           :: dset_rank = 3
+  !   integer(HSIZE_T), dimension(3)    :: global_dims, chunk_dims
+  !   integer(HSIZE_T), dimension(3)    :: count_h5
+  !   integer(HSSIZE_T), dimension(3)   :: offset_h5
+  !   integer(HSIZE_T), dimension(3)    :: stride_h5
+  !   integer(HSIZE_T), dimension(3)    :: block_h5
+  !
+  !   real, allocatable                 :: dummy_array(:,:,:)
+  !
+  !   integer :: i, j, k
+  !   integer :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz, ymid
+  !   ! integer(HID_T)                    :: file_id, dset_id(40), filespace(40), memspace, plist_id
+  !   ! integer                           :: error, f, s
+  !   ! integer(kind=2)                   :: i, j, k
+  !   ! logical                           :: writing_intQ, writing_lgarrQ
+  !
+  !   ! integer(HSSIZE_T), dimension(3)   :: offsets
+  !   ! integer(HSIZE_T), dimension(3)    :: global_dims, blocks
+  !   ! real                              :: ex0, ey0, ez0, bx0, by0, bz0
+  !   ! real                              :: jx0, jy0, jz0
+  !
+  !   ! integer                           :: ymid
+  !   !
+  !
+  !   ! integer :: i_start, i_end, j_start, j_end, k_start, k_end
+  !   ! integer :: offset_i, offset_j, offset_k, i1, j1, k1
+  !   ! integer :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
+  !
+  !   this_x0 = this_meshblock%ptr%x0
+  !   this_y0 = this_meshblock%ptr%y0
+  !   this_z0 = this_meshblock%ptr%z0
+  !   this_sx = this_meshblock%ptr%sx
+  !   this_sy = this_meshblock%ptr%sy
+  !   this_sz = this_meshblock%ptr%sz
+  !
+  !   ymid = INT(global_mesh%sy / 2)
+  !
+  !   chunk_dims(1) = this_sx
+  !   chunk_dims(2) = 1
+  !   chunk_dims(3) = this_sz
+  !
+  !   global_dims(1) = global_mesh%sx
+  !   global_dims(2) = 1
+  !   global_dims(3) = global_mesh%sz
+  !
+  !   write(stepchar, "(i5.5)") step
+  !   filename = trim(slice_dir_name) // '/slices.' // trim(stepchar)
+  !
+  !   ! Initialize HDF5 library and Fortran interfaces
+  !   call H5open_f(error)
+  !   ! Setup file access property list with parallel I/O access
+  !   call H5Pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
+  !   call H5Pset_fapl_mpio_f(plist_id, h5comm, h5info, error)
+  !
+  !   ! Create the file collectively
+  !   call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
+  !   call H5Pclose_f(plist_id, error)
+  !
+  !   ! Create the data space for the dataset
+  !   call H5Screate_simple_f(dset_rank, global_dims, filespace, error)
+  !   call H5Screate_simple_f(dset_rank, chunk_dims, memspace, error)
+  !
+  !   ! Create chunked dataset
+  !   call H5Pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
+  !   call H5Pset_chunk_f(plist_id, dset_rank, chunk_dims, error)
+  !   call H5Dcreate_f(file_id, fld_vars(1), H5T_NATIVE_REAL, filespace, dset_id, error, plist_id)
+  !   call H5Sclose_f(filespace, error)
+  !
+  !   stride_h5(:) = 1
+  !   if ((ymid - this_y0 .ge. 0) .and. (ymid - this_y0 .le. this_sy - 1)) then
+  !     count_h5(:) = 1
+  !   else
+  !     count_h5(:) = 0
+  !   end if
+  !   block_h5(:) = chunk_dims(:)
+  !   offset_h5(1) = this_x0
+  !   offset_h5(2) = 0
+  !   offset_h5(3) = this_z0
+  !
+  !   ! Select hyperslab in the file
+  !   call H5Dget_space_f(dset_id, filespace, error)
+  !   call H5Sselect_hyperslab_f(filespace, H5S_SELECT_SET_F, offset_h5, count_h5, error, stride_h5, block_h5)
+  !
+  !   allocate(dummy_array(chunk_dims(1), chunk_dims(2), chunk_dims(3)))
+  !
+  !   dummy_array(:,:,:) = -10.0
+  !
+  !   if ((ymid - this_y0 .ge. 0) .and. (ymid - this_y0 .le. this_sy - 1)) then
+  !     j = ymid - this_y0
+  !     do i = 0, this_sx - 1
+  !       do k = 0, this_sz - 1
+  !         dummy_array(i + 1, 1, k + 1) = bz(i, j, k)
+  !       end do
+  !     end do
+  !   end if
+  !
+  !   ! Create property list for collective dataset write
+  !   call H5Pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
+  !   call H5Pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
+  !
+  !   ! Write the dataset collectively
+  !   call H5Dwrite_f(dset_id, H5T_NATIVE_REAL, dummy_array, global_dims, error,&
+  !                 & file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
+  !
+  !   deallocate(dummy_array)
+  !
+  !   ! Close dataspaces
+  !   call H5Sclose_f(filespace, error)
+  !   call H5Sclose_f(memspace, error)
+  !
+  !   ! Close the dataset
+  !   call H5Dclose_f(dset_id, error)
+  !
+  !   ! Close the property list
+  !   call H5Pclose_f(plist_id, error)
+  !
+  !   ! Close the file
+  !   call H5Fclose_f(file_id, error)
+  !
+  !   ! Close FORTRAN interfaces and HDF5 library
+  !   call H5close_f(error)
+  ! end subroutine writeSlices_hdf5
 
   ! subroutine writeSlices_hdf5(step, time)
   !   implicit none
