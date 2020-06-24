@@ -5,6 +5,7 @@ class Simulation(ABC):
   def __init__(self, root):
     self._root = root
     self.data = None
+    self.axes = None
   @property
   def step(self):
     return self._step
@@ -26,6 +27,22 @@ class Simulation(ABC):
     rc('text', usetex=True)
     tristanVis.aux.loadCustomColormaps()
     plt.style.use('dark_background')
+  def requestField(self, key):
+    import h5py
+    try:
+      with h5py.File(self._root + 'flds.tot.%05d' % self._step, 'r') as fields:
+        self.data[key] = (self.axes, fields[key][:])
+    except:
+      print (key, 'not found in ...')
+      print ('...', self._root + 'flds.tot.%05d' % self._step)
+  def requestParam(self, key):
+    import h5py
+    try:
+      with h5py.File(self._root + 'params.%05d' % self._step, 'r') as params:
+        self.data.attrs[key] = params[key][0]
+    except:
+      print (key, 'not found in ...')
+      print ('...', self._root + 'params.%05d' % self._step)
   def saveFig(self, savefig=None):
     import matplotlib.pyplot as plt
     if savefig is not None:
@@ -42,7 +59,7 @@ class GenericSimulation(Simulation):
     np.seterr(divide='ignore', invalid='ignore')
     with h5py.File(self._root + 'flds.tot.%05d' % self._step, 'r') as fields:
       with h5py.File(self._root + 'params.%05d' % self._step, 'r') as params:
-        axes = ('z', 'y', 'x')
+        self.axes = ('z', 'y', 'x')
         self.data = xr.Dataset()
         self.data.attrs['t'] = params['timestep'][:][0]
         try:
@@ -59,7 +76,7 @@ class GenericSimulation(Simulation):
           self.data.attrs['sz'] = 1
 
         for key in fields.keys():
-          self.data[key] = (axes, fields[key][:])
+          self.data[key] = (self.axes, fields[key][:])
 
         self.data.coords['x'] = (('x'), fields['xx'][:][0,0,:])
         self.data.coords['y'] = (('y'), fields['yy'][:][0,:,0])

@@ -10,7 +10,7 @@ class PulsarSimulation(Simulation):
     np.seterr(divide='ignore', invalid='ignore')
     with h5py.File(self._root + 'flds.tot.%05d' % self._step, 'r') as fields:
       with h5py.File(self._root + 'params.%05d' % self._step, 'r') as params:
-        axes = ('z', 'y', 'x')
+        self.axes = ('z', 'y', 'x')
         self.data = xr.Dataset()
         self.data.attrs['t'] = params['timestep'][:][0]
         self.data.attrs['sx'], self.data.attrs['sy'], self.data.attrs['sz'] = (params['grd:mx0'][:][0], params['grd:my0'][:][0], params['grd:mz0'][:][0])
@@ -29,30 +29,34 @@ class PulsarSimulation(Simulation):
         self.data.attrs['B0'] = self.data.attrs['CC']**2 * np.sqrt(self.data.attrs['sigma0']) / self.data.attrs['c_omp0']
         self.data.attrs['me'] = self.data.attrs['qe']
         self.data.attrs['nGJ'] = 2 * self.data.attrs['OMEGA'] * self.data.attrs['B0'] / (self.data.attrs['CC'] * self.data.attrs['qe'])
+        try:
+          self.data.attrs['gamma_syn'] = params['rad:gamma_syn'][:][0]
+        except:
+          self.data.attrs['gamma_syn'] = 1e10
 
         b_sqr = (fields['bx'][:] * fields['bx'][:] + fields['by'][:] * fields['by'][:] + fields['bz'][:] * fields['bz'][:])
-        self.data['jx'] = (axes, fields['jx'][:])
-        self.data['jy'] = (axes, fields['jy'][:])
-        self.data['jz'] = (axes, fields['jz'][:])
+        self.data['jx'] = (self.axes, fields['jx'][:])
+        self.data['jy'] = (self.axes, fields['jy'][:])
+        self.data['jz'] = (self.axes, fields['jz'][:])
 
-        self.data['b'] = (axes, np.sqrt(b_sqr))
-        self.data['rho+'] = (axes, fields['dens2'][:])
-        self.data['rho-'] = (axes, fields['dens1'][:])
+        self.data['b'] = (self.axes, np.sqrt(b_sqr))
+        self.data['rho+'] = (self.axes, fields['dens2'][:])
+        self.data['rho-'] = (self.axes, fields['dens1'][:])
         dens_tot = (self.data['rho+'] + self.data['rho-'])
-        self.data['enrg+'] = (axes, fields['enrg2'][:])
-        self.data['enrg-'] = (axes, fields['enrg1'][:])
+        self.data['enrg+'] = (self.axes, fields['enrg2'][:])
+        self.data['enrg-'] = (self.axes, fields['enrg1'][:])
         self.data['sigma'] = self.data.attrs['sigma0'] * (b_sqr / self.data.attrs['B0']**2) * (self.data.attrs['ppc0'] / (self.data['enrg+'] + self.data['enrg-']))
         self.data['gmean'] = (self.data['enrg+'] + self.data['enrg-']) / dens_tot
         self.data['de'] = self.data.attrs['c_omp0'] * np.sqrt(self.data['gmean']) * (self.data.attrs['ppc0'] / dens_tot)
         self.data['rL'] = self.data['gmean'] * (self.data.attrs['c_omp0'] / np.sqrt(self.data.attrs['sigma0'])) * (self.data.attrs['B0'] / np.sqrt(b_sqr))
         temp = (fields['bx'][:] * fields['ex'][:] + fields['by'][:] * fields['ey'][:] + fields['bz'][:] * fields['ez'][:]) / b_sqr
-        self.data['e.b'] = (axes, np.nan_to_num(temp))
+        self.data['e.b'] = (self.axes, np.nan_to_num(temp))
         r_cyl = np.sqrt((fields['xx'][:] - xc)**2 + (fields['yy'][:] - yc)**2)
-        self.data['Omega-y'] = (axes, np.abs(((-fields['bz'][:] * fields['ex'][:] + fields['bx'][:] * fields['ez'][:]) / b_sqr) * self.data.attrs['RLC'] / r_cyl))
-        self.data['rhoGJ'] = (axes, -2 * self.data.attrs['OMEGA'] * fields['bz'][:] / (self.data.attrs['CC'] * self.data.attrs['qe']))
-        self.data['bx'] = ((axes), fields['bx'][:])
-        self.data['by'] = ((axes), fields['by'][:])
-        self.data['bz'] = ((axes), fields['bz'][:])
+        self.data['Omega-y'] = (self.axes, np.abs(((-fields['bz'][:] * fields['ex'][:] + fields['bx'][:] * fields['ez'][:]) / b_sqr) * self.data.attrs['RLC'] / r_cyl))
+        self.data['rhoGJ'] = (self.axes, -2 * self.data.attrs['OMEGA'] * fields['bz'][:] / (self.data.attrs['CC'] * self.data.attrs['qe']))
+        self.data['bx'] = ((self.axes), fields['bx'][:])
+        self.data['by'] = ((self.axes), fields['by'][:])
+        self.data['bz'] = ((self.axes), fields['bz'][:])
 
         self.data.coords['x'] = (('x'), (fields['xx'][:][0,0,:] - self.data.attrs['sx'] / 2) / self.data.attrs['RLC'])
         self.data.coords['y'] = (('y'), (fields['yy'][:][0,:,0] - self.data.attrs['sy'] / 2) / self.data.attrs['RLC'])
@@ -92,11 +96,14 @@ class PulsarSimulation(Simulation):
     thetas = np.linspace(0, 2*np.pi, 100)[:-1]
     xs = RR * np.cos(thetas)
     zs = RR * np.sin(thetas)
-    for x, z in zip(xs, zs):
-      fieldline = integrateFieldline2D([x, z], self.data.coords['x'].values, self.data.coords['z'].values, self.data['bx'].sel(y=0).values, self.data['bz'].sel(y=0).values, +1, stop_condition=stopIf)
-      fieldlines_xz.append(fieldline)
-      fieldline = integrateFieldline2D([x, z], self.data.coords['x'].values, self.data.coords['z'].values, self.data['bx'].sel(y=0).values, self.data['bz'].sel(y=0).values, -1, stop_condition=stopIf)
-      fieldlines_xz.append(fieldline)
+    try:
+      for x, z in zip(xs, zs):
+        fieldline = integrateFieldline2D([x, z], self.data.coords['x'].values, self.data.coords['z'].values, self.data['bx'].sel(y=0).values, self.data['bz'].sel(y=0).values, +1, stop_condition=stopIf)
+        fieldlines_xz.append(fieldline)
+        fieldline = integrateFieldline2D([x, z], self.data.coords['x'].values, self.data.coords['z'].values, self.data['bx'].sel(y=0).values, self.data['bz'].sel(y=0).values, -1, stop_condition=stopIf)
+        fieldlines_xz.append(fieldline)
+    except:
+      print ("Unable to compute fieldlines")
 
     fig = plt.figure(figsize=dims)
 
@@ -104,33 +111,43 @@ class PulsarSimulation(Simulation):
     ny = 3
     nn = 1
 
+    rhomin = 10
+    rhomax = 1e5
+
     ax = plt.subplot(ny, nx, nn)
-    im = self.data['rho-'].sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e4), cmap='turbo', interpolation='gaussian')
+    im = self.data['rho-'].sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap='turbo', interpolation='gaussian')
     ax.set_aspect(1)
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
 
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    self.data['rho-'].sel(z=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e4), cmap='turbo', interpolation='gaussian')
+    self.data['rho-'].sel(z=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap='turbo', interpolation='gaussian')
     ax.set_aspect(1)
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
 
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    self.data['rho+'].sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e4), cmap='turbo', interpolation='gaussian')
+    self.data['rho+'].sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap='turbo', interpolation='gaussian')
     ax.set_aspect(1)
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
 
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    self.data['rho+'].sel(z=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e4), cmap='turbo', interpolation='gaussian')
+    self.data['rho+'].sel(z=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap='turbo', interpolation='gaussian')
     ax.set_aspect(1)
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
 
+    # nn += 1
+    # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
+    # (self.data['b'] / self.data.attrs['B0']).sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1e-2, vmax=1), cmap='jet', interpolation='gaussian')
+    # ax.set_aspect(1)
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    (self.data['b'] / self.data.attrs['B0']).sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1e-2, vmax=1), cmap='jet', interpolation='gaussian')
+    temp = np.sqrt((self.data.attrs['B0'] / self.data['b'])**-2 * (self.data.attrs['gamma_syn'] / self.data['gmean'])**-2)
+    temp.data = np.nan_to_num(temp.data)
+    im = temp.sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1e-3, vmax=10), cmap='jet', interpolation='gaussian')
     ax.set_aspect(1)
+    im.colorbar.set_label('gmean / gammarad')
 
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
@@ -142,13 +159,13 @@ class PulsarSimulation(Simulation):
     self.data['gmean'].sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e4), cmap='fire', interpolation='gaussian')
     ax.set_aspect(1)
 
-    for fieldline in fieldlines_xz:
-      ax.plot(*fieldline.T, c='white', lw=0.5)
-
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
     self.data['Omega-y'].sel(y=0).plot.imshow(norm=mpl.colors.Normalize(vmin=0.5, vmax=1.5), cmap='jet', interpolation='gaussian')
     ax.set_aspect(1)
+
+    for fieldline in fieldlines_xz:
+      ax.plot(*fieldline.T, c='k', lw=0.5)
 
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
