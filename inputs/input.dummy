@@ -75,14 +75,14 @@
   interval      = 10             # interval between slice output steps
 
   # save 5 different slices of a 3d run
-  slicex_1      = 60
-  slicex_2      = 360
-  slicex_3      = 560
+  sliceX_1      = 60
+  sliceX_2      = 360
+  sliceX_3      = 560
 
-  slicey_1      = 5
-  slicey_2      = 140
+  sliceY_1      = 5
+  sliceY_2      = 140
 
-  slicez_1      = 100
+  sliceZ_1      = 100
 
 <adaptive_load_balancing>
 

@@ -46,15 +46,18 @@ contains
       do n = 1, nslices
         if (slice_axes(n) .eq. 1) then
           call writeSliceX_hdf5(step, time, slice_pos(n))
+            call printDiag((mpi_rank .eq. 0), "...writeSliceX_hdf5()", .true.)
         else if (slice_axes(n) .eq. 2) then
           call writeSliceY_hdf5(step, time, slice_pos(n))
+            call printDiag((mpi_rank .eq. 0), "...writeSliceY_hdf5()", .true.)
         else if (slice_axes(n) .eq. 3) then
           call writeSliceZ_hdf5(step, time, slice_pos(n))
+            call printDiag((mpi_rank .eq. 0), "...writeSliceZ_hdf5()", .true.)
         else
           call throwError('ERROR. wrong `slice_axes(n)` in `writeSlices`')
         end if
       end do
-        call printReport((mpi_rank .eq. 0), "...writeSlices_hdf5()", .true.)
+        call printDiag((mpi_rank .eq. 0), "...writeSlices_hdf5()", .true.)
     #endif
     call printDiag((mpi_rank .eq. 0), "slices()", .true.)
     slice_index = slice_index + 1

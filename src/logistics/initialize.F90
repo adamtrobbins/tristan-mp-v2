@@ -378,7 +378,7 @@ contains
     slice_pos(:) = -1
 
     do i = 1, 100
-      write (var_name, "(A7,I1)") "slicex_", i
+      write (var_name, "(A7,I1)") "sliceX_", i
       call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
       if (slice_pos(nslices + 1) .ne. -1) then
         nslices = nslices + 1
@@ -389,7 +389,7 @@ contains
     end do
 
     do i = 1, 100
-      write (var_name, "(A7,I1)") "slicey_", i
+      write (var_name, "(A7,I1)") "sliceY_", i
       call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
       if (slice_pos(nslices + 1) .ne. -1) then
         nslices = nslices + 1
@@ -400,7 +400,7 @@ contains
     end do
 
     do i = 1, 100
-      write (var_name, "(A7,I1)") "slicez_", i
+      write (var_name, "(A7,I1)") "sliceZ_", i
       call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
       if (slice_pos(nslices + 1) .ne. -1) then
         nslices = nslices + 1
