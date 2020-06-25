@@ -25,8 +25,8 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)objects/particles.F90 \
              $(SRC_DIR)objects/fields.F90 \
              $(SRC_DIR)logistics/finalize.F90 \
-						 $(SRC_DIR)tools/helpers.F90 \
              $(SRC_DIR)tools/error_handling.F90 \
+						 $(SRC_DIR)tools/helpers.F90 \
 						 $(SRC_DIR)tools/mom_binning.F90 \
 						 $(SRC_DIR)logistics/binary_coupling.F90 \
              $(SRC_DIR)logistics/particle_logistics.F90 \
@@ -45,6 +45,7 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)logistics/exchange_currents.F90 \
              $(SRC_DIR)logistics/exchange_array.F90 \
              $(SRC_DIR)io/write_output.F90 \
+						 $(SRC_DIR)io/write_slice.F90 \
 						 $(SRC_DIR)io/write_restart.F90 \
              $(SRC_DIR)io/write_history.F90 \
              $(SRC_DIR)io/read_input.F90 \

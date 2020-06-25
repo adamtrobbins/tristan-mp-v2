@@ -14,6 +14,7 @@ module m_initialize
   use m_fields
   use m_userfile
   use m_writeoutput
+  use m_writeslice
   use m_writehistory
   use m_writerestart
   use m_helpers
@@ -42,7 +43,7 @@ module m_initialize
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
            & firstRankInitialize, initializeParticles,&
-           & initializeLB, printParams,&
+           & initializeLB, printParams, initializeSlice,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
            & initializeSimulation, checkEverything,&
@@ -98,6 +99,8 @@ contains
 
     call initializeOutput()
       call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
+    call initializeSlice()
+      call printDiag((mpi_rank .eq. 0), "initializeSlice()", .true.)
     call initializeRestart()
       call printDiag((mpi_rank .eq. 0), "initializeRestart()", .true.)
 
@@ -350,20 +353,64 @@ contains
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
     call getInput('output', 'write_xdmf', write_xdmf, .true.)
 
-    #ifdef HDF5
-
-    #ifdef MPI08
+    #if defined(HDF5) && defined(MPI08)
       h5comm = MPI_COMM_WORLD%MPI_VAL
       h5info = MPI_INFO_NULL%MPI_VAL
-    #endif
-
-    #ifdef MPI
+    #elif defined(HDF5) && defined(MPI)
       h5comm = MPI_COMM_WORLD
       h5info = MPI_INFO_NULL
     #endif
-
-    #endif
   end subroutine initializeOutput
+
+  subroutine initializeSlice()
+    implicit none
+    integer                 :: i
+    character(len=STR_MAX)  :: var_name
+    call getInput('slice_output', 'enable', slice_enable, .false.)
+    call getInput('slice_output', 'start', slice_start, 0)
+    call getInput('slice_output', 'interval', slice_interval, 10)
+
+    #ifndef threeD
+      slice_enable = .false.
+    #endif
+
+    slice_axes(:) = -1
+    slice_pos(:) = -1
+
+    do i = 1, 100
+      write (var_name, "(A7,I1)") "sliceX_", i
+      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
+      if (slice_pos(nslices + 1) .ne. -1) then
+        nslices = nslices + 1
+        slice_axes(nslices) = 1
+      else
+        exit
+      end if
+    end do
+
+    do i = 1, 100
+      write (var_name, "(A7,I1)") "sliceY_", i
+      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
+      if (slice_pos(nslices + 1) .ne. -1) then
+        nslices = nslices + 1
+        slice_axes(nslices) = 2
+      else
+        exit
+      end if
+    end do
+
+    do i = 1, 100
+      write (var_name, "(A7,I1)") "sliceZ_", i
+      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
+      if (slice_pos(nslices + 1) .ne. -1) then
+        nslices = nslices + 1
+        slice_axes(nslices) = 3
+      else
+        exit
+      end if
+    end do
+
+  end subroutine initializeSlice
 
   subroutine initializeRestart()
     implicit none
@@ -385,7 +432,7 @@ contains
     call getInput('plasma', 'ppc0', ppc0)
     call getInput('plasma', 'sigma', sigma, 1.0)
     if (sigma .le. 0.0) then
-          call throwError('Reference sigma value must be > 0.')
+      call throwError('Reference sigma value must be > 0.')
     endif
     call getInput('plasma', 'c_omp', c_omp)
     call renormalizeUnits()
@@ -744,18 +791,24 @@ contains
     !     note: some compilers may not support IFPORT
     #ifdef IFPORT
       logical :: result
-      if (output_enable) then
+      if (output_enable .or. hst_enable) then
         result = makedirqq(trim(output_dir_name))
       end if
       if (rst_enable) then
         result = makedirqq(trim(restart_dir_name))
       end if
+      if (slice_enable) then
+        result = makedirqq(trim(slice_dir_name))
+      end if
     #else
-      if (output_enable) then
+      if (output_enable .or. hst_enable) then
         call system('mkdir -p ' // trim(output_dir_name))
       end if
       if (rst_enable) then
         call system('mkdir -p ' // trim(restart_dir_name))
+      end if
+      if (slice_enable) then
+        call system('mkdir -p ' // trim(slice_dir_name))
       end if
     #endif
   end subroutine firstRankInitialize
@@ -776,7 +829,7 @@ contains
     filename = trim(restart_from) // '/flds.rst.' // trim(mpichar)
     open(UNIT_restart_fld, file=filename, form="unformatted")
     rewind(UNIT_restart_fld)
-    read(UNIT_restart_fld) start_timestep, dseed, output_index
+    read(UNIT_restart_fld) start_timestep, dseed, output_index, slice_index
     read(UNIT_restart_fld) ex, ey, ez, bx, by, bz
     read(UNIT_restart_fld) CC, ppc0, c_omp, sigma
     close(UNIT_restart_fld)

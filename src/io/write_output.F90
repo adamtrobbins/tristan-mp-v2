@@ -377,10 +377,11 @@ contains
     real                              :: jx0, jy0, jz0
 
     ! downsampling variables
-    integer :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
-    integer :: i_start, i_end, j_start, j_end, k_start, k_end
-    integer :: offset_i, offset_j, offset_k, i1, j1, k1
-    integer :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
+    integer           :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
+    integer           :: i_start, i_end, j_start, j_end, k_start, k_end
+    integer           :: offset_i, offset_j, offset_k
+    integer(kind=2)   :: i1, j1, k1
+    integer           :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
 
     ! for convenience
     this_x0 = this_meshblock%ptr%x0
@@ -507,84 +508,7 @@ contains
             i = i_start + i1 * output_istep
             j = j_start + j1 * output_istep
             k = k_start + k1 * output_istep
-            select case (trim(fld_vars(f)))
-            case('ex')
-              #ifndef debug
-                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              #else
-                ex0 = ex(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = ex0 * B_norm
-            case('ey')
-              #ifndef debug
-                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              #else
-                ey0 = ey(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = ey0 * B_norm
-            case('ez')
-              #ifndef debug
-                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              #else
-                ez0 = ez(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = ez0 * B_norm
-            case('bx')
-              #ifndef debug
-                call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              #else
-                bx0 = bx(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = bx0 * B_norm
-            case('by')
-              #ifndef debug
-                call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              #else
-                by0 = by(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = by0 * B_norm
-            case('bz')
-              #ifndef debug
-                call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              #else
-                bz0 = bz(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = bz0 * B_norm
-            case('jx')
-              #ifndef debug
-                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              #else
-                jx0 = jx(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = -jx0 * B_norm
-            case('jy')
-              #ifndef debug
-                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              #else
-                jy0 = jy(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = -jy0 * B_norm
-            case('jz')
-              #ifndef debug
-                call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              #else
-                jz0 = jz(i, j, k)
-              #endif
-              sm_arr(i1, j1, k1) = -jz0 * B_norm
-            case('xx')
-              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
-            case('yy')
-              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%y0 + j, 4)
-            case('zz')
-              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
-            case default
-              if (((fld_vars(f)(1:4) .ne. 'dens') .and. (fld_vars(f)(1:4) .ne. 'enrg')) .or.&
-                 & (.not. writing_lgarrQ)) then
-                call throwError("ERROR: unrecognized `fld_vars(f)`")
-              else
-                sm_arr(i1, j1, k1) = lg_arr(i, j, k)
-              end if
-            end select
+            call selectFieldForOutput(fld_vars(f), i1, j1, k1, i, j, k, writing_lgarrQ)
           end do
         end do
       end do

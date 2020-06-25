@@ -5,6 +5,7 @@ module m_mainloop
   use m_helpers
   use m_aux
   use m_writeoutput
+  use m_writeslice
   use m_writehistory
   use m_writerestart
   use m_fldsolver
@@ -263,6 +264,17 @@ contains
         & (modulo(timestep, hst_interval) .eq. 0)) then
         t_outputstep = MPI_WTIME() - t_outputstep
         call writeHistory(timestep)
+        t_outputstep = MPI_WTIME() - t_outputstep
+      end if
+      !.................................................
+
+      !-------------------------------------------------
+      ! Slices
+      if ((slice_enable) .and.&
+        & (timestep .ge. slice_start) .and.&
+        & (modulo(timestep, slice_interval) .eq. 0)) then
+        t_outputstep = MPI_WTIME()
+        call writeSlices(timestep)
         t_outputstep = MPI_WTIME() - t_outputstep
       end if
       !.................................................

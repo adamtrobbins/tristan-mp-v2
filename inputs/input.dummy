@@ -68,6 +68,22 @@
   spec_max      = 1e1            # `g - 1` for massive and `e` for massless
   spec_num      = 100            # number of energy bins
 
+<slice_output>
+
+  enable        = 1              # only works in 3d
+  start         = 0              # first slice output step
+  interval      = 10             # interval between slice output steps
+
+  # save 5 different slices of a 3d run
+  sliceX_1      = 60
+  sliceX_2      = 360
+  sliceX_3      = 560
+
+  sliceY_1      = 5
+  sliceY_2      = 140
+
+  sliceZ_1      = 100
+
 <adaptive_load_balancing>
 
   in_x         = 0               # enable/disable dynamic load balancing in x
