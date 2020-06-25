@@ -353,42 +353,63 @@ contains
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
     call getInput('output', 'write_xdmf', write_xdmf, .true.)
 
-    #ifdef HDF5
-
-    #ifdef MPI08
+    #if defined(HDF5) && defined(MPI08)
       h5comm = MPI_COMM_WORLD%MPI_VAL
       h5info = MPI_INFO_NULL%MPI_VAL
-    #endif
-
-    #ifdef MPI
+    #elif defined(HDF5) && defined(MPI)
       h5comm = MPI_COMM_WORLD
       h5info = MPI_INFO_NULL
-    #endif
-
     #endif
   end subroutine initializeOutput
 
   subroutine initializeSlice()
     implicit none
+    integer                 :: i
+    character(len=STR_MAX)  :: var_name
     call getInput('slice_output', 'enable', slice_enable, .false.)
     call getInput('slice_output', 'start', slice_start, 0)
     call getInput('slice_output', 'interval', slice_interval, 10)
 
-    call getInput('slice_output', 'write_xdmf', slice_xdmf, .true.)
-
-    #ifdef HDF5
-
-    #ifdef MPI08
-      h5comm = MPI_COMM_WORLD%MPI_VAL
-      h5info = MPI_INFO_NULL%MPI_VAL
+    #ifndef threeD
+      slice_enable = .false.
     #endif
 
-    #ifdef MPI
-      h5comm = MPI_COMM_WORLD
-      h5info = MPI_INFO_NULL
-    #endif
+    slice_axes(:) = -1
+    slice_pos(:) = -1
 
-    #endif
+    do i = 1, 100
+      write (var_name, "(A7,I1)") "slicex_", i
+      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
+      if (slice_pos(nslices + 1) .ne. -1) then
+        nslices = nslices + 1
+        slice_axes(nslices) = 1
+      else
+        exit
+      end if
+    end do
+
+    do i = 1, 100
+      write (var_name, "(A7,I1)") "slicey_", i
+      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
+      if (slice_pos(nslices + 1) .ne. -1) then
+        nslices = nslices + 1
+        slice_axes(nslices) = 2
+      else
+        exit
+      end if
+    end do
+
+    do i = 1, 100
+      write (var_name, "(A7,I1)") "slicez_", i
+      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
+      if (slice_pos(nslices + 1) .ne. -1) then
+        nslices = nslices + 1
+        slice_axes(nslices) = 3
+      else
+        exit
+      end if
+    end do
+
   end subroutine initializeSlice
 
   subroutine initializeRestart()
@@ -411,7 +432,7 @@ contains
     call getInput('plasma', 'ppc0', ppc0)
     call getInput('plasma', 'sigma', sigma, 1.0)
     if (sigma .le. 0.0) then
-          call throwError('Reference sigma value must be > 0.')
+      call throwError('Reference sigma value must be > 0.')
     endif
     call getInput('plasma', 'c_omp', c_omp)
     call renormalizeUnits()
@@ -770,7 +791,7 @@ contains
     !     note: some compilers may not support IFPORT
     #ifdef IFPORT
       logical :: result
-      if (output_enable) then
+      if (output_enable .or. hst_enable) then
         result = makedirqq(trim(output_dir_name))
       end if
       if (rst_enable) then
@@ -780,7 +801,7 @@ contains
         result = makedirqq(trim(slice_dir_name))
       end if
     #else
-      if (output_enable) then
+      if (output_enable .or. hst_enable) then
         call system('mkdir -p ' // trim(output_dir_name))
       end if
       if (rst_enable) then
