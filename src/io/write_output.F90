@@ -33,6 +33,8 @@ module m_writeoutput
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   real, allocatable, dimension(:,:) :: glob_spectra
   logical                 :: output_enable, flds_at_prtl, write_xdmf
+  logical                 :: params_enable = .true., prtl_enable = .true.
+  logical                 :: flds_enable = .true., spec_enable = .true., domain_enable = .true.
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -58,21 +60,43 @@ contains
     call initializeOutput()
 
     step = output_index
+
     #ifdef HDF5
-      call writeParams_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
-      call writeParticles_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
-      call writeFields_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
-      call writeSpectra_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
-      call writeDomain_hdf5(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+
+      if (params_enable) then
+        call writeParams_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
+      end if
+
+      if (prtl_enable) then
+        call writeParticles_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
+      end if
+
+      if (flds_enable) then
+        call writeFields_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
+      end if
+
+      if (spec_enable) then
+        call writeSpectra_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
+      end if
+
+      if (domain_enable) then
+        call writeDomain_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+      end if
+
     #else
-      call writeParams(step, time)
-        call printDiag((mpi_rank .eq. 0), "...writeParams()", .true.)
+
+      if (params_enable) then
+        call writeParams(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeParams()", .true.)
+      end if
+
     #endif
+    
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
   end subroutine writeOutput

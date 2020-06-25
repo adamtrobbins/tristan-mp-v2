@@ -333,6 +333,12 @@ contains
   subroutine initializeOutput()
     implicit none
     call getInput('output', 'enable', output_enable, .true.)
+    call getInput('output', 'params_enable', params_enable, .true.)
+    call getInput('output', 'prtl_enable', prtl_enable, .true.)
+    call getInput('output', 'flds_enable', flds_enable, .true.)
+    call getInput('output', 'spec_enable', spec_enable, .true.)
+    call getInput('output', 'domain_enable', domain_enable, .true.)
+
     call getInput('output', 'start', output_start, 0)
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
