@@ -21,12 +21,7 @@ class Simulation(ABC):
     pass
   @abstractmethod
   def drawData(self):
-    import matplotlib.pyplot as plt
-    from matplotlib import rc
-    rc('font',**{'family':'monospace','sans-serif':['Verdana'],'size':25})
-    rc('text', usetex=True)
-    tristanVis.aux.loadCustomColormaps()
-    plt.style.use('dark_background')
+    tristanVis.aux.loadCustomStyles()
   def requestField(self, key):
     import h5py
     try:
@@ -39,6 +34,51 @@ class Simulation(ABC):
     import h5py
     try:
       with h5py.File(self._root + 'params.%05d' % self._step, 'r') as params:
+        self.data.attrs[key] = params[key][0]
+    except:
+      print (key, 'not found in ...')
+      print ('...', self._root + 'params.%05d' % self._step)
+  def saveFig(self, savefig=None):
+    import matplotlib.pyplot as plt
+    if savefig is not None:
+      plt.savefig(savefig)
+      plt.close()
+    else:
+      plt.show()
+
+class SliceSimulation(ABC):
+  def __init__(self, root):
+    self._root = root
+    self.data = None
+    self.axes = None
+  @property
+  def step(self):
+    return self._step
+  @property
+  def root(self):
+    return self._root
+  @step.setter
+  def step(self, step):
+    self._step = step
+    self.loadData()
+  @abstractmethod
+  def loadData(self):
+    pass
+  @abstractmethod
+  def drawData(self):
+    tristanVis.aux.loadCustomStyles()
+  # def requestField(self, key):
+  #   import h5py
+  #   try:
+  #     with h5py.File(self._root + 'flds.tot.%05d' % self._step, 'r') as fields:
+  #       self.data[key] = (self.axes, fields[key][:])
+  #   except:
+  #     print (key, 'not found in ...')
+  #     print ('...', self._root + 'flds.tot.%05d' % self._step)
+  def requestParam(self, key):
+    import h5py
+    try:
+      with h5py.File(self._root + 'params.%05d' % 0, 'r') as params:
         self.data.attrs[key] = params[key][0]
     except:
       print (key, 'not found in ...')
