@@ -70,11 +70,19 @@
 
 <slice_output>
 
-  enable        = 1
+  enable        = 1              # only works in 3d
   start         = 0              # first slice output step
   interval      = 10             # interval between slice output steps
-  istep         = 1              # field downsampling
-  write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
+
+  # save 5 different slices of a 3d run
+  slicex_1      = 60
+  slicex_2      = 360
+  slicex_3      = 560
+
+  slicey_1      = 5
+  slicey_2      = 140
+
+  slicez_1      = 100
 
 <adaptive_load_balancing>
 
