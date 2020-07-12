@@ -26,7 +26,7 @@ module m_writeslice
   character(len=STR_MAX), private   :: fld_vars(100)
 
   !--- PRIVATE functions -----------------------------------------!
-  #ifdef HDF5
+  #ifdef SLICE
     private :: writeSliceX_hdf5, writeSliceY_hdf5, writeSliceZ_hdf5!, writeXDMF_hdf5
   #endif
   private :: initializeSliceOutput
@@ -42,7 +42,7 @@ contains
     call initializeSliceOutput()
 
     step = slice_index
-    #ifdef HDF5
+    #ifdef SLICE
       do n = 1, nslices
         if (slice_axes(n) .eq. 1) then
           call writeSliceX_hdf5(step, time, slice_pos(n))
@@ -67,7 +67,7 @@ contains
     ! DEP_PRT [particle-dependent]
     implicit none
     integer                   :: s
-    integer                   :: ierr
+    integer                   :: ierr, ndown
     ! initialize field variables
     !   total number of fields (excluding particle densities)
     n_fld_vars = 12
@@ -80,13 +80,25 @@ contains
       ! hopefully less than 10 species
       fld_vars(nspec + s) = 'enrg' // STR(s)
     end do
-    fld_vars(2 * nspec + 1 : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
-                                           & 'bx   ', 'by   ', 'bz   ',&
-                                           & 'jx   ', 'jy   ', 'jz   ',&
-                                           & 'xx   ', 'yy   ', 'zz   '/)
+
+    ndown = 2 * nspec + 1
+
+    #ifdef GCA
+      n_fld_vars = n_fld_vars + nspec
+      ! save the density of particles doing GCA
+      do s = 1, nspec
+        fld_vars(2 * nspec + s) = 'dgca' // STR(s)
+      end do
+      ndown = 3 * nspec + 1
+    #endif
+
+    fld_vars(ndown : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
+                                   & 'bx   ', 'by   ', 'bz   ',&
+                                   & 'jx   ', 'jy   ', 'jz   ',&
+                                   & 'xx   ', 'yy   ', 'zz   '/)
   end subroutine initializeSliceOutput
 
-  #ifdef HDF5
+  #ifdef SLICE
   subroutine writeSliceX_hdf5(step, time, x_cut)
     implicit none
     integer, intent(in)               :: step, time
@@ -157,6 +169,18 @@ contains
           call computeEnergy(s, reset=.true., ds=0)
         #endif
         call exchangeArray()
+      else if (fld_vars(f)(1:4) .eq. 'dgca') then
+        writing_lgarrQ = .true.
+        #ifndef GCA
+          call throwError('ERROR: `dgca` not defined without GCA flag.')
+        #else
+          #ifndef DEBUG
+            call computeDensityGCA(s, reset=.true.)
+          #else
+            call computeDensityGCA(s, reset=.true., ds=0)
+          #endif
+          call exchangeArray()
+        #endif
       else
         writing_lgarrQ = .false.
       end if
@@ -279,6 +303,18 @@ contains
           call computeEnergy(s, reset=.true., ds=0)
         #endif
         call exchangeArray()
+      else if (fld_vars(f)(1:4) .eq. 'dgca') then
+        writing_lgarrQ = .true.
+        #ifndef GCA
+          call throwError('ERROR: `dgca` not defined without GCA flag.')
+        #else
+          #ifndef DEBUG
+            call computeDensityGCA(s, reset=.true.)
+          #else
+            call computeDensityGCA(s, reset=.true., ds=0)
+          #endif
+          call exchangeArray()
+        #endif
       else
         writing_lgarrQ = .false.
       end if
@@ -401,6 +437,18 @@ contains
           call computeEnergy(s, reset=.true., ds=0)
         #endif
         call exchangeArray()
+      else if (fld_vars(f)(1:4) .eq. 'dgca') then
+        writing_lgarrQ = .true.
+        #ifndef GCA
+          call throwError('ERROR: `dgca` not defined without GCA flag.')
+        #else
+          #ifndef DEBUG
+            call computeDensityGCA(s, reset=.true.)
+          #else
+            call computeDensityGCA(s, reset=.true., ds=0)
+          #endif
+          call exchangeArray()
+        #endif
       else
         writing_lgarrQ = .false.
       end if
