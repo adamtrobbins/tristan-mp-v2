@@ -427,6 +427,104 @@ contains
     end do
   end subroutine computeEnergy
 
+  #ifdef GCA
+    subroutine computeDensityGCA(s, reset, ds, charge)
+      ! DEP_PRT [particle-dependent]
+      implicit none
+      integer, intent(in)                   :: s
+      logical, intent(in)                   :: reset
+      logical, optional, intent(in)         :: charge
+      integer, optional, intent(in)         :: ds
+      integer                               :: p, ti, tj, tk
+      integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+      integer, pointer, contiguous          :: pt_proc(:)
+      real, pointer, contiguous             :: pt_wei(:)
+      logical                               :: charge_
+      integer(kind=2) :: i, j, k
+      integer :: i1, i2, j1, j2, k1, k2, ds_
+      integer :: pow
+      real    :: contrib
+
+      if (.not. present(ds)) then
+        ds_ = 2
+      else
+        ds_ = ds
+      end if
+
+      if (.not. present(charge)) then
+        charge_ = .false.
+      else
+        charge_ = charge
+      end if
+
+      #ifdef oneD
+        pow = 1
+      #elif twoD
+        pow = 2
+      #elif threeD
+        pow = 3
+      #endif
+
+      if (species(s)%m_sp .eq. 0) then
+        contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
+      else
+        if (charge_) then
+          contrib = species(s)%ch_sp / (2.0 * REAL(ds_) + 1.0)**pow
+        else
+          contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+        end if
+      end if
+
+      if (reset) then
+        lg_arr(:,:,:) = 0
+      end if
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
+            pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              if (pt_proc(p) .lt. mpi_size) cycle
+              i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+
+              i1 = 0; i2 = 0
+              j1 = 0; j2 = 0
+              k1 = 0; k2 = 0
+              #if defined(oneD) || defined (twoD) || defined (threeD)
+                i1 = max(i - ds_, -NGHOST)
+                i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+              #endif
+              #if defined (twoD) || defined (threeD)
+                j1 = max(j - ds_, -NGHOST)
+                j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+              #endif
+              #if defined (threeD)
+                k1 = max(k - ds_, -NGHOST)
+                k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
+              #endif
+
+              do k = k1, k2
+                do j = j1, j2
+                  do i = i1, i2
+                    lg_arr(i, j, k) = lg_arr(i, j, k) + pt_wei(p) * contrib
+                  end do
+                end do
+              end do
+
+            end do
+            pt_xi => null(); pt_yi => null(); pt_zi => null(); pt_wei => null()
+            pt_proc => null()
+          end do
+        end do
+      end do
+    end subroutine computeDensityGCA
+
+  #endif
+
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &
                            & fx, fy, fz, &
                            & intfx, intfy, intfz)
@@ -776,7 +874,9 @@ contains
     case('zz')
       sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
     case default
-      if (((fld_var(1:4) .ne. 'dens') .and. (fld_var(1:4) .ne. 'enrg')) .or.&
+      if (((fld_var(1:4) .ne. 'dens') .and.&
+         & (fld_var(1:4) .ne. 'enrg') .and.&
+         & (fld_var(1:4) .ne. 'dgca')) .or.&
          & (.not. writing_lgarrQ)) then
         call throwError("ERROR: unrecognized `fld_vars(f)`")
       else
