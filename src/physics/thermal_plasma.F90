@@ -330,6 +330,7 @@ contains
       else
         rnd = 1.0
       end if
+      !!!! ADDD HERE THE x M !!!!!
       if ((.not. present(spat_distr_ptr)) .or. (random(dseed) .lt. rnd)) then
         do s = 1, num_species
           ! generate momenta for every species individually

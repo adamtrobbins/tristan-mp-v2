@@ -108,6 +108,45 @@ def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
       ni += 1
   return data
 
+def parseHistory(fname, nsteps = None):
+  keys = []
+  if (not nsteps):
+    nsteps = int(1e6)
+  def parseBlock(block, data, isfirst = False):
+    if (isfirst):
+      block = block.split('\n')[2:-2]
+      for subblock in block:
+        for word in subblock.split():
+          if word[0] == '[' and word[-1] == ']':
+            if ('%' not in word): # sanity check
+              keys.append(word[1:-1])
+              data[word[1:-1]] = np.array([])
+    else:
+      block = block.split('\n')[2:-2]
+      k = 0
+      for subblock in block:
+        for word in subblock.split():
+          if ('%' not in word) and ('|' not in word) and k < len(keys):
+            data[keys[k]] = np.append(data[keys[k]], np.float(word))
+            k = k + 1
+  data = {}
+  with open(fname, 'r') as file:
+    isfirst = True
+    ni = 0
+    while ni <= nsteps:
+      block = ""
+      for i in range(8):
+        line = file.readline()
+        if line == '':
+          ni = nsteps + 1
+          break
+        else:
+          block += line
+      parseBlock(block, data, isfirst)
+      isfirst = False
+      ni = ni + 1
+  return data
+
 # easy plotting functions
 def plot2DField(ax, x, y, field, rotate=False,
                 title='field', cmap='jet',

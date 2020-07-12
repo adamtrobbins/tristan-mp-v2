@@ -75,6 +75,7 @@ uperp_g = sqrt(uperp_g_x**2 + uperp_g_y**2 + uperp_g_z**2)
 if ((.not. species(s)%gca_sp) .or. (bb0 * bb0_n .eq. 0.0) .or.&
   & ((CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)) .ge. gca_rhomin) .or.&
   & (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0)) then
+  if (pt_proc(p) .gt. mpi_size) pt_proc(p) = pt_proc(p) - 2 * mpi_size
   ! use Boris here
   ex0 = ex0_n; ey0 = ey0_n; ez0 = ez0_n
   bx0 = bx0_n; by0 = by0_n; bz0 = bz0_n
@@ -87,6 +88,7 @@ if ((.not. species(s)%gca_sp) .or. (bb0 * bb0_n .eq. 0.0) .or.&
   pt_v_eff(p) = v0 * CC * over_e_temp
   pt_w_eff(p) = w0 * CC * over_e_temp
 else
+  if (pt_proc(p) .lt. mpi_size) pt_proc(p) = pt_proc(p) + 2 * mpi_size
   ! use GCA here
   ! at time `t = n-1/2`
   dummy_ = 1.0 / (uperp_g + TINYFLD)

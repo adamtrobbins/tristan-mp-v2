@@ -60,7 +60,9 @@ class PulsarSimulationSlice(SliceSimulation):
 
       self.data['b'] = (axes, np.sqrt(b_sqr))
       self.data['rho+'] = (axes, fields['dens2'][:])
+      self.data['gca+'] = (axes, fields['dgca2'][:] / fields['dens2'][:])
       self.data['rho-'] = (axes, fields['dens1'][:])
+      self.data['gca-'] = (axes, fields['dgca1'][:] / fields['dens1'][:])
       dens_tot = (self.data['rho+'] + self.data['rho-'])
       self.data['enrg+'] = (axes, fields['enrg2'][:])
       self.data['enrg-'] = (axes, fields['enrg1'][:])
@@ -93,7 +95,9 @@ class PulsarSimulationSlice(SliceSimulation):
 
       self.data['b'] = (axes, np.sqrt(b_sqr))
       self.data['rho+'] = (axes, fields['dens2'][:])
+      self.data['gca+'] = (axes, fields['dgca2'][:] / fields['dens2'][:])
       self.data['rho-'] = (axes, fields['dens1'][:])
+      self.data['gca-'] = (axes, fields['dgca1'][:] / fields['dens1'][:])
       dens_tot = (self.data['rho+'] + self.data['rho-'])
       self.data['enrg+'] = (axes, fields['enrg2'][:])
       self.data['enrg-'] = (axes, fields['enrg1'][:])
@@ -175,11 +179,16 @@ class PulsarSimulationSlice(SliceSimulation):
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
     im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
 
+    # nn += 1
+    # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
+    # im = self.data['rho-.xy'].plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap=rhocmap, interpolation='gaussian')
+    # ax.set_aspect(1)
+    # fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
+    # im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    im = self.data['rho-.xy'].plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap=rhocmap, interpolation='gaussian')
+    im = self.data['gca-.xz'].plot.imshow(norm=mpl.colors.Normalize(vmin=0, vmax=1), cmap='jet', interpolation='gaussian')
     ax.set_aspect(1)
-    fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
     im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
 
     nn += 1
@@ -189,20 +198,32 @@ class PulsarSimulationSlice(SliceSimulation):
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
     im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
 
+    # nn += 1
+    # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
+    # im = self.data['rho+.xy'].plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap=rhocmap, interpolation='gaussian')
+    # ax.set_aspect(1)
+    # fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
+    # im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    im = self.data['rho+.xy'].plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap=rhocmap, interpolation='gaussian')
+    im = self.data['gca+.xz'].plot.imshow(norm=mpl.colors.Normalize(vmin=0, vmax=1), cmap='jet', interpolation='gaussian')
     ax.set_aspect(1)
-    fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
     im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
 
     # nn += 1
     # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    # (self.data['b'] / self.data.attrs['B0']).sel(y=0).plot.imshow(norm=mpl.colors.LogNorm(vmin=1e-2, vmax=1), cmap='jet', interpolation='gaussian')
+    # xx, zz = np.meshgrid(self.data.coords['x'].values, self.data.coords['z'].values)
+    # r = np.sqrt(xx**2 + zz**2)
+    # self.data['b'] = (('z', 'x'), (self.data.attrs['RLC'] * r / self.data.attrs['RADIUS'])**-1)
+    # (self.data['by.xz'] / self.data.attrs['B0'] / self.data['b']).plot.imshow(norm=mpl.colors.LogNorm(vmin=1e-2, vmax=1), cmap='jet', interpolation='gaussian')
     # ax.set_aspect(1)
     nn += 1
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
-    temp = np.sqrt((self.data.attrs['B0'] / self.data['b.xz'])**-2 * (self.data.attrs['gamma_syn'] / self.data['gmean.xz'])**-2)
+    xx, zz = np.meshgrid(self.data.coords['x'].values, self.data.coords['z'].values)
+    r = np.sqrt(xx**2 + zz**2)
+    bphi = (self.data.attrs['RLC'] * r / self.data.attrs['RADIUS'])**-1
+    # temp = np.sqrt((self.data.attrs['B0'] / self.data['b.xz'])**-2 * (self.data.attrs['gamma_syn'] / self.data['gmean.xz'])**-2)
+    temp = np.sqrt((1.0 / bphi)**-2 * (self.data.attrs['gamma_syn'] / self.data['gmean.xz'])**-2)
     temp.data = np.nan_to_num(temp.data)
     im = temp.plot.imshow(norm=mpl.colors.LogNorm(vmin=1e-3, vmax=1), cmap='jet', interpolation='gaussian')
     ax.set_aspect(1)
