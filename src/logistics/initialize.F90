@@ -346,6 +346,7 @@ contains
 
     call getInput('output', 'hst_enable', hst_enable, .false.)
     call getInput('output', 'hst_interval', hst_interval, 1)
+    call getInput('output', 'hst_readable', hst_human_readable, .false.)
 
     call getInput('output', 'spec_log_bins', spec_log_bins, .true.)
     call getInput('output', 'spec_min', spec_min, 1e-2)

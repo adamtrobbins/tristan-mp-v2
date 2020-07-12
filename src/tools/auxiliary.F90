@@ -37,6 +37,15 @@ module m_aux
     type(generic_var), allocatable    :: param_value(:)
   end type simulation_params
 
+  abstract interface
+    function getFMT(value, w) result(FMT)
+      implicit none
+      real, intent(in)              :: value
+      character(len=STR_MAX)        :: FMT
+      integer, intent(in), optional :: w
+    end function getFMT
+  end interface
+
   type(simulation_params) :: sim_params
 
   !--- PRIVATE functions -----------------------------------------!
@@ -93,6 +102,22 @@ contains
       FMT = 'F' // trim(dummy) // '.3'
     end if
   end function getFMTForReal
+
+  function getFMTForRealScientific(value, w) result(FMT)
+    implicit none
+    real, intent(in)              :: value
+    character(len=STR_MAX)        :: FMT
+    integer, intent(in), optional :: w
+    integer                       :: w_
+    character(len=10)             :: dummy
+    if (.not. present(w)) then
+      w_ = 10
+    else
+      w_ = w
+    end if
+    write(dummy, '(I10)') w_
+    FMT = 'ES' // trim(dummy) // '.3'
+  end function getFMTForRealScientific
 
   subroutine printReport(bool, msg, prepend)
     implicit none
@@ -401,7 +426,7 @@ contains
     do i = 2, n_bins
       linnorm(i) = linnorm(i) / (n_bins + 1.0) + linnorm(i - 1)
     end do
-    
+
     do i = 1, n_bins
       linnorm(i) = 2.0 * linnorm(i)
     end do
