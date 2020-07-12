@@ -70,4 +70,4 @@
 <problem>
 
   amplitude     = 0.1
-  shift_4vel    = 0.1
+  shift_gamma   = 0.1

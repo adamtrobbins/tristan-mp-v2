@@ -65,10 +65,9 @@
   flds_at_prtl  = 1              # save fields at particle position
   write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
 
-  hst_enable    = 0              # turn history file ON/OFF (currently not supported)
-                                 # ... integrated average quantities...
-                                 # saved at each timestep
+  hst_enable    = 0
   hst_interval  = 1
+  hst_readable  = 1              # enable the human readable format for history file (no exp notations, but can be uncertain)
 
   spec_min      = 1e-3           # `g - 1` for massive and `e` for massless
   spec_max      = 1e1            # `g - 1` for massive and `e` for massless
@@ -142,6 +141,7 @@
   deposit2      = 1             # [defaults to TRUE if charge != 0]
   move2         = 1             # [defaults to TRUE]
   cool2         = 0             # turn ON/OFF cooling for this species
+  gca2          = 1
 
   maxptl3       = 1e6           # max number of particles per core
   m3            = 0
