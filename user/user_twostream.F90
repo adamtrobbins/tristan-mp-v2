@@ -14,9 +14,8 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
 
   !--- PRIVATE variables -----------------------------------------!
-  integer   :: n_wave
-  real      :: amplitude, shift_4vel
-  private   :: amplitude, shift_4vel, n_wave
+  real      :: amplitude, shift_gamma
+  private   :: amplitude, shift_gamma
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -26,9 +25,8 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    call getInput('problem', 'shift_4vel', shift_4vel)
+    call getInput('problem', 'shift_gamma', shift_gamma)
     call getInput('problem', 'amplitude', amplitude)
-    call getInput('problem', 'n_wave', n_wave)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -53,20 +51,46 @@ contains
   subroutine userInitParticles()
     implicit none
     integer   :: npart, n
-    real      :: xg, kx, rnd
+    real      :: xg, yg, u_, v_, w_
+    type(maxwellian) :: maxw1, maxw2, maxw3
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    npart = INT(global_mesh%sx * ppc0 * 0.5)
-    kx = 2 * M_PI * n_wave / global_mesh%sx
-    n = 0
-    do while (n .lt. npart)
+    maxw1%temperature = 1.0e-5
+    maxw1%shift_dir = 1
+    maxw1%shift_gamma = shift_gamma
+    maxw1%shift_flag = .true.
+
+    maxw2%temperature = 1.0e-5
+    maxw2%shift_dir = -1
+    maxw2%shift_gamma = shift_gamma
+    maxw2%shift_flag = .true.
+
+    maxw3%temperature = 1.0e-5
+
+    npart = INT(global_mesh%sx * global_mesh%sy * ppc0 * 0.5 * amplitude)
+    do n = 1, npart
       xg = random(dseed) * global_mesh%sx
-      rnd = random(dseed) * (1 + amplitude)
-      if (rnd .lt. 1 + amplitude * cos(xg * kx)) then
-        call injectParticleGlobally(1, xg, 0.5, 0.5, shift_4vel, 0.0, 0.0)
-        call injectParticleGlobally(2, xg, 0.5, 0.5, -shift_4vel, 0.0, 0.0)
-        n = n + 1
+      yg = 0.5
+      #ifdef twoD
+        yg = random(dseed) * global_mesh%sy
+      #endif
+      call generateFromMaxwellian(maxw1, u_, v_, w_)
+      call injectParticleGlobally(1, xg, yg, 0.5, u_, v_, w_)
+      if (nspec .eq. 3) then
+        call generateFromMaxwellian(maxw3, u_, v_, w_)
+        call injectParticleGlobally(3, xg, yg, 0.5, 0.0, 0.0, 0.0)
+      end if
+      xg = random(dseed) * global_mesh%sx
+      yg = 0.5
+      #ifdef twoD
+        yg = random(dseed) * global_mesh%sy
+      #endif
+      call generateFromMaxwellian(maxw2, u_, v_, w_)
+      call injectParticleGlobally(2, xg, yg, 0.5, u_, v_, w_)
+      if (nspec .eq. 3) then
+        call generateFromMaxwellian(maxw3, u_, v_, w_)
+        call injectParticleGlobally(3, xg, yg, 0.5, 0.0, 0.0, 0.0)
       end if
     end do
   end subroutine userInitParticles
