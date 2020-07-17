@@ -20,10 +20,8 @@ module m_userfile
   procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
 
   !--- PRIVATE variables -----------------------------------------!
-  integer   :: ph_ndot1, ph_ndot2, inject_interval
-  real      :: ph_energy, del_x1, del_x2, wei_1, wei_2
-
-  private   :: ph_ndot1, ph_ndot2, ph_energy, del_x1, del_x2, wei_1, wei_2
+  integer, private   :: ph_ndot1, ph_ndot2, inject_interval
+  real, private      :: ph_energy, del_x1, del_x2, wei_1, wei_2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -139,7 +137,7 @@ contains
 
       dz_ = 0.5; zi_ = 0
 
-      do i = 1, ph_ndot1
+      do i = 1, ph_ndot1 * ppc0
         rnd = random(dseed)
         thet = M_PI * (rnd - 0.5)
         u_ = cos(thet) * ph_energy
@@ -148,10 +146,10 @@ contains
 
         x_ = x1_g
         y_ = y1_g
-        call injectParticleGlobally(1, x_, y_, 0.5, u_, v_, w_, weight = wei_1)
+        call injectParticleGlobally(1, x_, y_, zi_ + dz_, u_, v_, w_, weight = wei_1)
       end do
 
-      do i = 1, ph_ndot2
+      do i = 1, ph_ndot2 * ppc0
         rnd = random(dseed)
         thet = M_PI * (rnd - 0.5)
         u_ = -cos(thet) * ph_energy
@@ -160,7 +158,7 @@ contains
 
         x_ = x2_g
         y_ = y2_g
-        call injectParticleGlobally(2, x_, y_, 0.5, u_, v_, w_, weight = wei_2)
+        call injectParticleGlobally(2, x_, y_, zi_ + dz_, u_, v_, w_, weight = wei_2)
       end do
     end if
   end subroutine userParticleBoundaryConditions

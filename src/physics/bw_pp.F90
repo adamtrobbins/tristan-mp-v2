@@ -262,8 +262,8 @@ contains
     type(couple), allocatable     :: pairs_of_photons(:)
     integer                       :: num_pairs, ph, s1, s2, p1, p2
     integer                       :: tile_x, tile_y, tile_z, num_pairs_max
-    real                          :: rnd, P_12
-    real                          :: P_corr, P_max, ppt0
+    real                          :: rnd, P_12, wei_split_tot, wei1, wei2
+    real                          :: P_corr, P_max, ppt0, wei_1, wei_2
     logical                       :: thresholdQ
     integer                       :: num_1, num_2
 
@@ -272,16 +272,26 @@ contains
       ! shuffle sets for more randomness
       if (random(dseed) .gt. 0.5) then
         call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
-                                 & pairs_of_photons, num_pairs, num_1, num_2)
+                                 & pairs_of_photons, num_pairs,&
+                                 & num_group_1 = num_1, num_group_2 = num_2,&
+                                 & wei_group_1 = wei_1, wei_group_2 = wei_2)
       else
         call coupleParticlesOnTile(ti, tj, tk, sp_arr_2, n_sp_2, sp_arr_1, n_sp_1,&
-                                 & pairs_of_photons, num_pairs, num_1, num_2)
+                                 & pairs_of_photons, num_pairs,&
+                                 & num_group_1 = num_1, num_group_2 = num_2,&
+                                 & wei_group_1 = wei_1, wei_group_2 = wei_2)
       end if
     else
       ! one BW group
       call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_1, n_sp_1,&
-                               & pairs_of_photons, num_pairs, num_1)
+                               & pairs_of_photons, num_pairs,&
+                               & num_group_1 = num_1, wei_group_1 = wei_1)
       num_2 = num_1
+      wei_2 = wei_1
+    end if
+
+    if (num_pairs .lt. 1) then
+      return
     end if
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -297,12 +307,18 @@ contains
     ! make it independent of ppt0 & qed step:
     P_corr = REAL(BW_interval) / ppt0
     ! match with binary pairing:
-    if (n_sp_2 .ne. 0) then
-      P_corr = P_corr * max(num_1, num_2)
-    else
-      P_corr = P_corr * (num_1 - 1)
-    endif
-    if (num_pairs .gt. INT(ppt0)) then
+    P_corr = P_corr * max(wei_1, wei_2)
+    ! correction for non-integer weights:
+    wei_split_tot = 0.0
+    do ph = 1, num_pairs
+      wei_split_tot = wei_split_tot + min(pairs_of_photons(ph)%part_1%wei,&
+                                        & pairs_of_photons(ph)%part_2%wei)
+    end do
+    ! `min(wei_1, wei_2)` is what could be scattered in an ideal pairing world, ...
+    ! ... `wei_split_tot` is what is actually available to scatter due to ...
+    ! ... non-ideal pairing:
+    P_corr = P_corr * min(wei_1, wei_2) / wei_split_tot
+    if (num_pairs .gt. FLOOR(ppt0)) then
       ! reduce # pairs to loop over in dense regions:
       P_max = 0.26 * BW_tau * P_corr ! tight upper bound on max P_12 for BW
       num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
@@ -316,8 +332,7 @@ contains
 
     do ph = 1, num_pairs_max
       ! compute P_12 for each pair of photons `pairs_of_photons(ph)`
-      call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph),&
-                               & P_12, thresholdQ)
+      call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph), P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
       P_12 = P_12 * P_corr
       #ifdef DEBUG
@@ -338,14 +353,16 @@ contains
         ! schedule particles for deletion
         s1 = pairs_of_photons(ph)%part_1%spec
         p1 = pairs_of_photons(ph)%part_1%index
+        wei1 = pairs_of_photons(ph)%part_1%wei
         s2 = pairs_of_photons(ph)%part_2%spec
         p2 = pairs_of_photons(ph)%part_2%index
-        species(s1)%prtl_tile(ti, tj, tk)%weight(p1) = species(s1)%prtl_tile(ti, tj, tk)%weight(p1) - 1.0
-        species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - 1.0
-        if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .lt. 1e-4) then
+        wei2 = pairs_of_photons(ph)%part_2%wei
+        species(s1)%prtl_tile(ti, tj, tk)%weight(p1) = species(s1)%prtl_tile(ti, tj, tk)%weight(p1) - wei1
+        species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - wei2
+        if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .lt. 1e-6) then
           species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
         end if
-        if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .lt. 1e-4) then
+        if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .lt. 1e-6) then
           species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
         end if
       end if
@@ -439,7 +456,7 @@ contains
     integer, intent(in)      :: ti, tj, tk
     type(couple), intent(in) :: pair_of_photons
     integer                  :: s1, s2, p1, p2
-    real                     :: x_new, y_new, z_new, dx_new, dy_new, dz_new, rnd
+    real                     :: x_new, y_new, z_new, dx_new, dy_new, dz_new, rnd, wei1, wei2, wei
     integer                  :: tile_x1, tile_x2, tile_y1, tile_y2, tile_z1, tile_z2
     integer(kind=2)          :: xi_new, yi_new, zi_new
 
@@ -460,8 +477,12 @@ contains
     ! "extracting" photons
     s1 = pair_of_photons%part_1%spec
     p1 = pair_of_photons%part_1%index
+    wei1 = pair_of_photons%part_1%wei
     s2 = pair_of_photons%part_2%spec
     p2 = pair_of_photons%part_2%index
+    wei2 = pair_of_photons%part_2%wei
+
+    wei = 0.5 * (wei1 + wei2)
 
     tile_x1 = species(s1)%prtl_tile(ti, tj, tk)%x1
     tile_x2 = species(s1)%prtl_tile(ti, tj, tk)%x2
@@ -470,12 +491,12 @@ contains
     tile_z1 = species(s1)%prtl_tile(ti, tj, tk)%z1
     tile_z2 = species(s1)%prtl_tile(ti, tj, tk)%z2
 
-    ph1_u = REAL(species(s1)%prtl_tile(ti, tj, tk)%u(p1), 8)
-    ph1_v = REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
-    ph1_w = REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
-    ph2_u = REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
-    ph2_v = REAL(species(s2)%prtl_tile(ti, tj, tk)%v(p2), 8)
-    ph2_w = REAL(species(s2)%prtl_tile(ti, tj, tk)%w(p2), 8)
+    ph1_u = (wei1 / wei) * REAL(species(s1)%prtl_tile(ti, tj, tk)%u(p1), 8)
+    ph1_v = (wei1 / wei) * REAL(species(s1)%prtl_tile(ti, tj, tk)%v(p1), 8)
+    ph1_w = (wei1 / wei) * REAL(species(s1)%prtl_tile(ti, tj, tk)%w(p1), 8)
+    ph2_u = (wei2 / wei) * REAL(species(s2)%prtl_tile(ti, tj, tk)%u(p2), 8)
+    ph2_v = (wei2 / wei) * REAL(species(s2)%prtl_tile(ti, tj, tk)%v(p2), 8)
+    ph2_w = (wei2 / wei) * REAL(species(s2)%prtl_tile(ti, tj, tk)%w(p2), 8)
 
     ! k-vectors in lab frame
     eps1 = sqrt(ph1_u**2 + ph1_v**2 + ph1_w**2)
@@ -485,10 +506,10 @@ contains
 
     ! angle between photons in lab frame
     cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
-    ! `S` parameter
+    ! `S` parameter (which does not depend on weights, hence the denominator)
     SS = eps1 * eps2 * (1.0d0 - cos_phi) * 0.5d0
     #ifdef DEBUG
-      if (SS .le. 1.0d0) then
+      if (SS / (wei1 * wei2 / wei**2) .le. 1.0d0) then
         call throwError('`S` <= 1 when creating BW pairs.')
       end if
     #endif
@@ -542,7 +563,7 @@ contains
     ! Generate random vector in the CoM frame ...
     ! ... respecting the differential cross section ...
     ! ... at angle `theta` w.r.t. `k1_CM`
-    call generateRandomThetaBW(SS, rand_theta_CM)
+    call generateRandomThetaBW(SS / (wei1 * wei2 / wei**2), rand_theta_CM)
     rand_phi_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
     cos_rand_theta_CM = cos(rand_theta_CM)
     sin_rand_theta_CM = sin(rand_theta_CM)
@@ -593,12 +614,12 @@ contains
                              & dx_new, dy_new, dz_new)
 
     ! create an electron/positron pair in the same location
-    call createParticle(BW_electron_sp, xi_new, yi_new, zi_new,&
-                                      & dx_new, dy_new, dz_new,&
-                                      & REAL(prtl1_u, 4), REAL(prtl1_v, 4), REAL(prtl1_w, 4))
-    call createParticle(BW_positron_sp, xi_new, yi_new, zi_new,&
-                                      & dx_new, dy_new, dz_new,&
-                                      & REAL(prtl2_u, 4), REAL(prtl2_v, 4), REAL(prtl2_w, 4))
+    call createParticle(BW_electron_sp, xi_new, yi_new, zi_new, dx_new, dy_new, dz_new,&
+                                      & REAL(prtl1_u, 4), REAL(prtl1_v, 4), REAL(prtl1_w, 4),&
+                                      & weight=wei)
+    call createParticle(BW_positron_sp, xi_new, yi_new, zi_new, dx_new, dy_new, dz_new,&
+                                      & REAL(prtl2_u, 4), REAL(prtl2_v, 4), REAL(prtl2_w, 4),&
+                                      & weight=wei)
   end subroutine PPfromTwoPhotons
 
   subroutine generateRandomThetaBW(SS, theta_final)
