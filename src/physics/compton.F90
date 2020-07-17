@@ -110,6 +110,7 @@ contains
     real                      :: u_el_new, v_el_new, w_el_new
     real                      :: u_ph_new, v_ph_new, w_ph_new
     real                      :: wei_split, wei_1, wei_2, wei_split_tot
+    real                      :: wei_split_el, wei_split_ph
 
     ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
@@ -190,8 +191,8 @@ contains
 
       ! boost photon momentum into electron frame:
       call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
-                             & eph, kph_x, kph_y, kph_z, &
-                             & eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
+                     & eph, kph_x, kph_y, kph_z, &
+                     & eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
 
       ! compute cross section:
       call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
@@ -226,15 +227,22 @@ contains
         v_el_new = v_el + v_ph - v_ph_new
         w_el_new = w_el + w_ph - w_ph_new
 
+        wei_split_el = el_photon_pairs(el_ph)%part_1%wei
+        wei_split_ph = el_photon_pairs(el_ph)%part_2%wei
+        ! within some numeric tolerance, check if the split weight ...
+        ! ... matches the original particle weight:
+        if (abs(wei_el - wei_split_el) .le. TINYWEI) wei_split_el = wei_el
+        if (abs(wei_ph - wei_split_ph) .le. TINYWEI) wei_split_ph = wei_ph
+
         ! take the smaller of the two weights for the scattering:
-        wei_split = min(el_photon_pairs(el_ph)%part_1%wei,&
-                      & el_photon_pairs(el_ph)%part_2%wei)
+        wei_split = min(wei_split_el, wei_split_ph)
         #ifdef DEBUG
-          if (wei_split .le. 0.0) then
-            call throwError('Weight of to-be splitted particle in Compton < 0  !')
+          if (wei_split .le. TINYWEI) then
+            call throwError('ERROR: Weight of to-be splitted particle in Compton <= 0!')
           endif
-          if ((wei_split .gt. wei_el) .or. (wei_split .gt. wei_ph)) then
-            call throwError('Weight of to-be splitted particle in Compton exceeds initial particle weight!')
+          if ((abs(wei_split - wei_el) .gt. TINYWEI) .or.&
+            & (abs(wei_split - wei_ph) .gt. TINYWEI)) then
+            call throwError('ERROR: Weight of to-be splitted particle in Compton exceeds initial particle weight!')
           endif
         #endif
         ! el update:
@@ -246,7 +254,7 @@ contains
           else ! split electron:
             wei_el = wei_el - wei_split
             ! this is done for safety but is not supposed to happen:
-            if (wei_el .le. 0.0) then
+            if (wei_el .le. TINYWEI) then
               species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
             end if
             call createParticle(s1, species(s1)%prtl_tile(ti, tj, tk)%xi(p1), &
@@ -265,7 +273,7 @@ contains
           w_ph = w_ph_new
         else ! split photon:
           wei_ph = wei_ph - wei_split
-          if (wei_ph .le. 0.0) then
+          if (wei_ph .le. TINYWEI) then
             species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
           end if
           call createParticle(s2, species(s2)%prtl_tile(ti, tj, tk)%xi(p2), &

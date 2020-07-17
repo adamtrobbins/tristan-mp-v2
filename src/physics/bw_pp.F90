@@ -187,10 +187,10 @@ contains
               species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - 1.0
             end do
             ! schedule particles for deletion if necessary
-            if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .lt. 1e-4) then
+            if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .lt. TINYWEI) then
               species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
             end if
-            if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .lt. 1e-4) then
+            if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .lt. TINYWEI) then
               species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
             end if
             exit
@@ -236,10 +236,10 @@ contains
               species(s2)%prtl_tile(ti, tj, tk)%weight(p2) = species(s2)%prtl_tile(ti, tj, tk)%weight(p2) - 1.0
             end do
             ! schedule particles for deletion if necessary
-            if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .eq. 0.0) then
+            if (species(s1)%prtl_tile(ti, tj, tk)%weight(p1) .lt. TINYWEI) then
               species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
             end if
-            if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .eq. 0.0) then
+            if (species(s2)%prtl_tile(ti, tj, tk)%weight(p2) .lt. TINYWEI) then
               species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
             end if
             exit
