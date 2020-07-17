@@ -10,9 +10,11 @@ module m_writehistory
   use m_helpers
   implicit none
 
-  logical :: hst_enable, first_step = .true., hst_human_readable = .false.
+  logical :: hst_enable, hst_human_readable = .false.
   integer :: hst_interval
-  real    :: Etot_0
+
+  real, private    :: Etot_0
+  logical, private :: first_step = .true.
 
 contains
   ! FIX2 total E^2, total B^2, total E_kin
