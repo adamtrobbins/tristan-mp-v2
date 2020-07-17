@@ -33,7 +33,7 @@ contains
     ! find all the species that participate in Compton scattering
     si_1 = 0; si_2 = 0
     do s = 1, nspec
-      ! go through the list and assign species either to 
+      ! go through the list and assign species either to
       ! group1 (electrons/positrons) or to group2 (photons):
       if (species(s)%compton_sp) then
         ! electrons or positrons:
@@ -105,14 +105,18 @@ contains
     real(kind=8)              :: el_gamma, pel_x, pel_y, pel_z
     real(kind=8)              :: eph, kph_x, kph_y, kph_z
     real(kind=8)              :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
-    real, pointer             :: u_el, v_el, w_el, weight_el
-    real, pointer             :: u_ph, v_ph, w_ph, weight_ph
+    real, pointer             :: u_el, v_el, w_el, wei_el
+    real, pointer             :: u_ph, v_ph, w_ph, wei_ph
     real                      :: u_el_new, v_el_new, w_el_new
     real                      :: u_ph_new, v_ph_new, w_ph_new
+    real                      :: wei_split, wei_1, wei_2, wei_split_tot
 
-    ! couple the electrons/positrons (group1) and photons (group2): 
+    ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2,&
-                             & el_photon_pairs, num_pairs, num_1, num_2)
+                             & el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2)
+    ! the particles that form the pair list have already been abstractly split ...
+    ! ... the 'splitting' is done only within the list of pairs at this stage ...
+    ! ... actual weight > 1 particles have not (yet) been split.
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! calculate prob. correction factor:
@@ -126,17 +130,30 @@ contains
     ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
     ! make it independent of ppt0 & qed step:
     P_corr = REAL(Compton_interval) / ppt0
-    ! match with binary pairing:
-    P_corr = P_corr * max(num_1, num_2)
-    if (num_pairs .gt. INT(ppt0)) then
-      ! reduce # pairs to loop over in dense regions:
+    ! match with binary pairing (multiply w/ maximum total weight of either set):
+    P_corr = P_corr * max(wei_1, wei_2)
+    ! correction for non-integer weights:
+    wei_split_tot = 0.0
+    do el_ph = 1, num_pairs
+      wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph)%part_1%wei,&
+                                        & el_photon_pairs(el_ph)%part_2%wei)
+    end do
+    ! `min(wei_1, wei_2)` is what could be scattered in an ideal pairing world, ...
+    ! ... `wei_split_tot` is what is actually available to scatter due to ...
+    ! ... non-ideal pairing:
+    P_corr = P_corr * min(wei_1, wei_2) / wei_split_tot
+    ! reduce # pairs to loop over in dense regions:
+    if (num_pairs .gt. FLOOR(ppt0)) then
       P_max = 2.0 * Compton_tau * P_corr ! tight upper bound on max P_12 for Compton
       num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
       ! limit from below to ppt0 to avoid excessive undersampling:
-      num_pairs_max = max(num_pairs_max, INT(ppt0))
+      num_pairs_max = max(num_pairs_max, FLOOR(ppt0))
     else
       num_pairs_max = num_pairs
     endif
+    ! this assumes that each of the two undersampled sets has similar ...
+    ! ... mean weight as the original set (if this is not true ...
+    ! ... the undersampling is not justified in the first place):
     P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -159,11 +176,11 @@ contains
       u_el      => species(s1)%prtl_tile(ti, tj, tk)%u(p1)
       v_el      => species(s1)%prtl_tile(ti, tj, tk)%v(p1)
       w_el      => species(s1)%prtl_tile(ti, tj, tk)%w(p1)
-      weight_el => species(s1)%prtl_tile(ti, tj, tk)%weight(p1)
+      wei_el    => species(s1)%prtl_tile(ti, tj, tk)%weight(p1)
       u_ph      => species(s2)%prtl_tile(ti, tj, tk)%u(p2)
       v_ph      => species(s2)%prtl_tile(ti, tj, tk)%v(p2)
       w_ph      => species(s2)%prtl_tile(ti, tj, tk)%w(p2)
-      weight_ph => species(s2)%prtl_tile(ti, tj, tk)%weight(p2)
+      wei_ph    => species(s2)%prtl_tile(ti, tj, tk)%weight(p2)
 
       pel_x = REAL(u_el, 8); pel_y = REAL(v_el, 8); pel_z = REAL(w_el, 8)
       kph_x = REAL(u_ph, 8); kph_y = REAL(v_ph, 8); kph_z = REAL(w_ph, 8)
@@ -209,15 +226,27 @@ contains
         v_el_new = v_el + v_ph - v_ph_new
         w_el_new = w_el + w_ph - w_ph_new
 
+        ! take the smaller of the two weights for the scattering:
+        wei_split = min(el_photon_pairs(el_ph)%part_1%wei,&
+                      & el_photon_pairs(el_ph)%part_2%wei)
+        #ifdef DEBUG
+          if (wei_split .le. 0.0) then
+            call throwError('Weight of to-be splitted particle in Compton < 0  !')
+          endif
+          if ((wei_split .gt. wei_el) .or. (wei_split .gt. wei_ph)) then
+            call throwError('Weight of to-be splitted particle in Compton exceeds initial particle weight!')
+          endif
+        #endif
         ! el update:
         if (Compton_el_recoil) then
-          if (weight_el .eq. 1.0) then
+          if (wei_el .eq. wei_split) then
             u_el = u_el_new
             v_el = v_el_new
             w_el = w_el_new
           else ! split electron:
-            weight_el = weight_el - 1.0
-            if (weight_el .lt. 1e-4) then
+            wei_el = wei_el - wei_split
+            ! this is done for safety but is not supposed to happen:
+            if (wei_el .le. 0.0) then
               species(s1)%prtl_tile(ti, tj, tk)%proc(p1) = -1
             end if
             call createParticle(s1, species(s1)%prtl_tile(ti, tj, tk)%xi(p1), &
@@ -226,17 +255,17 @@ contains
                                   & species(s1)%prtl_tile(ti, tj, tk)%dx(p1), &
                                   & species(s1)%prtl_tile(ti, tj, tk)%dy(p1), &
                                   & species(s1)%prtl_tile(ti, tj, tk)%dz(p1), &
-                                  & u_el_new, v_el_new, w_el_new)
+                                  & u_el_new, v_el_new, w_el_new, weight=wei_split)
           endif
         endif
         ! photon update:
-        if (weight_ph .eq. 1.0) then
+        if (wei_ph .eq. wei_split) then
           u_ph = u_ph_new
           v_ph = v_ph_new
           w_ph = w_ph_new
         else ! split photon:
-          weight_ph = weight_ph - 1.0
-          if (weight_ph .lt. 1e-4) then
+          wei_ph = wei_ph - wei_split
+          if (wei_ph .le. 0.0) then
             species(s2)%prtl_tile(ti, tj, tk)%proc(p2) = -1
           end if
           call createParticle(s2, species(s2)%prtl_tile(ti, tj, tk)%xi(p2), &
@@ -245,11 +274,11 @@ contains
                                 & species(s2)%prtl_tile(ti, tj, tk)%dx(p2), &
                                 & species(s2)%prtl_tile(ti, tj, tk)%dy(p2), &
                                 & species(s2)%prtl_tile(ti, tj, tk)%dz(p2), &
-                                & u_ph_new, v_ph_new, w_ph_new)
+                                & u_ph_new, v_ph_new, w_ph_new, weight=wei_split)
         endif
       end if
-      u_el => null(); v_el => null(); w_el => null(); weight_el => null()
-      u_ph => null(); v_ph => null(); w_ph => null(); weight_ph => null()
+      u_el => null(); v_el => null(); w_el => null(); wei_el => null()
+      u_ph => null(); v_ph => null(); w_ph => null(); wei_ph => null()
     end do
   end subroutine comptonOnTile_mc
 
@@ -268,7 +297,7 @@ contains
       ! correctly handle the eph_RF << 1 limit using 2nd order expansion of f_KN:
       KleinNishina = .true.  ! Klein-Nishina
       f_KN = 1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2
-    else   
+    else
       KleinNishina = .true.
       over_eph_RF = 1.0d0 / eph_RF
       f_KN = 0.375d0 * over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
@@ -276,14 +305,14 @@ contains
                                  & 4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
     end if
     ! Cross section in the *lab* frame:
-    P_12 = Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph)) 
+    P_12 = Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph))
   end subroutine computeComptonCrossSection
 
   subroutine boostPhoton(gam, p_x, p_y, p_z, &
                        & eph, k_x, k_y, k_z, &
                        & eph1, k1_x, k1_y, k1_z)
     implicit none
-    real(kind=8), intent(in)  :: gam, p_x, p_y, p_z 
+    real(kind=8), intent(in)  :: gam, p_x, p_y, p_z
     ! the input momentum:
     real(kind=8), intent(in)  :: eph, k_x, k_y, k_z
     ! the transformed momentum:
@@ -293,9 +322,9 @@ contains
     p_dot_k = p_x * k_x + p_y * k_y + p_z * k_z
     ! The transformed photon momentum:
     eph1 = gam * eph - p_dot_k
-    k1_x = k_x + (p_dot_k / (1.0d0 + gam) - eph) * p_x 
-    k1_y = k_y + (p_dot_k / (1.0d0 + gam) - eph) * p_y 
-    k1_z = k_z + (p_dot_k / (1.0d0 + gam) - eph) * p_z 
+    k1_x = k_x + (p_dot_k / (1.0d0 + gam) - eph) * p_x
+    k1_y = k_y + (p_dot_k / (1.0d0 + gam) - eph) * p_y
+    k1_z = k_z + (p_dot_k / (1.0d0 + gam) - eph) * p_z
     #ifdef DEBUG
       check = eph1 / (gam * eph)
       if ((check .le. 0.0d0) .or. (check .ge. 2.0d0)) then
@@ -367,15 +396,15 @@ contains
     real(kind=8), parameter   :: thresh = 1d-7
     integer, parameter        :: max_iter = 30
     logical                   :: converged
-    
+
     rnd = REAL(random(dseed), 8)
     if (.not. KleinNishina) then
-      ! `u` for Thomson can be sampled by transforming `rnd` with 
-      ! an analytic formula, which is obtained by inverting the 
-      ! cumulative distribution: 
+      ! `u` for Thomson can be sampled by transforming `rnd` with
+      ! an analytic formula, which is obtained by inverting the
+      ! cumulative distribution:
       u = (4.0d0 * rnd - 2.0d0 + sqrt(5.0d0 + 16.0d0 * rnd * (rnd - 1.0d0)))**(1.0d0/3.0d0)
       u = u - 1.0d0 / u
-    else 
+    else
       ! generate random costheta for Klein-Nishina
       ! by solving iteratively (via Newton method) for F(u=cos(theta)) = rnd \in [0,1]
       iter = 0
@@ -391,6 +420,7 @@ contains
         du = du_KN_Newt(eph_RF, u, rnd, c0, c1, c2, c3, c4)
         u = u + du
         if (u .gt. 1.0d0) u = 1.0d0
+        if (u .lt. -1.0d0) u = -1.0d0
         if (abs(du) .lt. thresh) then
           converged = .true.
           exit
@@ -425,7 +455,7 @@ contains
          & 0.1875d0 * (u**4 + 2.0d0 * u**2 - 3.0d0) * eph_RF + &
          & 0.0375d0 * (6.0d0 * u**5 - 5.0d0 * u**4 + 6.0d0 * u**3 - &
                    & 20.0d0 * u**2 - 12.0d0 * u + 25.0d0) * eph_RF**2
-      dFdu = 0.375d0 * (u**2 + 1.0d0) + & 
+      dFdu = 0.375d0 * (u**2 + 1.0d0) + &
            & 0.75d0 * (u**3 + u) * eph_RF + &
            & 0.075d0 * (15.0d0 * u**4 - 10.0d0 * u**3 + 9.0d0 * u**2 - &
                       & 20.0d0 * u - 6.0d0) * eph_RF**2
@@ -441,4 +471,3 @@ contains
 
 #endif
 end module m_compton
-
