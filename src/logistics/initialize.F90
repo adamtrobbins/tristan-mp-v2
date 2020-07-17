@@ -1030,4 +1030,11 @@ contains
     end subroutine initializeComptonScattering
   #endif
 
+  #if defined(BWPAIRPRODUCTION) && defined(COMPTONSCATTERING)
+    ! check that both tau's are the same:
+    if ((BW_tau .ne. Compton_tau) .and. (mpi_rank .eq. 0)) then
+      print *, 'WARNING: `Compton_tau` not equal to `BW_tau`, physically they should be equal!'
+    endif
+  #endif
+
 end module m_initialize
