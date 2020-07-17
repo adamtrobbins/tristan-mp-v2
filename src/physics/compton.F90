@@ -240,8 +240,10 @@ contains
           if (wei_split .le. TINYWEI) then
             call throwError('ERROR: Weight of to-be splitted particle in Compton <= 0!')
           endif
-          if ((abs(wei_split - wei_el) .gt. TINYWEI) .or.&
-            & (abs(wei_split - wei_ph) .gt. TINYWEI)) then
+          if ((wei_split - wei_el .gt. TINYWEI) .or.&
+            & (wei_split - wei_ph .gt. TINYWEI)) then
+            print *, wei_split_el, wei_split_ph, wei_split
+            print *, wei_el, wei_ph
             call throwError('ERROR: Weight of to-be splitted particle in Compton exceeds initial particle weight!')
           endif
         #endif
