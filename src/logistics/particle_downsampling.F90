@@ -29,6 +29,7 @@ module m_particledownsampling
 
   integer           :: dwn_start, dwn_interval
   real              :: dwn_maxweight
+  logical           :: dwn_int_weights
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: downsampleParticles, downsampleOnTile,&
@@ -208,7 +209,7 @@ contains
     implicit none
     type(particleDwnGroup), intent(in)  :: group
     type(particle_tile), intent(inout)  :: tile
-    real            :: wA, wB
+    real            :: wA, wB, dw
     integer         :: p, p_ind, s
     real            :: pxA, pxB, pyA, pyB, pzA, pzB, rnd
     real            :: dxA, dyA, dzA, dxB, dyB, dzB
@@ -255,6 +256,14 @@ contains
     wB = group%tot_wei / 2.0
     ! ... but the code below works even if wA != wB ...
     ! ... (as long as their sum is tot_wei)
+
+    ! merge into 2 particles w/ integer weights. only possible if the total ...
+    ! ... group weight is an integer.
+    if (dwn_int_weights .and. (abs(INT(group%tot_wei) - group%tot_wei) .eq. 0.0)) then
+      dw = wA - INT(wA)
+      wA = wA - dw
+      wB = wB + dw
+    endif
 
     if (masslessQ) then
       ! new energies & momenta (magnitudes)

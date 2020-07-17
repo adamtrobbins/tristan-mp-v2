@@ -973,6 +973,7 @@ contains
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
       call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
       call getInput('downsampling', 'log_e_bins', log_e_bins, .true.)
+      call getInput('downsampling', 'int_weights', dwn_int_weights, .false.)
     end subroutine initializeDownsampling
   #endif
 

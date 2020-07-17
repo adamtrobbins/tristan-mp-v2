@@ -160,6 +160,7 @@
   energy_min    = 1e-1          # min energy of merged particle
   energy_max    = 1e1           # max energy of merged particle
   log_e_bins    = 1             # log or linear energy bins
+  int_weights   = 1             # force integer weights when merging
 
 <radiation>
 
