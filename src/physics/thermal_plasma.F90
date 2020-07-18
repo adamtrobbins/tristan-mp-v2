@@ -269,7 +269,6 @@ contains
     end if
 
     fill_maxwellian%dimension = dimension_
-    fill_maxwellian%temperature = temperature
     fill_maxwellian%generated = .false.
     if (present(shift_gamma)) then
       fill_maxwellian%shift_gamma = abs(shift_gamma)
@@ -330,7 +329,6 @@ contains
       else
         rnd = 1.0
       end if
-      !!!! ADDD HERE THE x M !!!!!
       if ((.not. present(spat_distr_ptr)) .or. (random(dseed) .lt. rnd)) then
         do s = 1, num_species
           ! generate momenta for every species individually
@@ -346,6 +344,7 @@ contains
               fill_maxwellian%shift_dir = INT(SIGN(1.0, species(spec_)%ch_sp)) * shift_dir
             end if
           end if
+          fill_maxwellian%temperature = temperature / species(spec_)%m_sp
           call generateFromMaxwellian(fill_maxwellian, u_, v_, w_)
           call createParticle(spec_, xi_, yi_, zi_, dx_, dy_, dz_, u_, v_, w_,&
                             & weight = weights_)
