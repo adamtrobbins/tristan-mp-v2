@@ -201,6 +201,7 @@ contains
       #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
           print *, 'P_12 = ', P_12
+          print *, eph, wei_ph, kph_x, kph_y, kph_z
           call throwError('Compton cross section P_12 out of bounds!')
         end if
       #else
