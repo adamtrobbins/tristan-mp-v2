@@ -155,12 +155,22 @@
   interval      = 10
   start         = 1             # starting timestep
   max_weight    = 100           # maximum weight of merging particles
-  angular_bins  = 5             # number of angular bins (theta/phi)
-  energy_bins   = 5             # number of log energy bins
+
+  cartesian_bins = 0            # cartesian or spherical momentum binning
   energy_min    = 1e-1          # min energy of merged particle
   energy_max    = 1e1           # max energy of merged particle
-  log_e_bins    = 1             # log or linear energy bins
   int_weights   = 1             # force integer weights when merging
+
+  # if spherical binning
+  angular_bins  = 5             # number of angular bins (theta/phi)
+  energy_bins   = 5             # number of log energy bins
+  log_e_bins    = 1             # log or linear energy bins
+
+  # if cartesian binning
+  dynamic_bins  = 1             # take min/max energy locally in each tile...
+                                # (energ_max/min still set the global maxima)
+  mom_bins      = 5             # number of momentum bins in XYZ phase space
+  mom_spread    = 0.1           # max momentum spread allowed for dynamic bins
 
 <radiation>
 

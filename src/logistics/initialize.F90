@@ -967,12 +967,24 @@ contains
       implicit none
       call getInput('downsampling', 'interval', dwn_interval, 1)
       call getInput('downsampling', 'start', dwn_start, 0)
+
       call getInput('downsampling', 'max_weight', dwn_maxweight, 1e2)
-      call getInput('downsampling', 'angular_bins', n_angular_bins, 5)
-      call getInput('downsampling', 'energy_bins', n_energy_bins, 5)
-      call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
+
+      call getInput('downsampling', 'cartesian_bins', dwn_cartesian_bins, .false.)
+
+      call getInput('downsampling', 'dynamic_bins', dwn_dynamic_bins, .false.)
+      if (dwn_cartesian_bins) then
+        call getInput('downsampling', 'mom_bins', dwn_n_mom_bins, 5)
+        if (dwn_dynamic_bins) then
+          call getInput('downsampling', 'mom_spread', dwn_mom_spread, 0.1)
+        end if
+      else
+        call getInput('downsampling', 'angular_bins', dwn_n_angular_bins, 5)
+        call getInput('downsampling', 'energy_bins', dwn_n_energy_bins, 5)
+        call getInput('downsampling', 'log_e_bins', dwn_log_e_bins, .true.)
+      end if
       call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
-      call getInput('downsampling', 'log_e_bins', log_e_bins, .true.)
+      call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
       call getInput('downsampling', 'int_weights', dwn_int_weights, .false.)
     end subroutine initializeDownsampling
   #endif
