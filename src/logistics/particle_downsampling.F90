@@ -28,12 +28,13 @@ module m_particledownsampling
   end type particleDwnGroup
 
   integer           :: dwn_start, dwn_interval
-  real              :: dwn_maxweight
-  logical           :: dwn_int_weights
+  real              :: dwn_maxweight, dwn_mom_spread
+  logical           :: dwn_cartesian_bins, dwn_int_weights, dwn_dynamic_bins
 
   !--- PRIVATE variables/functions -------------------------------!
-  private :: downsampleParticles, downsampleOnTile,&
-           & downsampleAllBins, downsampleBin,&
+  private :: downsampleParticles,&
+           & downsampleOnTile_Spherical, downsampleAllBins_Spherical, downsampleBin_Spherical,&
+           & downsampleOnTile_Cartesian, downsampleAllBins_Cartesian, downsampleBin_Cartesian,&
            & mergeParticlesInGroup
   !...............................................................!
 contains
@@ -52,17 +53,18 @@ contains
     integer :: s, ti, tj, tk
     integer :: bin_limit
 
-    ! if # of particles on a tile is less than this limit...
-    ! ... the algorithm won't be downsampling
-    bin_limit = INT(sqrt(2.0 * n_energy_bins * n_angular_bins**2))
-
     do s = 1, nspec
       if (species(s)%dwn_sp) then
         do ti = 1, species(s)%tile_nx
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
-              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. bin_limit) then
-                call downsampleOnTile(species(s)%prtl_tile(ti, tj, tk))
+              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. 5) then
+                ! decide whether to use cartesian OR spherical binning
+                if (dwn_cartesian_bins) then
+                  call downsampleOnTile_Cartesian(species(s)%prtl_tile(ti, tj, tk))
+                else
+                  call downsampleOnTile_Spherical(species(s)%prtl_tile(ti, tj, tk))
+                end if
               end if
             end do
           end do
@@ -72,26 +74,27 @@ contains
 
   end subroutine downsampleParticles
 
-  subroutine downsampleOnTile(tile)
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+  ! Spherical momenta binning.
+  subroutine downsampleOnTile_Spherical(tile)
     implicit none
     type(particle_tile), intent(inout)  :: tile
-    integer                             :: energy_ind, theta_ind, phi_ind
-    type(momentumBin), allocatable      :: momentum_bins(:)
+    type(momentumBin_Sph), allocatable  :: momentum_bins(:)
     real                                :: rot_ax_1, rot_ax_2, rot_ang
     ! generate a random rotation axis and a random rotation angle for a tile
     rot_ax_1 = random(dseed)
     rot_ax_2 = random(dseed)
     rot_ang = random(dseed)
 
-    call initializeMomentumBins(momentum_bins, tile%npart_sp)
-    call binParticlesOnTile(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
-    call downsampleAllBins(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
-  end subroutine downsampleOnTile
+    call initializeMomentumBins_Spherical(momentum_bins, tile%npart_sp)
+    call binParticlesOnTile_Spherical(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
+    call downsampleAllBins_Spherical(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
+  end subroutine downsampleOnTile_Spherical
 
-  subroutine downsampleAllBins(momentum_bins, tile, ax1, ax2, ang)
+  subroutine downsampleAllBins_Spherical(momentum_bins, tile, ax1, ax2, ang)
     implicit none
     type(particle_tile), intent(inout)            :: tile
-    type(momentumBin), allocatable, intent(inout) :: momentum_bins(:)
+    type(momentumBin_Sph), allocatable, intent(inout) :: momentum_bins(:)
     integer                                       :: e_b, th_b, ph_b, p_ind, p, npart
     real, intent(in)                              :: ax1, ax2, ang
     #ifdef DEBUG
@@ -100,7 +103,7 @@ contains
 
     ! loop through all the bins...
     ! ... in all 3 values (energy, theta, phi)
-    do e_b = 0, n_energy_bins - 1
+    do e_b = 0, dwn_n_energy_bins - 1
       do th_b = 0, momentum_bins(e_b)%n_theta_bins + 1
         do ph_b = 0, momentum_bins(e_b)%theta_bins(th_b)%n_phi_bins - 1
           npart = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%npart
@@ -108,13 +111,13 @@ contains
             do p_ind = 1, npart
               p = momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices(p_ind)
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
-                call throwError('Wrong index in `downsampleAllBins()`.')
+                call throwError('Wrong index in `downsampleAllBinsSpherical()`.')
               end if
               ! tile%ind(p) = 100*100 * (e_b+1) + 100 * (th_b+1) + (ph_b+1)
             end do
           #endif
           if (npart .gt. 5) then
-            call downsampleBin(tile,&
+            call downsampleBin_Spherical(tile,&
                         & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
                         & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
                         & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%indices, npart,&
@@ -123,12 +126,12 @@ contains
         end do
       end do
     end do
-  end subroutine downsampleAllBins
+  end subroutine downsampleAllBins_Spherical
 
   ! on each bin we are forming groups of particles...
   ! ... with cumulative weights less than `dwn_maxweight`...
   ! ... and sending them to merge into separate routine
-  subroutine downsampleBin(tile, theta_mid, phi_mid, indices, npart,&
+  subroutine downsampleBin_Spherical(tile, theta_mid, phi_mid, indices, npart,&
                          & ax1, ax2, ang)
     implicit none
     type(particle_tile), intent(inout)  :: tile
@@ -155,7 +158,7 @@ contains
     group%tot_en = 0.0; group%tot_wei = 0.0
 
     group%bin_px = cos(theta_mid) * cos(phi_mid)
-    group%bin_px = cos(theta_mid) * sin(phi_mid)
+    group%bin_py = cos(theta_mid) * sin(phi_mid)
     group%bin_pz = sin(theta_mid)
     ! rotate the bin center back to match the binned particles ...
     ! ... notice that angle is now `-ang` since we are rotating back
@@ -165,8 +168,8 @@ contains
     p_ind = 1
     do while (p_ind .le. npart)
       p = indices(p_ind)
-      if (tile%weight(p) .gt. sqrt(dwn_maxweight)) then
-        ! particle to heavy to merge
+      if (tile%weight(p) .gt. dwn_maxweight) then
+        ! particle too heavy to merge
         indices(p_ind) = indices(npart)
         npart = npart - 1
         cycle
@@ -201,7 +204,160 @@ contains
         p_ind = p_ind + 1
       end if
     end do
-  end subroutine downsampleBin
+  end subroutine downsampleBin_Spherical
+  ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+  ! Cartesian momenta binning.
+  subroutine downsampleOnTile_Cartesian(tile)
+    implicit none
+    type(particle_tile), intent(inout)  :: tile
+    type(momentumBin_XYZ), allocatable  :: momentum_bins(:,:,:)
+    integer                             :: p
+    real                                :: rot_ax_1, rot_ax_2, rot_ang
+    real                                :: px_min, px_max, py_min, py_max, pz_min, pz_max
+    real                                :: px_mid, py_mid, pz_mid
+    ! generate a random rotation axis and a random rotation angle for a tile
+    rot_ax_1 = random(dseed)
+    rot_ax_2 = random(dseed)
+    rot_ang = random(dseed)
+
+    if (.not. dwn_dynamic_bins) then
+      px_min = -dwn_energy_max
+      px_max = dwn_energy_max
+      py_min = -dwn_energy_max
+      py_max = dwn_energy_max
+      pz_min = -dwn_energy_max
+      pz_max = dwn_energy_max
+    else
+      px_min = MINVAL(tile%u(1 : tile%npart_sp)) * 1.01
+      py_min = MINVAL(tile%v(1 : tile%npart_sp)) * 1.01
+      pz_min = MINVAL(tile%w(1 : tile%npart_sp)) * 1.01
+      px_max = MAXVAL(tile%u(1 : tile%npart_sp)) * 1.01
+      py_max = MAXVAL(tile%v(1 : tile%npart_sp)) * 1.01
+      pz_max = MAXVAL(tile%w(1 : tile%npart_sp)) * 1.01
+
+      px_mid = SUM(tile%u(1 : tile%npart_sp)) / tile%npart_sp
+      py_mid = SUM(tile%v(1 : tile%npart_sp)) / tile%npart_sp
+      pz_mid = SUM(tile%w(1 : tile%npart_sp)) / tile%npart_sp
+
+      px_min = MAX(px_min, px_mid - 0.5 * dwn_mom_spread)
+      px_max = MIN(px_max, px_mid + 0.5 * dwn_mom_spread)
+      py_min = MAX(py_min, py_mid - 0.5 * dwn_mom_spread)
+      py_max = MIN(py_max, py_mid + 0.5 * dwn_mom_spread)
+      pz_min = MAX(pz_min, pz_mid - 0.5 * dwn_mom_spread)
+      pz_max = MIN(pz_max, pz_mid + 0.5 * dwn_mom_spread)
+    end if
+
+    call initializeMomentumBins_Cartesian(momentum_bins, tile%npart_sp,&
+                                        & px_min, px_max, py_min, py_max, pz_min, pz_max)
+    call binParticlesOnTile_Cartesian(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang,&
+                                    & px_min, px_max, py_min, py_max, pz_min, pz_max)
+
+    call downsampleAllBins_Cartesian(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
+  end subroutine downsampleOnTile_Cartesian
+
+  subroutine downsampleAllBins_Cartesian(momentum_bins, tile, ax1, ax2, ang)
+    implicit none
+    type(particle_tile), intent(inout)            :: tile
+    type(momentumBin_XYZ), allocatable, intent(inout) :: momentum_bins(:,:,:)
+    real, intent(in)                              :: ax1, ax2, ang
+    integer :: p, pi, pj, pk, npart
+    real    :: px_mid, py_mid, pz_mid
+
+    ! loop through all the bins
+    do pi = 1, dwn_n_mom_bins
+      do pj = 1, dwn_n_mom_bins
+        do pk = 1, dwn_n_mom_bins
+          npart = momentum_bins(pi, pj, pk)%npart
+          if (npart .gt. 5) then
+            px_mid = 0.5 * (momentum_bins(pi, pj, pk)%px_max + momentum_bins(pi, pj, pk)%px_min)
+            py_mid = 0.5 * (momentum_bins(pi, pj, pk)%py_max + momentum_bins(pi, pj, pk)%py_min)
+            pz_mid = 0.5 * (momentum_bins(pi, pj, pk)%pz_max + momentum_bins(pi, pj, pk)%pz_min)
+            call downsampleBin_Cartesian(tile, px_mid, py_mid, pz_mid,&
+                                       & momentum_bins(pi, pj, pk)%indices, npart,&
+                                       & ax1, ax2, ang)
+          end if
+        end do
+      end do
+    end do
+  end subroutine downsampleAllBins_Cartesian
+
+  subroutine downsampleBin_Cartesian(tile, px_mid, py_mid, pz_mid,&
+                                   & indices, npart, ax1, ax2, ang)
+    implicit none
+    type(particle_tile), intent(inout)  :: tile
+    integer, allocatable, intent(inout) :: indices(:)
+    integer, intent(inout)              :: npart
+    real, intent(in)                    :: px_mid, py_mid, pz_mid
+    real, intent(in)                    :: ax1, ax2, ang
+    type(particleDwnGroup)              :: group
+    integer       :: p_ind, p, s
+    real          :: en
+    logical       :: masslessQ
+
+    s = tile%spec
+    if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+      masslessQ = .true.
+    else
+      masslessQ = .false.
+    end if
+
+    allocate(group%indices(npart))
+    group%indices(:) = -1
+    group%size = 0
+    group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
+    group%tot_en = 0.0; group%tot_wei = 0.0
+
+    group%bin_px = px_mid
+    group%bin_py = py_mid
+    group%bin_pz = pz_mid
+    ! rotate the bin center back to match the binned particles ...
+    ! ... notice that angle is now `-ang` since we are rotating back
+    call rotateRandomlyIn3D(group%bin_px, group%bin_py, group%bin_pz,&
+                          & ax1, ax2, -ang)
+
+    p_ind = 1
+    do while (p_ind .le. npart)
+      p = indices(p_ind)
+      if (tile%weight(p) .gt. dwn_maxweight) then
+        ! particle too heavy to merge
+        indices(p_ind) = indices(npart)
+        npart = npart - 1
+        cycle
+      else
+        group%tot_wei = group%tot_wei + tile%weight(p)
+        group%tot_px = group%tot_px + tile%weight(p) * tile%u(p)
+        group%tot_py = group%tot_py + tile%weight(p) * tile%v(p)
+        group%tot_pz = group%tot_pz + tile%weight(p) * tile%w(p)
+        if (masslessQ) then
+          en = sqrt(tile%u(p)**2 + tile%v(p)**2 + tile%w(p)**2)
+        else
+          en = sqrt(1.0 + tile%u(p)**2 + tile%v(p)**2 + tile%w(p)**2)
+        end if
+        group%tot_en = group%tot_en + tile%weight(p) * en
+
+        group%indices(group%size + 1) = p
+        group%size = group%size + 1
+
+        if ((group%tot_wei .ge. dwn_maxweight) .or. (p_ind .eq. npart)) then
+          ! once there are enough particles in the group...
+          ! ... send a group of these particles to merge...
+          ! ... then reset the quantities
+          if (group%size .gt. 5) then
+            call mergeParticlesInGroup(group, tile)
+          end if
+          group%indices(:) = -1
+          group%size = 0
+          group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
+          group%tot_en = 0.0; group%tot_wei = 0.0
+        end if
+
+        p_ind = p_ind + 1
+      end if
+    end do
+  end subroutine downsampleBin_Cartesian
+  ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !   The algorithm is adapted from Vranic et al. 2014 [1411.2248v1]
