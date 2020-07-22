@@ -19,21 +19,32 @@ module m_globalnamespace
   integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30
   integer, parameter      :: UNIT_params = 50
   integer, parameter      :: UNIT_restart_fld = 60, UNIT_restart_prtl = 70
+
+  ! algorithm specific parameters
   real                    :: CC, CCINV, CORR
+
+  #ifdef GCA
+    real                    :: gca_eoverbmin, gca_rhomin
+  #endif
+
+  logical                 :: enable_fieldsolver
+  logical                 :: enable_currentdeposit
 
   ! plasma parameters
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
 
   ! simulation parameters
-  integer                :: start_timestep = 0, final_timestep, output_index = 0
+  integer                :: start_timestep = 0, final_timestep, output_index = 0, slice_index = 0
   logical                :: resize_tiles
   integer                :: min_tile_nprt = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
-                          & restart_dir_name = 'restart'
+                          & restart_dir_name = 'restart',&
+                          & slice_dir_name = 'slices'
 
   integer       :: nfilter, spec_num
   real          :: spec_min, spec_max
+  logical       :: spec_log_bins
 
   ! mpi variables
   integer       :: mpi_rank, mpi_size, mpi_statsize

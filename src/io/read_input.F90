@@ -47,6 +47,9 @@ contains
         case ('-r', '--restart')
           call get_command_argument(i + 1, arg1)
           restart_dir_name = trim(arg1)
+        case ('-s', '--slice')
+          call get_command_argument(i + 1, arg1)
+          slice_dir_name = trim(arg1)
         case ('-R', '--RST')
           call get_command_argument(i + 1, arg1)
           restart_from = trim(arg1)
@@ -126,6 +129,8 @@ contains
       bname = 'dwn'
     else if (trim(blockname) .eq. 'bw_pp') then
       bname = 'bwp'
+    else if (trim(blockname) .eq. 'compton') then
+      bname = 'cmp'
     else if (trim(blockname) .eq. 'problem') then
       bname = 'prb'
     else

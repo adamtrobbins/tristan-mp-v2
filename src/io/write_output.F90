@@ -22,13 +22,19 @@ module m_writeoutput
     use m_bwpairproduction
   #endif
 
+  #ifdef COMPTONSCATTERING
+    use m_compton
+  #endif
+
   implicit none
 
   integer                 :: output_start, output_interval, output_stride, output_istep
   integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
   character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
   real, allocatable, dimension(:,:) :: glob_spectra
-  logical                 :: flds_at_prtl, write_xdmf
+  logical                 :: output_enable, flds_at_prtl, write_xdmf
+  logical                 :: params_enable = .true., prtl_enable = .true.
+  logical                 :: flds_enable = .true., spec_enable = .true., domain_enable = .true.
 
 
   !--- PRIVATE functions -----------------------------------------!
@@ -54,24 +60,180 @@ contains
     call initializeOutput()
 
     step = output_index
+
     #ifdef HDF5
-      call writeParams_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
-      call writeParticles_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
-      call writeFields_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
-      call writeSpectra_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
-      call writeDomain_hdf5(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+
+      if (params_enable) then
+        call writeParams_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeParams_hdf5()", .true.)
+      end if
+
+      if (prtl_enable) then
+        call writeParticles_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeParticles_hdf5()", .true.)
+      end if
+
+      if (flds_enable) then
+        call writeFields_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeFields_hdf5()", .true.)
+      end if
+
+      if (spec_enable) then
+        call writeSpectra_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeSpectra_hdf5()", .true.)
+      end if
+
+      if (domain_enable) then
+        call writeDomain_hdf5(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeDomain_hdf5()", .true.)
+      end if
+
     #else
-      call writeParams(step, time)
-        call printReport((mpi_rank .eq. 0), "...writeParams()", .true.)
+
+      if (params_enable) then
+        call writeParams(step, time)
+          call printDiag((mpi_rank .eq. 0), "...writeParams()", .true.)
+      end if
+
     #endif
+
     call printDiag((mpi_rank .eq. 0), "output()", .true.)
     output_index = output_index + 1
   end subroutine writeOutput
+
+  subroutine initializeOutput()
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    real                      :: energy, u_, v_, w_
+    integer                   :: s, i, ti, tj, tk, p, spec_index
+    integer                   :: ierr, ndown
+    real, allocatable, dimension(:,:)     :: spectra
+    real, allocatable, dimension(:)       :: send_spec, recv_spec
+    ! initialize particle variables
+    if (.not. flds_at_prtl) then
+      n_prtl_vars = 9
+      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
+                                 & 'u    ', 'v    ', 'w    ',&
+                                 & 'wei  ', 'ind  ', 'proc '/)
+      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
+                                      & 'real ', 'real ', 'real ',&
+                                      & 'real ', 'int  ', 'int  '/)
+    else
+      n_prtl_vars = 15
+      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
+                                 & 'u    ', 'v    ', 'w    ',&
+                                 & 'wei  ', 'ind  ', 'proc ',&
+                                 & 'ex   ', 'ey   ', 'ez   ',&
+                                 & 'bx   ', 'by   ', 'bz   '/)
+      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
+                                      & 'real ', 'real ', 'real ',&
+                                      & 'real ', 'int  ', 'int  ',&
+                                      & 'real ', 'real ', 'real ',&
+                                      & 'real ', 'real ', 'real '/)
+      do s = 1, nspec
+        prtl_vars(n_prtl_vars + s) = 'dens' // STR(s)
+        prtl_var_types(n_prtl_vars + s) = 'real '
+      end do
+      n_prtl_vars = n_prtl_vars + nspec
+    end if
+
+    ! initialize field variables
+    !   total number of fields (excluding particle densities)
+    n_fld_vars = 12
+    n_fld_vars = n_fld_vars + 2 * nspec
+    do s = 1, nspec
+      ! hopefully less than 10 species
+      fld_vars(s) = 'dens' // STR(s)
+    end do
+    do s = 1, nspec
+      ! hopefully less than 10 species
+      fld_vars(nspec + s) = 'enrg' // STR(s)
+    end do
+
+    ndown = 2 * nspec + 1
+
+    #ifdef GCA
+      n_fld_vars = n_fld_vars + nspec
+      ! save the density of particles doing GCA
+      do s = 1, nspec
+        fld_vars(2 * nspec + s) = 'dgca' // STR(s)
+      end do
+      
+      ndown = 3 * nspec + 1
+    #endif
+
+    fld_vars(ndown : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
+                                   & 'bx   ', 'by   ', 'bz   ',&
+                                   & 'jx   ', 'jy   ', 'jz   ',&
+                                   & 'xx   ', 'yy   ', 'zz   '/)
+
+    ! initialize domain output variables
+    !   FIX1: maybe add # of particles per domain
+    n_dom_vars = 6
+    dom_vars(1 : 6) = (/'x0   ', 'y0   ', 'z0   ',&
+                      & 'sx   ', 'sy   ', 'sz   '/)
+
+    ! compute spectra
+    if (.not. allocated(glob_spectra)) then
+      allocate(glob_spectra(nspec, spec_num))
+    end if
+    allocate(spectra(nspec, spec_num))
+    allocate(send_spec(spec_num), recv_spec(spec_num))
+
+    spectra(:,:) = 0
+    do s = 1, nspec
+     do ti = 1, species(s)%tile_nx
+       do tj = 1, species(s)%tile_ny
+         do tk = 1, species(s)%tile_nz
+           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+             u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+             v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+             w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+             if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+               energy = sqrt(u_**2 + v_**2 + w_**2)
+             else
+               energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
+             end if
+             if (spec_log_bins) energy = log(energy)
+             if (energy .le. spec_min) then
+               spec_index = 1
+             else if (energy .ge. spec_max) then
+               spec_index = spec_num
+             else
+               spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+               if (spec_index .lt. 1) spec_index = 1
+               if (spec_index .gt. spec_num) spec_index = spec_num
+             end if
+             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+           end do
+         end do
+       end do
+     end do
+    end do
+
+    ! send to root rank
+    do s = 1, nspec
+      send_spec(:) = spectra(s,:)
+      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+      glob_spectra(s,:) = recv_spec(:)
+
+      #ifdef RADIATION
+        ! compute radiation spectra
+        if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+          send_spec(:) = rad_spectra(s,:)
+          call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+                        & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+          glob_rad_spectra(s,:) = recv_spec(:)
+          rad_spectra(s,:) = 0.0
+        end if
+      #endif
+    end do
+
+    if (allocated(spectra)) deallocate(spectra)
+    if (allocated(send_spec)) deallocate(send_spec)
+    if (allocated(recv_spec)) deallocate(recv_spec)
+  end subroutine initializeOutput
 
   subroutine writeParams(step, time)
     implicit none
@@ -112,6 +274,7 @@ contains
     end if
   end subroutine writeParams
 
+  #ifdef HDF5
   subroutine writeParams_hdf5(step, time)
     implicit none
     integer, intent(in)               :: step, time
@@ -168,128 +331,6 @@ contains
     end if
   end subroutine writeParams_hdf5
 
-  subroutine initializeOutput()
-    ! DEP_PRT [particle-dependent]
-    implicit none
-    real                      :: energy, u_, v_, w_
-    integer                   :: s, i, ti, tj, tk, p, spec_index
-    integer                   :: ierr
-    real, allocatable, dimension(:,:)     :: spectra
-    real, allocatable, dimension(:)       :: send_spec, recv_spec
-    ! initialize particle variables
-    if (.not. flds_at_prtl) then
-      n_prtl_vars = 9
-      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
-                                 & 'u    ', 'v    ', 'w    ',&
-                                 & 'wei  ', 'ind  ', 'proc '/)
-      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
-                                      & 'real ', 'real ', 'real ',&
-                                      & 'real ', 'int  ', 'int  '/)
-    else
-      n_prtl_vars = 15
-      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
-                                 & 'u    ', 'v    ', 'w    ',&
-                                 & 'wei  ', 'ind  ', 'proc ',&
-                                 & 'ex   ', 'ey   ', 'ez   ',&
-                                 & 'bx   ', 'by   ', 'bz   '/)
-      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
-                                      & 'real ', 'real ', 'real ',&
-                                      & 'real ', 'int  ', 'int  ',&
-                                      & 'real ', 'real ', 'real ',&
-                                      & 'real ', 'real ', 'real '/)
-      do s = 1, nspec
-        prtl_vars(n_prtl_vars + s) = 'dens' // STR(s)
-        prtl_var_types(n_prtl_vars + s) = 'real '
-      end do
-      n_prtl_vars = n_prtl_vars + nspec
-    end if
-
-    ! initialize field variables
-    !   total number of fields (excluding particle densities)
-    n_fld_vars = 12
-    n_fld_vars = n_fld_vars + 2 * nspec
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(s) = 'dens' // STR(s)
-    end do
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(nspec + s) = 'enrg' // STR(s)
-    end do
-    fld_vars(2 * nspec + 1 : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
-                                           & 'bx   ', 'by   ', 'bz   ',&
-                                           & 'jx   ', 'jy   ', 'jz   ',&
-                                           & 'xx   ', 'yy   ', 'zz   '/)
-
-    ! initialize domain output variables
-    !   FIX1: maybe add # of particles per domain
-    n_dom_vars = 6
-    dom_vars(1 : 6) = (/'x0   ', 'y0   ', 'z0   ',&
-                      & 'sx   ', 'sy   ', 'sz   '/)
-
-    ! compute spectra
-    if (.not. allocated(glob_spectra)) then
-      allocate(glob_spectra(nspec, spec_num))
-    end if
-    allocate(spectra(nspec, spec_num))
-    allocate(send_spec(spec_num), recv_spec(spec_num))
-
-    spectra(:,:) = 0
-    do s = 1, nspec
-     do ti = 1, species(s)%tile_nx
-       do tj = 1, species(s)%tile_ny
-         do tk = 1, species(s)%tile_nz
-           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-             u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
-             v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
-             w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
-             if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
-               energy = sqrt(u_**2 + v_**2 + w_**2)
-             else
-               energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
-             end if
-             energy = log(energy)
-             if (energy .le. spec_min) then
-               spec_index = 1
-             else if (energy .ge. spec_max) then
-               spec_index = spec_num
-             else
-               spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
-               if (spec_index .lt. 1) spec_index = 1
-               if (spec_index .gt. spec_num) spec_index = spec_num
-             end if
-             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
-           end do
-         end do
-       end do
-     end do
-    end do
-
-    ! send to root rank
-    do s = 1, nspec
-      send_spec(:) = spectra(s,:)
-      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
-                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-      glob_spectra(s,:) = recv_spec(:)
-
-      #ifdef RADIATION
-        ! compute radiation spectra
-        if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
-          send_spec(:) = rad_spectra(s,:)
-          call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
-                        & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-          glob_rad_spectra(s,:) = recv_spec(:)
-          rad_spectra(s,:) = 0.0
-        end if
-      #endif
-    end do
-
-    if (allocated(spectra)) deallocate(spectra)
-    if (allocated(send_spec)) deallocate(send_spec)
-    if (allocated(recv_spec)) deallocate(recv_spec)
-  end subroutine initializeOutput
-
-  #ifdef HDF5
   subroutine writeXDMF_hdf5(step, time, ni, nj, nk)
     implicit none
     integer, intent(in)               :: step, time, ni, nj, nk
@@ -373,10 +414,11 @@ contains
     real                              :: jx0, jy0, jz0
 
     ! downsampling variables
-    integer :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
-    integer :: i_start, i_end, j_start, j_end, k_start, k_end
-    integer :: offset_i, offset_j, offset_k, i1, j1, k1
-    integer :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
+    integer           :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
+    integer           :: i_start, i_end, j_start, j_end, k_start, k_end
+    integer           :: offset_i, offset_j, offset_k
+    integer(kind=2)   :: i1, j1, k1
+    integer           :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
 
     ! for convenience
     this_x0 = this_meshblock%ptr%x0
@@ -399,28 +441,34 @@ contains
 
       i_start = 0; j_start = 0; k_start = 0
     else
-      offset_i = CEILING(REAL(this_x0) / REAL(output_istep))
-      offset_j = CEILING(REAL(this_y0) / REAL(output_istep))
+      i_start = 0; i_end = 0
+      offset_i = 0; n_i = 0
+      glob_n_i = 1
 
-      i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
-      i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
-      j_start = CEILING(REAL(this_y0) / REAL(output_istep)) * output_istep - this_y0
-      j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_istep)) - 1) * output_istep - this_y0
+      j_start = 0; j_end = 0
+      offset_j = 0; n_j = 0
+      glob_n_j = 1
 
-      n_i = (i_end - i_start) / output_istep
-      n_j = (j_end - j_start) / output_istep
-
-      glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_istep))
-      glob_n_i = MAX(1, glob_n_i)
-
-      glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_istep))
-      glob_n_j = MAX(1, glob_n_j)
-
-      #ifndef threeD
-        k_start = 0; k_end = 0
-        offset_k = 0; n_k = 0
-        glob_n_k = 1
-      #else
+      k_start = 0; k_end = 0
+      offset_k = 0; n_k = 0
+      glob_n_k = 1
+      #if defined(oneD) || defined (twoD) || defined (threeD)
+        offset_i = CEILING(REAL(this_x0) / REAL(output_istep))
+        i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
+        i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
+        n_i = (i_end - i_start) / output_istep
+        glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_istep))
+        glob_n_i = MAX(1, glob_n_i)
+      #endif
+      #if defined(twoD) || defined (threeD)
+        offset_j = CEILING(REAL(this_y0) / REAL(output_istep))
+        j_start = CEILING(REAL(this_y0) / REAL(output_istep)) * output_istep - this_y0
+        j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_istep)) - 1) * output_istep - this_y0
+        n_j = (j_end - j_start) / output_istep
+        glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_istep))
+        glob_n_j = MAX(1, glob_n_j)
+      #endif
+      #if defined(threeD)
         offset_k = CEILING(REAL(this_z0) / REAL(output_istep))
         k_start = CEILING(REAL(this_z0) / REAL(output_istep)) * output_istep - this_z0
         k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_istep)) - 1) * output_istep - this_z0
@@ -458,13 +506,35 @@ contains
       if (fld_vars(f)(1:4) .eq. 'dens') then
         writing_lgarrQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeDensity(s, reset=.true.) ! filled `lg_arr` with density of species `s`
+        ! fill `lg_arr` with density of species `s`
+        #ifndef DEBUG
+          call computeDensity(s, reset=.true.)
+        #else
+          call computeDensity(s, reset=.true., ds=0)
+        #endif
         call exchangeArray()
       else if (fld_vars(f)(1:4) .eq. 'enrg') then
         writing_lgarrQ = .true.
         s = STRtoINT(fld_vars(f)(5:5))
-        call computeEnergy(s, reset=.true.) ! filled `lg_arr` with energies of species `s`
+        ! fill `lg_arr` with energy density of species `s`
+        #ifndef DEBUG
+          call computeEnergy(s, reset=.true.)
+        #else
+          call computeEnergy(s, reset=.true., ds=0)
+        #endif
         call exchangeArray()
+      else if (fld_vars(f)(1:4) .eq. 'dgca') then
+        writing_lgarrQ = .true.
+        #ifndef GCA
+          call throwError('ERROR: `dgca` not defined without GCA flag.')
+        #else
+          #ifndef DEBUG
+            call computeDensityGCA(s, reset=.true.)
+          #else
+            call computeDensityGCA(s, reset=.true., ds=0)
+          #endif
+          call exchangeArray()
+        #endif
       else
         writing_lgarrQ = .false.
       end if
@@ -487,48 +557,7 @@ contains
             i = i_start + i1 * output_istep
             j = j_start + j1 * output_istep
             k = k_start + k1 * output_istep
-            select case (trim(fld_vars(f)))
-            case('ex')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              sm_arr(i1, j1, k1) = ex0 * B_norm
-            case('ey')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              sm_arr(i1, j1, k1) = ey0 * B_norm
-            case('ez')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-              sm_arr(i1, j1, k1) = ez0 * B_norm
-            case('bx')
-              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              sm_arr(i1, j1, k1) = bx0 * B_norm
-            case('by')
-              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              sm_arr(i1, j1, k1) = by0 * B_norm
-            case('bz')
-              call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-              sm_arr(i1, j1, k1) = bz0 * B_norm
-            case('jx')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              sm_arr(i1, j1, k1) = -jx0 * B_norm
-            case('jy')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              sm_arr(i1, j1, k1) = -jy0 * B_norm
-            case('jz')
-              call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
-              sm_arr(i1, j1, k1) = -jz0 * B_norm
-            case('xx')
-              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%x0 + i, 4)
-            case('yy')
-              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%y0 + j, 4)
-            case('zz')
-              sm_arr(i1, j1, k1) = REAL(this_meshblock%ptr%z0 + k, 4)
-            case default
-              if (((fld_vars(f)(1:4) .ne. 'dens') .and. (fld_vars(f)(1:4) .ne. 'enrg')) .or.&
-                 & (.not. writing_lgarrQ)) then
-                call throwError("ERROR: unrecognized `fld_vars(f)`")
-              else
-                sm_arr(i1, j1, k1) = lg_arr(i, j, k)
-              end if
-            end select
+            call selectFieldForOutput(fld_vars(f), i1, j1, k1, i, j, k, writing_lgarrQ)
           end do
         end do
       end do
@@ -569,6 +598,7 @@ contains
     ! number of strided particles per each species
     do s = 1, nspec
       npart_stride(s) = 0
+      if (.not. species(s)%output_sp) cycle
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
@@ -611,22 +641,25 @@ contains
       allocate(stride_ti_arr(npart_stride(s)))
       allocate(stride_tj_arr(npart_stride(s)))
       allocate(stride_tk_arr(npart_stride(s)))
-      j = 1
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
-                stride_indices_arr(j) = p
-                stride_ti_arr(j) = ti
-                stride_tj_arr(j) = tj
-                stride_tk_arr(j) = tk
-                j = j + 1
-              end if
-            end do ! particles
-          end do ! tk
-        end do ! tj
-      end do ! ti
+
+      if (npart_stride(s) .gt. 0) then
+        j = 1
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), output_stride) .eq. 0) then
+                  stride_indices_arr(j) = p
+                  stride_ti_arr(j) = ti
+                  stride_tj_arr(j) = tj
+                  stride_tk_arr(j) = tk
+                  j = j + 1
+                end if
+              end do ! particles
+            end do ! tk
+          end do ! tj
+        end do ! ti
+      end if
 
       do p = 1, n_prtl_vars
         call h5screate_simple_f(dataset_rank, global_dims, filespace(p), error)
@@ -825,7 +858,10 @@ contains
       ! saving the energy bins
       allocate(bin_data(spec_num))
       do i = 1, spec_num
-        bin_data(i) = spec_min + (REAL(i - 1, 4) / REAL(spec_num, 4)) * (spec_max - spec_min)
+        bin_data(i) = spec_min + (REAL(i - 0.5) / REAL(spec_num)) * (spec_max - spec_min)
+        if (spec_log_bins) then
+          bin_data(i) = exp(bin_data(i))
+        endif
       end do
 
       write(stepchar, "(i5.5)") step

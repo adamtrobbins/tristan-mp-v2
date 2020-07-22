@@ -37,6 +37,15 @@ module m_aux
     type(generic_var), allocatable    :: param_value(:)
   end type simulation_params
 
+  abstract interface
+    function getFMT(value, w) result(FMT)
+      implicit none
+      real, intent(in)              :: value
+      character(len=STR_MAX)        :: FMT
+      integer, intent(in), optional :: w
+    end function getFMT
+  end interface
+
   type(simulation_params) :: sim_params
 
   !--- PRIVATE functions -----------------------------------------!
@@ -86,13 +95,29 @@ contains
     write(dummy, '(I10)') w_
 
     if ((abs(value) .ge. 100000) .or.&
-      & ((abs(value) .lt. 1e-4) .and.&
+      & ((abs(value) .lt. 1e-2) .and.&
         & (abs(value) .ne. 0.0))) then
-      FMT = 'ES' // trim(dummy) // '.2'
+      FMT = 'ES' // trim(dummy) // '.3'
     else
-      FMT = 'F' // trim(dummy) // '.2'
+      FMT = 'F' // trim(dummy) // '.3'
     end if
   end function getFMTForReal
+
+  function getFMTForRealScientific(value, w) result(FMT)
+    implicit none
+    real, intent(in)              :: value
+    character(len=STR_MAX)        :: FMT
+    integer, intent(in), optional :: w
+    integer                       :: w_
+    character(len=10)             :: dummy
+    if (.not. present(w)) then
+      w_ = 10
+    else
+      w_ = w
+    end if
+    write(dummy, '(I10)') w_
+    FMT = 'ES' // trim(dummy) // '.3'
+  end function getFMTForRealScientific
 
   subroutine printReport(bool, msg, prepend)
     implicit none
@@ -169,7 +194,7 @@ contains
   subroutine printTime(dt_arr, msg, fullstep)
     implicit none
     character(len=*), intent(in)          :: msg
-    character(len=STR_MAX)                :: dummy, dummy1
+    character(len=STR_MAX)                :: dummy, dummy1, FMT
     real(kind=8), intent(in)              :: dt_arr(:)
     real, optional, intent(in)            :: fullstep
     real                                  :: dt_mean, dt_max, dt_min
@@ -190,34 +215,52 @@ contains
     sz = len(msg)
     dummy(1 : sz) = msg
 
-    dummy1 = trim(STR(dt_mean))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_mean))//")"
+    write(dummy1, FMT) dt_mean
+    sz = len_trim(dummy1)
     dummy(20 : 20 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(dt_min))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_min))//")"
+    write(dummy1, FMT) dt_min
+    sz = len_trim(dummy1)
     dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(dt_max))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(dt_max))//")"
+    write(dummy1, FMT) dt_max
+    sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
     if (present(fullstep)) then
-      dummy1 = trim(STR(dt_mean * 100 / fullstep))
-      sz1 = len(trim(dummy1))
+      FMT = "("//trim(getFMTForReal(dt_mean * 100 / fullstep))//")"
+      write(dummy1, FMT) dt_mean * 100 / fullstep
+      sz1 = len_trim(dummy1)
       dummy(62 : 62 + sz1 - 1) = trim(dummy1)
     end if
 
     print *, dummy(1:72)
   end subroutine printTime
 
+  subroutine printNpartHeader()
+    implicit none
+    character(len=STR_MAX) :: dummy
+    integer                :: i
+
+    ! printing header
+    do i = 1, 72
+      dummy(i : i) = ' '
+    end do
+    dummy(1:71) = '[NPART per S]       [AVERAGE]      [MIN/MAX per CPU]            [TOTAL]'
+    print *, dummy(1:72)
+  end subroutine printNpartHeader
+
   subroutine printNpart(npart_arr, msg)
     implicit none
     character(len=*), intent(in)          :: msg
-    character(len=STR_MAX)                :: dummy, dummy1
+    character(len=STR_MAX)                :: dummy, dummy1, FMT
     integer, intent(in)                   :: npart_arr(:)
-    real                                  :: npart_mean, npart_max, npart_min
+    real                                  :: npart_mean, npart_max, npart_min, npart_sum
     integer                               :: sz, sz1, i
-    npart_mean = SUM(npart_arr) / mpi_size
+    npart_sum = SUM(npart_arr)
+    npart_mean = npart_sum / mpi_size
     npart_max = MAXVAL(npart_arr)
     npart_min = MINVAL(npart_arr)
 
@@ -228,17 +271,25 @@ contains
     sz = len(msg)
     dummy(1 : sz) = msg
 
-    dummy1 = trim(STR(npart_mean))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_mean))//")"
+    write(dummy1, FMT) npart_mean
+    sz = len_trim(dummy1)
     dummy(20 : 20 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(npart_min))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_min))//")"
+    write(dummy1, FMT) npart_min
+    sz = len_trim(dummy1)
     dummy(32 : 32 + sz - 1) = trim(dummy1)
 
-    dummy1 = trim(STR(npart_max))
-    sz = len(trim(dummy1))
+    FMT = "("//trim(getFMTForReal(npart_max))//")"
+    write(dummy1, FMT) npart_max
+    sz = len_trim(dummy1)
     dummy(43 : 43 + sz - 1) = trim(dummy1)
+
+    FMT = "("//trim(getFMTForReal(npart_sum))//")"
+    write(dummy1, FMT) npart_sum
+    sz1 = len_trim(dummy1)
+    dummy(62 : 62 + sz1 - 1) = trim(dummy1)
 
     print *, dummy(1:72)
   end subroutine printNpart
@@ -338,28 +389,49 @@ contains
     allocate(lognorm(n_bins))
     sum = 0.0
     do i = 1, n_bins
-        x = random(dseed)
-        y = random(dseed)
-        z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
-        z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
-        lognorm(i) = z
-        sum = sum + z
+      x = random(dseed)
+      y = random(dseed)
+      z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
+      z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
+      lognorm(i) = z
+      sum = sum + z
     end do
-    ! this ensures lognorm(max) = 1/
-    ! lognorm(1) = lognorm(1) / sum
-    ! do i = 2, n_bins
-    !     lognorm(i) = lognorm(i) / sum + lognorm(i - 1)
-    ! end do
-    ! /this ensures lognorm(max) = 1
 
     ! this allows having lognorm(max) != 1/
     !   in this case bins are not fixed in upper limit
     lognorm(1) = lognorm(1) / (n_bins + 1.)
     do i = 2, n_bins
-        lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
+      lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
     end do
     ! /this allows having lognorm(max) != 1
   end subroutine log_normal
+
+  subroutine lin_normal(n_bins, linnorm)
+    integer, intent(in)               :: n_bins
+    real, allocatable, intent(inout)  :: linnorm(:)
+    real                              :: x, sum
+    integer                           :: i
+
+    allocate(linnorm(n_bins))
+    sum = 0.0
+    do i = 1, n_bins
+      x = random(dseed)
+      linnorm(i) = x
+      sum = sum + x
+    end do
+
+    ! this allows having linnorm(max) != 1/
+    !   in this case bins are not fixed in upper limit
+    linnorm(1) = linnorm(1) / (n_bins + 1.0)
+    do i = 2, n_bins
+      linnorm(i) = linnorm(i) / (n_bins + 1.0) + linnorm(i - 1)
+    end do
+
+    do i = 1, n_bins
+      linnorm(i) = 2.0 * linnorm(i)
+    end do
+    ! /this allows having linnorm(max) != 1
+  end subroutine lin_normal
 
   recursive function factorial(n) result(fact)
     implicit none

@@ -83,10 +83,24 @@ parser.add_argument('-debug',
                     default=False,
                     help='enable DEBUG flag')
 
-parser.add_argument('-3d',
+parser.add_argument('-gca',
                     action='store_true',
                     default=False,
-                    help='enable 3d')
+                    help='enable GCA mover')
+
+dim_group = parser.add_mutually_exclusive_group(required=True)
+dim_group.add_argument('-1d',
+                       action='store_true',
+                       default=False,
+                       help='enable 1d')
+dim_group.add_argument('-2d',
+                       action='store_true',
+                       default=False,
+                       help='enable 2d')
+dim_group.add_argument('-3d',
+                       action='store_true',
+                       default=False,
+                       help='enable 3d')
 
 parser.add_argument('-dwn',
                     action='store_true',
@@ -124,6 +138,11 @@ parser.add_argument('-bwpp',
                     default=False,
                     help='enable Breit-Wheeler pair production')
 
+parser.add_argument('-compton',
+                    action='store_true',
+                    default=False,
+                    help='enable Compton scattering')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -131,11 +150,11 @@ args = vars(parser.parse_args())
 makefile_options = {}
 
 if (args['user']):
-    makefile_options['USER_FILE'] = args['user']
-    makefile_options['USER_DIR'] = user_directory
+  makefile_options['USER_FILE'] = args['user']
+  makefile_options['USER_DIR'] = user_directory
 else:
-    makefile_options['USER_FILE'] = args['unit']
-    makefile_options['USER_DIR'] = unit_directory
+  makefile_options['USER_FILE'] = args['unit']
+  makefile_options['USER_DIR'] = unit_directory
 
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
@@ -144,109 +163,119 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 # specific cluster:
 specific_cluster = False
 if args['perseus']:
-    specific_cluster = True
-    args['intel'] = True
-    args['mpi08'] = True
-    args['mpi'] = False
-    args['ifport'] = True
-    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
+  specific_cluster = True
+  args['intel'] = True
+  args['mpi08'] = True
+  args['mpi'] = False
+  args['ifport'] = True
+  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
 
 # compilation command
 if args['hdf5']:
-    makefile_options['COMPILER_COMMAND'] += 'h5pfc '
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
+  makefile_options['COMPILER_COMMAND'] += 'h5pfc '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
 else:
-    if ((not args['mpi']) and (not args['mpi08'])):
-        makefile_options['COMPILER_COMMAND'] += 'gfortran '
-    else:
-        makefile_options['COMPILER_COMMAND'] += 'mpif90 '
+  if ((not args['mpi']) and (not args['mpi08'])):
+    makefile_options['COMPILER_COMMAND'] += 'gfortran '
+  else:
+    makefile_options['COMPILER_COMMAND'] += 'mpif90 '
 if args['ifport']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 
 # mpi version
 if args['mpi']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
 elif args['mpi08']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI08 '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI08 '
 
 # debug
 if args['debug'] and (not args['intel']):
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
 if args['debug'] and args['intel']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-    makefile_options['COMPILER_FLAGS'] += '-traceback '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
+  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
 
-# compilar (+ vectorization etc)
+# compiler (+ vectorization etc)
 if args['intel']:
-    makefile_options['MODULE'] = '-module '
-    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -xHost -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
+  makefile_options['MODULE'] = '-module '
+  makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -xHost -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
 else:
-    makefile_options['MODULE'] = '-J '
-    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
+  makefile_options['MODULE'] = '-J '
+  makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
 
-if args['3d']:
-    makefile_options['EXE_NAME'] = 'tristan-mp3d'
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DthreeD '
-else:
-    makefile_options['EXE_NAME'] = 'tristan-mp2d'
+if args['1d']:
+  makefile_options['EXE_NAME'] = 'tristan-mp1d'
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DoneD '
+elif args['2d']:
+  makefile_options['EXE_NAME'] = 'tristan-mp2d'
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DtwoD '
+elif args['3d']:
+  makefile_options['EXE_NAME'] = 'tristan-mp3d'
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DthreeD '
 
 if args['absorb']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DABSORB '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DABSORB '
 
 # extra algorithms
 if args['dwn']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DDOWNSAMPLING '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DDOWNSAMPLING '
 if args['alb'] and (not args['slb']):
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
 if args['slb']:
-    args['alb'] = False
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
+  args['alb'] = False
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
+if args['gca']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DGCA '
 
 # extra physics
 if args['extfields']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DEXTERNALFIELDS '
 
 if args['radiation'] != 'OFF':
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DRADIATION '
 
 if 'sync' in args['radiation']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCHROTRON '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DSYNCHROTRON '
 if 'ic' in args['radiation']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DINVERSECOMPTON '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DINVERSECOMPTON '
 
 if args['emit'] and (args['radiation'] != 'OFF'):
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DEMIT '
 
 if args['qed']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DQED '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DQED '
 
 if args['bwpp']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
+
+if args['compton']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DCOMPTONSCATTERING '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
-    makefile_template = current_file.read()
+  makefile_template = current_file.read()
 for key, val in makefile_options.items():
-    makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
+  makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
 makefile_template = re.sub('# Template for ', '# ', makefile_template)
 with open(makefile_output, 'w') as current_file:
-    current_file.write(makefile_template)
+  current_file.write(makefile_template)
 
 # Finish with diagnostic output
 print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
 if (specific_cluster):
-    if (args['perseus']):
-        print('  Cluster configurations:  `Perseus`' )
+  if (args['perseus']):
+    print('  Cluster configurations:  `Perseus`' )
 
 print('SETUP ........................................................................')
 print('  Userfile:                ' + makefile_options['USER_FILE'])
-print('  Dim:                     ' + ('3D' if args['3d'] else '2D'))
+print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d'] else ('3D' if args['3d'] else 'None'))))
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
+print('  Particle pusher:         ' + ('Boris/GCA' if args['gca'] else 'Boris'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
@@ -255,6 +284,7 @@ print('  Cooling:                 ' + args['radiation'])
 print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
 print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
 print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
+print('  Compton scattering       ' + ('ON' if args['compton'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 

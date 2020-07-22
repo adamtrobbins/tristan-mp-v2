@@ -16,7 +16,7 @@ module m_writerestart
   ! # of cpu simultaneously accessing filesystem
   integer                 :: rst_cpu_group = 50
   logical                 :: rst_simulation = .false.
-  logical                 :: rst_separate, rst_enabled = .false.
+  logical                 :: rst_separate, rst_enable = .false.
   integer                 :: rst_interval, rst_start
   character(len=STR_MAX)  :: restart_from = 'restart/step_00000'
 
@@ -109,7 +109,7 @@ contains
 
     filename = trim(rst_dir) // '/flds.rst.' // trim(mpichar)
     open(UNIT_restart_fld, file=filename, status="replace", form="unformatted")
-    write(UNIT_restart_fld) timestep, dseed, output_index
+    write(UNIT_restart_fld) timestep, dseed, output_index, slice_index
     write(UNIT_restart_fld) ex, ey, ez, bx, by, bz
     write(UNIT_restart_fld) CC, ppc0, c_omp, sigma
     close(UNIT_restart_fld)
@@ -156,6 +156,17 @@ contains
             write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%weight(1:num)
             write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%ind(1:num)
             write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%proc(1:num)
+            #ifdef GCA
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz_past(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
+            #endif
           end do
         end do
       end do

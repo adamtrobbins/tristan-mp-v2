@@ -10,9 +10,11 @@ module m_writehistory
   use m_helpers
   implicit none
 
-  logical :: hst_enable, first_step = .true.
+  logical :: hst_enable, hst_human_readable = .false.
   integer :: hst_interval
-  real    :: Etot_0
+
+  real, private    :: Etot_0
+  logical, private :: first_step = .true.
 
 contains
   ! FIX2 total E^2, total B^2, total E_kin
@@ -29,6 +31,14 @@ contains
     logical                 :: photons_present
     character               :: vert_div, hor_div
     character(len=STR_MAX)  :: FMT, dummy1, dummy2, dummy3, dummy4, filename
+    procedure (getFMT), pointer :: get_fmt_ptr => null()
+
+    if (hst_human_readable) then
+      get_fmt_ptr => getFMTForReal
+    else
+      get_fmt_ptr => getFMTForRealScientific
+    end if
+
     allocate(global_prtl_energy(nspec))
 
     call computeEnergyInBox(e_energy, b_energy, prtl_energy)
@@ -137,18 +147,18 @@ contains
 
       write(UNIT_history, '(A10,A'//trim(STR(column_width*3))//',A3)') vert_div, ' ', vert_div
 
-      dummy1 = getFMTForReal(global_e_energy, column_width)
-      dummy2 = getFMTForReal(global_b_energy, column_width)
-      dummy3 = getFMTForReal(global_e_energy + global_b_energy, column_width)
+      dummy1 = get_fmt_ptr(global_e_energy, column_width)
+      dummy2 = get_fmt_ptr(global_b_energy, column_width)
+      dummy3 = get_fmt_ptr(global_e_energy + global_b_energy, column_width)
       FMT = "(I7,A3,"//trim(dummy1)// ","// trim(dummy2)// ","//trim(dummy3)//",A3)"
       write(UNIT_history, FMT) step, vert_div,&
                                    & global_e_energy, global_b_energy,&
                                    & global_e_energy + global_b_energy, vert_div
 
-      dummy1 = getFMTForReal(global_e_energy * 100 / Etot, column_width - 1)
-      dummy2 = getFMTForReal(global_b_energy * 100 / Etot, column_width - 1)
-      dummy3 = getFMTForReal((global_e_energy + global_b_energy) * 100 / Etot, column_width - 1)
-      dummy4 = getFMTForReal(Etot, column_width)
+      dummy1 = get_fmt_ptr(global_e_energy * 100 / Etot, column_width - 1)
+      dummy2 = get_fmt_ptr(global_b_energy * 100 / Etot, column_width - 1)
+      dummy3 = get_fmt_ptr((global_e_energy + global_b_energy) * 100 / Etot, column_width - 1)
+      dummy4 = get_fmt_ptr(Etot, column_width)
       FMT = "(A10,"//trim(dummy1)//",A1,"//trim(dummy2)//",A1,"//trim(dummy3)//",A1,A3,"//trim(dummy4)//")"
       write(UNIT_history, FMT) vert_div, global_e_energy * 100 / Etot, '%',&
                                        & global_b_energy * 100 / Etot, '%',&
@@ -157,18 +167,18 @@ contains
 
       write(UNIT_history, '(A10,A'//trim(STR(column_width*3))//',A3)') vert_div, ' ', vert_div
 
-      dummy1 = getFMTForReal(Eprt1, column_width)
-      dummy2 = getFMTForReal(Eprt2, column_width)
-      dummy3 = getFMTForReal(Eprt1 + Eprt2, column_width)
-      dummy4 = getFMTForReal((Etot - Etot_0) * 100 / Etot_0, column_width - 1)
+      dummy1 = get_fmt_ptr(Eprt1, column_width)
+      dummy2 = get_fmt_ptr(Eprt2, column_width)
+      dummy3 = get_fmt_ptr(Eprt1 + Eprt2, column_width)
+      dummy4 = get_fmt_ptr((Etot - Etot_0) * 100 / Etot_0, column_width - 1)
       FMT = "(A10,"//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//",A3,"//trim(dummy4)//",A1)"
       write(UNIT_history, FMT) vert_div, Eprt1, Eprt2, Eprt1 + Eprt2, vert_div, &
                                        & (Etot - Etot_0) * 100 / Etot_0, '%'
 
 
-      dummy1 = getFMTForReal(Eprt1 * 100 / Etot, column_width - 1)
-      dummy2 = getFMTForReal(Eprt2 * 100 / Etot, column_width - 1)
-      dummy3 = getFMTForReal((Eprt1 + Eprt2) * 100 / Etot, column_width - 1)
+      dummy1 = get_fmt_ptr(Eprt1 * 100 / Etot, column_width - 1)
+      dummy2 = get_fmt_ptr(Eprt2 * 100 / Etot, column_width - 1)
+      dummy3 = get_fmt_ptr((Eprt1 + Eprt2) * 100 / Etot, column_width - 1)
       FMT = "(A10,"//trim(dummy1)//",A1,"//trim(dummy2)//",A1,"//trim(dummy3)//",A1,A3)"
       write(UNIT_history, FMT) vert_div, Eprt1 * 100 / Etot, '%',&
                                        & Eprt2 * 100 / Etot, '%',&

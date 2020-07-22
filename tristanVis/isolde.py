@@ -38,65 +38,114 @@ def getFields(fname, nodes = False):
 # ```
 
 def getSpectra(fname):
-    with h5py.File(fname, 'r') as file:
-        keys = list(file.keys())
-        spectra = [key[1:] for key in keys if key.startswith("n")]
-        data = {}
-        for sp in spectra:
-            data[sp] = {}
-            (data[sp])['bn'] = np.exp(file['e' + sp][:])
-            (data[sp])['cnt'] = file['n' + sp][:]
-    return data
+  with h5py.File(fname, 'r') as file:
+    keys = list(file.keys())
+    spectra = [key[1:] for key in keys if key.startswith("n")]
+    data = {}
+    for sp in spectra:
+      data[sp] = {}
+      (data[sp])['bn'] = file['e' + sp][:]
+      (data[sp])['cnt'] = file['n' + sp][:]
+  return data
 
 def getDomains(fname):
-    with h5py.File(fname, 'r') as file:
-        data = {}
-        for k in file.keys():
-            data[k] = file[k][:]
-    return data
-
-def parseReport(fname, nsteps = None, skip = 1):
-    if (not nsteps):
-        nsteps = 1e6
-    import re
-    def parseBlock(block, data, isfirst = False):
-        for line in block.split('\n')[2:]:
-            routine = line.split(':', 1)[0].strip()
-            if (routine != ''):
-                line1 = line.split(':', 1)[1]
-                if (isfirst):
-                    data[routine] = {}
-                    data[routine]['dt'] = np.array([])
-                    data[routine]['min'] = np.array([])
-                    data[routine]['max'] = np.array([])
-                nums = [float(x.strip()) for x in re.findall(re.compile('-?\.? *[0-9]+\.?[0-9]*(?:[Ee]\ *[-+]?\ *[0-9]+)?'), line1)]
-                if (len(nums) < 3):
-                    raise ValueError('len(nums) < 3')
-                else:
-                    data[routine]['dt'] = np.append(data[routine]['dt'], [nums[0]])
-                    data[routine]['min'] = np.append(data[routine]['min'], [nums[1]])
-                    data[routine]['max'] = np.append(data[routine]['max'], [nums[2]])
+  with h5py.File(fname, 'r') as file:
     data = {}
-    data['t'] = np.array([])
-    with open(fname, 'r') as file:
-        line = file.readline()
-        isfirst = True
-        ni = 0
-        while line and (ni < nsteps):
+    for k in file.keys():
+      data[k] = file[k][:]
+  return data
 
-            while (line.strip()[0:10] != '-'*10) and line:
-                line = file.readline()
-            block = ""
-            line = file.readline()
-            while (line.strip()[0:10] != '.'*10) and line:
-                block += line
-                line = file.readline()
-            if (ni % skip == 0) and line:
-                parseBlock(block, data, isfirst = isfirst)
-                isfirst = False
-                data['t'] = np.append(data['t'], [ni])
-            ni += 1
-    return data
+def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
+  if (not nsteps):
+    nsteps = 1e6
+  def parseBlock(block, data, isfirst = False):
+    for line in block.split('\n')[2:]:
+      try:
+        routine = line.split()[0]
+      except:
+        continue
+      if (routine == 'species'):
+        routine = line[:15].strip()
+      if routine[-1] == ':':
+        routine = routine[:-1]
+      if (routine != '' and routine[0] != '['):
+        line1 = line.split()
+        if (isfirst):
+          data[routine] = {}
+          data[routine]['dt'] = np.array([])
+          data[routine]['min'] = np.array([])
+          data[routine]['max'] = np.array([])
+        if len(line1) < 5:
+          line1 = line1[-3:]
+        else:
+          line1 = line1[-4:-1]
+        nums = [float(x.strip()) for x in line1]
+        if (len(nums) < 3):
+          print (nums, line)
+          raise ValueError('len(nums) < 3')
+        else:
+          data[routine]['dt'] = np.append(data[routine]['dt'], [nums[0]])
+          data[routine]['min'] = np.append(data[routine]['min'], [nums[1]])
+          data[routine]['max'] = np.append(data[routine]['max'], [nums[2]])
+  data = {}
+  data['t'] = np.array([])
+  with open(fname, 'r') as file:
+    line = file.readline()
+    isfirst = True
+    ni = 0
+    while line and (ni < nsteps):
+      while (line.strip()[0:10] != '-'*10) and line:
+        line = file.readline()
+      block = ""
+      line = file.readline()
+      while (line.strip()[0:10] != '.'*10) and line:
+        block += line
+        line = file.readline()
+      if (ni % skip == 0) and (ni % skip_every != 0) and line:
+        parseBlock(block, data, isfirst = isfirst)
+        isfirst = False
+        data['t'] = np.append(data['t'], [ni])
+      ni += 1
+  return data
+
+def parseHistory(fname, nsteps = None):
+  keys = []
+  if (not nsteps):
+    nsteps = int(1e6)
+  def parseBlock(block, data, isfirst = False):
+    if (isfirst):
+      block = block.split('\n')[2:-2]
+      for subblock in block:
+        for word in subblock.split():
+          if word[0] == '[' and word[-1] == ']':
+            if ('%' not in word): # sanity check
+              keys.append(word[1:-1])
+              data[word[1:-1]] = np.array([])
+    else:
+      block = block.split('\n')[2:-2]
+      k = 0
+      for subblock in block:
+        for word in subblock.split():
+          if ('%' not in word) and ('|' not in word) and k < len(keys):
+            data[keys[k]] = np.append(data[keys[k]], np.float(word))
+            k = k + 1
+  data = {}
+  with open(fname, 'r') as file:
+    isfirst = True
+    ni = 0
+    while ni <= nsteps:
+      block = ""
+      for i in range(8):
+        line = file.readline()
+        if line == '':
+          ni = nsteps + 1
+          break
+        else:
+          block += line
+      parseBlock(block, data, isfirst)
+      isfirst = False
+      ni = ni + 1
+  return data
 
 # easy plotting functions
 def plot2DField(ax, x, y, field, rotate=False,

@@ -13,6 +13,7 @@ module m_bincoupling
     ! object which identifies a particle ...
     !     ... by its species and index on a given tile
     integer :: spec, index
+    real    :: wei ! records weight to allow arbitrary-weight particle splitting
   end type spec_ind_pair
 
   type :: couple
@@ -53,6 +54,7 @@ contains
       do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
         set(i)%spec = s
         set(i)%index = p
+        set(i)%wei = 1.0
         i = i + 1
       end do
     end do
@@ -60,17 +62,18 @@ contains
 
   subroutine prtlToSetWeighted(ti, tj, tk,&
                      & sp_arr, n_sp,&
-                     & set, set_size)
+                     & set, set_size, set_weight)
     implicit none
     integer, intent(in)                           :: ti, tj, tk
     integer, intent(in)                           :: n_sp ! # of species in set
     integer, intent(in)                           :: sp_arr(n_sp)
     integer, intent(out)                          :: set_size
+    real, intent(out)                             :: set_weight
     type(spec_ind_pair), allocatable, intent(out) :: set(:)
     integer                                       :: set_size_
     type(spec_ind_pair), allocatable              :: set_(:)
     integer                                       :: s, si, i, p, q
-    real                                          :: wei, wei_fract
+    real                                          :: wei, wei_split
 
     ! computing number of particles in the set
     set_size_ = 0
@@ -83,29 +86,20 @@ contains
     allocate(set_(set_size_))
     ! assigning particles in the set
     i = 1
+    set_weight = 0.0
     do si = 1, n_sp
       s = sp_arr(si)
       do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
         wei = species(s)%prtl_tile(ti, tj, tk)%weight(p)
-        ! if (wei .ge. 1.0) then
-        do q = 1, INT(wei)
+        ! evenly distribute the weight (this avoids creating tiny weight particles via splitting):
+        wei_split = wei / CEILING(wei)
+        set_weight = set_weight + wei
+        do q = 1, CEILING(wei)
           set_(i)%spec = s
           set_(i)%index = p
+          set_(i)%wei = wei_split
           i = i + 1
         end do
-        !   wei_fract = wei - FLOOR(wei)
-        !   if (random(dseed) .lt. wei_fract) then
-        !     set_(i)%spec = s
-        !     set_(i)%index = p
-        !     i = i + 1
-        !   end if
-        ! else
-        !   if (random(dseed) .lt. wei) then
-        !     set_(i)%spec = s
-        !     set_(i)%index = p
-        !     i = i + 1
-        !   end if
-        ! end if
       end do
     end do
     set_size = i - 1
@@ -135,17 +129,20 @@ contains
                                  & sp_arr_1, n_sp_1,&
                                  & sp_arr_2, n_sp_2,&
                                  & coupled_pairs, num_couples,&
-                                 & num_group_1, num_group_2)
+                                 & num_group_1, num_group_2,&
+                                 & wei_group_1, wei_group_2)
     implicit none
     integer, intent(in)                     :: ti, tj, tk
     integer, intent(in)                     :: n_sp_1, n_sp_2 ! # of species in set #1 and #2
     integer, intent(in)                     :: sp_arr_1(n_sp_1), sp_arr_2(n_sp_2) ! array of species in set #1 and #2
     integer                                 :: num_1, num_2 ! total # of particles in sets #1 and #2
+    real                                    :: wei_1, wei_2 ! total weight of sets #1 and #2
     integer                                 :: s, si, p, i, j
     type(spec_ind_pair), allocatable        :: set_1(:), set_2(:) ! set #1 and #2 saved as "tuples" of species and index
     integer, intent(out)                    :: num_couples
     type(couple), allocatable, intent(out)  :: coupled_pairs(:)
     integer, optional, intent(out)          :: num_group_1, num_group_2
+    real, optional, intent(out)             :: wei_group_1, wei_group_2
 
     ! auxiliary variables
     integer                                 :: common_species
@@ -173,7 +170,7 @@ contains
 
     if (same_setsQ) then ! if two sets are exactly the same (e.g. gamma+gamma)
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
+      call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1, wei_1)
       ! shuffle the set
       call shuffleSet(set_1, num_1)
       num_couples = INT(num_1 / 2)
@@ -186,8 +183,8 @@ contains
       ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     else ! if two sets have no common elements (e.g. compton scattering)
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1)
-      call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2)
+      call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1, wei_1)
+      call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2, wei_2)
       ! now we can simply work with `set_1` and `set_2`
       num_couples = min(num_1, num_2)
       if ((num_1 .eq. 1) .and. (num_2 .eq. 1)) then
@@ -231,6 +228,8 @@ contains
 
     if (present(num_group_1)) num_group_1 = num_1
     if (present(num_group_2)) num_group_2 = num_2
+    if (present(wei_group_1)) wei_group_1 = wei_1
+    if (present(wei_group_2)) wei_group_2 = wei_2
 
     if (allocated(set_1)) deallocate(set_1)
     if (allocated(set_2)) deallocate(set_2)

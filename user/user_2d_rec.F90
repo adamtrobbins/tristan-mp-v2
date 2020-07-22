@@ -108,7 +108,7 @@ contains
     sx_glob = REAL(global_mesh%sx)
     do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
       i_glob = i + this_meshblock%ptr%x0
-      x_glob = REAL(i_glob)
+      x_glob = REAL(i_glob) + 0.5
       !do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
       by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
       !end do
