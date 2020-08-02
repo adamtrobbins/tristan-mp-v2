@@ -121,7 +121,7 @@ contains
           & (yi .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or. &
           & (zi .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or. &
           & (zi .ge. species(s)%prtl_tile(ti, tj, tk)%z2)) then
-          print *, xi, yi, zi, dx, dy, dz
+          print *, s, xi, yi, zi, dx, dy, dz
           print *, species(s)%prtl_tile(ti, tj, tk)%x1,&
                  & species(s)%prtl_tile(ti, tj, tk)%x2,&
                  & species(s)%prtl_tile(ti, tj, tk)%y1,&
