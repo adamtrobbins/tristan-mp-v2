@@ -158,7 +158,7 @@ contains
       do s = 1, nspec
         fld_vars(2 * nspec + s) = 'dgca' // STR(s)
       end do
-      
+
       ndown = 3 * nspec + 1
     #endif
 
@@ -503,41 +503,7 @@ contains
     end do
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call h5dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, filespace(f), &
                      & dset_id(f), error)

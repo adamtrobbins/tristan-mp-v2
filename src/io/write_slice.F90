@@ -11,7 +11,7 @@ module m_writeslice
   use m_particles
   use m_fields
   use m_helpers
-  use m_exchangearray
+  use m_writehelpers
 
   implicit none
 
@@ -149,41 +149,7 @@ contains
     this_sz = this_meshblock%ptr%sz
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -283,42 +249,7 @@ contains
     this_sz = this_meshblock%ptr%sz
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -418,41 +349,7 @@ contains
     this_sz = this_meshblock%ptr%sz
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
