@@ -13,16 +13,18 @@ module m_radiation
   real              :: rad_dens_lim
   real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   integer           :: rad_photon_sp
+  integer           :: rad_interval
 
   !--- PRIVATE variables/functions -------------------------------!
   !...............................................................!
 contains
-  subroutine particleRadiateSync(s,&
+  subroutine particleRadiateSync(timestep, s,&
                                & u0, v0, w0, ui, vi, wi,&
                                & dx, dy, dz, xi, yi, zi,&
                                & weight,&
                                & bx, by, bz, ex, ey, ez)
     implicit none
+    integer, intent(in)           :: timestep
     real, intent(inout)           :: u0, v0, w0
     real, intent(in)              :: ui, vi, wi
     real, intent(in)              :: bx, by, bz, ex, ey, ez
@@ -85,9 +87,9 @@ contains
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
 
-        if (random(dseed) .lt. tau_emit) then
+        if ((random(dseed) .lt. tau_emit) .and. (modulo(timestep, rad_interval) .eq. 0)) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
-                            & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight=weight)
+                            & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight = (weight * rad_interval))
         end if
       #endif
 
@@ -105,12 +107,13 @@ contains
     end if
   end subroutine particleRadiateSync
 
-  subroutine particleRadiateIC(s,&
+  subroutine particleRadiateIC(timestep, s,&
                              & u0, v0, w0, ui, vi, wi,&
                              & dx, dy, dz, xi, yi, zi,&
                              & weight,&
                              & bx, by, bz, ex, ey, ez)
     implicit none
+    integer, intent(in)           :: timestep
     real, intent(inout)           :: u0, v0, w0
     real, intent(in)              :: ui, vi, wi
     real, intent(in)              :: bx, by, bz, ex, ey, ez
@@ -153,9 +156,9 @@ contains
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
 
-        if (random(dseed) .lt. tau_emit) then
+        if ((random(dseed) .lt. tau_emit) .and. (modulo(timestep, rad_interval) .eq. 0)) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
-                            & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight=weight)
+                            & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight = (weight * rad_interval))
         end if
       #endif
 

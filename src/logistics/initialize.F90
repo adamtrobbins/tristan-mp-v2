@@ -993,6 +993,7 @@ contains
   #ifdef RADIATION
     subroutine initializeRadiation()
       implicit none
+      call getInput('radiation', 'interval', rad_interval, 1)
       call getInput('radiation', 'emit_gamma_syn', emit_gamma_syn, 10.0)
       call getInput('radiation', 'emit_gamma_ic', emit_gamma_ic, 10.0)
       call getInput('radiation', 'gamma_syn', cool_gamma_syn, 10.0)
