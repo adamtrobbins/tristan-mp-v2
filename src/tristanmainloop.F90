@@ -306,7 +306,7 @@ contains
     integer, intent(in)           :: tstep
     integer                       :: ierr, s, ti, tj, tk
     real                          :: fullstep
-    integer, allocatable          :: nprt_sp(:), nprt_sp_global(:,:)
+    integer(kind=8), allocatable  :: nprt_sp(:), nprt_sp_global(:,:)
     real(kind=8), allocatable     :: dt_fullstep(:), dt_movestep(:),&
                                    & dt_depositstep(:), dt_filterstep(:),&
                                    & dt_outputstep(:), dt_fldexchstep(:),&
@@ -334,8 +334,8 @@ contains
       end do
     end do
 
-    call MPI_GATHER(nprt_sp, nspec, MPI_INTEGER,&
-                  & nprt_sp_global, nspec, MPI_INTEGER,&
+    call MPI_GATHER(nprt_sp, nspec, MPI_INTEGER8,&
+                  & nprt_sp_global, nspec, MPI_INTEGER8,&
                   & 0, MPI_COMM_WORLD, ierr)
 
     allocate(dt_fullstep(mpi_size), dt_movestep(mpi_size))

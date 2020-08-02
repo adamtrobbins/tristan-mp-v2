@@ -256,7 +256,7 @@ contains
     implicit none
     character(len=*), intent(in)          :: msg
     character(len=STR_MAX)                :: dummy, dummy1, FMT
-    integer, intent(in)                   :: npart_arr(:)
+    integer(kind=8), intent(in)           :: npart_arr(:)
     real                                  :: npart_mean, npart_max, npart_min, npart_sum
     integer                               :: sz, sz1, i
     npart_sum = SUM(npart_arr)
