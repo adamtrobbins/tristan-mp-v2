@@ -27,8 +27,6 @@ contains
                                            & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
     real                                  :: u0, v0, w0, u1, v1, w1, dummy_, dx, dy, dz
-    real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
-    real                                  :: u_init, v_init, w_init, du_rad, dv_rad, dw_rad
     logical                               :: dummy_flag
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
@@ -56,6 +54,12 @@ contains
       real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n
       real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
       integer                               :: iter
+    #endif
+
+    #ifdef RADIATION
+      integer(kind=2)     :: xi_rad, yi_rad, zi_rad
+      real                :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
+      real                :: u_init, v_init, w_init, dx_rad, dy_rad, dz_rad
     #endif
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
@@ -200,12 +204,16 @@ contains
                 #endif
 
                 #ifdef RADIATION
+                  ! save fields at time `t = n`
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
                   bx_rad = bx0; by_rad = by0; bz_rad = bz0
 
-                  u_init = pt_u(p)
-                  v_init = pt_v(p)
-                  w_init = pt_w(p)
+                  ! save velocities before the push
+                  u_init = pt_u(p); v_init = pt_v(p); w_init = pt_w(p)
+
+                  ! save coordinates before the push
+                  dx_rad = pt_dx(p); dy_rad = pt_dy(p); dz_rad = pt_dz(p)
+                  xi_rad = pt_xi(p); yi_rad = pt_yi(p); zi_rad = pt_zi(p)
                 #endif
 
                 #ifndef GCA
@@ -236,19 +244,17 @@ contains
                 #ifdef RADIATION
                   #ifdef SYNCHROTRON
                     if (species(s)%cool_sp) then
-                      call particleRadiateSync(s,&
+                      call particleRadiateSync(timestep, s,&
                                              & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                             & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                             & pt_wei(p),&
+                                             & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
                                              & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
                     end if
                   #endif
                   #ifdef INVERSECOMPTON
                     if (species(s)%cool_sp) then
-                      call particleRadiateIC(s,&
+                      call particleRadiateIC(timestep, s,&
                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                           & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                           & pt_wei(p),&
+                                           & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
                                            & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
                     end if
                   #endif
