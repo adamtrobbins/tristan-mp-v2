@@ -2,7 +2,7 @@
 
 module m_initialize
   #ifdef IFPORT
-    use ifport, only : makedirqq
+    use ifport, only: makedirqq
   #endif
   use m_globalnamespace
   use m_aux
