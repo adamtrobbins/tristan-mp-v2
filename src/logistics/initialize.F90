@@ -12,7 +12,7 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
-  use m_userfile
+  use m_userfile, user_slb_load_ptr => userSLBload
   use m_writeoutput
   use m_writeslice
   use m_writehistory
