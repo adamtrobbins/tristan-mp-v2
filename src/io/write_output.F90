@@ -11,6 +11,7 @@ module m_writeoutput
   use m_particles
   use m_fields
   use m_helpers
+  use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
   use m_exchangearray
 
   ! extra physics
