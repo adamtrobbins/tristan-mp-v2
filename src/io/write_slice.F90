@@ -305,6 +305,7 @@ contains
         call exchangeArray()
       else if (fld_vars(f)(1:4) .eq. 'dgca') then
         writing_lgarrQ = .true.
+        s = STRtoINT(fld_vars(f)(5:5))
         #ifndef GCA
           call throwError('ERROR: `dgca` not defined without GCA flag.')
         #else
