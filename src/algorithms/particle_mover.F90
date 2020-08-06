@@ -60,6 +60,11 @@ contains
       integer(kind=2)     :: xi_rad, yi_rad, zi_rad
       real                :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
       real                :: u_init, v_init, w_init, dx_rad, dy_rad, dz_rad
+
+      #ifdef EMIT
+        integer, pointer, contiguous    :: pt_ind(:)
+      #endif
+
     #endif
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
@@ -147,6 +152,10 @@ contains
                 pt_u_eff => species(s)%prtl_tile(ti, tj, tk)%u_eff
                 pt_v_eff => species(s)%prtl_tile(ti, tj, tk)%v_eff
                 pt_w_eff => species(s)%prtl_tile(ti, tj, tk)%w_eff
+              #endif
+
+              #if defined(RADIATION) && defined(EMIT)
+                pt_ind => species(s)%prtl_tile(ti, tj, tk)%ind
               #endif
 
               ! routine for massive particles
@@ -247,7 +256,12 @@ contains
                       call particleRadiateSync(timestep, s,&
                                              & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
                                              & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
-                                             & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                                             & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad&
+                                             #ifdef EMIT
+                                              &, index=pt_ind(p))
+                                             #else
+                                              &)
+                                             #endif
                     end if
                   #endif
                   #ifdef INVERSECOMPTON
@@ -255,7 +269,12 @@ contains
                       call particleRadiateIC(timestep, s,&
                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
                                            & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
-                                           & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                                           & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad&
+                                           #ifdef EMIT
+                                            &, index=pt_ind(p))
+                                           #else
+                                            &)
+                                           #endif
                     end if
                   #endif
                 #endif
@@ -274,6 +293,11 @@ contains
                 pt_dx_past => null();   pt_dy_past => null();   pt_dz_past => null()
                 pt_u_eff => null();     pt_v_eff => null();     pt_w_eff => null()
               #endif
+
+              #if defined(RADIATION) && defined(EMIT)
+                pt_ind => null()
+              #endif
+
             end do ! tk
           end do ! tj
         end do ! ti
