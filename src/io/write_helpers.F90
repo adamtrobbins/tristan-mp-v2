@@ -16,10 +16,10 @@ contains
   ! ... to `sm_arr(i1, j1, k1)` with proper interpolation etc for the output
   subroutine selectFieldForOutput(fld_var, i1, j1, k1, i, j, k, writing_lgarrQ)
     implicit none
-    character(len=*), intent(in)  :: fld_var
-    integer(kind=2), intent(in)   :: i1, j1, k1, i, j, k
-    logical, intent(in)           :: writing_lgarrQ
-    real                          :: ex0, ey0, ez0, bx0, by0, bz0, jx0, jy0, jz0
+    character(len=STR_MAX), intent(in)  :: fld_var
+    integer(kind=2), intent(in)         :: i1, j1, k1, i, j, k
+    logical, intent(in)                 :: writing_lgarrQ
+    real                                :: ex0, ey0, ez0, bx0, by0, bz0, jx0, jy0, jz0
     select case (trim(fld_var))
     case('ex')
       #ifndef debug
@@ -104,9 +104,9 @@ contains
 
   subroutine prepareFieldForOutput(fldname, writing_lgarrQ)
     implicit none
-    character(len=*), intent(in)    :: fldname
-    logical, intent(out)            :: writing_lgarrQ
-    integer                         :: s
+    character(len=STR_MAX), intent(in)    :: fldname
+    logical, intent(out)                  :: writing_lgarrQ
+    integer                               :: s
 
     if (fldname(1:4) .eq. 'dens') then
       writing_lgarrQ = .true.
