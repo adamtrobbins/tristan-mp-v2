@@ -116,11 +116,12 @@ contains
   end subroutine writeFldRestart
 
   subroutine writePrtlRestart(timestep, rst_dir)
+    ! [DEP_PRT]
     implicit none
     integer, intent(in)               :: timestep
     character(len=STR_MAX), intent(in):: rst_dir
     character(len=STR_MAX)            :: filename, mpichar
-    integer                           :: s, ti, tj, tk, num
+    integer                           :: s, ti, tj, tk, num, pid
 
     write(mpichar, "(i8.8)") mpi_rank
 
@@ -166,6 +167,12 @@ contains
               write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
               write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
               write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
+            #endif
+
+            #ifdef PRTLPAYLOADS
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload1(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload2(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload3(1:num)
             #endif
           end do
         end do

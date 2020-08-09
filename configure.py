@@ -88,6 +88,11 @@ parser.add_argument('-gca',
                     default=False,
                     help='enable GCA mover')
 
+parser.add_argument('-payload',
+                    action='store_true',
+                    default=False,
+                    help='enable particle payloads')
+
 dim_group = parser.add_mutually_exclusive_group(required=True)
 dim_group.add_argument('-1d',
                        action='store_true',
@@ -226,6 +231,8 @@ if args['slb']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 if args['gca']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DGCA '
+if args['payload']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
 
 # extra physics
 if args['extfields']:
@@ -276,6 +283,7 @@ print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
 print('  Particle pusher:         ' + ('Boris/GCA' if args['gca'] else 'Boris'))
+print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))

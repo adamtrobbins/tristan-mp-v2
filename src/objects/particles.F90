@@ -24,6 +24,10 @@ module m_particles
       real, allocatable, dimension(:)             :: u_eff, v_eff, w_eff
       !dir$ attributes align: 64 :: xi_past, yi_past, zi_past, dx_past, dy_past, dz_past, u_eff, v_eff, w_eff
     #endif
+
+    #ifdef PRTLPAYLOADS
+      real, allocatable, dimension(:)             :: payload1, payload2, payload3
+    #endif
     ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
 
@@ -64,31 +68,60 @@ module m_particles
     #endif
 
     #ifdef DOWNSAMPLING
-    ! `true/false` - either downsample species or not
+      ! `true/false` - either downsample species or not
       logical     :: dwn_sp
     #endif
   end type particle_species
 
   ! particle types for exchange between processors />
-  #ifndef GCA
-    type :: prtl_enroute
-      ! DEP_PRT [particle-dependent]
-      integer(kind=2)   :: xi, yi, zi
-      real              :: dx, dy, dz
-      real              :: u, v, w
-      real              :: weight
-      integer           :: ind, proc
-    end type prtl_enroute
-  #else
-    type :: prtl_enroute
-      ! DEP_PRT [particle-dependent]
-      integer(kind=2)   :: xi, yi, zi, xi_past, yi_past, zi_past
-      real              :: dx, dy, dz, dx_past, dy_past, dz_past
-      real              :: u, v, w, u_eff, v_eff, w_eff
-      real              :: weight
-      integer           :: ind, proc
-    end type prtl_enroute
-  #endif
+  type :: prtl_enroute
+    ! DEP_PRT [particle-dependent]
+    integer(kind=2)   :: xi, yi, zi
+
+    #ifdef GCA
+      integer(kind=2)   :: xi_past, yi_past, zi_past
+    #endif
+
+    real              :: dx, dy, dz
+
+    #ifdef GCA
+      real              :: dx_past, dy_past, dz_past
+    #endif
+
+    real              :: u, v, w
+
+    #ifdef GCA
+      real              :: u_eff, v_eff, w_eff
+    #endif
+
+    real              :: weight
+
+    #ifdef PRTLPAYLOADS
+      real              :: payload1, payload2, payload3
+    #endif
+
+    integer           :: ind, proc
+  end type prtl_enroute
+
+  ! #ifndef GCA
+  !   type :: prtl_enroute
+  !     ! DEP_PRT [particle-dependent]
+  !     integer(kind=2)   :: xi, yi, zi
+  !     real              :: dx, dy, dz
+  !     real              :: u, v, w
+  !     real              :: weight
+  !     integer           :: ind, proc
+  !   end type prtl_enroute
+  ! #else
+  !   type :: prtl_enroute
+  !     ! DEP_PRT [particle-dependent]
+  !     integer(kind=2)   :: xi, yi, zi, xi_past, yi_past, zi_past
+  !     real              :: dx, dy, dz, dx_past, dy_past, dz_past
+  !     real              :: u, v, w, u_eff, v_eff, w_eff
+  !     real              :: weight
+  !     integer           :: ind, proc
+  !   end type prtl_enroute
+  ! #endif
 
   type :: enroute_array
     type(prtl_enroute), allocatable     :: send_enroute(:)
