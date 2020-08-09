@@ -23,7 +23,7 @@ contains
                                & dx, dy, dz, xi, yi, zi,&
                                & weight,&
                                & bx, by, bz, ex, ey, ez,&
-                               & index)
+                               & index, proc)
     implicit none
     integer, intent(in)           :: timestep
     real, intent(inout)           :: u0, v0, w0
@@ -32,8 +32,7 @@ contains
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
     real, intent(in)              :: weight
-    integer, intent(in)           :: s
-    integer, intent(in), optional :: index
+    integer, intent(in)           :: s, index, proc
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
 
@@ -41,12 +40,16 @@ contains
     real :: chiR, chiR_sq, kappaR_x, kappaR_y, kappaR_z
     real :: tau_emit, eph_emit, dummy_
 
-    integer :: spec_index, ts
+    integer :: spec_index
 
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
     if ( (g0 .gt. 1.5) .and.&
       &  ((rad_dens_lim .eq. 0) .or. (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) .and.&
-      &  (cool_gamma_syn .gt. 0.0) ) then
+      &  (cool_gamma_syn .gt. 0.0)&
+      #ifdef GCA
+        & .and. (proc .lt. mpi_size)&
+      #endif
+      &) then
 
       uci = 0.5 * (u0 + ui)
       vci = 0.5 * (v0 + vi)
@@ -89,13 +92,7 @@ contains
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
 
-        if (.not. present(index)) then
-          ts = timestep
-        else
-          ts = timestep + index
-        end if
-
-        if ((random(dseed) .lt. tau_emit) .and. (modulo(ts, rad_interval) .eq. 0)) then
+        if ((random(dseed) .lt. tau_emit) .and. (modulo(timestep + index, rad_interval) .eq. 0)) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
                             & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight = (weight * rad_interval))
         end if
@@ -129,13 +126,12 @@ contains
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
     real, intent(in)              :: weight
-    integer, intent(in)           :: s
-    integer, intent(in), optional :: index
+    integer, intent(in)           :: s, index
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
 
     real :: tau_emit, eph_emit, dummy_
-    integer :: spec_index, ts
+    integer :: spec_index
 
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
     if ( (g0 .gt. 1.5) .and.&
@@ -166,13 +162,7 @@ contains
         v0 = v0 - tau_emit * ky * eph_emit
         w0 = w0 - tau_emit * kz * eph_emit
 
-        if (.not. present(index)) then
-          ts = timestep
-        else
-          ts = timestep + index
-        end if
-
-        if ((random(dseed) .lt. tau_emit) .and. (modulo(ts, rad_interval) .eq. 0)) then
+        if ((random(dseed) .lt. tau_emit) .and. (modulo(timestep + index, rad_interval) .eq. 0)) then
           call createParticle(rad_photon_sp, xi, yi, zi, dx, dy, dz,&
                             & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight = (weight * rad_interval))
         end if
