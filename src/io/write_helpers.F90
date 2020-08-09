@@ -7,8 +7,7 @@ module m_writehelpers
   use m_domain
   use m_particles
   use m_fields
-  use m_helpers, only: interpFromEdges, interpFromFaces,&
-                     & computeEnergy, computeDensity, computeDensityGCA
+  use m_helpers
   use m_exchangearray, only: exchangeArray
   implicit none
 contains
