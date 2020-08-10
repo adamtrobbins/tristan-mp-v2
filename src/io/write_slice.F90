@@ -11,7 +11,7 @@ module m_writeslice
   use m_particles
   use m_fields
   use m_helpers
-  use m_exchangearray
+  use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
 
   implicit none
 
@@ -114,8 +114,9 @@ contains
 
     integer                           :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
     integer                           :: mb_x0, mb_y0, mb_z0, mb_sx, mb_sy, mb_sz
-    integer                           :: root_rnk, rnk, cnt
+    integer                           :: root_rnk, rnk
     integer(kind=2)                   :: i, j, k
+    real, allocatable                 :: temp_arr(:,:)
 
     #if defined(MPI08)
       type(MPI_STATUS)                :: istat
@@ -149,41 +150,7 @@ contains
     this_sz = this_meshblock%ptr%sz
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -195,9 +162,11 @@ contains
             call selectFieldForOutput(fld_vars(f), 0, j, k, i, j, k, writing_lgarrQ)
           end do
         end do
-        cnt = this_sy * this_sz
         if (mpi_rank .ne. root_rnk) then
-          call MPI_SEND(sm_arr(0,:,:), cnt, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          allocate(temp_arr(this_sy, this_sz))
+          temp_arr(:,:) = sm_arr(0,:,:)
+          call MPI_SEND(temp_arr(:,:), this_sy * this_sz, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          deallocate(temp_arr)
         else
           field_data(this_y0 : this_y0 + this_sy - 1, this_z0 : this_z0 + this_sz - 1) = sm_arr(0,:,:)
         end if
@@ -212,8 +181,10 @@ contains
           mb_sy = meshblocks(rnk + 1)%sy
           mb_sz = meshblocks(rnk + 1)%sz
           if ((x_cut .ge. mb_x0) .and. (x_cut .lt. mb_x0 + mb_sx) .and. (mpi_rank .ne. rnk)) then
-            call MPI_RECV(field_data(mb_y0 : mb_y0 + mb_sy - 1, mb_z0 : mb_z0 + mb_sz - 1), mb_sy * mb_sz,&
-                        & MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            allocate(temp_arr(mb_sy, mb_sz))
+            call MPI_RECV(temp_arr(:, :), mb_sy * mb_sz, MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            field_data(mb_y0 : mb_y0 + mb_sy - 1, mb_z0 : mb_z0 + mb_sz - 1) = temp_arr(:,:)
+            deallocate(temp_arr)
           end if
         end do
 
@@ -248,8 +219,9 @@ contains
 
     integer                           :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
     integer                           :: mb_x0, mb_y0, mb_z0, mb_sx, mb_sy, mb_sz
-    integer                           :: root_rnk, rnk, cnt
+    integer                           :: root_rnk, rnk
     integer(kind=2)                   :: i, j, k
+    real, allocatable                 :: temp_arr(:,:)
 
     #if defined(MPI08)
       type(MPI_STATUS)                :: istat
@@ -283,42 +255,7 @@ contains
     this_sz = this_meshblock%ptr%sz
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -330,9 +267,11 @@ contains
             call selectFieldForOutput(fld_vars(f), i, 0, k, i, j, k, writing_lgarrQ)
           end do
         end do
-        cnt = this_sx * this_sz
         if (mpi_rank .ne. root_rnk) then
-          call MPI_SEND(sm_arr(:,0,:), cnt, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          allocate(temp_arr(this_sx, this_sz))
+          temp_arr(:,:) = sm_arr(:,0,:)
+          call MPI_SEND(temp_arr(:,:), this_sx * this_sz, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          deallocate(temp_arr)
         else
           field_data(this_x0 : this_x0 + this_sx - 1, this_z0 : this_z0 + this_sz - 1) = sm_arr(:,0,:)
         end if
@@ -347,8 +286,10 @@ contains
           mb_sy = meshblocks(rnk + 1)%sy
           mb_sz = meshblocks(rnk + 1)%sz
           if ((y_cut .ge. mb_y0) .and. (y_cut .lt. mb_y0 + mb_sy) .and. (mpi_rank .ne. rnk)) then
-            call MPI_RECV(field_data(mb_x0 : mb_x0 + mb_sx - 1, mb_z0 : mb_z0 + mb_sz - 1), mb_sx * mb_sz,&
-                        & MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            allocate(temp_arr(mb_sx, mb_sz))
+            call MPI_RECV(temp_arr(:,:), mb_sx * mb_sz, MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            field_data(mb_x0 : mb_x0 + mb_sx - 1, mb_z0 : mb_z0 + mb_sz - 1) = temp_arr(:,:)
+            deallocate(temp_arr)
           end if
         end do
 
@@ -383,8 +324,9 @@ contains
 
     integer                           :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
     integer                           :: mb_x0, mb_y0, mb_z0, mb_sx, mb_sy, mb_sz
-    integer                           :: root_rnk, rnk, cnt
+    integer                           :: root_rnk, rnk
     integer(kind=2)                   :: i, j, k
+    real, allocatable                 :: temp_arr(:,:)
 
     #if defined(MPI08)
       type(MPI_STATUS)                :: istat
@@ -418,41 +360,7 @@ contains
     this_sz = this_meshblock%ptr%sz
 
     do f = 1, n_fld_vars
-      if (fld_vars(f)(1:4) .eq. 'dens') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with density of species `s`
-        #ifndef DEBUG
-          call computeDensity(s, reset=.true.)
-        #else
-          call computeDensity(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'enrg') then
-        writing_lgarrQ = .true.
-        s = STRtoINT(fld_vars(f)(5:5))
-        ! fill `lg_arr` with energy density of species `s`
-        #ifndef DEBUG
-          call computeEnergy(s, reset=.true.)
-        #else
-          call computeEnergy(s, reset=.true., ds=0)
-        #endif
-        call exchangeArray()
-      else if (fld_vars(f)(1:4) .eq. 'dgca') then
-        writing_lgarrQ = .true.
-        #ifndef GCA
-          call throwError('ERROR: `dgca` not defined without GCA flag.')
-        #else
-          #ifndef DEBUG
-            call computeDensityGCA(s, reset=.true.)
-          #else
-            call computeDensityGCA(s, reset=.true., ds=0)
-          #endif
-          call exchangeArray()
-        #endif
-      else
-        writing_lgarrQ = .false.
-      end if
+      call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
 
       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -464,9 +372,11 @@ contains
             call selectFieldForOutput(fld_vars(f), i, j, 0, i, j, k, writing_lgarrQ)
           end do
         end do
-        cnt = this_sx * this_sy
         if (mpi_rank .ne. root_rnk) then
-          call MPI_SEND(sm_arr(:,:,0), cnt, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          allocate(temp_arr(this_sx, this_sy))
+          temp_arr(:,:) = sm_arr(:,:,0)
+          call MPI_SEND(temp_arr(:,:), this_sx * this_sy, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          deallocate(temp_arr)
         else
           field_data(this_x0 : this_x0 + this_sx - 1, this_y0 : this_y0 + this_sy - 1) = sm_arr(:,:,0)
         end if
@@ -481,8 +391,10 @@ contains
           mb_sy = meshblocks(rnk + 1)%sy
           mb_sz = meshblocks(rnk + 1)%sz
           if ((z_cut .ge. mb_z0) .and. (z_cut .lt. mb_z0 + mb_sz) .and. (mpi_rank .ne. rnk)) then
-            call MPI_RECV(field_data(mb_x0 : mb_x0 + mb_sx - 1, mb_y0 : mb_y0 + mb_sy - 1), mb_sx * mb_sy,&
-                        & MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            allocate(temp_arr(mb_sx, mb_sy))
+            call MPI_RECV(temp_arr(:,:), mb_sx * mb_sy, MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            field_data(mb_x0 : mb_x0 + mb_sx - 1, mb_y0 : mb_y0 + mb_sy - 1) = temp_arr(:,:)
+            deallocate(temp_arr)
           end if
         end do
 
