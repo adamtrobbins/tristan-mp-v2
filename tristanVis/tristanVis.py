@@ -10,8 +10,6 @@ class FieldData2D():
     self._step = step
     self.slices = slices
     self._isSlice = isSlice
-    if (not self._isSlice):
-      self.addSlice('z=0')
 
     self._extraVariables = extraVariables
     self._coordinateTransformation = coordinateTransformation
@@ -113,21 +111,22 @@ class Simulation():
       files = aux.listFiles(self._root + 'slices/')
       self._slices = np.unique([file[:-6] for file in files])
       self._slices = np.array(['='.join((lambda x: [x[0], str(int(x[1]))])(sl.lower()[5:].split('='))) for sl in self._slices])
-      if self._fld_steps is None:
-        self._slice_steps = np.sort(np.unique([file[-5:] for file in files]))
-        self._slice_steps = [int(step) for step in self._slice_steps]
-      else:
-        self._slice_steps = np.sort(self._fld_steps)
-
+    else:
+      files = aux.listFiles(self._root)
+      self._slices = np.array(['z=0'])
+    if self._fld_steps is None:
+      self._slice_steps = np.sort(np.unique([file[-5:] for file in files]))
+      self._slice_steps = [int(step) for step in self._slice_steps]
+    else:
+      self._slice_steps = np.sort(self._fld_steps)
     # preload all the files
     # TODO: preload spectra
 
-    if (self._useSlices):
-      for st in self._slice_steps:
-        fld = FieldData2D(self._root, st, self._slices, True,
-                          extraVariables=self._extraVariables,
-                          coordinateTransformation=self._coordinateTransformation)
-        self.fields.update({st: fld})
+    for st in self._slice_steps:
+      fld = FieldData2D(self._root, st, self._slices, self._useSlices,
+                        extraVariables=self._extraVariables,
+                        coordinateTransformation=self._coordinateTransformation)
+      self.fields.update({st: fld})
 
   def loadData(self):
     [fld.loadData() for st, fld in self.fields.items()]
@@ -307,11 +306,10 @@ class FieldPlot2D(ipyW.VBox):
       self.obj_maxval.value = self._kwargs['vmax']
 
 class PlotGrid():
-  def __init__(self, simulation, timestep=0, init=[], controls=True, figsize=None):
+  def __init__(self, simulation, timestep=None, init=[], controls=True, figsize=None):
     self.simulation = simulation
     self.parameters = init
     self.controls = controls
-    self.timestep = timestep
     self.figsize = figsize
     self.panels = []
     if self.parameters != []:
@@ -332,7 +330,7 @@ class PlotGrid():
     try:
       newvalue = self.parameters[0]['timestep']
     except:
-      newvalue = 0
+      newvalue = timestep if (not timestep is None) else list(self.simulation.fields.keys())[0]
     self.timestep = newvalue
 
     # self.button2.on_click(self.nextTimestep)
