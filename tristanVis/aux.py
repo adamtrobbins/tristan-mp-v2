@@ -1,3 +1,13 @@
+def listFiles(dir_name):
+  import os
+  import numpy as np
+  names = []
+  for root, directory, files in os.walk(dir_name):
+    if root == dir_name:
+      for name in files:
+        names.append(name)
+  return np.array(names)
+
 def make_get_proj(self, rx, ry, rz):
   '''
   Return a variation on :func:`~mpl_toolkit.mplot2d.axes3d.Axes3D.getproj` that
