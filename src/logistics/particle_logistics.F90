@@ -15,7 +15,7 @@ contains
                                            #endif
                                            & u, v, w,&
                                            #ifdef GCA
-                                            & u_eff, v_eff, w_eff,&
+                                            & u_eff, v_eff, w_eff, u_par, u_perp,&
                                            #endif
                                            #ifdef PRTLPAYLOADS
                                             & payload1, payload2, payload3,&
@@ -29,7 +29,7 @@ contains
 
     #ifdef GCA
       integer(kind=2), intent(in)             :: xi_past, yi_past, zi_past
-      real, intent(in)                        :: dx_past, dy_past, dz_past, u_eff, v_eff, w_eff
+      real, intent(in)                        :: dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -119,6 +119,9 @@ contains
       species(s)%prtl_tile(ti, tj, tk)%u_eff(p) = u_eff
       species(s)%prtl_tile(ti, tj, tk)%v_eff(p) = v_eff
       species(s)%prtl_tile(ti, tj, tk)%w_eff(p) = w_eff
+
+      species(s)%prtl_tile(ti, tj, tk)%u_par(p) = u_par
+      species(s)%prtl_tile(ti, tj, tk)%u_perp(p) = u_perp
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -162,6 +165,9 @@ contains
       species(s)%prtl_tile(ti, tj, tk)%u_eff(p_to) = species(s)%prtl_tile(ti, tj, tk)%u_eff(p_from)
       species(s)%prtl_tile(ti, tj, tk)%v_eff(p_to) = species(s)%prtl_tile(ti, tj, tk)%v_eff(p_from)
       species(s)%prtl_tile(ti, tj, tk)%w_eff(p_to) = species(s)%prtl_tile(ti, tj, tk)%w_eff(p_from)
+
+      species(s)%prtl_tile(ti, tj, tk)%u_par(p_to) = species(s)%prtl_tile(ti, tj, tk)%u_par(p_from)
+      species(s)%prtl_tile(ti, tj, tk)%u_perp(p_to) = species(s)%prtl_tile(ti, tj, tk)%u_perp(p_from)
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -241,9 +247,12 @@ contains
       if (allocated(tile%u_eff)) deallocate(tile%u_eff)
       if (allocated(tile%v_eff)) deallocate(tile%v_eff)
       if (allocated(tile%w_eff)) deallocate(tile%w_eff)
+      if (allocated(tile%u_par)) deallocate(tile%u_par)
+      if (allocated(tile%u_perp)) deallocate(tile%u_perp)
       allocate(tile%xi_past(sz)); allocate(tile%yi_past(sz)); allocate(tile%zi_past(sz))
       allocate(tile%dx_past(sz)); allocate(tile%dy_past(sz)); allocate(tile%dz_past(sz))
       allocate(tile%u_eff(sz)); allocate(tile%v_eff(sz)); allocate(tile%w_eff(sz))
+      allocate(tile%u_par(sz)); allocate(tile%u_perp(sz))
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -395,6 +404,14 @@ contains
       dummy_real(1 : current_npart) = tile%w_eff(1 : current_npart)
       deallocate(tile%w_eff); allocate(tile%w_eff(tile%maxptl_sp))
       tile%w_eff(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%u_par(1 : current_npart)
+      deallocate(tile%u_par); allocate(tile%u_par(tile%maxptl_sp))
+      tile%u_par(1 : current_npart) = dummy_real(1 : current_npart)
+
+      dummy_real(1 : current_npart) = tile%u_perp(1 : current_npart)
+      deallocate(tile%u_perp); allocate(tile%u_perp(tile%maxptl_sp))
+      tile%u_perp(1 : current_npart) = dummy_real(1 : current_npart)
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -466,7 +483,7 @@ contains
                                        #endif
                                        & u=u, v=v, w=w,&
                                        #ifdef GCA
-                                        & u_eff=u, v_eff=v, w_eff=w,&
+                                        & u_eff=u, v_eff=v, w_eff=w, u_par=0.0, u_perp=0.0,&
                                        #endif
                                        #ifdef PRTLPAYLOADS
                                         & payload1=payload1, payload2=payload2, payload3=payload3,&

@@ -167,6 +167,8 @@ contains
               write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
               write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
               write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_par(1:num)
+              write(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_perp(1:num)
             #endif
 
             #ifdef PRTLPAYLOADS

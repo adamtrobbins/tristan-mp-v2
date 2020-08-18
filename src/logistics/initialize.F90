@@ -447,6 +447,12 @@ contains
     #ifdef GCA
       call getInput('algorithm', 'gca_rhoL', gca_rhomin)
       call getInput('algorithm', 'gca_EoverB', gca_eoverbmin)
+      call getInput('algorithm', 'gca_vperpMax', gca_vperpmax)
+
+      call getInput('algorithm', 'gca_follow', gca_follow)
+      call getInput('algorithm', 'gca_follow_sp', gca_follow_sp)
+      call getInput('algorithm', 'gca_follow_proc', gca_follow_proc)
+      call getInput('algorithm', 'gca_follow_ind', gca_follow_ind)
     #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
@@ -650,7 +656,7 @@ contains
 
     #ifdef GCA
       additional_int2 = additional_int2 + 3
-      additional_real = additional_real + 6
+      additional_real = additional_real + 8
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -659,7 +665,7 @@ contains
 
     !     # of blockcounts = 3:
     !       3  x integer2  [xi, yi, zi]                       | + 3 if GCA [xi_past, yi_past, zi_past]
-    !       7  x real      [dx, dy, dz, u, v, w, weight]      | + 6 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff] ...
+    !       7  x real      [dx, dy, dz, u, v, w, weight]      | + 8 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp]
     !                                                         | + 3 if PRTLPAYLOADS
     !       2  x integer   [ind, proc]
     blockcounts(0) = 3 + additional_int2
@@ -935,6 +941,8 @@ contains
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_par(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_perp(1:num)
             #endif
 
             #ifdef PRTLPAYLOADS

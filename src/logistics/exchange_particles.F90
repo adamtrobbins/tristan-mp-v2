@@ -309,6 +309,8 @@ contains
       enroute%u_eff = species(spec_id)%prtl_tile(ti, tj, tk)%u_eff(prtl_id)
       enroute%v_eff = species(spec_id)%prtl_tile(ti, tj, tk)%v_eff(prtl_id)
       enroute%w_eff = species(spec_id)%prtl_tile(ti, tj, tk)%w_eff(prtl_id)
+      enroute%u_par = species(spec_id)%prtl_tile(ti, tj, tk)%u_par(prtl_id)
+      enroute%u_perp = species(spec_id)%prtl_tile(ti, tj, tk)%u_perp(prtl_id)
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -332,6 +334,7 @@ contains
                                              & enroute%u, enroute%v, enroute%w,&
                                              #ifdef GCA
                                               & enroute%u_eff, enroute%v_eff, enroute%w_eff,&
+                                              & enroute%u_par, enroute%u_perp,&
                                              #endif
                                              #ifdef PRTLPAYLOADS
                                               & enroute%payload1, enroute%payload2, enroute%payload3,&
@@ -364,6 +367,8 @@ contains
                                          & species(s)%prtl_tile(ti, tj, tk)%u_eff(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%v_eff(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%w_eff(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%u_par(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%u_perp(p),&
                                        #endif
                                        #ifdef PRTLPAYLOADS
                                          & species(s)%prtl_tile(ti, tj, tk)%payload1(p),&

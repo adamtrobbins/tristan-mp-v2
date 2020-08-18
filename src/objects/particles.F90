@@ -22,7 +22,8 @@ module m_particles
       integer(kind=2), allocatable, dimension(:)  :: xi_past, yi_past, zi_past
       real, allocatable, dimension(:)             :: dx_past, dy_past, dz_past
       real, allocatable, dimension(:)             :: u_eff, v_eff, w_eff
-      !dir$ attributes align: 64 :: xi_past, yi_past, zi_past, dx_past, dy_past, dz_past, u_eff, v_eff, w_eff
+      real, allocatable, dimension(:)             :: u_par, u_perp
+      !dir$ attributes align: 64 :: xi_past, yi_past, zi_past, dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp
     #endif
 
     #ifdef PRTLPAYLOADS
@@ -92,6 +93,7 @@ module m_particles
 
     #ifdef GCA
       real              :: u_eff, v_eff, w_eff
+      real              :: u_perp, u_par
     #endif
 
     real              :: weight
