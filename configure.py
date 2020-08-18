@@ -29,12 +29,22 @@ parser.add_argument('-perseus',
 
 parser.add_argument('-intel',
                     action='store_true',
-                    default=False,
+                    default=True,
                     help='enable intel compiler')
 parser.add_argument('-hdf5',
                     action='store_true',
                     default=False,
                     help='enable HDF5 & use h5pfc compiler')
+
+vec_group = parser.add_mutually_exclusive_group(required=False)
+vec_group.add_argument('-avx2',
+                       action='store_true',
+                       default=False,
+                       help='enable avx2 vectorization')
+vec_group.add_argument('-avx512',
+                       action='store_true',
+                       default=False,
+                       help='enable avx512 vectorization')
 
 parser.add_argument('-ifport',
                     action='store_true',
@@ -48,7 +58,7 @@ mpi_group.add_argument('-mpi',
                        help='enable mpi')
 mpi_group.add_argument('-mpi08',
                        action='store_true',
-                       default=False,
+                       default=True,
                        help='enable mpi_f08')
 
 # user file
@@ -87,6 +97,11 @@ parser.add_argument('-gca',
                     action='store_true',
                     default=False,
                     help='enable GCA mover')
+
+parser.add_argument('-payload',
+                    action='store_true',
+                    default=False,
+                    help='enable particle payloads')
 
 dim_group = parser.add_mutually_exclusive_group(required=True)
 dim_group.add_argument('-1d',
@@ -168,7 +183,7 @@ if args['perseus']:
   args['mpi08'] = True
   args['mpi'] = False
   args['ifport'] = True
-  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
+  args['avx2'] = True
 
 # compilation command
 if args['hdf5']:
@@ -191,17 +206,24 @@ elif args['mpi08']:
 # debug
 if args['debug'] and (not args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
-if args['debug'] and args['intel']:
+elif (args['debug'] and args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
   makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+else:
+  makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
 # compiler (+ vectorization etc)
 if args['intel']:
   makefile_options['MODULE'] = '-module '
-  makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -xHost -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
+  makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
 else:
   makefile_options['MODULE'] = '-J '
   makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
+
+if args['avx2']:
+  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
+elif args['avx512']:
+  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX512 -qopt-zmm-usage:high '
 
 if args['1d']:
   makefile_options['EXE_NAME'] = 'tristan-mp1d'
@@ -226,6 +248,8 @@ if args['slb']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 if args['gca']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DGCA '
+if args['payload']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
 
 # extra physics
 if args['extfields']:
@@ -276,6 +300,7 @@ print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
 print('  Particle pusher:         ' + ('Boris/GCA' if args['gca'] else 'Boris'))
+print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
@@ -288,9 +313,12 @@ print('  Compton scattering       ' + ('ON' if args['compton'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 
-print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc'))
+print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
+                                      (' [avx2]' if args['avx2'] else
+                                        (' [avx512]' if args['avx512'] else '')
+                                      ))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
-print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
+print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 

@@ -2,7 +2,7 @@
 
 module m_initialize
   #ifdef IFPORT
-    use ifport, only : makedirqq
+    use ifport, only: makedirqq
   #endif
   use m_globalnamespace
   use m_aux
@@ -12,7 +12,7 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
-  use m_userfile
+  use m_userfile, user_slb_load_ptr => userSLBload
   use m_writeoutput
   use m_writeslice
   use m_writehistory
@@ -447,6 +447,12 @@ contains
     #ifdef GCA
       call getInput('algorithm', 'gca_rhoL', gca_rhomin)
       call getInput('algorithm', 'gca_EoverB', gca_eoverbmin)
+      call getInput('algorithm', 'gca_vperpMax', gca_vperpmax)
+
+      call getInput('algorithm', 'gca_follow', gca_follow)
+      call getInput('algorithm', 'gca_follow_sp', gca_follow_sp)
+      call getInput('algorithm', 'gca_follow_proc', gca_follow_proc)
+      call getInput('algorithm', 'gca_follow_ind', gca_follow_ind)
     #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
@@ -563,11 +569,12 @@ contains
 
   subroutine initializePrtlExchange()
     implicit none
-    integer            :: buffsize, buffsize_x, buffsize_y
-    integer            :: buffsize_xy
-    integer            :: buffsize_z, buffsize_xz, buffsize_yz
-    integer            :: buffsize_xyz
-    integer            :: multiplier, ierr, ind1, ind2, ind3
+    integer             :: buffsize, buffsize_x, buffsize_y
+    integer             :: buffsize_xy
+    integer             :: buffsize_z, buffsize_xz, buffsize_yz
+    integer             :: buffsize_xyz
+    integer             :: multiplier, ierr, ind1, ind2, ind3, ind
+    integer             :: additional_real, additional_int, additional_int2
 
     #ifdef MPI08
       type(MPI_DATATYPE), dimension(0:2)            :: oldtypes
@@ -586,7 +593,7 @@ contains
     buffsize_x = 0
     buffsize_y = 0; buffsize_xy = 0
     buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
-    #if defined(oneD) || defined (twoD) || defined (threeD)
+    #if defined (oneD) || defined (twoD) || defined (threeD)
       buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
     #endif
     #if defined (twoD) || defined (threeD)
@@ -642,31 +649,32 @@ contains
 
     ! DEP_PRT [particle-dependent]
     ! new type for myMPI_ENROUTE
+    additional_real = 0; additional_int = 0; additional_int2 = 0
+
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
     call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
-    #ifndef GCA
-      !     # of blockcounts = 3:
-      !       3  x integer2  [xi, yi, zi]
-      !       7  x real      [dx, dy, dz, u, v, w, weight]
-      !       2  x integer   [ind, proc]
-      blockcounts(0) = 3
-      oldtypes(0) = MPI_INTEGER2
-      blockcounts(1) = 7
-      oldtypes(1) = MPI_REAL
-      blockcounts(2) = 2
-      oldtypes(2) = MPI_INTEGER
-    #else
-      !     # of blockcounts = 3:
-      !       6  x integer2  [xi, yi, zi, xi_past, yi_past, zi_past]
-      !       13 x real      [dx, dy, dz, dx_past, dy_past, dz_past, u, v, w, u_eff, v_eff, w_eff, weight]
-      !       2  x integer   [ind, proc]
-      blockcounts(0) = 6
-      oldtypes(0) = MPI_INTEGER2
-      blockcounts(1) = 13
-      oldtypes(1) = MPI_REAL
-      blockcounts(2) = 2
-      oldtypes(2) = MPI_INTEGER
+
+    #ifdef GCA
+      additional_int2 = additional_int2 + 3
+      additional_real = additional_real + 8
     #endif
+
+    #ifdef PRTLPAYLOADS
+      additional_real = additional_real + 3
+    #endif
+
+    !     # of blockcounts = 3:
+    !       3  x integer2  [xi, yi, zi]                       | + 3 if GCA [xi_past, yi_past, zi_past]
+    !       7  x real      [dx, dy, dz, u, v, w, weight]      | + 8 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp]
+    !                                                         | + 3 if PRTLPAYLOADS
+    !       2  x integer   [ind, proc]
+    blockcounts(0) = 3 + additional_int2
+    oldtypes(0) = MPI_INTEGER2
+    blockcounts(1) = 7 + additional_real
+    oldtypes(1) = MPI_REAL
+    blockcounts(2) = 2 + additional_int
+    oldtypes(2) = MPI_INTEGER
+
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
@@ -823,7 +831,7 @@ contains
   subroutine restartSimulation()
     implicit none
     character(len=STR_MAX)      :: mpichar, filename
-    integer                     :: s, ti, tj, tk, num
+    integer                     :: s, ti, tj, tk, num, pid
     integer                     :: dummy_int1, dummy_int2, dummy_int3
     real                        :: dummy_real
     write(mpichar, "(i8.8)") mpi_rank
@@ -933,6 +941,14 @@ contains
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
               read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_par(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_perp(1:num)
+            #endif
+
+            #ifdef PRTLPAYLOADS
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload1(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload2(1:num)
+              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload3(1:num)
             #endif
           end do
         end do

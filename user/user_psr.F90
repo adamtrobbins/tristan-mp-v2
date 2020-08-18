@@ -12,8 +12,6 @@ module m_userfile
   use m_helpers
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   integer, private  :: fld_geometry, inj_method, e_par_method
   real, private     :: xc_g, yc_g, zc_g, psr_spinupT
@@ -195,6 +193,10 @@ contains
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
     logical                       :: dummy_flag
+    #ifdef GCA
+      real                          :: dummy_, vE_x, vE_y, vE_z, wE_x, wE_y, wE_z, wE_SQR
+      real                          :: e0_SQR, b0_SQR
+    #endif
 
     nGJ = 2 * psr_omega0 * B_norm / (CC * abs(unit_ch))
     sigma_nGJ = sigma * ppc0 / nGJ
@@ -304,7 +306,7 @@ contains
           end if
 
           if (dummy_flag) then
-            ! kick along local b-field
+            ! kick along local b-field:
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
             b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
             if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
@@ -313,14 +315,66 @@ contains
             nx = bx0 / b_sqr
             ny = by0 / b_sqr
             nz = bz0 / b_sqr
-            u_ = nx * prtl_kick
-            v_ = ny * prtl_kick
-            w_ = nz * prtl_kick
+
             weight = inj_mult * nGJ / ppc
-            call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
-            call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
-            ! call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-            ! call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
+
+            #ifndef GCA
+              u_ = nx * prtl_kick
+              v_ = ny * prtl_kick
+              w_ = nz * prtl_kick
+              call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+              call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+            #else
+              ! kick along ExB:
+              call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
+              call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+              b0_SQR = bx0**2 + by0**2 + bz0**2
+              e0_SQR = ex0**2 + ey0**2 + ez0**2
+
+              dummy_ = 1.0 / (e0_SQR + b0_SQR + TINYFLD)
+
+              wE_x = (bz0 * ey0 - by0 * ez0) * dummy_
+              wE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
+              wE_z = (by0 * ex0 - bx0 * ey0) * dummy_
+              wE_SQR = wE_x**2 + wE_y**2 + wE_z**2
+
+              dummy_ = sign(1.0, wE_SQR - 0.01)
+
+              ! if `wE_SQR < 0.01` -- using taylor expansion
+              dummy_ = 0.5 * (1.0 - dummy_) * (1.0 + wE_SQR + 2.0 * wE_SQR**2) +&
+                     & 0.25 * (1.0 + dummy_) * (1.0 - sqrt(max(1.0 - 4.0 * wE_SQR, 0.0))) / max(wE_SQR, 0.001)
+
+              vE_x = wE_x * dummy_
+              vE_y = wE_y * dummy_
+              vE_z = wE_z * dummy_
+
+              dummy_ = 1.0 / sqrt(abs(1.0 - vE_x**2 - vE_y**2 - vE_z**2) + TINYFLD)
+
+              u_ = vE_x * dummy_
+              v_ = vE_y * dummy_
+              w_ = vE_z * dummy_
+
+              dummy_ = sqrt(abs(prtl_kick**2 - dummy_**2))
+
+              u_ = u_ + nx * dummy_
+              v_ = v_ + ny * dummy_
+              w_ = w_ + nz * dummy_
+
+              call createParticleFromAttributes(1, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                & xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                & dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                & u=u_, v=v_, w=w_,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=dummy_, u_perp=0.0,&
+                                                & ind=species(1)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+              species(1)%cntr_sp = species(1)%cntr_sp + 1
+              call createParticleFromAttributes(2, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                & xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                & dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                & u=u_, v=v_, w=w_,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=dummy_, u_perp=0.0,&
+                                                & ind=species(2)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+              species(2)%cntr_sp = species(2)%cntr_sp + 1
+            #endif
           end if
         end if
       end do

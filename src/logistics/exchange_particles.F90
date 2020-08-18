@@ -309,6 +309,14 @@ contains
       enroute%u_eff = species(spec_id)%prtl_tile(ti, tj, tk)%u_eff(prtl_id)
       enroute%v_eff = species(spec_id)%prtl_tile(ti, tj, tk)%v_eff(prtl_id)
       enroute%w_eff = species(spec_id)%prtl_tile(ti, tj, tk)%w_eff(prtl_id)
+      enroute%u_par = species(spec_id)%prtl_tile(ti, tj, tk)%u_par(prtl_id)
+      enroute%u_perp = species(spec_id)%prtl_tile(ti, tj, tk)%u_perp(prtl_id)
+    #endif
+
+    #ifdef PRTLPAYLOADS
+      enroute%payload1 = species(spec_id)%prtl_tile(ti, tj, tk)%payload1(prtl_id)
+      enroute%payload2 = species(spec_id)%prtl_tile(ti, tj, tk)%payload2(prtl_id)
+      enroute%payload3 = species(spec_id)%prtl_tile(ti, tj, tk)%payload3(prtl_id)
     #endif
   end subroutine copyToEnroute
 
@@ -317,62 +325,59 @@ contains
     type(prtl_enroute), intent(in)  :: enroute
     integer, intent(in)             :: spec_id
     ! DEP_PRT [particle-dependent]
-    #ifndef GCA
-      call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi, &
-                                               & enroute%dx, enroute%dy, enroute%dz, &
-                                               & enroute%u, enroute%v, enroute%w, &
-                                               & enroute%ind, enroute%proc, enroute%weight)
-    #else
-      call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi, &
-                                               & enroute%dx, enroute%dy, enroute%dz, &
-                                               & enroute%xi_past, enroute%yi_past, enroute%zi_past, &
-                                               & enroute%dx_past, enroute%dy_past, enroute%dz_past, &
-                                               & enroute%u, enroute%v, enroute%w, &
-                                               & enroute%u_eff, enroute%v_eff, enroute%w_eff, &
-                                               & enroute%ind, enroute%proc, enroute%weight)
-    #endif
+    call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi,&
+                                             & enroute%dx, enroute%dy, enroute%dz,&
+                                             #ifdef GCA
+                                               & enroute%xi_past, enroute%yi_past, enroute%zi_past,&
+                                               & enroute%dx_past, enroute%dy_past, enroute%dz_past,&
+                                             #endif
+                                             & enroute%u, enroute%v, enroute%w,&
+                                             #ifdef GCA
+                                              & enroute%u_eff, enroute%v_eff, enroute%w_eff,&
+                                              & enroute%u_par, enroute%u_perp,&
+                                             #endif
+                                             #ifdef PRTLPAYLOADS
+                                              & enroute%payload1, enroute%payload2, enroute%payload3,&
+                                             #endif
+                                             & enroute%ind, enroute%proc, enroute%weight)
   end subroutine copyFromEnroute
 
   subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: s, ti, tj, tk, p
-    #ifndef GCA
-      call createParticleFromAttributes(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%u(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%v(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%w(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%weight(p))
-    #else
-      call createParticleFromAttributes(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
+    call createParticleFromAttributes(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
+                                       #ifdef GCA
                                          & species(s)%prtl_tile(ti, tj, tk)%xi_past(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%yi_past(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%zi_past(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%dx_past(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%dy_past(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%dz_past(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%u(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%v(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                                       #endif
+                                       & species(s)%prtl_tile(ti, tj, tk)%u(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%v(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                                       #ifdef GCA
                                          & species(s)%prtl_tile(ti, tj, tk)%u_eff(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%v_eff(p),&
                                          & species(s)%prtl_tile(ti, tj, tk)%w_eff(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%weight(p))
-    #endif
+                                         & species(s)%prtl_tile(ti, tj, tk)%u_par(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%u_perp(p),&
+                                       #endif
+                                       #ifdef PRTLPAYLOADS
+                                         & species(s)%prtl_tile(ti, tj, tk)%payload1(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%payload2(p),&
+                                         & species(s)%prtl_tile(ti, tj, tk)%payload3(p),&
+                                       #endif
+                                       & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
+                                       & species(s)%prtl_tile(ti, tj, tk)%weight(p))
     ! schedule particle for deletion
     species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
   end subroutine moveParticleBetweenTiles

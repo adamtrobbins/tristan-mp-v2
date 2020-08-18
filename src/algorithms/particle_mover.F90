@@ -41,7 +41,7 @@ contains
       integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
       integer, pointer, contiguous          :: pt_proc(:)
       real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
-      real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:)
+      real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:), pt_u_par(:), pt_u_perp(:)
       integer(kind=2)                       :: xi_, yi_, zi_
       real                                  :: x_, y_, z_, dx_, dy_, dz_, Gamma_, mu_
       real                                  :: x_n1, y_n1, z_n1, x_n, y_n, z_n
@@ -53,6 +53,7 @@ contains
       real                                  :: vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR
       real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n
       real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
+      logical                               :: doBorisQ
       integer                               :: iter
     #endif
 
@@ -152,6 +153,13 @@ contains
                 pt_u_eff => species(s)%prtl_tile(ti, tj, tk)%u_eff
                 pt_v_eff => species(s)%prtl_tile(ti, tj, tk)%v_eff
                 pt_w_eff => species(s)%prtl_tile(ti, tj, tk)%w_eff
+
+                pt_u_par => species(s)%prtl_tile(ti, tj, tk)%u_par
+                pt_u_perp => species(s)%prtl_tile(ti, tj, tk)%u_perp
+              #endif
+
+              #if defined(RADIATION) && defined(EMIT)
+                pt_ind => species(s)%prtl_tile(ti, tj, tk)%ind
               #endif
 
               #if defined(RADIATION) && defined(EMIT)
@@ -184,7 +192,7 @@ contains
               !$omp  vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR,&
               !$omp  vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n,&
               !$omp  vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1,&
-              !$omp  iter)
+              !$omp  iter, doBorisQ)
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -284,6 +292,8 @@ contains
                 pt_xi_past => null();   pt_yi_past => null();   pt_zi_past => null()
                 pt_dx_past => null();   pt_dy_past => null();   pt_dz_past => null()
                 pt_u_eff => null();     pt_v_eff => null();     pt_w_eff => null()
+
+                pt_u_par => null();     pt_u_perp => null()
               #endif
 
               #if defined(RADIATION) && defined(EMIT)

@@ -13,7 +13,8 @@ wE_SQR = wE_x**2 + wE_y**2 + wE_z**2
 dummy_ = sign(1.0, wE_SQR - 0.01)
 
 ! if `wE_SQR < 0.01` -- using taylor expansion
-dummy_ = 0.5 * (1.0 - dummy_) * (1.0 + wE_SQR + 2.0 * wE_SQR**2) + 0.25 * (1.0 + dummy_) * (1.0 - sqrt(max(1.0 - 4.0 * wE_SQR, 0.0))) / max(wE_SQR, 0.001)
+dummy_ = 0.5 * (1.0 - dummy_) * (1.0 + wE_SQR + 2.0 * wE_SQR**2) +&
+       & 0.25 * (1.0 + dummy_) * (1.0 - sqrt(max(1.0 - 4.0 * wE_SQR, 0.0))) / max(wE_SQR, 0.001)
 
 vE_x = wE_x * dummy_
 vE_y = wE_y * dummy_

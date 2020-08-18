@@ -522,7 +522,6 @@ contains
         end do
       end do
     end subroutine computeDensityGCA
-
   #endif
 
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &

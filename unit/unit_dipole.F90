@@ -12,8 +12,6 @@ module m_userfile
   use m_helpers
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   integer, private  :: fld_geometry
   real, private     :: xc_g, yc_g, zc_g, radius

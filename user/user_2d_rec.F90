@@ -36,6 +36,16 @@ contains
     cs_x = 0.5
   end subroutine userReadInput
 
+  function userSLBload(x_glob, y_glob, z_glob,&
+                     & dummy1, dummy2, dummy3)
+    real :: userSLBload
+    ! global coordinates
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    ! global box dimensions
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    return
+  end function
+
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
                                  & dummy1, dummy2, dummy3)
     real :: userSpatialDistribution

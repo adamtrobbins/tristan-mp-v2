@@ -11,7 +11,7 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
+  
 
   !--- PRIVATE variables -----------------------------------------!
   real      :: Te, eph0, delta_eph0

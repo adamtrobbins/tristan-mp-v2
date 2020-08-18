@@ -11,6 +11,7 @@ module m_writeoutput
   use m_particles
   use m_fields
   use m_helpers
+  use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
   use m_exchangearray
   use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
 
@@ -107,36 +108,37 @@ contains
     implicit none
     real                      :: energy, u_, v_, w_
     integer                   :: s, i, ti, tj, tk, p, spec_index
-    integer                   :: ierr, ndown
+    integer                   :: ierr, ndown, pid
     real, allocatable, dimension(:,:)     :: spectra
     real, allocatable, dimension(:)       :: send_spec, recv_spec
     ! initialize particle variables
-    if (.not. flds_at_prtl) then
-      n_prtl_vars = 9
-      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
-                                 & 'u    ', 'v    ', 'w    ',&
-                                 & 'wei  ', 'ind  ', 'proc '/)
-      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
-                                      & 'real ', 'real ', 'real ',&
-                                      & 'real ', 'int  ', 'int  '/)
-    else
-      n_prtl_vars = 15
-      prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
-                                 & 'u    ', 'v    ', 'w    ',&
-                                 & 'wei  ', 'ind  ', 'proc ',&
-                                 & 'ex   ', 'ey   ', 'ez   ',&
-                                 & 'bx   ', 'by   ', 'bz   '/)
-      prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
-                                      & 'real ', 'real ', 'real ',&
-                                      & 'real ', 'int  ', 'int  ',&
-                                      & 'real ', 'real ', 'real ',&
-                                      & 'real ', 'real ', 'real '/)
+    n_prtl_vars = 9
+    prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
+                               & 'u    ', 'v    ', 'w    ',&
+                               & 'wei  ', 'ind  ', 'proc '/)
+    prtl_var_types(1:n_prtl_vars) = (/'real ', 'real ', 'real ',&
+                                    & 'real ', 'real ', 'real ',&
+                                    & 'real ', 'int  ', 'int  '/)
+    if (flds_at_prtl) then
+      n_prtl_vars = n_prtl_vars + 6
+      prtl_vars(10:n_prtl_vars) = (/'ex   ', 'ey   ', 'ez   ',&
+                                  & 'bx   ', 'by   ', 'bz   '/)
+      prtl_var_types(10:n_prtl_vars) = (/'real ', 'real ', 'real ',&
+                                       & 'real ', 'real ', 'real '/)
       do s = 1, nspec
         prtl_vars(n_prtl_vars + s) = 'dens' // STR(s)
         prtl_var_types(n_prtl_vars + s) = 'real '
       end do
       n_prtl_vars = n_prtl_vars + nspec
     end if
+
+    #ifdef PRTLPAYLOADS
+      do pid = 1, 3
+        prtl_vars(n_prtl_vars + pid) = 'pld' // STR(pid)
+        prtl_var_types(n_prtl_vars + pid) = 'real '
+      end do
+      n_prtl_vars = n_prtl_vars + 3
+    #endif
 
     ! initialize field variables
     !   total number of fields (excluding particle densities)
@@ -187,25 +189,25 @@ contains
        do tj = 1, species(s)%tile_ny
          do tk = 1, species(s)%tile_nz
            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-             u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
-             v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
-             w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
-             if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
-               energy = sqrt(u_**2 + v_**2 + w_**2)
-             else
-               energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
-             end if
-             if (spec_log_bins) energy = log(energy)
-             if (energy .le. spec_min) then
-               spec_index = 1
-             else if (energy .ge. spec_max) then
-               spec_index = spec_num
-             else
-               spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
-               if (spec_index .lt. 1) spec_index = 1
-               if (spec_index .gt. spec_num) spec_index = spec_num
-             end if
-             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+            u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+            v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+            w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+            if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+              energy = sqrt(u_**2 + v_**2 + w_**2)
+            else
+              energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
+            end if
+            if (spec_log_bins) energy = log(energy + 1e-8)
+            if (energy .le. spec_min) then
+              spec_index = 1
+            else if (energy .ge. spec_max) then
+              spec_index = spec_num
+            else
+              spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+              if (spec_index .lt. 1) spec_index = 1
+              if (spec_index .gt. spec_num) spec_index = spec_num
+            end if
+            spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
            end do
          end do
        end do
@@ -755,12 +757,25 @@ contains
                                    & bx, by, bz, temp_real1, temp_real2, temp_real3)
                 temp_real_arr(j) = REAL(temp_real3 * B_norm, 4)
               case default
-                if (prtl_vars(p)(1:4) .ne. 'dens') then
-                  call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
-                else
+                if (prtl_vars(p)(1:4) .eq. 'dens') then
                   temp_real_arr(j) = lg_arr(species(s)%prtl_tile(ti, tj, tk)%xi(temp),&
                                           & species(s)%prtl_tile(ti, tj, tk)%yi(temp),&
                                           & species(s)%prtl_tile(ti, tj, tk)%zi(temp))
+                #ifdef PRTLPAYLOADS
+                  else if (prtl_vars(p)(1:3) .eq. 'pld') then
+                    dummy_s = STRtoINT(prtl_vars(p)(4:4))
+                    if (dummy_s .eq. 1) then
+                      temp_real_arr(j) = species(s)%prtl_tile(ti, tj, tk)%payload1(temp)
+                    else if (dummy_s .eq. 2) then
+                      temp_real_arr(j) = species(s)%prtl_tile(ti, tj, tk)%payload2(temp)
+                    else if (dummy_s .eq. 3) then
+                      temp_real_arr(j) = species(s)%prtl_tile(ti, tj, tk)%payload3(temp)
+                    else
+                      call throwError('ERROR: only 3 payloads are allowed.')
+                    end if
+                #endif
+                else
+                  call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
                 end if
             end select ! select variable
           end do ! strided prtls
