@@ -41,6 +41,7 @@
 
   gca_rhoL      = 1              # critical larmor radius at which GCA kicks in
   gca_EoverB    = 1              # critical E/B at which GCA kicks in
+  gca_vperpMax  = 0.1            # particles with larger v_perp will be treated as Boris
 
 <restart>
 
