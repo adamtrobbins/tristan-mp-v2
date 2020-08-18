@@ -24,7 +24,9 @@ module m_globalnamespace
   real                    :: CC, CCINV, CORR
 
   #ifdef GCA
-    real                    :: gca_eoverbmin, gca_rhomin
+    real                    :: gca_eoverbmin, gca_rhomin, gca_vperpmax
+    logical                 :: gca_follow
+    integer                 :: gca_follow_sp, gca_follow_ind, gca_follow_proc
   #endif
 
   logical                 :: enable_fieldsolver
