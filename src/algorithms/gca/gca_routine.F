@@ -89,8 +89,11 @@ end if
 doBorisQ = ((.not. species(s)%gca_sp) .or.&                                                   ! if species cannot do GCA
           & (bb0 * bb0_n .eq. 0.0) .or.&                                                      ! if B = 0
           & ((CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)) .ge. gca_rhomin) .or.&         ! if Larmor too large
-          & (uperp_g / Gamma_ .gt. gca_vperpmax) .or. &                                       ! if uperp_g too large
+          & (uperp_g / Gamma_ .gt. gca_vperpmax) .or.&                                        ! if uperp_g too large
           & (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0))                                          ! of E > B * fraction
+
+doBorisQ = (doBorisQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&               ! GCA enforced by the user ...
+                                               & u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
 
 ! FOR PARTICLE DIAGNOSTICS >>>>
 if (gca_follow) then

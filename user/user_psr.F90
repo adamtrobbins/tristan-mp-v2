@@ -20,6 +20,9 @@ module m_userfile
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
   real, private     :: nGJ_limiter, sigGJ_limiter, jdotb_limiter
+  #ifdef GCA
+    real, private     :: psr_gca_enforce_rad
+  #endif
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -70,6 +73,10 @@ contains
       call getInput('problem', 'jdotb_limiter', jdotb_limiter)
       call getInput('problem', 'prtl_kick', prtl_kick)
     end if
+
+    #ifdef GCA
+      call getInput('problem', 'gca_radius', psr_gca_enforce_rad)
+    #endif
 
     ! safety check
     if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
@@ -177,6 +184,20 @@ contains
     ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
     bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
   end subroutine userExternalFields
+
+  #ifdef GCA
+    logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
+      implicit none
+      integer(kind=2), intent(in), optional   :: xi, yi, zi
+      real, intent(in), optional              :: dx, dy, dz, u, v, w
+      real, intent(in), optional              :: weight
+      real :: rr
+      rr = sqrt(real((xi + dx + this_meshblock%ptr%x0 - xc_g)**2 +&
+                   & (yi + dy + this_meshblock%ptr%y0 - yc_g)**2 +&
+                   & (zi + dz + this_meshblock%ptr%z0 - zc_g)**2))
+      userEnforceGCA = (rr .lt. psr_radius + psr_gca_enforce_rad)
+    end function userEnforceGCA
+  #endif
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
