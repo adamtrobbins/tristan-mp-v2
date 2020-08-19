@@ -38,6 +38,10 @@ module m_writeoutput
   logical                 :: params_enable = .true., prtl_enable = .true.
   logical                 :: flds_enable = .true., spec_enable = .true., domain_enable = .true.
 
+  #ifdef GCA
+    real, allocatable, dimension(:,:) :: glob_gca_spectra
+  #endif
+
 
   !--- PRIVATE functions -----------------------------------------!
   #ifdef HDF5
@@ -111,6 +115,9 @@ contains
     integer                   :: ierr, ndown, pid
     real, allocatable, dimension(:,:)     :: spectra
     real, allocatable, dimension(:)       :: send_spec, recv_spec
+    #ifdef GCA
+      real, allocatable, dimension(:,:)     :: gca_spectra
+    #endif
     ! initialize particle variables
     n_prtl_vars = 9
     prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ',&
@@ -182,8 +189,16 @@ contains
     end if
     allocate(spectra(nspec, spec_num))
     allocate(send_spec(spec_num), recv_spec(spec_num))
-
     spectra(:,:) = 0
+
+    #ifdef GCA
+      if (.not. allocated(glob_gca_spectra)) then
+        allocate(glob_gca_spectra(2 * nspec, spec_num))
+      end if
+      allocate(gca_spectra(2 * nspec, spec_num))
+      gca_spectra(:,:) = 0
+    #endif
+
     do s = 1, nspec
      do ti = 1, species(s)%tile_nx
        do tj = 1, species(s)%tile_ny
@@ -208,6 +223,18 @@ contains
               if (spec_index .gt. spec_num) spec_index = spec_num
             end if
             spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+
+            #ifdef GCA
+              if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .ge. mpi_size) then
+                ! particle doing GCA
+                gca_spectra(nspec + s, spec_index) = gca_spectra(nspec + s, spec_index) +&
+                                                   & species(s)%prtl_tile(ti, tj, tk)%weight(p)
+              else
+                ! particle doing BORIS
+                gca_spectra(s, spec_index) = gca_spectra(s, spec_index) +&
+                                           & species(s)%prtl_tile(ti, tj, tk)%weight(p)
+              end if
+            #endif
            end do
          end do
        end do
@@ -220,6 +247,18 @@ contains
       call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
                     & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
       glob_spectra(s,:) = recv_spec(:)
+
+      #ifdef GCA
+        send_spec(:) = spectra(s,:)
+        call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+                      & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+        glob_gca_spectra(s,:) = recv_spec(:)
+
+        send_spec(:) = spectra(nspec + s,:)
+        call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+                      & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+        glob_gca_spectra(nspec + s,:) = recv_spec(:)
+      #endif
 
       #ifdef RADIATION
         ! compute radiation spectra
@@ -236,6 +275,9 @@ contains
     if (allocated(spectra)) deallocate(spectra)
     if (allocated(send_spec)) deallocate(send_spec)
     if (allocated(recv_spec)) deallocate(recv_spec)
+    #ifdef GCA
+      if (allocated(gca_spectra)) deallocate(gca_spectra)
+    #endif
   end subroutine initializeOutput
 
   subroutine writeParams(step, time)
@@ -873,6 +915,26 @@ contains
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
 
+        #ifdef GCA
+          ! writing spectra:
+          dsetname = 'nbor' // trim(STR(s))
+          call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                         & dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_gca_spectra(s,:), data_dims, error)
+          call h5dclose_f(dset_id, error)
+          call h5sclose_f(dspace_id, error)
+
+          ! writing spectra:
+          dsetname = 'ngca' // trim(STR(s))
+          call h5screate_simple_f(datarank, data_dims, dspace_id, error)
+          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+                         & dset_id, error)
+          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_gca_spectra(nspec + s,:), data_dims, error)
+          call h5dclose_f(dset_id, error)
+          call h5sclose_f(dspace_id, error)
+        #endif
+
         #ifdef RADIATION
           if (allocated(glob_rad_spectra)) then
             ! writing bins:
@@ -906,6 +968,9 @@ contains
     end if
 
     if (allocated(glob_spectra)) deallocate(glob_spectra)
+    #ifdef GCA
+      if (allocated(glob_gca_spectra)) deallocate(glob_gca_spectra)
+    #endif
   end subroutine writeSpectra_hdf5
 
   subroutine writeDomain_hdf5(step, time)
