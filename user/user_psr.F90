@@ -192,9 +192,9 @@ contains
       real, intent(in), optional              :: dx, dy, dz, u, v, w
       real, intent(in), optional              :: weight
       real :: rr
-      rr = sqrt(real((xi + dx + this_meshblock%ptr%x0 - xc_g)**2 +&
-                   & (yi + dy + this_meshblock%ptr%y0 - yc_g)**2 +&
-                   & (zi + dz + this_meshblock%ptr%z0 - zc_g)**2))
+      rr = sqrt((real(xi + this_meshblock%ptr%x0) + dx - xc_g)**2 +&
+              & (real(yi + this_meshblock%ptr%y0) + dy - yc_g)**2 +&
+              & (real(zi + this_meshblock%ptr%z0) + dz - zc_g)**2)
       userEnforceGCA = (rr .lt. psr_radius + psr_gca_enforce_rad)
     end function userEnforceGCA
   #endif

@@ -448,11 +448,7 @@ contains
       call getInput('algorithm', 'gca_rhoL', gca_rhomin)
       call getInput('algorithm', 'gca_EoverB', gca_eoverbmin)
       call getInput('algorithm', 'gca_vperpMax', gca_vperpmax)
-
-      call getInput('algorithm', 'gca_follow', gca_follow)
-      call getInput('algorithm', 'gca_follow_sp', gca_follow_sp)
-      call getInput('algorithm', 'gca_follow_proc', gca_follow_proc)
-      call getInput('algorithm', 'gca_follow_ind', gca_follow_ind)
+      call getInput('algorithm', 'gca_enforce_mu0', gca_enforce_mu0)
     #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)

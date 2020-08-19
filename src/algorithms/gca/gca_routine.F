@@ -66,16 +66,20 @@ bpar_z = bz0 * dummy_
 if (pt_proc(p) .ge. mpi_size) then
   ! particle was doing GCA last timestep
   u_par = pt_u_par(p)
-  uperp_g = 0.0 !pt_u_perp(p)
+  if (.not. gca_enforce_mu0) then
+    uperp_g = pt_u_perp(p)
 
-  ! to recover the direction later
-  uperp_g_x = u0 - u_par * bpar_x - vE_x * Gamma_
-  uperp_g_y = v0 - u_par * bpar_y - vE_y * Gamma_
-  uperp_g_z = w0 - u_par * bpar_z - vE_z * Gamma_
-  dummy_ = sqrt(uperp_g_x**2 + uperp_g_y**2 + uperp_g_z**2)
-  uperp_g_x = uperp_g_x * uperp_g / dummy_
-  uperp_g_y = uperp_g_y * uperp_g / dummy_
-  uperp_g_z = uperp_g_z * uperp_g / dummy_
+    ! to recover the direction later
+    uperp_g_x = u0 - u_par * bpar_x - vE_x * Gamma_
+    uperp_g_y = v0 - u_par * bpar_y - vE_y * Gamma_
+    uperp_g_z = w0 - u_par * bpar_z - vE_z * Gamma_
+    dummy_ = sqrt(uperp_g_x**2 + uperp_g_y**2 + uperp_g_z**2)
+    uperp_g_x = uperp_g_x * uperp_g / dummy_
+    uperp_g_y = uperp_g_y * uperp_g / dummy_
+    uperp_g_z = uperp_g_z * uperp_g / dummy_
+  else
+    uperp_g = 0.0
+  end if
 else
   ! particle was doing Boris last timestep
   u_par = bpar_x * u0 + bpar_y * v0 + bpar_z * w0
@@ -84,6 +88,12 @@ else
   uperp_g_y = v0 - u_par * bpar_y - vE_y * Gamma_
   uperp_g_z = w0 - u_par * bpar_z - vE_z * Gamma_
   uperp_g = sqrt(uperp_g_x**2 + uperp_g_y**2 + uperp_g_z**2)
+
+  if (gca_enforce_mu0) then
+    ! update u_par to keep v_par constant (cooling in one timestep)
+    ! ... but set u_perp_g = 0
+    u_par = u_par * (gammaE / Gamma_) / sqrt(abs(1.0 - (u_par * gammaE / Gamma_)**2) + TINYFLD)
+  end if
 end if
 
 doBorisQ = ((.not. species(s)%gca_sp) .or.&                                                   ! if species cannot do GCA
@@ -95,41 +105,13 @@ doBorisQ = ((.not. species(s)%gca_sp) .or.&                                     
 doBorisQ = (doBorisQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&               ! GCA enforced by the user ...
                                                & u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
 
-! FOR PARTICLE DIAGNOSTICS >>>>
-if (gca_follow) then
-  if (((pt_proc(p) .eq. gca_follow_proc) .or. (pt_proc(p) .eq. gca_follow_proc + 2 * mpi_size)) .and.&
-    & (s .eq. gca_follow_sp) .and.&
-    & (pt_ind(p) .eq. gca_follow_ind)) then
-    dummy_ = sqrt(1.0 + u0**2 + v0**2 + w0**2)
-    print *, 'particle...', (pt_proc(p) .gt. mpi_size)
-    print *, 'gamma:', dummy_
-    print *, 'E, B:', sqrt(e0_SQR), bb0, sqrt(e0_SQR) / bb0
-    print *, 'radius:', sqrt(real((xi_ + dx_ + this_meshblock%ptr%x0 - 280.0)**2 +&
-                                & (yi_ + dy_ + this_meshblock%ptr%y0 - 280.0)**2 +&
-                                & (zi_ + dz_ + this_meshblock%ptr%z0 - 280.0)**2))
 
-    print *, 'upar, uperp, uperp/gamma, gammaE * vE:',&
-                  & u_par, uperp_g, uperp_g / Gamma_, gammaE * sqrt(vE_x**2 + vE_y**2 + vE_z**2)
-    print *, 'mu:', uperp_g**2 / (bb0 * gammaE)
-    print *, 'rhoL:', CC**2 * dummy_ / (abs(q_over_m) * bb0 * B_norm)
-    print *, 'rhoL_real:', CC**2 * uperp_g / (abs(q_over_m) * bb0 * B_norm)
-    print *, 'omegaC_real:', abs(q_over_m) * bb0 * B_norm / (CC * uperp_g)
-
-    if (doBorisQ) then
-      print *, 'will do Boris now'
-    else
-      print *, 'will do GCA now'
-    end if
-
-    print *, '-----------------------------------------------------'
+#ifdef DEBUG
+  if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
+    print *, 'bad particle!!!!', pt_proc(p), s, pt_ind(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
+    call throwError('ERROR: runaway particle found!')
   end if
-end if
-
-if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
-  print *, 'bad particle!!!!', pt_proc(p), s, pt_ind(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
-  stop
-end if
-! <<<< FOR PARTICLE DIAGNOSTICS
+#endif
 
 ! GCA/Boris condition . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 if (doBorisQ) then
@@ -148,19 +130,23 @@ if (doBorisQ) then
 else
   if (pt_proc(p) .lt. mpi_size) pt_proc(p) = pt_proc(p) + 2 * mpi_size
   ! use GCA here
-  ! at time `t = n-1/2`
-  dummy_ = 1.0 / (uperp_g + TINYFLD)
-  bperp_x = uperp_g_x * dummy_
-  bperp_y = uperp_g_y * dummy_
-  bperp_z = uperp_g_z * dummy_
+  if (.not. gca_enforce_mu0) then
+    ! at time `t = n-1/2`
+    dummy_ = 1.0 / (uperp_g + TINYFLD)
+    bperp_x = uperp_g_x * dummy_
+    bperp_y = uperp_g_y * dummy_
+    bperp_z = uperp_g_z * dummy_
+
+    ! `mu` at time `t = n-1/2` (in units of mc^2/2)
+    mu_ = uperp_g**2 / (bb0 * gammaE)
+  else
+    mu_ = 0.0
+  end if
 
   ! compute E_|| at `t = n`
   epar0_n = (ex0_n * bx0_n + ey0_n * by0_n + ez0_n * bz0_n) / bb0_n
   ! update u_||
   u_par = u_par + q_over_m * B_norm * epar0_n * CCINV
-
-  ! `mu` at time `t = n-1/2` (in units of mc^2/2)
-  mu_ = uperp_g**2 / (bb0 * gammaE)
 
   ! . . . . Solve nonlinear equation on coordinates at `t = n+1` . . . . . . . . . . . . .
   ! compute `vE` and `gammaE` at time `t = n` - - >
@@ -187,7 +173,7 @@ else
     z_n1 = z_n
   #endif
 
-  do iter = 1, 4
+  do iter = 1, GCAITER
     ! convert coordinates at `t = n+1` to `xi` and `dx`
     #if defined(oneD) || defined(twoD) || defined(threeD)
       xi_ = FLOOR(x_n1); dx_ = x_n1 - REAL(xi_)
@@ -300,19 +286,6 @@ else
   b0_SQR = bx0**2 + by0**2 + bz0**2
   #include "gca_ecrossb_drift.F"
 
-  ! FOR PARTICLE DIAGNOSTICS >>>>
-  if (gca_follow) then
-    if (((pt_proc(p) .eq. gca_follow_proc) .or. (pt_proc(p) .eq. gca_follow_proc + 2 * mpi_size)) .and.&
-      & (s .eq. gca_follow_sp) .and.&
-      & (pt_ind(p) .eq. gca_follow_ind)) then
-      print *, 'mu [prev]:', mu_
-      print *, 'uperp_g [prev]:', uperp_g
-      print *, 'uperp_g [new]:', sqrt(mu_ * bb0 * gammaE)
-      print *, '-----------------------------------------------------'
-    end if
-  end if
-  ! <<<< FOR PARTICLE DIAGNOSTICS
-
   ! at time `t = n+1/2`
   bb0 = sqrt(b0_SQR)
   uperp_g = sqrt(mu_ * bb0 * gammaE)
@@ -325,13 +298,70 @@ else
 
   Gamma_ = gammaE * sqrt(1.0 + u_par**2 + mu_ * bb0 * gammaE)
 
-  ! recover cartesian velocities
-  pt_u(p) = bpar_x * u_par + vE_x * Gamma_ + uperp_g * bperp_x
-  pt_v(p) = bpar_y * u_par + vE_y * Gamma_ + uperp_g * bperp_y
-  pt_w(p) = bpar_z * u_par + vE_z * Gamma_ + uperp_g * bperp_z
+  if (.not. gca_enforce_mu0) then
+    ! recover cartesian velocities
+    pt_u(p) = bpar_x * u_par + vE_x * Gamma_ + uperp_g * bperp_x
+    pt_v(p) = bpar_y * u_par + vE_y * Gamma_ + uperp_g * bperp_y
+    pt_w(p) = bpar_z * u_par + vE_z * Gamma_ + uperp_g * bperp_z
+  else
+    ! recover cartesian velocities
+    pt_u(p) = bpar_x * u_par + vE_x * Gamma_
+    pt_v(p) = bpar_y * u_par + vE_y * Gamma_
+    pt_w(p) = bpar_z * u_par + vE_z * Gamma_
+  end if
 
   ! save par/perp velocities
   pt_u_par(p) = u_par
   pt_u_perp(p) = uperp_g
 end if ! boris/gca criterion
 ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+
+! ! FOR PARTICLE DIAGNOSTICS >>>>
+! if (gca_follow) then
+!   if (((pt_proc(p) .eq. gca_follow_proc) .or. (pt_proc(p) .eq. gca_follow_proc + 2 * mpi_size)) .and.&
+!     & (s .eq. gca_follow_sp) .and.&
+!     & (pt_ind(p) .eq. gca_follow_ind)) then
+!     print *, 'mu [prev]:', mu_
+!     print *, 'uperp_g [prev]:', uperp_g
+!     print *, 'uperp_g [new]:', sqrt(mu_ * bb0 * gammaE)
+!     print *, '-----------------------------------------------------'
+!   end if
+! end if
+! ! <<<< FOR PARTICLE DIAGNOSTICS
+
+! ! FOR PARTICLE DIAGNOSTICS >>>>
+! if (gca_follow) then
+!   if (((pt_proc(p) .eq. gca_follow_proc) .or. (pt_proc(p) .eq. gca_follow_proc + 2 * mpi_size)) .and.&
+!     & (s .eq. gca_follow_sp) .and.&
+!     & (pt_ind(p) .eq. gca_follow_ind)) then
+!     dummy_ = sqrt(1.0 + u0**2 + v0**2 + w0**2)
+!     print *, 'particle...', (pt_proc(p) .gt. mpi_size)
+!     print *, 'gamma:', dummy_
+!     print *, 'E, B:', sqrt(e0_SQR), bb0, sqrt(e0_SQR) / bb0
+!     print *, 'radius:', sqrt(real((xi_ + dx_ + this_meshblock%ptr%x0 - 280.0)**2 +&
+!                                 & (yi_ + dy_ + this_meshblock%ptr%y0 - 280.0)**2 +&
+!                                 & (zi_ + dz_ + this_meshblock%ptr%z0 - 280.0)**2))
+!
+!     print *, 'upar, uperp, uperp/gamma, gammaE * vE:',&
+!                   & u_par, uperp_g, uperp_g / Gamma_, gammaE * sqrt(vE_x**2 + vE_y**2 + vE_z**2)
+!     print *, 'mu:', uperp_g**2 / (bb0 * gammaE)
+!     print *, 'rhoL:', CC**2 * dummy_ / (abs(q_over_m) * bb0 * B_norm)
+!     print *, 'rhoL_real:', CC**2 * uperp_g / (abs(q_over_m) * bb0 * B_norm)
+!     print *, 'omegaC_real:', abs(q_over_m) * bb0 * B_norm / (CC * uperp_g)
+!
+!     if (doBorisQ) then
+!       print *, 'will do Boris now'
+!     else
+!       print *, 'will do GCA now'
+!     end if
+!
+!     print *, '-----------------------------------------------------'
+!   end if
+! end if
+!
+! if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
+!   print *, 'bad particle!!!!', pt_proc(p), s, pt_ind(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
+!   stop
+! end if
+! ! <<<< FOR PARTICLE DIAGNOSTICS
