@@ -327,16 +327,18 @@ class PlotGrid():
     # self.button3 = ipyW.Button(description='Save .png')
     # self.button3.on_click(self.savePng)
 
+    timesteps = list(self.simulation.fields.keys())
+
     try:
       newvalue = self.parameters[0]['timestep']
     except:
-      newvalue = timestep if (not timestep is None) else list(self.simulation.fields.keys())[0]
+      newvalue = timestep if (not timestep is None) else timesteps[0]
     self.timestep = newvalue
 
     # self.button2.on_click(self.nextTimestep)
-    self.step_slider = ipyW.IntSlider(min=self.simulation._slice_steps[0],
-                                      max=self.simulation._slice_steps[-1],
-                                      step=1, value=self.timestep, layout={'width': '100%'})
+    self.step_slider = ipyW.IntSlider(min=min(timesteps),
+                                      max=max(timesteps),
+                                      step=timesteps[-1] - timesteps[-2], value=self.timestep, layout={'width': '100%'})
     self.step_slider.observe(self.changeTimestep, names="value")
 
     self.button_panel = ipyW.HBox([self.addPlot_button, self.step_slider], layout={'margin': '0px 0px 20px 0px'})

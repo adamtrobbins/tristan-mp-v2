@@ -249,12 +249,12 @@ contains
       glob_spectra(s,:) = recv_spec(:)
 
       #ifdef GCA
-        send_spec(:) = spectra(s,:)
+        send_spec(:) = gca_spectra(s,:)
         call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
                       & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
         glob_gca_spectra(s,:) = recv_spec(:)
 
-        send_spec(:) = spectra(nspec + s,:)
+        send_spec(:) = gca_spectra(nspec + s,:)
         call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
                       & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
         glob_gca_spectra(nspec + s,:) = recv_spec(:)
@@ -871,7 +871,7 @@ contains
     integer                           :: error, s, i, datarank
     integer(HID_T)                    :: file_id, dset_id, dspace_id
     integer(HSIZE_T), dimension(1)    :: data_dims
-    character(len=3)                  :: dsetname
+    character(len=6)                  :: dsetname
     real, allocatable, dimension(:)   :: bin_data
 
     datarank = 1

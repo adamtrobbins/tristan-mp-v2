@@ -40,14 +40,15 @@ def getFields(fname, nodes = False):
 def getSpectra(fname):
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
-    spectra = [key[1:] for key in keys if key.startswith("n")]
+    species = np.unique([int(''.join(filter(str.isdigit, key))) for key in keys])
+    types = np.unique([''.join([i for i in key if not i.isdigit()]) for key in keys])
     data = {}
-    for sp in spectra:
-      data[sp] = {}
-      (data[sp])['bn'] = file['e' + sp][:]
-      (data[sp])['cnt'] = file['n' + sp][:]
-  return data
-
+    for sp in species:
+      data[str(sp)] = {}
+      for tp in types:
+        (data[str(sp)])[tp] = file[tp + str(sp)][:]
+    return data
+  
 def getDomains(fname):
   with h5py.File(fname, 'r') as file:
     data = {}

@@ -168,7 +168,7 @@ contains
         end if
       #endif
 
-      if (spec_log_bins) eph_emit = log(eph_emit)
+      if (spec_log_bins) eph_emit = log(eph_emit + TINYFLD)
       if (eph_emit .le. spec_min) then
         spec_index = 1
       else if (eph_emit .ge. spec_max) then

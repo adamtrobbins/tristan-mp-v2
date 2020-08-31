@@ -61,11 +61,7 @@ contains
       integer(kind=2)     :: xi_rad, yi_rad, zi_rad
       real                :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
       real                :: u_init, v_init, w_init, dx_rad, dy_rad, dz_rad
-
-      #ifdef EMIT
-        integer, pointer, contiguous    :: pt_ind(:)
-      #endif
-
+      integer, pointer, contiguous    :: pt_ind(:)
     #endif
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
@@ -158,11 +154,7 @@ contains
                 pt_u_perp => species(s)%prtl_tile(ti, tj, tk)%u_perp
               #endif
 
-              #if defined(RADIATION) && defined(EMIT)
-                pt_ind => species(s)%prtl_tile(ti, tj, tk)%ind
-              #endif
-
-              #if defined(RADIATION) && defined(EMIT)
+              #if defined(RADIATION)
                 pt_ind => species(s)%prtl_tile(ti, tj, tk)%ind
               #endif
 
@@ -296,7 +288,7 @@ contains
                 pt_u_par => null();     pt_u_perp => null()
               #endif
 
-              #if defined(RADIATION) && defined(EMIT)
+              #if defined(RADIATION)
                 pt_ind => null()
               #endif
 
