@@ -131,7 +131,7 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    real    :: bx0, by0, bz0
+    real    :: bx0, by0, bz0, x_, y_, z_
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
@@ -142,11 +142,17 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          call getBfield(0, 0.0, REAL(i_glob), REAL(j_glob) + 0.5, REAL(k_glob) + 0.5, bx0, by0, bz0)
+
+          x_ = REAL(i_glob);  y_ = REAL(j_glob) + 0.5;  z_ = REAL(k_glob) + 0.5
+          call getBfield(0, 0.0, x_, y_, z_, bx0, by0, bz0)
           bx(i, j, k) = bx0
-          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob), REAL(k_glob) + 0.5, bx0, by0, bz0)
+
+          x_ = REAL(i_glob) + 0.5;  y_ = REAL(j_glob);  z_ = REAL(k_glob) + 0.5
+          call getBfield(0, 0.0, x_, y_, z_, bx0, by0, bz0)
           by(i, j, k) = by0
-          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob) + 0.5, REAL(k_glob), bx0, by0, bz0)
+
+          x_ = REAL(i_glob) + 0.5;  y_ = REAL(j_glob) + 0.5;  z_ = REAL(k_glob)
+          call getBfield(0, 0.0, x_, y_, z_, bx0, by0, bz0)
           bz(i, j, k) = bz0
         end do
       end do
@@ -521,6 +527,27 @@ contains
     real                          :: scaleEpar, scaleEperp, scaleBperp, scaleBpar, scale
     real                          :: vx, vy, vz, ex_dip, ey_dip, ez_dip
     real                          :: shift_E, e_int_dot_r, e_dip_dot_r
+    real                          :: rr, x_, y_, z_, rlimit
+
+    rlimit = step * CC + psr_radius
+
+    ! damp E-field at first timestep
+    if (step .lt. 1) then
+      do i = 0, this_meshblock%ptr%sx - 1
+        i_glob = i + this_meshblock%ptr%x0
+        do j = 0, this_meshblock%ptr%sy - 1
+          j_glob = j + this_meshblock%ptr%y0
+          do k = 0, this_meshblock%ptr%sz - 1
+            k_glob = k + this_meshblock%ptr%z0
+            x_ = REAL(i_glob);  y_ = REAL(j_glob);  z_ = REAL(k_glob)
+            rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
+            if (rr .gt. 2 * psr_radius) then
+              ex(i, j, k) = 0;  ey(i, j, k) = 0;  ez(i, j, k) = 0
+            end if
+          end do
+        end do
+      end do
+    end if
 
     if (present(updateE)) then
       updateE_ = updateE
