@@ -19,7 +19,7 @@
 ! vE_y = wE_y * dummy_
 ! vE_z = wE_z * dummy_
 
-dummy_ = 1.0 / (e0_SQR + b0_SQR + TINYFLD)
+dummy_ = 1.0 / (b0_SQR + TINYFLD)
 
 vE_x = (bz0 * ey0 - by0 * ez0) * dummy_
 vE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
