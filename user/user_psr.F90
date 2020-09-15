@@ -114,9 +114,9 @@ contains
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real                        :: radius2
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
-    userSLBload = 40**2 / radius2
-    if (radius2 .lt. 40**2) then
-      userSLBload = 1.0 / exp((40**2 - radius2) / 40**2)
+    userSLBload = 120**2 / radius2
+    if (radius2 .lt. 120**2) then
+      userSLBload = 1.0 / exp((120**2 - radius2) / 120**2)
     end if
     return
   end function
@@ -212,7 +212,7 @@ contains
     integer, optional, intent(in) :: step
     integer                       :: s, ti, tj, tk, p
     real                          :: x_g, y_g, z_g, r_g
-    integer                       :: n_part, n
+    integer                       :: n_part, n, sign
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
@@ -221,7 +221,7 @@ contains
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
     logical                       :: dummy_flag
     #ifdef GCA
-      real                          :: dummy_, vE_x, vE_y, vE_z, wE_x, wE_y, wE_z, wE_SQR
+      real                          :: dummy_, vE_x, vE_y, vE_z
       real                          :: e0_SQR, b0_SQR
     #endif
 
@@ -336,7 +336,9 @@ contains
             ! kick along local b-field:
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
             b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
+            sign = 1
             if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
+              sign = -1
               bx0 = -bx0; by0 = -by0; bz0 = -bz0
             end if
             nx = bx0 / b_sqr
@@ -353,27 +355,16 @@ contains
               call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
             #else
               ! kick along ExB:
-              call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
+              call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
               call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
               b0_SQR = bx0**2 + by0**2 + bz0**2
               e0_SQR = ex0**2 + ey0**2 + ez0**2
 
-              dummy_ = 1.0 / (e0_SQR + b0_SQR + TINYFLD)
+              dummy_ = 1.0 / (b0_SQR + TINYFLD)
 
-              wE_x = (bz0 * ey0 - by0 * ez0) * dummy_
-              wE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
-              wE_z = (by0 * ex0 - bx0 * ey0) * dummy_
-              wE_SQR = wE_x**2 + wE_y**2 + wE_z**2
-
-              dummy_ = sign(1.0, wE_SQR - 0.01)
-
-              ! if `wE_SQR < 0.01` -- using taylor expansion
-              dummy_ = 0.5 * (1.0 - dummy_) * (1.0 + wE_SQR + 2.0 * wE_SQR**2) +&
-                     & 0.25 * (1.0 + dummy_) * (1.0 - sqrt(max(1.0 - 4.0 * wE_SQR, 0.0))) / max(wE_SQR, 0.001)
-
-              vE_x = wE_x * dummy_
-              vE_y = wE_y * dummy_
-              vE_z = wE_z * dummy_
+              vE_x = (bz0 * ey0 - by0 * ez0) * dummy_
+              vE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
+              vE_z = (by0 * ex0 - bx0 * ey0) * dummy_
 
               dummy_ = 1.0 / sqrt(abs(1.0 - vE_x**2 - vE_y**2 - vE_z**2) + TINYFLD)
 
@@ -391,14 +382,14 @@ contains
                                                 & xi_past=xi, yi_past=yi, zi_past=zi,&
                                                 & dx_past=dx, dy_past=dy, dz_past=dz,&
                                                 & u=u_, v=v_, w=w_,&
-                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=dummy_, u_perp=0.0,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
                                                 & ind=species(1)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
               species(1)%cntr_sp = species(1)%cntr_sp + 1
               call createParticleFromAttributes(2, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
                                                 & xi_past=xi, yi_past=yi, zi_past=zi,&
                                                 & dx_past=dx, dy_past=dy, dz_past=dz,&
                                                 & u=u_, v=v_, w=w_,&
-                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=dummy_, u_perp=0.0,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
                                                 & ind=species(2)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
               species(2)%cntr_sp = species(2)%cntr_sp + 1
             #endif
@@ -529,10 +520,9 @@ contains
     real                          :: shift_E, e_int_dot_r, e_dip_dot_r
     real                          :: rr, x_, y_, z_, rlimit
 
-    rlimit = step * CC + psr_radius
-
-    ! damp E-field at first timestep
-    if (step .lt. 1) then
+    rlimit = step * CC + psr_radius + shell_width + inj_dr
+    if (rlimit .lt. 0.6 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz)) then
+      ! damp E-field inside a sphere
       do i = 0, this_meshblock%ptr%sx - 1
         i_glob = i + this_meshblock%ptr%x0
         do j = 0, this_meshblock%ptr%sy - 1
@@ -541,7 +531,7 @@ contains
             k_glob = k + this_meshblock%ptr%z0
             x_ = REAL(i_glob);  y_ = REAL(j_glob);  z_ = REAL(k_glob)
             rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
-            if (rr .gt. 2 * psr_radius) then
+            if (rr .gt. rlimit) then
               ex(i, j, k) = 0;  ey(i, j, k) = 0;  ez(i, j, k) = 0
             end if
           end do
