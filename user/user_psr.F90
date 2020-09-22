@@ -105,7 +105,7 @@ contains
     return
   end function
 
-  #define PSRRADIUS 40
+  #define PSRRADIUS 120
 
   function userSLBload(x_glob, y_glob, z_glob,&
                      & dummy1, dummy2, dummy3)

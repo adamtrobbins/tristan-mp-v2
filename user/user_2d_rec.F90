@@ -12,13 +12,9 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real    :: nCS_over_nUP, current_width, upstream_T, cs_x
-  real    :: injector_x1, injector_x2, injector_sx, injector_betax
-  integer :: injector_reset_interval
-
-  private :: nCS_over_nUP, current_width, upstream_T, cs_x
-  private :: injector_x1, injector_x2, injector_sx, injector_betax
-  private :: injector_reset_interval
+  real, private    :: nCS_over_nUP, current_width, upstream_T, cs_x
+  real, private    :: injector_x1, injector_x2, injector_sx, injector_betax
+  integer, private :: injector_reset_interval
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
