@@ -26,6 +26,14 @@ def getFields(fname, nodes = False):
             data[key] = file[key][:]
     return data
 
+def getParameters(fname):
+  with h5py.File(fname, 'r') as file:
+    keys = list(file.keys())
+    params = {}
+    for key in keys:
+      params[key] = file[key][:][0]
+  return params
+
 # usage example for 2D uniform grid:
 # ```
 #   field_data = isolde.getFields("flds.tot.00000")
@@ -48,7 +56,7 @@ def getSpectra(fname):
       for tp in types:
         (data[str(sp)])[tp] = file[tp + str(sp)][:]
     return data
-  
+
 def getDomains(fname):
   with h5py.File(fname, 'r') as file:
     data = {}
