@@ -105,7 +105,7 @@ contains
     return
   end function
 
-  #define PSRRADIUS 120
+  #define PSRRADIUS 40
 
   function userSLBload(x_glob, y_glob, z_glob,&
                      & dummy1, dummy2, dummy3)
@@ -310,6 +310,8 @@ contains
         if (dummy_flag) then
           call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
           dummy_flag = .true.
+
+          ! limiter on sigma
           if ((sigGJ_limiter .ne. 0) .and. dummy_flag) then
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
             density = lg_arr(xi, yi, zi)
@@ -322,16 +324,22 @@ contains
             dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter)
           end if
 
+          ! limiter on density
           if ((nGJ_limiter .ne. 0) .and. dummy_flag) then
             density = lg_arr(xi, yi, zi)
             dummy_flag = (density .lt. nGJ * nGJ_limiter)
           end if
 
+          ! limiter on j_||
           if ((jdotb_limiter .ne. 0) .and. dummy_flag) then
             call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-            j_dot_b = (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
-            dummy_flag = ((abs(j_dot_b) * B_norm .gt. jdotb_limiter * nGJ * CC * unit_ch) .or. (step .lt. 0.1 * psr_period))
+            j_dot_b = B_norm * (jx0 * bx0 + jy0 * by0 + jz0 * bz0) * sign(bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
+            ! local GJ density
+            density = 2 * psr_omega0 * B_norm * bz0 / CC
+            dummy_flag = ((abs(j_dot_b) .gt. jdotb_limiter * abs(density) * CC) .or. (step .lt. 50))
+            ! j_dot_b = (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
+            ! dummy_flag = ((abs(j_dot_b) * B_norm .gt. jdotb_limiter * nGJ * CC * unit_ch) .or. (step .lt. 0.1 * psr_period))
           end if
 
           if (dummy_flag) then
