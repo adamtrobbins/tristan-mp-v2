@@ -37,7 +37,7 @@ module m_globalnamespace
   ! simulation parameters
   integer                :: start_timestep = 0, final_timestep, output_index = 0, slice_index = 0
   logical                :: resize_tiles
-  integer                :: min_tile_nprt = 100
+  integer                :: min_tile_nprt = 100, max_buffsize = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & restart_dir_name = 'restart',&

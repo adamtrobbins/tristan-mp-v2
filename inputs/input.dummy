@@ -26,6 +26,7 @@
 
   resize_tiles  = 0              # reallocate particle tiles if necessary
   min_tile_nprt = 1000           # min # of allocated particles per tile
+  max_buff      = 100            # max overdensity to be passed between meshblocks [default: 100]
 
   tileX         = 5              # tile dimension in x
   tileY         = 5              # tile dimension in y
@@ -66,6 +67,7 @@
   istep         = 4              # field downsampling
   flds_at_prtl  = 1              # save fields at particle position
   write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
+  write_nablas  = 1              # write divE & curlB
 
   hst_enable    = 0
   hst_interval  = 1
