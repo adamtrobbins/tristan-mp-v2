@@ -11,9 +11,10 @@ module m_writeoutput
   use m_particles
   use m_fields
   use m_helpers
-  use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
+  use m_writelogistics, only: prepareFieldForOutput, selectFieldForOutput,&
+                            & defineFieldVarsToOutput,&
+                            & fld_vars, n_fld_vars, output_flds_istep
   use m_exchangearray
-  use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
 
   ! extra physics
   #ifdef RADIATION
@@ -30,9 +31,9 @@ module m_writeoutput
 
   implicit none
 
-  integer                 :: output_start, output_interval, output_stride, output_istep
-  integer                 :: n_fld_vars, n_prtl_vars, n_dom_vars
-  character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), fld_vars(100), dom_vars(100)
+  integer                 :: output_start, output_interval, output_stride
+  integer                 :: n_prtl_vars, n_dom_vars
+  character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), dom_vars(100)
   real, allocatable, dimension(:,:) :: glob_spectra
   logical                 :: output_enable, flds_at_prtl, write_xdmf
   logical                 :: params_enable = .true., prtl_enable = .true.
@@ -147,35 +148,7 @@ contains
       n_prtl_vars = n_prtl_vars + 3
     #endif
 
-    ! initialize field variables
-    !   total number of fields (excluding particle densities)
-    n_fld_vars = 12
-    n_fld_vars = n_fld_vars + 2 * nspec
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(s) = 'dens' // STR(s)
-    end do
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(nspec + s) = 'enrg' // STR(s)
-    end do
-
-    ndown = 2 * nspec + 1
-
-    #ifdef GCA
-      n_fld_vars = n_fld_vars + nspec
-      ! save the density of particles doing GCA
-      do s = 1, nspec
-        fld_vars(2 * nspec + s) = 'dgca' // STR(s)
-      end do
-
-      ndown = 3 * nspec + 1
-    #endif
-
-    fld_vars(ndown : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
-                                   & 'bx   ', 'by   ', 'bz   ',&
-                                   & 'jx   ', 'jy   ', 'jz   ',&
-                                   & 'xx   ', 'yy   ', 'zz   '/)
+    call defineFieldVarsToOutput()
 
     ! initialize domain output variables
     !   FIX1: maybe add # of particles per domain
@@ -477,7 +450,7 @@ contains
     filename = trim(output_dir_name) // '/flds.tot.' // trim(stepchar)
 
     ! assuming `global_mesh%{x0,y0,z0} .eq. 0`
-    if (output_istep .eq. 1) then
+    if (output_flds_istep .eq. 1) then
       offset_i = this_x0;   offset_j = this_y0;   offset_k = this_z0
       n_i = this_sx - 1;    n_j = this_sy - 1;    n_k = this_sz - 1
       glob_n_i = global_mesh%sx
@@ -498,27 +471,27 @@ contains
       offset_k = 0; n_k = 0
       glob_n_k = 1
       #if defined(oneD) || defined (twoD) || defined (threeD)
-        offset_i = CEILING(REAL(this_x0) / REAL(output_istep))
-        i_start = CEILING(REAL(this_x0) / REAL(output_istep)) * output_istep - this_x0
-        i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_istep)) - 1) * output_istep - this_x0
-        n_i = (i_end - i_start) / output_istep
-        glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_istep))
+        offset_i = CEILING(REAL(this_x0) / REAL(output_flds_istep))
+        i_start = CEILING(REAL(this_x0) / REAL(output_flds_istep)) * output_flds_istep - this_x0
+        i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_x0
+        n_i = (i_end - i_start) / output_flds_istep
+        glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_flds_istep))
         glob_n_i = MAX(1, glob_n_i)
       #endif
       #if defined(twoD) || defined (threeD)
-        offset_j = CEILING(REAL(this_y0) / REAL(output_istep))
-        j_start = CEILING(REAL(this_y0) / REAL(output_istep)) * output_istep - this_y0
-        j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_istep)) - 1) * output_istep - this_y0
-        n_j = (j_end - j_start) / output_istep
-        glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_istep))
+        offset_j = CEILING(REAL(this_y0) / REAL(output_flds_istep))
+        j_start = CEILING(REAL(this_y0) / REAL(output_flds_istep)) * output_flds_istep - this_y0
+        j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_y0
+        n_j = (j_end - j_start) / output_flds_istep
+        glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_flds_istep))
         glob_n_j = MAX(1, glob_n_j)
       #endif
       #if defined(threeD)
-        offset_k = CEILING(REAL(this_z0) / REAL(output_istep))
-        k_start = CEILING(REAL(this_z0) / REAL(output_istep)) * output_istep - this_z0
-        k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_istep)) - 1) * output_istep - this_z0
-        n_k = (k_end - k_start) / output_istep
-        glob_n_k = CEILING(REAL(global_mesh%sz) / REAL(output_istep))
+        offset_k = CEILING(REAL(this_z0) / REAL(output_flds_istep))
+        k_start = CEILING(REAL(this_z0) / REAL(output_flds_istep)) * output_flds_istep - this_z0
+        k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_z0
+        n_k = (k_end - k_start) / output_flds_istep
+        glob_n_k = CEILING(REAL(global_mesh%sz) / REAL(output_flds_istep))
         glob_n_k = MAX(1, glob_n_k)
       #endif
     end if
@@ -565,9 +538,9 @@ contains
       do i1 = 0, n_i
         do j1 = 0, n_j
           do k1 = 0, n_k
-            i = i_start + i1 * output_istep
-            j = j_start + j1 * output_istep
-            k = k_start + k1 * output_istep
+            i = i_start + i1 * output_flds_istep
+            j = j_start + j1 * output_flds_istep
+            k = k_start + k1 * output_flds_istep
             call selectFieldForOutput(fld_vars(f), i1, j1, k1, i, j, k, writing_lgarrQ)
           end do
         end do

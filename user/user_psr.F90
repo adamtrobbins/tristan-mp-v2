@@ -334,7 +334,7 @@ contains
           if ((jdotb_limiter .ne. 0) .and. dummy_flag) then
             call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-            j_dot_b = B_norm * (jx0 * bx0 + jy0 * by0 + jz0 * bz0) * sign(bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
+            j_dot_b = B_norm * (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
             ! local GJ density
             density = 2 * psr_omega0 * B_norm * bz0 / CC
             dummy_flag = ((abs(j_dot_b) .gt. jdotb_limiter * abs(density) * CC) .or. (step .lt. 50))

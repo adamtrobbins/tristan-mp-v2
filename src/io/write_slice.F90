@@ -11,7 +11,9 @@ module m_writeslice
   use m_particles
   use m_fields
   use m_helpers
-  use m_writehelpers, only: prepareFieldForOutput, selectFieldForOutput
+  use m_writelogistics, only: prepareFieldForOutput, selectFieldForOutput,&
+                            & defineFieldVarsToOutput,&
+                            & fld_vars, n_fld_vars, output_flds_istep
 
   implicit none
 
@@ -22,14 +24,11 @@ module m_writeslice
   integer                           :: slice_pos(100)
 
   integer                           :: slice_start, slice_interval
-  integer, private                  :: n_fld_vars
-  character(len=STR_MAX), private   :: fld_vars(100)
 
   !--- PRIVATE functions -----------------------------------------!
   #ifdef SLICE
     private :: writeSliceX_hdf5, writeSliceY_hdf5, writeSliceZ_hdf5!, writeXDMF_hdf5
   #endif
-  private :: initializeSliceOutput
   !...............................................................!
 
 contains
@@ -39,7 +38,7 @@ contains
     integer                     :: step, ierr
     integer                     :: n
 
-    call initializeSliceOutput()
+    call defineFieldVarsToOutput()
 
     step = slice_index
     #ifdef SLICE
@@ -62,41 +61,6 @@ contains
     call printDiag((mpi_rank .eq. 0), "slices()", .true.)
     slice_index = slice_index + 1
   end subroutine writeSlices
-
-  subroutine initializeSliceOutput()
-    ! DEP_PRT [particle-dependent]
-    implicit none
-    integer                   :: s
-    integer                   :: ierr, ndown
-    ! initialize field variables
-    !   total number of fields (excluding particle densities)
-    n_fld_vars = 12
-    n_fld_vars = n_fld_vars + 2 * nspec
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(s) = 'dens' // STR(s)
-    end do
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(nspec + s) = 'enrg' // STR(s)
-    end do
-
-    ndown = 2 * nspec + 1
-
-    #ifdef GCA
-      n_fld_vars = n_fld_vars + nspec
-      ! save the density of particles doing GCA
-      do s = 1, nspec
-        fld_vars(2 * nspec + s) = 'dgca' // STR(s)
-      end do
-      ndown = 3 * nspec + 1
-    #endif
-
-    fld_vars(ndown : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
-                                   & 'bx   ', 'by   ', 'bz   ',&
-                                   & 'jx   ', 'jy   ', 'jz   ',&
-                                   & 'xx   ', 'yy   ', 'zz   '/)
-  end subroutine initializeSliceOutput
 
   #ifdef SLICE
   subroutine writeSliceX_hdf5(step, time, x_cut)

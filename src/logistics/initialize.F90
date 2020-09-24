@@ -13,6 +13,7 @@ module m_initialize
   use m_particlelogistics
   use m_fields
   use m_userfile, user_slb_load_ptr => userSLBload
+  use m_writelogistics, only: output_flds_istep, write_derivatives
   use m_writeoutput
   use m_writeslice
   use m_writehistory
@@ -342,7 +343,7 @@ contains
     call getInput('output', 'start', output_start, 0)
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
-    call getInput('output', 'istep', output_istep, 4)
+    call getInput('output', 'istep', output_flds_istep, 4)
 
     call getInput('output', 'hst_enable', hst_enable, .false.)
     call getInput('output', 'hst_interval', hst_interval, 1)
@@ -359,6 +360,7 @@ contains
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl, .false.)
     call getInput('output', 'write_xdmf', write_xdmf, .true.)
+    call getInput('output', 'write_nablas', write_derivatives, .true.)
 
     #if defined(HDF5) && defined(MPI08)
       h5comm = MPI_COMM_WORLD%MPI_VAL
@@ -584,7 +586,9 @@ contains
     integer(kind=MPI_ADDRESS_KIND), dimension(0:2)  :: offsets
     integer(kind=MPI_ADDRESS_KIND)                  :: extent_int2, extent_real, lb
 
-    multiplier = max(INT(ppc0), 1) * 100
+    call getInput('grid', 'max_buff', max_buffsize, 100)
+
+    multiplier = max(INT(ppc0), 1) * max_buffsize
     ! FIX this might change over time (due to load balancing)
     buffsize_x = 0
     buffsize_y = 0; buffsize_xy = 0
