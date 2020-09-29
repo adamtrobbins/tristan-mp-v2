@@ -4,18 +4,21 @@ import ipywidgets as ipyW
 from IPython.display import display
 
 class FieldData2D():
-  def __init__(self, root, step, slices, isSlice,
+  def __init__(self, root, step, slices, isSlice, mask,
                extraVariables, coordinateTransformation):
     self._root = root
     self._step = step
     self.slices = slices
     self._isSlice = isSlice
-
+    self._mask = mask
     self._extraVariables = extraVariables
     self._coordinateTransformation = coordinateTransformation
 
     self.data = {}
     self.axes = []
+
+  def maskData(self, mask):
+    self._mask = mask
 
   def addVariables(self, variables):
     if (self._extraVariables is None):
@@ -58,6 +61,9 @@ class FieldData2D():
       if (self._extraVariables is not None):
         for k in self._extraVariables.keys():
           xr_data[k] = self._extraVariables[k](xr_data)
+      for k in xr_data.keys():
+        if not self._mask is None:
+          xr_data[k] = xr_data[k].where(self._mask(xr_data))
       self.data[slice] = xr_data
 
   def loadData(self):
@@ -67,7 +73,7 @@ class FieldData2D():
 
 class Simulation():
   def __init__(self,
-               root, fld_steps=None, useSlices=True,
+               root, fld_steps=None, useSlices=True, mask=None,
                coordinateTransformation={'x': lambda x: x, 'y': lambda y: y, 'z': lambda z: z},
                extraVariables=None
               ):
@@ -79,12 +85,14 @@ class Simulation():
     self.spectra = {}
     self.particles = {}
 
+    self._mask = mask
     self._fld_steps = fld_steps
     self._useSlices = useSlices
     self._extraVariables = extraVariables
     self._coordinateTransformation = coordinateTransformation
 
-    self.readFiles()
+  def maskData(self, mask):
+    self._mask = mask
 
   def addVariables(self, variables):
     if (self._extraVariables is None):
@@ -123,12 +131,13 @@ class Simulation():
     # TODO: preload spectra
 
     for st in self._slice_steps:
-      fld = FieldData2D(self._root, st, self._slices, self._useSlices,
+      fld = FieldData2D(self._root, st, self._slices, self._useSlices, self._mask,
                         extraVariables=self._extraVariables,
                         coordinateTransformation=self._coordinateTransformation)
       self.fields.update({st: fld})
 
   def loadData(self):
+    self.readFiles()
     [fld.loadData() for st, fld in self.fields.items()]
 
 class FieldPlot2D(ipyW.VBox):
@@ -215,7 +224,7 @@ class FieldPlot2D(ipyW.VBox):
     if (self._kwargs['logplot']):
       if (self._kwargs['vmin'] * self._kwargs['vmax'] < 0):
         norm_ = mpl.colors.SymLogNorm(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'],
-                                     linthresh=self._kwargs['vmax'] / 1e3, linscale=1)
+                                     linthresh=self._kwargs['vmax'] / 1e3, linscale=1, base=10)
       else:
         norm_ = mpl.colors.LogNorm(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'])
     else:
@@ -334,11 +343,15 @@ class PlotGrid():
     except:
       newvalue = timestep if (not timestep is None) else timesteps[0]
     self.timestep = newvalue
+    try:
+      dtimestep = timesteps[-1] - timesteps[-2]
+    except:
+      dtimestep = 0
 
     # self.button2.on_click(self.nextTimestep)
     self.step_slider = ipyW.IntSlider(min=min(timesteps),
                                       max=max(timesteps),
-                                      step=timesteps[-1] - timesteps[-2], value=self.timestep, layout={'width': '100%'})
+                                      step=dtimestep, value=self.timestep, layout={'width': '100%'})
     self.step_slider.observe(self.changeTimestep, names="value")
 
     self.button_panel = ipyW.HBox([self.addPlot_button, self.step_slider], layout={'margin': '0px 0px 20px 0px'})
