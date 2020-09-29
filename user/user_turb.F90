@@ -136,8 +136,6 @@ contains
     call MPI_Bcast(rand_phases_1, N_modes**2, MPI_REAL, root_rnk, MPI_COMM_WORLD, i)
     call MPI_Bcast(rand_phases_2, N_modes**2, MPI_REAL, root_rnk, MPI_COMM_WORLD, i)
 
-    print *, mpi_rank, rand_phases_1(4, 7), rand_phases_2(5, 1)
-
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
