@@ -538,7 +538,7 @@ contains
     !   y_ = max(REAL(this_meshblock%ptr%y0), min(yc_g, REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy - 1)))
     !   z_ = max(REAL(this_meshblock%ptr%z0), min(zc_g, REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz - 1)))
     !   rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
-    !   if (rr .le. rlimit) then
+    !   if (rr .le. rlimit + 2) then
     !     ! damp E-field inside a sphere
     !     do i = 0, this_meshblock%ptr%sx - 1
     !       i_glob = i + this_meshblock%ptr%x0
