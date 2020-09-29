@@ -8,6 +8,11 @@ module m_currentdeposit
   use m_particles
   implicit none
 contains
+  subroutine resetCurrents()
+    implicit none
+    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+  end subroutine resetCurrents
+
   subroutine depositCurrents()
     ! DEP_PRT [particle-dependent]
     implicit none
@@ -26,8 +31,6 @@ contains
     #else
       real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:)
     #endif
-
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
     do s = 1, nspec ! loop over species
       if ((species(s)%ch_sp .eq. 0) .or. (.not. species(s)%deposit_sp)) cycle

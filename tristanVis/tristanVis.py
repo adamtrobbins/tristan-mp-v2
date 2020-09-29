@@ -159,6 +159,7 @@ class FieldPlot2D(ipyW.VBox):
     self._kwargs['logplot'] = self._kwargs.get('logplot', False)
     self._kwargs['controls'] = self._kwargs.get('controls', True)
     self._kwargs['figsize'] = self._kwargs.get('figsize', (6, 4))
+    self._kwargs['zoomQ'] = self._kwargs.get('zoomQ', False)
 
     if (self._kwargs['vmin'] is None):
       self._kwargs['vmin'], _ = self.findMinMax()
@@ -195,7 +196,7 @@ class FieldPlot2D(ipyW.VBox):
     output = ipyW.Output()
     with output:
       self.fig, self.ax = plt.subplots(figsize=self._kwargs['figsize'])
-    self.fig.canvas.toolbar_visible = False
+    self.fig.canvas.toolbar_visible = self._kwargs['zoomQ']
     self.fig.canvas.header_visible = False
     self.fig.canvas.footer_visible = False
 
@@ -315,11 +316,12 @@ class FieldPlot2D(ipyW.VBox):
       self.obj_maxval.value = self._kwargs['vmax']
 
 class PlotGrid():
-  def __init__(self, simulation, timestep=None, init=[], controls=True, figsize=None):
+  def __init__(self, simulation, zoom=False, timestep=None, init=[], controls=True, figsize=None):
     self.simulation = simulation
     self.parameters = init
     self.controls = controls
     self.figsize = figsize
+    self.zoomQ = zoom
     self.panels = []
     if self.parameters != []:
       try:
@@ -405,6 +407,7 @@ class PlotGrid():
               self.parameters[n]['figsize'] = self.figsize
             self.parameters[n]['controls'] = self.controls
             self.parameters[n]['timestep'] = self.timestep
+            self.parameters[n]['zoomQ'] = self.zoomQ
             panel = FieldPlot2D(self.simulation, **self.parameters[n])
             self._oldpanels.append(panel)
             grid[i, j] = panel
