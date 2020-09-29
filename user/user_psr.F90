@@ -105,7 +105,7 @@ contains
     return
   end function
 
-  #define PSRRADIUS 40
+  #define PSRRADIUS 120
 
   function userSLBload(x_glob, y_glob, z_glob,&
                      & dummy1, dummy2, dummy3)
@@ -530,32 +530,32 @@ contains
     real                          :: shift_E, e_int_dot_r, e_dip_dot_r
     real                          :: rr, x_, y_, z_, rlimit
 
-    rlimit = step * CC + psr_radius + shell_width + inj_dr
-    if (rlimit .lt. 0.6 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz)) then
-      ! check if the sphere with radius `rlimit` intersects the current meshblock ...
-      ! ... this additional step should speed things up a bit
-      x_ = max(REAL(this_meshblock%ptr%x0), min(xc_g, REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx - 1)))
-      y_ = max(REAL(this_meshblock%ptr%y0), min(yc_g, REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy - 1)))
-      z_ = max(REAL(this_meshblock%ptr%z0), min(zc_g, REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz - 1)))
-      rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
-      if (rr .le. rlimit) then
-        ! damp E-field inside a sphere
-        do i = 0, this_meshblock%ptr%sx - 1
-          i_glob = i + this_meshblock%ptr%x0
-          do j = 0, this_meshblock%ptr%sy - 1
-            j_glob = j + this_meshblock%ptr%y0
-            do k = 0, this_meshblock%ptr%sz - 1
-              k_glob = k + this_meshblock%ptr%z0
-              x_ = REAL(i_glob);  y_ = REAL(j_glob);  z_ = REAL(k_glob)
-              rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
-              if (rr .gt. rlimit) then
-                ex(i, j, k) = 0;  ey(i, j, k) = 0;  ez(i, j, k) = 0
-              end if
-            end do
-          end do
-        end do
-      end if
-    end if
+    ! rlimit = step * CC + psr_radius + shell_width + inj_dr
+    ! if (rlimit .lt. 0.6 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz)) then
+    !   ! check if the sphere with radius `rlimit` intersects the current meshblock ...
+    !   ! ... this additional step should speed things up a bit
+    !   x_ = max(REAL(this_meshblock%ptr%x0), min(xc_g, REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx - 1)))
+    !   y_ = max(REAL(this_meshblock%ptr%y0), min(yc_g, REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy - 1)))
+    !   z_ = max(REAL(this_meshblock%ptr%z0), min(zc_g, REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz - 1)))
+    !   rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
+    !   if (rr .le. rlimit) then
+    !     ! damp E-field inside a sphere
+    !     do i = 0, this_meshblock%ptr%sx - 1
+    !       i_glob = i + this_meshblock%ptr%x0
+    !       do j = 0, this_meshblock%ptr%sy - 1
+    !         j_glob = j + this_meshblock%ptr%y0
+    !         do k = 0, this_meshblock%ptr%sz - 1
+    !           k_glob = k + this_meshblock%ptr%z0
+    !           x_ = REAL(i_glob);  y_ = REAL(j_glob);  z_ = REAL(k_glob)
+    !           rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
+    !           if (rr .gt. rlimit) then
+    !             ex(i, j, k) = 0;  ey(i, j, k) = 0;  ez(i, j, k) = 0
+    !           end if
+    !         end do
+    !       end do
+    !     end do
+    !   end if
+    ! end if
 
     if (present(updateE)) then
       updateE_ = updateE

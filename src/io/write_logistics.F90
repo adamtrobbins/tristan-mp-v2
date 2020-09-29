@@ -135,11 +135,11 @@ contains
       #ifdef oneD
         dx1 = 0.0; dx2 = 0.0
       #elif twoD
-        dx1 = (bz(i, j, k) - bz(i, j - 1, k))
-        dx2 = (bz(i - 1, j, k) - bz(i - 1, j - 1, k))
+        dx1 = (bz(    i,    j,k) - bz(    i,j - 1,    k))
+        dx2 = (bz(i - 1,    j,k) - bz(i - 1,j - 1,    k))
       #elif threeD
-        dx1 = (bz(i, j, k) - bz(i, j - 1, k)) - (by(i, j, k) - by(i, j, k - 1))
-        dx2 = (bz(i - 1, j, k) - bz(i - 1, j - 1, k)) - (by(i - 1, j, k) - by(i - 1, j, k - 1))
+        dx1 = (bz(    i,    j,    k) - bz(    i,j - 1,    k)) - (by(    i,    j,    k) - by(    i,    j,k - 1))
+        dx2 = (bz(i - 1,    j,    k) - bz(i - 1,j - 1,    k)) - (by(i - 1,    j,    k) - by(i - 1,    j,k - 1))
       #endif
       sm_arr(i1, j1, k1) = B_norm * 0.5 * (dx1 + dx2)
     case('curlBy')
@@ -147,11 +147,11 @@ contains
         dy1 = -(bz(i, j, k) - bz(i - 1, j, k))
         dy2 = dy1
       #elif twoD
-        dy1 = -(bz(i, j, k) - bz(i - 1, j, k))
-        dy2 = -(bz(i, j - 1, k) - bz(i - 1, j - 1, k))
+        dy1 = -(bz(   i,    j,    k) - bz(i - 1,    j,    k))
+        dy2 = -(bz(   i,j - 1,    k) - bz(i - 1,j - 1,    k))
       #elif threeD
-        dy1 = (bx(i, j, k) - bx(i, j, k - 1)) - (bz(i, j, k) - bz(i - 1, j, k))
-        dy2 = (bx(i, j - 1, k) - bx(i, j - 1, k - 1)) - (bz(i, j - 1, k) - bz(i - 1, j - 1, k))
+        dy1 = (bx(    i,    j,    k) - bx(    i,    j,k - 1)) - (bz(    i,    j,    k) - bz(i - 1,    j,    k))
+        dy2 = (bx(    i,j - 1,    k) - bx(    i,j - 1,k - 1)) - (bz(    i,j - 1,    k) - bz(i - 1,j - 1,    k))
       #endif
       sm_arr(i1, j1, k1) = B_norm * 0.5 * (dy1 + dy2)
     case('curlBz')
@@ -162,8 +162,9 @@ contains
         dz1 = (by(i, j, k) - by(i - 1, j, k)) - (bx(i, j, k) - bx(i, j - 1, k))
         dz2 = dz1
       #elif threeD
-        dz1 = (by(i, j, k) - by(i - 1, j, k)) - (bx(i, j, k) - bx(i, j - 1, k))
-        dz2 = (by(i, j, k) - by(i - 1, j, k - 1)) - (bx(i, j, k) - bx(i, j - 1, k - 1))
+        ! dz1 = (by(    i,    j,    k) - by(i - 1,    j,    k)) - (bx(    i,    j,    k) - bx(    i,j - 1,    k))
+        ! dz2 = (by(    i,    j,    k) - by(i - 1,    j,k - 1)) - (bx(    i,    j,    k) - bx(    i,j - 1,k - 1))
+        dz1 = i; dz2 = i
       #endif
       sm_arr(i1, j1, k1) = B_norm * 0.5 * (dz1 + dz2)
     case('divE')
