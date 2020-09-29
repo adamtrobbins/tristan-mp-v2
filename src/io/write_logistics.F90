@@ -69,63 +69,63 @@ contains
     real                                :: dx1, dx2, dy1, dy2, dz1, dz2, divE
     select case (trim(fld_var))
     case('ex')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
       #else
         ex0 = ex(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = ex0 * B_norm
     case('ey')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
       #else
         ey0 = ey(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = ey0 * B_norm
     case('ez')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
       #else
         ez0 = ez(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = ez0 * B_norm
     case('bx')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
       #else
         bx0 = bx(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = bx0 * B_norm
     case('by')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
       #else
         by0 = by(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = by0 * B_norm
     case('bz')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
       #else
         bz0 = bz(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = bz0 * B_norm
     case('jx')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
       #else
         jx0 = jx(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = -jx0 * B_norm
     case('jy')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
       #else
         jy0 = jy(i, j, k)
       #endif
       sm_arr(i1, j1, k1) = -jy0 * B_norm
     case('jz')
-      #ifndef debug
+      #ifndef DEBUG
         call interpFromEdges(0.0, 0.0, 0.0, i, j, k, jx, jy, jz, jx0, jy0, jz0)
       #else
         jz0 = jz(i, j, k)
@@ -162,9 +162,8 @@ contains
         dz1 = (by(i, j, k) - by(i - 1, j, k)) - (bx(i, j, k) - bx(i, j - 1, k))
         dz2 = dz1
       #elif threeD
-        ! dz1 = (by(    i,    j,    k) - by(i - 1,    j,    k)) - (bx(    i,    j,    k) - bx(    i,j - 1,    k))
-        ! dz2 = (by(    i,    j,    k) - by(i - 1,    j,k - 1)) - (bx(    i,    j,    k) - bx(    i,j - 1,k - 1))
-        dz1 = i; dz2 = i
+        dz1 = (by(    i,    j,    k) - by(i - 1,    j,    k)) - (bx(    i,    j,    k) - bx(    i,j - 1,    k))
+        dz2 = (by(    i,    j,k - 1) - by(i - 1,    j,k - 1)) - (bx(    i,    j,k - 1) - bx(    i,j - 1,k - 1))
       #endif
       sm_arr(i1, j1, k1) = B_norm * 0.5 * (dz1 + dz2)
     case('divE')
