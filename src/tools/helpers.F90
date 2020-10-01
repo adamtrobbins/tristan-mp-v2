@@ -794,4 +794,53 @@ contains
     #endif
   end subroutine interpFromFaces
 
+  subroutine depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1,&
+                                                         & x2, y2, z2, multiplier)
+    implicit none
+    type(particle_tile), intent(in) :: tile
+    integer, intent(in)       :: s, p
+    real, intent(in)          :: x1, y1, z1, x2, y2, z2
+    real, optional, intent(in):: multiplier
+    real                      :: xr, yr, zr
+    integer(kind=2)           :: i1, i2, j1, j2, k1, k2
+    integer(kind=2)           :: i1p1, i2p1, j1p1, j2p1, k1p1, k2p1
+    real                      :: Wx1, Wy1, Wz1, Wx2, Wy2, Wz2
+    real                      :: onemWx1, onemWy1, onemWz1, onemWx2, onemWy2, onemWz2
+    real                      :: Fx1, Fy1, Fz1, Fx2, Fy2, Fz2
+    real                      :: weighted_charge
+
+    if (present(multiplier)) then
+      weighted_charge = multiplier * tile%weight(p) * species(s)%ch_sp * unit_ch / B_norm
+    else
+      weighted_charge = tile%weight(p) * species(s)%ch_sp * unit_ch / B_norm
+    end if
+
+    #ifdef oneD
+      i1 = FLOOR(x1);   i2 = FLOOR(x2)
+      j1 = 0;           j2 = 0
+      k1 = 0;           k2 = 0
+      i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
+    #elif twoD
+      i1 = FLOOR(x1);  i2 = FLOOR(x2)
+      j1 = FLOOR(y1);  j2 = FLOOR(y2)
+      k1 = 0;          k2 = 0
+      i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
+      j1p1 = j1 + 1_2;  j2p1 = j2 + 1_2
+    #elif threeD
+      i1 = FLOOR(x1);  i2 = FLOOR(x2)
+      j1 = FLOOR(y1);  j2 = FLOOR(y2)
+      k1 = FLOOR(z1);  k2 = FLOOR(z2)
+      i1p1 = i1 + 1_2;  i2p1 = i2 + 1_2
+      j1p1 = j1 + 1_2;  j2p1 = j2 + 1_2
+      k1p1 = k1 + 1_2;  k2p1 = k2 + 1_2
+    #endif
+
+    ! this "function" takes
+    ! ... the start and end coordinates: `x1`, `x2`, `y1`, `y2`, `z1`, `z2` ...
+    ! ... the start and end cells: `i1`, `i2`, `j1`, `j2`, `k1`, `k2` ...
+    ! ... the start and end cells + 1: `i1p1`, `i2p1` etc ...
+    ! ... the weighted_chargeed charge: `weighted_charge = weight * charge_sp * unit_charge / Bnorm`
+    ! ... and deposits proper currents to corresponding components
+    include "zigzag_deposit.F"
+  end subroutine depositCurrentsFromSingleParticle
 end module m_helpers
