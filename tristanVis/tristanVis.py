@@ -264,18 +264,21 @@ class FieldPlot2D(ipyW.VBox):
     plt.tight_layout()
 
   def update_var(self, change):
+    import difflib
+    import re
+    oldvar = self._kwargs['var']
+    newvar = change.new
     self._kwargs['var'] = change.new
-    self.autoMinMax()
     data_ = self.simulation.fields[self._kwargs['timestep']].data[self._kwargs['proj']][self._kwargs['var']].values
     self.im.set_data(data_)
-    self.im.set_clim(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'])
+    if re.compile("^[x,y,z]+$").match(''.join(sorted([li[-1] for li in difflib.ndiff(oldvar, newvar) if li[0] != ' ']))) is None:
+      self.autoMinMax()
+      self.im.set_clim(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'])
     self.cbar.set_label(self._kwargs['var'].replace('_', '\_'))
 
   def update_logplot(self, change):
     self._kwargs['logplot'] = change.new
-    self.autoMinMax()
-    norm_ = self.findNorm()
-    self.im.set_norm(norm_)
+    self.im.set_norm(self.findNorm())
 
   def update_proj(self, change):
     self._kwargs['proj'] = change.new
@@ -311,6 +314,7 @@ class FieldPlot2D(ipyW.VBox):
 
   def autoMinMax(self):
     self._kwargs['vmin'], self._kwargs['vmax'] = self.findMinMax()
+    self.im.set_norm(self.findNorm())
     if self._kwargs['controls']:
       self.obj_minval.value = self._kwargs['vmin']
       self.obj_maxval.value = self._kwargs['vmax']
