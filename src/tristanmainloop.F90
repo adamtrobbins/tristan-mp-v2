@@ -16,7 +16,8 @@ module m_mainloop
   use m_exchangecurrents
   use m_particlelogistics
   use m_filtering
-  use m_userfile
+  use m_userfile, only: userDriveParticles, userParticleBoundaryConditions,&
+                      & userFieldBoundaryConditions, userCurrentDeposit
   use m_errors
 
   ! extra physics
@@ -186,6 +187,13 @@ contains
         call depositCurrents()
       end if
         t_depositstep = MPI_WTIME() - t_depositstep
+      !.................................................
+
+      !-------------------------------------------------
+      ! Additional user-specific current deposition routine
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      call userCurrentDeposit(timestep)
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 
       !-------------------------------------------------
