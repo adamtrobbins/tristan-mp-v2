@@ -12,7 +12,7 @@ module m_writelogistics
   implicit none
 
   ! input parameters
-  integer                   :: output_flds_istep
+  integer                   :: output_flds_istep, output_dens_smooth
   logical                   :: write_derivatives
 
   character(len=STR_MAX)    :: fld_vars(100)
@@ -206,21 +206,13 @@ contains
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
       ! fill `lg_arr` with density of species `s`
-      #ifndef DEBUG
-        call computeDensity(s, reset=.true.)
-      #else
-        call computeDensity(s, reset=.true., ds=0)
-      #endif
+      call computeDensity(s, reset=.true., ds=output_dens_smooth)
       call exchangeArray()
     else if (fldname(1:4) .eq. 'enrg') then
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
       ! fill `lg_arr` with energy density of species `s`
-      #ifndef DEBUG
-        call computeEnergy(s, reset=.true.)
-      #else
-        call computeEnergy(s, reset=.true., ds=0)
-      #endif
+      call computeEnergy(s, reset=.true., ds=output_dens_smooth)
       call exchangeArray()
     else if (fldname(1:4) .eq. 'dgca') then
       writing_lgarrQ = .true.
@@ -228,11 +220,7 @@ contains
       #ifndef GCA
         call throwError('ERROR: `dgca` not defined without GCA flag.')
       #else
-        #ifndef DEBUG
-          call computeDensityGCA(s, reset=.true.)
-        #else
-          call computeDensityGCA(s, reset=.true., ds=0)
-        #endif
+        call computeDensityGCA(s, reset=.true., ds=output_dens_smooth)
         call exchangeArray()
       #endif
     else

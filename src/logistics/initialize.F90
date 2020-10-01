@@ -12,8 +12,9 @@ module m_initialize
   use m_particles
   use m_particlelogistics
   use m_fields
-  use m_userfile, user_slb_load_ptr => userSLBload
-  use m_writelogistics, only: output_flds_istep, write_derivatives
+  use m_userfile, only: userReadInput, userInitParticles,&
+                      & userInitFields, user_slb_load_ptr => userSLBload
+  use m_writelogistics, only: output_flds_istep, output_dens_smooth, write_derivatives
   use m_writeoutput
   use m_writeslice
   use m_writehistory
@@ -343,7 +344,8 @@ contains
     call getInput('output', 'start', output_start, 0)
     call getInput('output', 'interval', output_interval, 10)
     call getInput('output', 'stride', output_stride, 10)
-    call getInput('output', 'istep', output_flds_istep, 4)
+    call getInput('output', 'istep', output_flds_istep, 1)
+    call getInput('output', 'smooth_window', output_dens_smooth, 2)
 
     call getInput('output', 'hst_enable', hst_enable, .false.)
     call getInput('output', 'hst_interval', hst_interval, 1)
