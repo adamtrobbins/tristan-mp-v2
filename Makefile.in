@@ -63,6 +63,7 @@ INCL_FILES := $(SRC_DIR)tools/interp_efield.F \
 							$(SRC_DIR)tools/interp_bfield.F \
 							$(SRC_DIR)algorithms/boris/boris_push.F \
 							$(SRC_DIR)algorithms/boris/boris_update.F \
+							$(SRC_DIR)algorithms/zigzag_deposit.F \
 							$(SRC_DIR)algorithms/gca/gca_routine.F \
 							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F
 
