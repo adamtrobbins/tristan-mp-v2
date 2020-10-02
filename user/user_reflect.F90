@@ -55,7 +55,6 @@ contains
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    background_T = 1e-3
     background_n = REAL(ppc0) * 0.5
     back_region%x_min = wall_x_location + 1.0
     back_region%y_min = 0.0
@@ -180,6 +179,17 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
+    real        :: shift_beta, background_n
+    type(region)      :: back_region
+
+    shift_beta = sqrt(1.0 - shift_gamma**-2)
+    background_n = REAL(ppc0) * 0.5
+    back_region%x_min = REAL(global_mesh%sx) - CC * shift_beta
+    back_region%y_min = 0.0
+    back_region%x_max = REAL(global_mesh%sx)
+    back_region%y_max = REAL(global_mesh%sy)
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, background_n, background_T,&
+                                   & shift_gamma = shift_gamma, shift_dir = -1, zero_current = .true.)
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
@@ -216,16 +226,16 @@ contains
       end if
     end if
 
-    if (updateB_) then
-      if (this_meshblock%ptr%x0 .le. wall_x_location + delta_x) then
-        do i = 0, this_meshblock%ptr%sx - 1
-          i_glob = i + this_meshblock%ptr%x0
-          if (i_glob .le. FLOOR(wall_x_location + delta_x)) then
-            bx(i, :, :) = 0.0
-          end if
-        end do
-      end if
-    end if
+    ! if (updateB_) then
+    !   if (this_meshblock%ptr%x0 .le. wall_x_location + delta_x) then
+    !     do i = 0, this_meshblock%ptr%sx - 1
+    !       i_glob = i + this_meshblock%ptr%x0
+    !       if (i_glob .le. FLOOR(wall_x_location + delta_x)) then
+    !         bx(i, :, :) = 0.0
+    !       end if
+    !     end do
+    !   end if
+    ! end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
 end module m_userfile
