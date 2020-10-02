@@ -119,12 +119,14 @@ contains
                 call depositCurrentsFromSingleParticle(s, species(s)%prtl_tile(ti, tj, tk), p,&
                                                      & xcolis, y_l, z_l, x_l, y_l, z_l, -1.0)
                 ! reflecting particle
-                species(s)%prtl_tile(ti, tj, tk)%u(p) = - u_
+                species(s)%prtl_tile(ti, tj, tk)%u(p) = -u_
                 u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
             		tfrac = min(abs((x_l - xcolis) / max(abs(x_l - x0), 1e-9)), 1.0)
             	  xnew = xcolis + u_ * inv_gamma * CC * tfrac
+                species(s)%prtl_tile(ti, tj, tk)%xi(p) = INT(FLOOR(xnew), 2)
+                species(s)%prtl_tile(ti, tj, tk)%dx(p) = xnew - REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p))
                 call depositCurrentsFromSingleParticle(s, species(s)%prtl_tile(ti, tj, tk), p,&
-                                                     & xcolis, y_l, z_l, x_l - u_ * inv_gamma * CC, y_l, z_l, -1.0)
+                                                     & xcolis, y_l, z_l, xnew, y_l, z_l, 1.0)
               end if
             end do
           end do
