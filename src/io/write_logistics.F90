@@ -7,7 +7,10 @@ module m_writelogistics
   use m_domain
   use m_particles
   use m_fields
-  use m_helpers
+  use m_helpers, only: computeDensity, computeMomentum, interpFromFaces, interpFromEdges
+  #ifdef GCA
+    use m_helpers, only: computeDensityGCA
+  #endif
   use m_exchangearray, only: exchangeArray
   implicit none
 
@@ -20,41 +23,32 @@ module m_writelogistics
 contains
   subroutine defineFieldVarsToOutput()
     implicit none
-    integer     :: s, ndown
+    integer     :: s
     ! initialize field variables
     !   total number of fields (excluding particle densities)
-    n_fld_vars = 12
-    n_fld_vars = n_fld_vars + 2 * nspec
+    n_fld_vars = 0
     do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(s) = 'dens' // STR(s)
+      fld_vars(0 * nspec + s) = 'dens' // STR(s)
+      fld_vars(1 * nspec + s) = 'enrg' // STR(s)
+      fld_vars(2 * nspec + s) = 'momX' // STR(s)
+      fld_vars(3 * nspec + s) = 'momY' // STR(s)
+      fld_vars(4 * nspec + s) = 'momZ' // STR(s)
+      n_fld_vars = n_fld_vars + 5
+      #ifdef GCA
+        fld_vars(5 * nspec + s) = 'dgca' // STR(s)
+        n_fld_vars = n_fld_vars + 1
+      #endif
     end do
-    do s = 1, nspec
-      ! hopefully less than 10 species
-      fld_vars(nspec + s) = 'enrg' // STR(s)
-    end do
 
-    ndown = 2 * nspec + 1
-
-    #ifdef GCA
-      n_fld_vars = n_fld_vars + nspec
-      ! save the density of particles doing GCA
-      do s = 1, nspec
-        fld_vars(2 * nspec + s) = 'dgca' // STR(s)
-      end do
-
-      ndown = 3 * nspec + 1
-    #endif
-
-    fld_vars(ndown : n_fld_vars) = (/'ex   ', 'ey   ', 'ez   ',&
+    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 12) =&
+                                 & (/'ex   ', 'ey   ', 'ez   ',&
                                    & 'bx   ', 'by   ', 'bz   ',&
                                    & 'jx   ', 'jy   ', 'jz   ',&
                                    & 'xx   ', 'yy   ', 'zz   '/)
-
+    n_fld_vars = n_fld_vars + 12
     if (write_derivatives) then
-      ndown = n_fld_vars + 1
+      fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 4) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
       n_fld_vars = n_fld_vars + 4
-      fld_vars(ndown : n_fld_vars) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
     end if
   end subroutine defineFieldVarsToOutput
 
@@ -187,11 +181,23 @@ contains
     case default
       if (((fld_var(1:4) .ne. 'dens') .and.&
          & (fld_var(1:4) .ne. 'enrg') .and.&
+         & (fld_var(1:3) .ne. 'mom') .and.&
          & (fld_var(1:4) .ne. 'dgca')) .or.&
          & (.not. writing_lgarrQ)) then
         call throwError("ERROR: unrecognized `fldname`")
       else
-        sm_arr(i1, j1, k1) = lg_arr(i, j, k)
+        ! interpolating cell-centered values to nodes
+        #ifdef oneD
+          sm_arr(i1, j1, k1) = 0.5 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k))
+        #elif twoD
+          sm_arr(i1, j1, k1) = 0.25 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k) +&
+                                     & lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k))
+        #elif threeD
+          sm_arr(i1, j1, k1) = 0.125 * (lg_arr(i, j, k) + lg_arr(i - 1, j - 1, k - 1) +&
+                                      & lg_arr(i - 1, j, k) + lg_arr(i, j - 1, k) + lg_arr(i, j, k - 1) +&
+                                      & lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k - 1) + lg_arr(i - 1, j, k - 1))
+        #endif
+
       end if
     end select
   end subroutine selectFieldForOutput
@@ -212,7 +218,7 @@ contains
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
       ! fill `lg_arr` with energy density of species `s`
-      call computeEnergy(s, reset=.true., ds=output_dens_smooth)
+      call computeMomentum(s, 0, reset=.true., ds=output_dens_smooth)
       call exchangeArray()
     else if (fldname(1:4) .eq. 'dgca') then
       writing_lgarrQ = .true.
@@ -223,6 +229,21 @@ contains
         call computeDensityGCA(s, reset=.true., ds=output_dens_smooth)
         call exchangeArray()
       #endif
+    else if (fldname(1:4) .eq. 'momX') then
+      writing_lgarrQ = .true.
+      s = STRtoINT(fldname(5:5))
+      call computeMomentum(s, 1, reset=.true., ds=output_dens_smooth)
+      call exchangeArray()
+    else if (fldname(1:4) .eq. 'momY') then
+      writing_lgarrQ = .true.
+      s = STRtoINT(fldname(5:5))
+      call computeMomentum(s, 2, reset=.true., ds=output_dens_smooth)
+      call exchangeArray()
+    else if (fldname(1:4) .eq. 'momZ') then
+      writing_lgarrQ = .true.
+      s = STRtoINT(fldname(5:5))
+      call computeMomentum(s, 3, reset=.true., ds=output_dens_smooth)
+      call exchangeArray()
     else
       writing_lgarrQ = .false.
     end if

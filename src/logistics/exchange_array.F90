@@ -32,6 +32,9 @@ contains
     allocate(mpi_sendflags(sendrecv_neighbors))
     allocate(mpi_recvflags(sendrecv_neighbors))
 
+    ! using this temporary array
+    jx_buff(:, :, :) = 0.0
+
     cntr = 0
     do ind1 = -1, 1
       do ind2 = -1, 1
@@ -50,25 +53,25 @@ contains
 
           ! highlight the region to send and save to `send_fld`
           if (ind1 .eq. 0) then
-            imin = 0; imax = this_meshblock%ptr%sx - 1
+            imin = -NGHOST; imax = this_meshblock%ptr%sx + NGHOST - 1
           else if (ind1 .eq. -1) then
-            imin = -NGHOST; imax = -1
+            imin = -NGHOST; imax = NGHOST - 1
           else if (ind1 .eq. 1) then
-            imin = this_meshblock%ptr%sx; imax = this_meshblock%ptr%sx + NGHOST - 1
+            imin = this_meshblock%ptr%sx - NGHOST; imax = this_meshblock%ptr%sx + NGHOST - 1
           end if
           if (ind2 .eq. 0) then
-            jmin = 0; jmax = this_meshblock%ptr%sy - 1
+            jmin = -NGHOST; jmax = this_meshblock%ptr%sy + NGHOST - 1
           else if (ind2 .eq. -1) then
-            jmin = -NGHOST; jmax = -1
+            jmin = -NGHOST; jmax = NGHOST - 1
           else if (ind2 .eq. 1) then
-            jmin = this_meshblock%ptr%sy; jmax = this_meshblock%ptr%sy + NGHOST - 1
+            jmin = this_meshblock%ptr%sy - NGHOST; jmax = this_meshblock%ptr%sy + NGHOST - 1
           end if
           if (ind3 .eq. 0) then
-            kmin = 0; kmax = this_meshblock%ptr%sz - 1
+            kmin = -NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
           else if (ind3 .eq. -1) then
-            kmin = -NGHOST; kmax = -1
+            kmin = -NGHOST; kmax = NGHOST - 1
           else if (ind3 .eq. 1) then
-            kmin = this_meshblock%ptr%sz; kmax = this_meshblock%ptr%sz + NGHOST - 1
+            kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
           end if
 
           #ifdef oneD
@@ -138,28 +141,29 @@ contains
 
                 ! write received data to local memory
                 ! highlight the region to extract the `recv_fld`
+                !   write to ghosts + normal zones
                 if (ind1 .eq. 0) then
-                  imin = 0; imax = this_meshblock%ptr%sx - 1
+                  imin = -NGHOST; imax = this_meshblock%ptr%sx + NGHOST - 1
                 else if (ind1 .eq. -1) then
-                  imin = 0; imax = NGHOST - 1
+                  imin = -NGHOST; imax = NGHOST - 1
                 else if (ind1 .eq. 1) then
-                  imin = this_meshblock%ptr%sx - NGHOST; imax = this_meshblock%ptr%sx - 1
+                  imin = this_meshblock%ptr%sx - NGHOST; imax = this_meshblock%ptr%sx + NGHOST - 1
                 end if
                 if (ind2 .eq. 0) then
-                  jmin = 0; jmax = this_meshblock%ptr%sy - 1
+                  jmin = -NGHOST; jmax = this_meshblock%ptr%sy + NGHOST - 1
                 else if (ind2 .eq. -1) then
-                  jmin = 0; jmax = NGHOST - 1
+                  jmin = -NGHOST; jmax = NGHOST - 1
                 else if (ind2 .eq. 1) then
-                  jmin = this_meshblock%ptr%sy - NGHOST; jmax = this_meshblock%ptr%sy - 1
+                  jmin = this_meshblock%ptr%sy - NGHOST; jmax = this_meshblock%ptr%sy + NGHOST - 1
                 end if
                 if (ind3 .eq. 0) then
-                  kmin = 0; kmax = this_meshblock%ptr%sz - 1
+                  kmin = -NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
                 else if (ind3 .eq. -1) then
-                  kmin = 0; kmax = NGHOST - 1
+                  kmin = -NGHOST; kmax = NGHOST - 1
                 else if (ind3 .eq. 1) then
-                  kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz - 1
+                  kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
                 end if
-                
+
                 #ifdef oneD
                   jmin = 0; jmax = 0
                   kmin = 0; kmax = 0
@@ -172,7 +176,7 @@ contains
                 do i = imin, imax
                   do j = jmin, jmax
                     do k = kmin, kmax
-                      lg_arr(i, j, k) = lg_arr(i, j, k) + recv_fld(send_cnt)
+                      jx_buff(i, j, k) = jx_buff(i, j, k) + recv_fld(send_cnt)
                       send_cnt = send_cnt + 1
                     end do
                   end do
@@ -184,6 +188,7 @@ contains
         end do ! ind2
       end do ! ind1
     end do ! global loop
+    lg_arr(:,:,:) = lg_arr(:,:,:) + jx_buff(:,:,:)
     call printDiag((mpi_rank .eq. 0), "exchangeArray()", .true.)
   end subroutine exchangeArray
 end module m_exchangearray

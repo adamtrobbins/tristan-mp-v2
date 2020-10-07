@@ -335,10 +335,10 @@ contains
     end do
   end subroutine computeDensity
 
-  subroutine computeEnergy(s, reset, ds)
+  subroutine computeMomentum(s, component, reset, ds)
     ! DEP_PRT [particle-dependent]
     implicit none
-    integer, intent(in)                   :: s
+    integer, intent(in)                   :: s, component
     logical, intent(in)                   :: reset
     integer, optional, intent(in)         :: ds
     integer                               :: p, ti, tj, tk
@@ -348,7 +348,7 @@ contains
     integer :: i1, i2, j1, j2, k1, k2, ds_
     integer :: pow
     logical :: massive
-    real    :: energy
+    real    :: comp
     real    :: contrib
 
     if (.not. present(ds)) then
@@ -365,11 +365,10 @@ contains
       pow = 3
     #endif
 
-    if (species(s)%m_sp .eq. 0) then
-      massive = .false.
+    massive = (species(s)%m_sp .ne. 0)
+    if (.not. massive) then
       contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
     else
-      massive = .true.
       contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
     end if
 
@@ -388,10 +387,18 @@ contains
           pt_w => species(s)%prtl_tile(ti, tj, tk)%w
           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
             i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
-            if (massive) then
-              energy = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
-            else
-              energy = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+            if (component .eq. 0) then
+              if (massive) then
+                comp = sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              else
+                comp = sqrt(pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              end if
+            else if (component .eq. 1) then
+              comp = pt_u(p)
+            else if (component .eq. 2) then
+              comp = pt_v(p)
+            else if (component .eq. 3) then
+              comp = pt_w(p)
             end if
 
             i1 = 0; i2 = 0
@@ -413,7 +420,7 @@ contains
             do k = k1, k2
               do j = j1, j2
                 do i = i1, i2
-                  lg_arr(i, j, k) = lg_arr(i, j, k) + energy * pt_wei(p) * contrib
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + comp * pt_wei(p) * contrib
                 end do
               end do
             end do
@@ -425,7 +432,7 @@ contains
         end do
       end do
     end do
-  end subroutine computeEnergy
+  end subroutine computeMomentum
 
   #ifdef GCA
     subroutine computeDensityGCA(s, reset, ds, charge)

@@ -160,6 +160,7 @@ class FieldPlot2D(ipyW.VBox):
     self._kwargs['controls'] = self._kwargs.get('controls', True)
     self._kwargs['figsize'] = self._kwargs.get('figsize', (6, 4))
     self._kwargs['zoomQ'] = self._kwargs.get('zoomQ', False)
+    self._kwargs['interpolation'] = self._kwargs.get('interpolation', None)
 
     if (self._kwargs['vmin'] is None):
       self._kwargs['vmin'], _ = self.findMinMax()
@@ -183,16 +184,13 @@ class FieldPlot2D(ipyW.VBox):
           ipyW.VBox([self.obj_var, self.obj_minval, self.obj_maxval]),
           ipyW.VBox([self.obj_proj, self.obj_cmap, self.obj_logplot]),
       ])
-
       self.obj_cmap.value = self._kwargs['cmap']
-
       self.obj_cmap.observe(self.update_cmap, 'value')
       self.obj_var.observe(self.update_var, 'value')
       self.obj_proj.observe(self.update_proj, 'value')
       self.obj_logplot.observe(self.update_logplot, 'value')
       self.obj_minval.observe(self.update_minval, 'value')
       self.obj_maxval.observe(self.update_maxval, 'value')
-
     output = ipyW.Output()
     with output:
       self.fig, self.ax = plt.subplots(figsize=self._kwargs['figsize'])
@@ -216,8 +214,6 @@ class FieldPlot2D(ipyW.VBox):
       vmin = -vv; vmax = vv
     elif self._kwargs['logplot']:
       vmin = vmax / 1e5
-    self._kwargs['vmin'] = vmin
-    self._kwargs['vmax'] = vmax
     return (vmin, vmax)
 
   def findNorm(self):
@@ -227,6 +223,8 @@ class FieldPlot2D(ipyW.VBox):
         norm_ = mpl.colors.SymLogNorm(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'],
                                      linthresh=self._kwargs['vmax'] / 1e3, linscale=1, base=10)
       else:
+        if (self._kwargs['vmin'] * self._kwargs['vmax'] == 0):
+          self.autoMinMax(maxval=self._kwargs['vmax'])
         norm_ = mpl.colors.LogNorm(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'])
     else:
       norm_ = mpl.colors.Normalize(vmin=self._kwargs['vmin'], vmax=self._kwargs['vmax'])
@@ -243,10 +241,9 @@ class FieldPlot2D(ipyW.VBox):
     x2min_ = coords_[x2_].values.min()
     x2max_ = coords_[x2_].values.max()
     norm_ = self.findNorm()
-
     self.im = self.ax.imshow(data_, origin='lower',
                         cmap=self._kwargs['cmap'],
-                        norm=norm_,
+                        norm=norm_, interpolation=self._kwargs['interpolation'],
                         extent=(x1min_, x1max_, x2min_, x2max_))
     try:
       self.fig.delaxes(self.fig.axes[1])
@@ -256,7 +253,6 @@ class FieldPlot2D(ipyW.VBox):
     cax = divider.append_axes("right", size="5%", pad=0.05)
     self.cbar = self.fig.colorbar(self.im, cax=cax)
     self.cbar.set_label(self._kwargs['var'].replace('_', '\_'))
-
     crds_ = list(coords_.keys())
     self.ax.set_xlabel(crds_[1])
     self.ax.set_ylabel(crds_[0])
@@ -312,21 +308,27 @@ class FieldPlot2D(ipyW.VBox):
     data_ = self.simulation.fields[self._kwargs['timestep']].data[self._kwargs['proj']][self._kwargs['var']].values
     self.im.set_data(data_)
 
-  def autoMinMax(self):
-    self._kwargs['vmin'], self._kwargs['vmax'] = self.findMinMax()
+  def autoMinMax(self, maxval=None, minval=None):
+    mn, mx = self.findMinMax()
+    if (maxval is None):
+      self._kwargs['vmax'] = mx
+    if (minval is None):
+      self._kwargs['vmin'] = mn
     self.im.set_norm(self.findNorm())
     if self._kwargs['controls']:
       self.obj_minval.value = self._kwargs['vmin']
       self.obj_maxval.value = self._kwargs['vmax']
 
 class PlotGrid():
-  def __init__(self, simulation, zoom=False, timestep=None, init=[], controls=True, figsize=None):
+  def __init__(self, simulation, maxncols=2, zoom=False, interpolation=None, timestep=None, init=[], controls=True, figsize=None):
     self.simulation = simulation
     self.parameters = init
     self.controls = controls
     self.figsize = figsize
     self.zoomQ = zoom
+    self.interpolation = interpolation
     self.panels = []
+    self.maxncols = maxncols
     if self.parameters != []:
       try:
         self.figsize = self.parameters[0]['figsize']
@@ -361,7 +363,6 @@ class PlotGrid():
     self.step_slider.observe(self.changeTimestep, names="value")
 
     self.button_panel = ipyW.HBox([self.addPlot_button, self.step_slider], layout={'margin': '0px 0px 20px 0px'})
-
     self.generateGrid()
 
   def addPanel(self, b):
@@ -385,7 +386,12 @@ class PlotGrid():
   def getNxM(self):
     import numpy as np
     NN = len(self.parameters)
-    ncols = int(np.sqrt(NN))
+    if (NN > 1):
+      ncols = self.maxncols
+    elif NN == 0:
+      ncols = 0
+    else:
+      ncols = 1
     if (ncols > 0):
       nrows = int(np.ceil(NN / ncols))
     else:
@@ -397,7 +403,7 @@ class PlotGrid():
     plt.close('all')
     NN, ncols, nrows = self.getNxM()
     if (nrows * ncols > 0):
-      grid = ipyW.GridspecLayout(ncols, nrows)
+      grid = ipyW.GridspecLayout(nrows, ncols)
       self._oldpanels = []
       n = 0
       for i in range(grid.n_rows):
@@ -412,6 +418,7 @@ class PlotGrid():
             self.parameters[n]['controls'] = self.controls
             self.parameters[n]['timestep'] = self.timestep
             self.parameters[n]['zoomQ'] = self.zoomQ
+            self.parameters[n]['interpolation'] = self.interpolation
             panel = FieldPlot2D(self.simulation, **self.parameters[n])
             self._oldpanels.append(panel)
             grid[i, j] = panel
