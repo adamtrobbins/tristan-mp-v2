@@ -14,7 +14,7 @@ module m_writerestart
   implicit none
 
   ! # of cpu simultaneously accessing filesystem
-  integer                 :: rst_cpu_group = 50
+  integer                 :: rst_cpu_group
   logical                 :: rst_simulation = .false.
   logical                 :: rst_separate, rst_enable = .false.
   integer                 :: rst_interval, rst_start
@@ -37,7 +37,6 @@ contains
     #ifdef MPI
       integer                         :: istat(MPI_STATUS_SIZE)
     #endif
-
 
     ! determine the directory to write
     if (rst_separate) then
@@ -64,13 +63,11 @@ contains
       do while (rnk .lt. mpi_size)
         do rnk_cnt = 0, rst_cpu_group - 1
           if (rnk + rnk_cnt .ge. mpi_size) cycle
-          call MPI_SEND(dummy, 1, MPI_INTEGER, rnk + rnk_cnt,&
-                      & rnk + rnk_cnt + 1, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(dummy, 1, MPI_INTEGER, rnk + rnk_cnt, 1, MPI_COMM_WORLD, ierr)
         end do
         do rnk_cnt = 0, rst_cpu_group - 1
           if (rnk + rnk_cnt .ge. mpi_size) cycle
-          call MPI_RECV(dummy, 1, MPI_INTEGER, rnk + rnk_cnt,&
-                      & rnk + rnk_cnt + 1, MPI_COMM_WORLD, istat, ierr)
+          call MPI_RECV(dummy, 1, MPI_INTEGER, rnk + rnk_cnt, 2, MPI_COMM_WORLD, istat, ierr)
           recv_count = recv_count + 1
         end do
         rnk = rnk + rst_cpu_group
@@ -78,11 +75,11 @@ contains
       call writeFldRestart(timestep, rst_dir)
       call writePrtlRestart(timestep, rst_dir)
     else
-      call MPI_RECV(dummy, 1, MPI_INTEGER, 0, mpi_rank + 1, MPI_COMM_WORLD, istat, ierr)
+      call MPI_RECV(dummy, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, istat, ierr)
       call writeFldRestart(timestep, rst_dir)
       call writePrtlRestart(timestep, rst_dir)
       dummy(1) = 2
-      call MPI_SEND(dummy, 1, MPI_INTEGER, 0, mpi_rank + 1, MPI_COMM_WORLD, ierr)
+      call MPI_SEND(dummy, 1, MPI_INTEGER, 0, 2, MPI_COMM_WORLD, ierr)
     end if
 
     #ifdef DEBUG

@@ -53,7 +53,6 @@ contains
         case ('-R', '--RST')
           call get_command_argument(i + 1, arg1)
           restart_from = trim(arg1)
-          rst_simulation = .true.
       end select
     end do
   end subroutine readCommandlineArgs

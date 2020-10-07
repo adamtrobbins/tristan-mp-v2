@@ -47,6 +47,8 @@
 
 <restart>
 
+  do_restart    = 0              # perform simulation restart [defaults to .false.]
+  cpu_group     = 50             # number of simultaneously written restart files [defaults to 50]
   enable        = 0              # enable/disable restart
   start         = 1              # first restart step
   interval      = 1000           # step interval between restarts

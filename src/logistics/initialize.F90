@@ -425,10 +425,12 @@ contains
 
   subroutine initializeRestart()
     implicit none
+    call getInput('restart', 'do_restart', rst_simulation, .false.)
     call getInput('restart', 'enable', rst_enable, .false.)
     call getInput('restart', 'start', rst_start, 0)
     call getInput('restart', 'interval', rst_interval, 10000)
     call getInput('restart', 'rewrite', rst_separate, .false.)
+    call getInput('restart', 'cpu_group', rst_cpu_group, 50)
     rst_separate = (.not. rst_separate)
   end subroutine initializeRestart
 
