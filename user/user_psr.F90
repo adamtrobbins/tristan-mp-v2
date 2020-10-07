@@ -105,8 +105,6 @@ contains
     return
   end function
 
-  #define PSRRADIUS 120
-
   function userSLBload(x_glob, y_glob, z_glob,&
                      & dummy1, dummy2, dummy3)
     real :: userSLBload
@@ -114,11 +112,12 @@ contains
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
-    real                        :: radius2
+    real                        :: radius2, psrrad
+    psrrad = dummy1 / 14.0
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
-    userSLBload = PSRRADIUS**2 / radius2
-    if (radius2 .lt. PSRRADIUS**2) then
-      userSLBload = 1.0 / exp((PSRRADIUS**2 - radius2) / PSRRADIUS**2)
+    userSLBload = psrrad**2 / radius2
+    if (radius2 .lt. psrrad**2) then
+      userSLBload = 1.0 / exp((psrrad**2 - radius2) / psrrad**2)
     end if
     return
   end function
