@@ -389,6 +389,27 @@ contains
     end do
   end subroutine initializePositionBins
 
+  subroutine binParticlePositions(position_bins, tile)
+    implicit none
+    ! FIX: this is for photons only
+    type(momentumBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
+    type(particle_tile), intent(in)   :: tile
+    integer :: p, pi, pj, pk
+
+    pi = tile%xi(p)
+    pj = tile%yi(p)
+    pk = tile%zi(p)
+
+    do p = 1, tile%npart_sp
+      position_bins(pi, pj, pk)%npart = position_bins(pi, pj, pk)%npart + 1
+      position_bins(pi, pj, pk)%indices(position_bins(pi, pj, pk)%npart) = p
+    enddo
+
+  end subroutine binParticlePositions
+  ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+
+
   subroutine binParticlesOnTile_Cartesian(momentum_bins, tile, ax1, ax2, ang,&
                                         & px_min, px_max, py_min, py_max, pz_min, pz_max)
     implicit none
