@@ -81,6 +81,19 @@ module m_momentumbinning
   integer                   :: dwn_n_mom_bins
   ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
+    ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+  ! Position binning ...
+  ! ... auxiliary types
+  ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  type :: positionBin_XYZ
+    ! # of particles in the bin
+    integer                 :: npart
+    ! indices of all the particles in a given bin
+    integer, allocatable    :: indices(:)
+  end type positionBin_XYZ
+
+  ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
 contains
 
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
