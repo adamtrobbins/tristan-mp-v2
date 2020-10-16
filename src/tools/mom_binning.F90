@@ -355,6 +355,40 @@ contains
     end do
   end subroutine initializeMomentumBins_Cartesian
 
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+  ! Cartesian momenta binning.
+  ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
+  subroutine initializePositionBins(tile, position_bins, nparts_in_tile)
+    implicit none
+    type(particle_tile), intent(in)                   :: tile
+    integer, intent(in)                               :: nparts_in_tile
+    type(momentumBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
+    integer                                           :: n_rad_x, n_rad_y, n_rad_z
+    integer                                           :: pi, pj, pk
+    integer                                           :: s
+    integer :: dwn_rad_x = 2 ! Make this an input parameter
+    integer :: dwn_rad_y = 2 ! Make this an input parameter
+    integer :: dwn_rad_z = 1 ! Make this an input parameter
+
+    s = tile%spec
+
+    ! Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions)
+    n_rad_x = species(s)%tile_sx / dwn_rad_x
+    n_rad_y = species(s)%tile_sy / dwn_rad_y
+    n_rad_z = species(s)%tile_sz / dwn_rad_z
+
+    allocate(position_bins(n_rad_x, n_rad_y, n_rad_z))
+
+    do pi = 1, n_rad_x
+      do pj = 1, n_rad_y
+        do pk = 1, n_rad_z
+          position_bins(pi, pj, pk)%npart = 0
+          allocate(position_bins(pi, pj, pk)%indices(nparts_in_tile))
+        end do
+      end do
+    end do
+  end subroutine initializePositionBins
+
   subroutine binParticlesOnTile_Cartesian(momentum_bins, tile, ax1, ax2, ang,&
                                         & px_min, px_max, py_min, py_max, pz_min, pz_max)
     implicit none
