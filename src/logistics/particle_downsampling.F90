@@ -255,6 +255,9 @@ contains
                                     & px_min, px_max, py_min, py_max, pz_min, pz_max)
 
     call downsampleAllBins_Cartesian(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
+  
+    print *, "DONEITHERE"
+
   end subroutine downsampleOnTile_Cartesian
 
   subroutine downsampleAllBins_Cartesian(momentum_bins, tile, ax1, ax2, ang)
@@ -277,6 +280,9 @@ contains
             call downsampleBin_Cartesian(tile, px_mid, py_mid, pz_mid,&
                                        & momentum_bins(pi, pj, pk)%indices, npart,&
                                        & ax1, ax2, ang)
+
+            print *, "DONETHATHERE"
+
           end if
         end do
       end do
@@ -301,7 +307,6 @@ contains
     integer :: dwn_rad_y = 2 ! Make this an input parameter
     integer :: dwn_rad_z = 1 ! Make this an input parameter
 
-
     s = tile%spec
     if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
       masslessQ = .true.
@@ -310,34 +315,42 @@ contains
     end if
 
     allocate(group%indices(npart))
-    group%indices(:) = -1
-    group%size = 0
-    group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
-    group%tot_en = 0.0; group%tot_wei = 0.0
-
-    group%bin_px = px_mid
-    group%bin_py = py_mid
-    group%bin_pz = pz_mid
-    ! rotate the bin center back to match the binned particles ...
-    ! ... notice that angle is now `-ang` since we are rotating back
-    call rotateRandomlyIn3D(group%bin_px, group%bin_py, group%bin_pz,&
-                          & ax1, ax2, -ang)
 
     ! Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions)
     n_rad_x = INT(species(s)%tile_sx / dwn_rad_x)
     n_rad_y = INT(species(s)%tile_sy / dwn_rad_y)
     n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
 
+    print*, "Array lengths determined", n_rad_x, n_rad_y, n_rad_z
+
     call initializePositionBins(tile, position_grid, npart, n_rad_x, n_rad_y, n_rad_z)
-    call binParticlePositions(tile, position_grid)
+
+    print*, "Position initialized"
+
+    call binParticlePositions(tile, position_grid, indices, npart, dwn_rad_x, dwn_rad_y, dwn_rad_z)
+
+    print*, "Position bins filled"
 
     do pi = 1, n_rad_x
       do pj = 1, n_rad_y
         do pk = 1, n_rad_z
 
+        group%indices(:) = -1
+        group%size = 0
+        group%tot_px = 0.0; group%tot_py = 0.0; group%tot_pz = 0.0
+        group%tot_en = 0.0; group%tot_wei = 0.0
+
+        group%bin_px = px_mid
+        group%bin_py = py_mid
+        group%bin_pz = pz_mid
+        ! rotate the bin center back to match the binned particles ...
+        ! ... notice that angle is now `-ang` since we are rotating back
+        call rotateRandomlyIn3D(group%bin_px, group%bin_py, group%bin_pz,&
+                              & ax1, ax2, -ang)
 
     p_ind = 1
     do while (p_ind .le. position_grid(pi, pj, pk)%npart)
+
       p = position_grid(pi, pj, pk)%indices(p_ind)
       if (tile%weight(p) .gt. dwn_maxweight) then
         ! particle too heavy to merge
@@ -536,6 +549,7 @@ contains
     ! inject new particles
     call createParticle(s, xAi, yAi, zAi, dxA, dyA, dzA, pxA, pyA, pzA, weight=wA)
     call createParticle(s, xBi, yBi, zBi, dxB, dyB, dzB, pxB, pyB, pzB, weight=wB)
+
   end subroutine mergeParticlesInGroup
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

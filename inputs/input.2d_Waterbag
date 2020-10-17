@@ -25,8 +25,8 @@
   resize_tiles  = 0              # reallocate particle tiles if necessary
   min_tile_nprt = 1              # min # of allocated particles per tile
 
-  tileX         = 1              # tile dimension in x
-  tileY         = 1             # tile dimension in y
+  tileX         = 2              # tile dimension in x
+  tileY         = 2              # tile dimension in y
   tileZ         = 1              # tile dimension in z
 
 <algorithm>
@@ -49,8 +49,8 @@
 
 <plasma>
 
-  ppc0          = 500
-  sigma         = 25
+  ppc0          = 384
+  sigma         = 5
   c_omp         = 10
 
 <particles>
@@ -70,7 +70,7 @@
 <downsampling>
 
   # particle downsampling (merging) parameters
-  interval      = 75
+  interval      = 25
   start         = 1             # starting timestep
   max_weight    = 10000000000           # maximum weight of merging particles
 
