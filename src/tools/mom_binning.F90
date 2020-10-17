@@ -358,24 +358,14 @@ contains
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! Cartesian momenta binning.
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
-  subroutine initializePositionBins(tile, position_bins, nparts_in_tile)
+  subroutine initializePositionBins(tile, position_bins, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z)
     implicit none
     type(particle_tile), intent(in)                   :: tile
     integer, intent(in)                               :: nparts_in_tile
-    type(momentumBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
-    integer                                           :: n_rad_x, n_rad_y, n_rad_z
+    type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
+    integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
     integer                                           :: pi, pj, pk
     integer                                           :: s
-    integer :: dwn_rad_x = 2 ! Make this an input parameter
-    integer :: dwn_rad_y = 2 ! Make this an input parameter
-    integer :: dwn_rad_z = 1 ! Make this an input parameter
-
-    s = tile%spec
-
-    ! Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions)
-    n_rad_x = species(s)%tile_sx / dwn_rad_x
-    n_rad_y = species(s)%tile_sy / dwn_rad_y
-    n_rad_z = species(s)%tile_sz / dwn_rad_z
 
     allocate(position_bins(n_rad_x, n_rad_y, n_rad_z))
 
@@ -389,10 +379,10 @@ contains
     end do
   end subroutine initializePositionBins
 
-  subroutine binParticlePositions(position_bins, tile)
+  subroutine binParticlePositions(tile, position_bins)
     implicit none
     ! FIX: this is for photons only
-    type(momentumBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
+    type(positionBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
     type(particle_tile), intent(in)   :: tile
     integer :: p, pi, pj, pk
 

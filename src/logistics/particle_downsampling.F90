@@ -292,9 +292,15 @@ contains
     real, intent(in)                    :: px_mid, py_mid, pz_mid
     real, intent(in)                    :: ax1, ax2, ang
     type(particleDwnGroup)              :: group
-    integer       :: p_ind, p, s
+    type(positionBin_XYZ), allocatable  :: position_grid(:,:,:)
+    integer       :: p_ind, p, s, pi, pj, pk
+    integer       :: n_rad_x, n_rad_y, n_rad_z
     real          :: en
     logical       :: masslessQ
+    integer :: dwn_rad_x = 2 ! Make this an input parameter
+    integer :: dwn_rad_y = 2 ! Make this an input parameter
+    integer :: dwn_rad_z = 1 ! Make this an input parameter
+
 
     s = tile%spec
     if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
@@ -317,13 +323,26 @@ contains
     call rotateRandomlyIn3D(group%bin_px, group%bin_py, group%bin_pz,&
                           & ax1, ax2, -ang)
 
+    ! Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions)
+    n_rad_x = INT(species(s)%tile_sx / dwn_rad_x)
+    n_rad_y = INT(species(s)%tile_sy / dwn_rad_y)
+    n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
+
+    call initializePositionBins(tile, position_grid, npart, n_rad_x, n_rad_y, n_rad_z)
+    call binParticlePositions(tile, position_grid)
+
+    do pi = 1, n_rad_x
+      do pj = 1, n_rad_y
+        do pk = 1, n_rad_z
+
+
     p_ind = 1
-    do while (p_ind .le. npart)
-      p = indices(p_ind)
+    do while (p_ind .le. position_grid(pi, pj, pk)%npart)
+      p = position_grid(pi, pj, pk)%indices(p_ind)
       if (tile%weight(p) .gt. dwn_maxweight) then
         ! particle too heavy to merge
-        indices(p_ind) = indices(npart)
-        npart = npart - 1
+        position_grid(pi, pj, pk)%indices(p_ind) = position_grid(pi, pj, pk)%indices(position_grid(pi, pj, pk)%npart)
+        position_grid(pi, pj, pk)%npart = position_grid(pi, pj, pk)%npart - 1
         cycle
       else
         group%tot_wei = group%tot_wei + tile%weight(p)
@@ -356,6 +375,12 @@ contains
         p_ind = p_ind + 1
       end if
     end do
+
+
+        enddo
+      enddo
+    enddo
+
   end subroutine downsampleBin_Cartesian
   ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
