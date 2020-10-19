@@ -379,30 +379,28 @@ contains
     end do
   end subroutine initializePositionBins
 
-  subroutine binParticlePositions(tile, position_bins, pindices, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z)
+  subroutine binParticlePositions(tile, position_bins, pindices, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
     ! FIX: this is for photons only
     type(positionBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
     integer, allocatable, intent(in) :: pindices(:)
     integer, intent(in)                               :: nparts_in_tile
     integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
+    integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     type(particle_tile), intent(in)   :: tile
     integer :: p_ind, p, pi, pj, pk
-
-    print *, nparts_in_tile
 
     do p_ind = 1, nparts_in_tile
 
       p = pindices(p_ind)
 
-      pi = floor(REAL(tile%xi(p)) / REAL(n_rad_x)) + 1
-      pj = floor(REAL(tile%yi(p)) / REAL(n_rad_y)) + 1
-      pk = floor(REAL(tile%zi(p)) / REAL(n_rad_z)) + 1
-
-      print *, pj , tile%yi(p)
+      pi = floor(REAL(mod(tile%xi(p),n_tile_sx)) / REAL(n_rad_x)) + 1
+      pj = floor(REAL(mod(tile%yi(p),n_tile_sy)) / REAL(n_rad_y)) + 1
+      pk = floor(REAL(mod(tile%zi(p),n_tile_sz)) / REAL(n_rad_z)) + 1
 
       position_bins(pi, pj, pk)%npart = position_bins(pi, pj, pk)%npart + 1
       position_bins(pi, pj, pk)%indices(position_bins(pi, pj, pk)%npart) = p
+
     enddo
 
   end subroutine binParticlePositions

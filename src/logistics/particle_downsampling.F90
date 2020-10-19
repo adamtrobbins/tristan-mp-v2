@@ -58,7 +58,7 @@ contains
         do ti = 1, species(s)%tile_nx
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
-              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. 5) then
+              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. 2) then
                 ! decide whether to use cartesian OR spherical binning
                 if (dwn_cartesian_bins) then
                   call downsampleOnTile_Cartesian(species(s)%prtl_tile(ti, tj, tk))
@@ -116,7 +116,7 @@ contains
               ! tile%ind(p) = 100*100 * (e_b+1) + 100 * (th_b+1) + (ph_b+1)
             end do
           #endif
-          if (npart .gt. 5) then
+          if (npart .gt. 2) then
             call downsampleBin_Spherical(tile,&
                         & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
                         & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
@@ -192,7 +192,7 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 5) then
+          if (group%size .gt. 2) then
             call mergeParticlesInGroup(group, tile)
           end if
           group%indices(:) = -1
@@ -256,8 +256,6 @@ contains
 
     call downsampleAllBins_Cartesian(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
   
-    print *, "DONEITHERE"
-
   end subroutine downsampleOnTile_Cartesian
 
   subroutine downsampleAllBins_Cartesian(momentum_bins, tile, ax1, ax2, ang)
@@ -273,15 +271,13 @@ contains
       do pj = 1, dwn_n_mom_bins
         do pk = 1, dwn_n_mom_bins
           npart = momentum_bins(pi, pj, pk)%npart
-          if (npart .gt. 5) then
+          if (npart .gt. 2) then
             px_mid = 0.5 * (momentum_bins(pi, pj, pk)%px_max + momentum_bins(pi, pj, pk)%px_min)
             py_mid = 0.5 * (momentum_bins(pi, pj, pk)%py_max + momentum_bins(pi, pj, pk)%py_min)
             pz_mid = 0.5 * (momentum_bins(pi, pj, pk)%pz_max + momentum_bins(pi, pj, pk)%pz_min)
             call downsampleBin_Cartesian(tile, px_mid, py_mid, pz_mid,&
                                        & momentum_bins(pi, pj, pk)%indices, npart,&
                                        & ax1, ax2, ang)
-
-            print *, "DONETHATHERE"
 
           end if
         end do
@@ -321,15 +317,8 @@ contains
     n_rad_y = INT(species(s)%tile_sy / dwn_rad_y)
     n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
 
-    print*, "Array lengths determined", n_rad_x, n_rad_y, n_rad_z
-
     call initializePositionBins(tile, position_grid, npart, n_rad_x, n_rad_y, n_rad_z)
-
-    print*, "Position initialized"
-
-    call binParticlePositions(tile, position_grid, indices, npart, dwn_rad_x, dwn_rad_y, dwn_rad_z)
-
-    print*, "Position bins filled"
+    call binParticlePositions(tile, position_grid, indices, npart, dwn_rad_x, dwn_rad_y, dwn_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
 
     do pi = 1, n_rad_x
       do pj = 1, n_rad_y
@@ -372,12 +361,15 @@ contains
         group%indices(group%size + 1) = p
         group%size = group%size + 1
 
-        if ((group%tot_wei .ge. dwn_maxweight) .or. (p_ind .eq. npart)) then
+        if ((group%tot_wei .ge. dwn_maxweight) .or. (p_ind .eq. position_grid(pi, pj, pk)%npart)) then
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 5) then
+          if (group%size .gt. 2) then
             call mergeParticlesInGroup(group, tile)
+              ! #ifdef DEBUG
+              print*, "[downsampleBin_Cartesian] Sending particles to merge:", group%size
+              ! #endif
           end if
           group%indices(:) = -1
           group%size = 0
