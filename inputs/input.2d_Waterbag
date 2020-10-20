@@ -25,8 +25,8 @@
   resize_tiles  = 0              # reallocate particle tiles if necessary
   min_tile_nprt = 1              # min # of allocated particles per tile
 
-  tileX         = 10              # tile dimension in x
-  tileY         = 10              # tile dimension in y
+  tileX         = 2              # tile dimension in x
+  tileY         = 2              # tile dimension in y
   tileZ         = 1               # tile dimension in z
 
 <algorithm>
