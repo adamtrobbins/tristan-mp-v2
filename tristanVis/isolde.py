@@ -4,27 +4,27 @@ import h5py
 import os
 
 def getParticles(fname):
-    with h5py.File(fname, 'r') as file:
-        keys = list(file.keys())
-        species = np.unique([int(key.split('_')[1]) for key in keys])
-        nspec = len(species)
-        variables = np.unique([key.split('_')[0] for key in keys])
-        nvars = len(variables)
-        data = {}
-        for s in range(nspec):
-            data[str(s + 1)] = {}
-            for i in range(nvars):
-                (data[str(s + 1)])[variables[i]] = file[variables[i] + '_' + str(s + 1)][:]
-    return data
+  with h5py.File(fname, 'r') as file:
+    keys = list(file.keys())
+    species = np.unique([int(key.split('_')[1]) for key in keys])
+    nspec = len(species)
+    variables = np.unique([key.split('_')[0] for key in keys])
+    nvars = len(variables)
+    data = {}
+    for s in range(nspec):
+      data[str(s + 1)] = {}
+      for i in range(nvars):
+        (data[str(s + 1)])[variables[i]] = file[variables[i] + '_' + str(s + 1)][:]
+  return data
 
 def getFields(fname, nodes = False):
-    # hdf5 file
-    with h5py.File(fname, 'r') as file:
-        keys = list(file.keys())
-        data = {}
-        for key in keys:
-            data[key] = file[key][:]
-    return data
+  # hdf5 file
+  with h5py.File(fname, 'r') as file:
+    keys = list(file.keys())
+    data = {}
+    for key in keys:
+      data[key] = file[key][:]
+  return data
 
 def getParameters(fname):
   with h5py.File(fname, 'r') as file:
@@ -33,6 +33,49 @@ def getParameters(fname):
     for key in keys:
       params[key] = file[key][:][0]
   return params
+
+def getSlice(output, proj, step):
+  if (output[-1] != '/'):
+    output += '/'
+  proj, shift = proj.split('=')
+  return getFields(output + 'slices/slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
+
+def convertToXarray(fields,
+                    coordinateTransformation = {'x': lambda f: f,
+                                                'y': lambda f: f,
+                                                'z': lambda f: f},
+                    additionalVariables = {}):
+  import xarray as xr
+  import numpy as np
+  np.seterr(divide='ignore', invalid='ignore')
+  for k in fields.keys():
+    fields[k] = np.squeeze(fields[k])
+  xr_data = xr.Dataset()
+  dimension = len(fields[list(fields.keys())[0]].shape)
+  if dimension == 1:
+    xr_axes = np.array(list('xyz'))[[(np.min(fields[p+p]) != np.max(fields[p+p])) for p in list('xyz')]]
+    if (len(xr_axes) != 1):
+      raise ValueError("Incorrect `xr_axes`.")
+    x1 = xr_axes
+    xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][:]))
+  elif dimension == 2:
+    xr_axes = np.array(list('xyz'))[[(np.min(fields[p+p]) != np.max(fields[p+p])) for p in list('xyz')]]
+    if (len(xr_axes) != 2):
+      raise ValueError("Incorrect `xr_axes`.")
+    x1, x2 = xr_axes
+    xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,:]))
+    xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][:,0]))
+  elif dimension == 3:
+    xr_axes = list('xyz')
+    x1, x2, x3 = xr_axes
+    xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,0,:]))
+    xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][0,:,0]))
+    xr_data.coords[x3] = ((x3), coordinateTransformation[x3](fields[x3*2][:,0,0]))
+  for k in fields.keys():
+    xr_data[k] = (xr_axes, fields[k][:])
+  for k in additionalVariables.keys():
+    xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:])
+  return xr_data
 
 # usage example for 2D uniform grid:
 # ```
