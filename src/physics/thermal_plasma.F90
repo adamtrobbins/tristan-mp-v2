@@ -24,7 +24,7 @@ module m_thermalplasma
   end type maxwellian
 
   !--- PRIVATE variables -----------------------------------------!
-  real    :: t_crit = 0.1
+  real    :: t_crit = 0.01
   private :: t_crit
   !...............................................................!
 
