@@ -379,20 +379,67 @@ contains
     end do
   end subroutine initializePositionBins
 
-  subroutine binParticlePositions(tile, position_bins, pindices, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z, n_tile_sx, n_tile_sy, n_tile_sz)
+  subroutine fillDownsamplingTile(tile, dwn_tile, p, p_ind)
+    implicit none
+    type(particle_tile), intent(in)                   :: tile
+    type(particle_tile), intent(inout)                :: dwn_tile
+    integer, intent(in)                               :: p
+    integer, intent(in)                               :: p_ind
+
+    dwn_tile%xi(p) = tile%xi(p_ind)
+    dwn_tile%dx(p) = tile%dx(p_ind)
+
+    dwn_tile%yi(p) = tile%yi(p_ind)
+    dwn_tile%dy(p) = tile%dy(p_ind)
+
+    dwn_tile%zi(p) = tile%zi(p_ind)
+    dwn_tile%dz(p) = tile%dz(p_ind)
+
+    dwn_tile%u(p) = tile%u(p_ind)
+    dwn_tile%v(p) = tile%v(p_ind)
+    dwn_tile%w(p) = tile%w(p_ind)
+
+    dwn_tile%ind(p) = tile%ind(p_ind)
+    dwn_tile%proc(p) = tile%proc(p_ind)
+
+    dwn_tile%weight(p) = tile%weight(p_ind)
+
+    #ifdef GCA
+      dwn_tile%xi_past(p) = tile%xi_past(p_ind)
+      dwn_tile%yi_past(p) = tile%yi_past(p_ind)
+      dwn_tile%zi_past(p) = tile%zi_past(p_ind)
+
+      dwn_tile%dx_past(p) = tile%dx_past(p_ind)
+      dwn_tile%dy_past(p) = tile%dy_past(p_ind)
+      dwn_tile%dz_past(p) = tile%dz_past(p_ind)
+
+      dwn_tile%u_eff(p) = tile%u_eff(p_ind)
+      dwn_tile%v_eff(p) = tile%v_eff(p_ind)
+      dwn_tile%w_eff(p) = tile%w_eff(p_ind)
+
+      dwn_tile%u_par(p) = tile%u_par(p_ind)
+      dwn_tile%u_perp(p) = tile%u_perp(p_ind)
+    #endif
+
+    #ifdef PRTLPAYLOADS
+      dwn_tile%payload1(p) = tile%payload1(p_ind)
+      dwn_tile%payload2(p) = tile%payload2(p_ind)
+      dwn_tile%payload3(p) = tile%payload3(p_ind)
+    #endif
+
+  end subroutine fillDownsamplingTile
+
+  subroutine binParticlePositions(tile, position_bins, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
     ! FIX: this is for photons only
     type(positionBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
-    integer, allocatable, intent(in) :: pindices(:)
     integer, intent(in)                               :: nparts_in_tile
     integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
     integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     type(particle_tile), intent(in)   :: tile
-    integer :: p_ind, p, pi, pj, pk
+    integer :: p, pi, pj, pk
 
-    do p_ind = 1, nparts_in_tile
-
-      p = pindices(p_ind)
+    do p = 1, nparts_in_tile
 
       pi = floor(REAL(mod(tile%xi(p),n_tile_sx)) / REAL(n_rad_x)) + 1
       pj = floor(REAL(mod(tile%yi(p),n_tile_sy)) / REAL(n_rad_y)) + 1
