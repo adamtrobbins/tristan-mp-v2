@@ -1,6 +1,6 @@
 #include "../defs.F90"
 
-module m_writelogistics
+module m_outputlogistics
   use m_globalnamespace
   use m_aux
   use m_errors
@@ -12,14 +12,40 @@ module m_writelogistics
     use m_helpers, only: computeDensityGCA
   #endif
   use m_exchangearray, only: exchangeArray
+
   implicit none
 
   ! input parameters
-  integer                   :: output_flds_istep, output_dens_smooth
-  logical                   :: write_derivatives
+  integer                   :: output_dens_smooth     ! density smoothing window
+  ! ... for .tot. outputs
+  logical                   :: tot_output_enable
+  logical                   :: params_enable, prtl_enable
+  logical                   :: flds_tot_enable, spectra_enable, domain_enable
+  logical                   :: flds_at_prtl_enable, xdmf_enable, derivatives_enable
+  integer                   :: tot_output_start, tot_output_interval
+  integer                   :: tot_output_stride      ! particle striding
+  integer                   :: output_flds_istep      ! field downsampling for .tot.
 
-  character(len=STR_MAX)    :: fld_vars(100)
-  integer                   :: n_fld_vars
+  ! variables
+  ! ... for particle/diag output
+  integer                   :: n_prtl_vars, n_dom_vars
+  character(len=STR_MAX)    :: prtl_vars(100), prtl_var_types(100), dom_vars(100)
+
+  ! ... for spectra
+  real, allocatable, dimension(:,:)   :: glob_spectra
+
+  #ifdef GCA
+    real, allocatable, dimension(:,:) :: glob_gca_spectra
+  #endif
+
+  ! ... for `slice` outputs
+  logical                           :: slice_output_enable
+  integer                           :: slice_output_start, slice_output_interval
+  integer                           :: nslices = 0, slice_axes(100), slice_pos(100)
+
+  ! ... for generic field output
+  character(len=STR_MAX)            :: fld_vars(100)
+  integer                           :: n_fld_vars
 contains
   subroutine defineFieldVarsToOutput()
     implicit none
@@ -249,4 +275,4 @@ contains
     end if
   end subroutine prepareFieldForOutput
 
-end module m_writelogistics
+end module m_outputlogistics

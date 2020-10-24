@@ -11,23 +11,15 @@ module m_writeslice
   use m_particles
   use m_fields
   use m_helpers
-  use m_writelogistics, only: prepareFieldForOutput, selectFieldForOutput,&
-                            & defineFieldVarsToOutput,&
-                            & fld_vars, n_fld_vars, output_flds_istep
-
+  use m_outputlogistics, only: prepareFieldForOutput, selectFieldForOutput,&
+                             & defineFieldVarsToOutput,&
+                             & fld_vars, n_fld_vars,&
+                             & nslices, slice_axes, slice_pos
   implicit none
 
-  logical                           :: slice_enable
-
-  integer                           :: nslices = 0
-  integer                           :: slice_axes(100)
-  integer                           :: slice_pos(100)
-
-  integer                           :: slice_start, slice_interval
-
   !--- PRIVATE functions -----------------------------------------!
-  #ifdef SLICE
-    private :: writeSliceX_hdf5, writeSliceY_hdf5, writeSliceZ_hdf5!, writeXDMF_hdf5
+  #ifdef HDF5
+    private :: writeSliceX_hdf5, writeSliceY_hdf5, writeSliceZ_hdf5
   #endif
   !...............................................................!
 
@@ -41,7 +33,7 @@ contains
     call defineFieldVarsToOutput()
 
     step = slice_index
-    #ifdef SLICE
+    #ifdef HDF5
       do n = 1, nslices
         if (slice_axes(n) .eq. 1) then
           call writeSliceX_hdf5(step, time, slice_pos(n))
@@ -56,13 +48,12 @@ contains
           call throwError('ERROR. wrong `slice_axes(n)` in `writeSlices`')
         end if
       end do
-        call printDiag((mpi_rank .eq. 0), "...writeSlices_hdf5()", .true.)
+          call printDiag((mpi_rank .eq. 0), "...writeSlices_hdf5()", .true.)
     #endif
-    call printDiag((mpi_rank .eq. 0), "slices()", .true.)
     slice_index = slice_index + 1
   end subroutine writeSlices
 
-  #ifdef SLICE
+  #ifdef HDF5
   subroutine writeSliceX_hdf5(step, time, x_cut)
     implicit none
     integer, intent(in)               :: step, time
@@ -377,7 +368,6 @@ contains
       if (allocated(field_data)) deallocate(field_data)
     end if
   end subroutine writeSliceZ_hdf5
-
   #endif
-
+  
 end module m_writeslice

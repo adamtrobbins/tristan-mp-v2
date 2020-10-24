@@ -14,7 +14,7 @@ module m_initialize
   use m_fields
   use m_userfile, only: userReadInput, userInitParticles,&
                       & userInitFields, user_slb_load_ptr => userSLBload
-  use m_writelogistics, only: output_flds_istep, output_dens_smooth, write_derivatives
+  use m_outputlogistics, only: output_flds_istep, output_dens_smooth, write_derivatives
   use m_writeoutput
   use m_writeslice
   use m_writehistory

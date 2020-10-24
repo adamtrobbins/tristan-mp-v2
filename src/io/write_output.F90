@@ -11,9 +11,9 @@ module m_writeoutput
   use m_particles
   use m_fields
   use m_helpers
-  use m_writelogistics, only: prepareFieldForOutput, selectFieldForOutput,&
-                            & defineFieldVarsToOutput,&
-                            & fld_vars, n_fld_vars, output_flds_istep
+  #ifdef HDF5
+    use m_writefldstot, only: writeFields_hdf5
+  #endif
   use m_exchangearray
 
   ! extra physics
@@ -30,19 +30,6 @@ module m_writeoutput
   #endif
 
   implicit none
-
-  integer                 :: output_start, output_interval, output_stride
-  integer                 :: n_prtl_vars, n_dom_vars
-  character(len=STR_MAX)  :: prtl_vars(100), prtl_var_types(100), dom_vars(100)
-  real, allocatable, dimension(:,:) :: glob_spectra
-  logical                 :: output_enable, flds_at_prtl, write_xdmf
-  logical                 :: params_enable = .true., prtl_enable = .true.
-  logical                 :: flds_enable = .true., spec_enable = .true., domain_enable = .true.
-
-  #ifdef GCA
-    real, allocatable, dimension(:,:) :: glob_gca_spectra
-  #endif
-
 
   !--- PRIVATE functions -----------------------------------------!
   #ifdef HDF5
