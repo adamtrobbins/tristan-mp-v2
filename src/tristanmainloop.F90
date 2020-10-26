@@ -2,12 +2,15 @@
 
 module m_mainloop
   use m_globalnamespace
+  use m_outputnamespace, only: slice_output_enable, slice_output_start, slice_output_interval,&
+                             & tot_output_enable, tot_output_start, tot_output_interval,&
+                             & hst_enable, hst_interval
   use m_helpers
   use m_aux
-  use m_writeoutput
-  use m_writeslice
-  use m_writehistory
-  use m_writerestart
+  use m_writeslice, only: writeSlices
+  use m_writetot, only: writeTotOutput
+  use m_writehistory, only: writeHistory
+  use m_writerestart, only: writeRestart, rst_enable, rst_interval, rst_start
   use m_fldsolver
   use m_mover
   use m_currentdeposit
@@ -261,16 +264,19 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! Output
+      ! Tot output
       t_outputstep = 0
-      if ((output_enable) .and.&
-        & (modulo(timestep, output_interval) .eq. 0) .and.&
-        & (timestep .ge. output_start)) then
+      if ((tot_output_enable) .and.&
+        & (modulo(timestep, tot_output_interval) .eq. 0) .and.&
+        & (timestep .ge. tot_output_start)) then
         t_outputstep = MPI_WTIME()
-        call writeOutput(timestep)
+        call writeTotOutput(timestep)
         t_outputstep = MPI_WTIME() - t_outputstep
       end if
+      !.................................................
 
+      !-------------------------------------------------
+      ! History
       if ((hst_enable) .and.&
         & (modulo(timestep, hst_interval) .eq. 0)) then
         t_outputstep = MPI_WTIME() - t_outputstep
@@ -281,9 +287,9 @@ contains
 
       !-------------------------------------------------
       ! Slices
-      if ((slice_enable) .and.&
-        & (timestep .ge. slice_start) .and.&
-        & (modulo(timestep, slice_interval) .eq. 0)) then
+      if ((slice_output_enable) .and.&
+        & (timestep .ge. slice_output_start) .and.&
+        & (modulo(timestep, slice_output_interval) .eq. 0)) then
         t_outputstep = MPI_WTIME()
         call writeSlices(timestep)
         t_outputstep = MPI_WTIME() - t_outputstep

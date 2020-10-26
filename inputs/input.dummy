@@ -61,7 +61,7 @@
   prtl_enable   = 0              # prtl output [defaults to TRUE]
   spec_enable   = 1              # spectra output [defaults to TRUE]
   params_enable = 1              # parameters output [defaults to TRUE]
-  domain_enable = 0              # domain output [defaults to TRUE]
+  diag_enable = 0              # domain output [defaults to TRUE]
 
   start         = 0              # first output step
   interval      = 10             # interval between output steps
@@ -71,6 +71,7 @@
   flds_at_prtl  = 1              # save fields at particle position
   write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt)
   write_nablas  = 1              # write divE & curlB
+  write_momenta = 1              # write average particle momenta as fields
 
   hst_enable    = 0
   hst_interval  = 1

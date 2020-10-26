@@ -2,8 +2,9 @@
 
 module m_radiation
 #ifdef RADIATION
-
   use m_globalnamespace
+  use m_outputnamespace, only: rad_spectra, spec_num, spec_min, spec_max, spec_log_bins
+
   use m_aux
   use m_errors
   use m_particlelogistics
@@ -11,7 +12,6 @@ module m_radiation
 
   real              :: emit_gamma_syn, emit_gamma_ic, cool_gamma_syn, cool_gamma_ic, rad_beta_rec
   real              :: rad_dens_lim
-  real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   integer           :: rad_photon_sp
   integer           :: rad_interval
 

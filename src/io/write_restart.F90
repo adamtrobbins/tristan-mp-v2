@@ -5,11 +5,13 @@ module m_writerestart
     use ifport, only : makedirqq
   #endif
   use m_globalnamespace
+  use m_outputnamespace, only: tot_output_index, slice_index
   use m_aux
   use m_errors
   use m_domain
   use m_particles
   use m_fields
+  use m_readinput, only: getInput
   use m_helpers
   implicit none
 
@@ -18,11 +20,21 @@ module m_writerestart
   logical                 :: rst_simulation = .false.
   logical                 :: rst_separate, rst_enable = .false.
   integer                 :: rst_interval, rst_start
-  character(len=STR_MAX)  :: restart_from = 'restart/step_00000'
 
   private :: writeFldRestart
 
 contains
+  subroutine initializeRestart()
+    implicit none
+    call getInput('restart', 'do_restart', rst_simulation, .false.)
+    call getInput('restart', 'enable', rst_enable, .false.)
+    call getInput('restart', 'start', rst_start, 0)
+    call getInput('restart', 'interval', rst_interval, 10000)
+    call getInput('restart', 'rewrite', rst_separate, .false.)
+    call getInput('restart', 'cpu_group', rst_cpu_group, 50)
+    rst_separate = (.not. rst_separate)
+  end subroutine initializeRestart
+
   subroutine writeRestart(timestep)
     implicit none
     integer, intent(in)               :: timestep
@@ -106,7 +118,7 @@ contains
 
     filename = trim(rst_dir) // '/flds.rst.' // trim(mpichar)
     open(UNIT_restart_fld, file=filename, status="replace", form="unformatted")
-    write(UNIT_restart_fld) timestep, dseed, output_index, slice_index
+    write(UNIT_restart_fld) timestep, dseed, tot_output_index, slice_index
     write(UNIT_restart_fld) ex, ey, ez, bx, by, bz
     write(UNIT_restart_fld) CC, ppc0, c_omp, sigma
     close(UNIT_restart_fld)

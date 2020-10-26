@@ -8,6 +8,7 @@ module m_mover
   use m_particles
   use m_fields
   use m_userfile
+  use m_exchangearray, only: exchangeArray
 
   ! extra physics
   #ifdef RADIATION
