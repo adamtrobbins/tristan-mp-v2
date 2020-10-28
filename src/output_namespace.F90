@@ -27,7 +27,12 @@ module m_outputnamespace
   ! ... for `spectra`
   integer                   :: spec_num
   real                      :: spec_min, spec_max
-  logical                   :: spec_log_bins
+  logical                   :: spec_log_bins, spec_dynamic_bins
+  integer                   :: spec_nx, spec_ny, spec_nz
+  #ifdef RADIATION
+    integer                   :: rad_spec_num
+    real                      :: rad_spec_min, rad_spec_max
+  #endif
 
   ! variables
   ! ... for particle/diag output
@@ -35,13 +40,15 @@ module m_outputnamespace
   character(len=STR_MAX)    :: prtl_vars(100), prtl_var_types(100), dom_vars(100)
 
   ! ... for spectra
-  real, allocatable, dimension(:,:)   :: glob_spectra
+  real                      :: spec_bin_size
+  real, allocatable         :: glob_spectra(:,:,:,:,:)
 
   #ifdef GCA
-    real, allocatable, dimension(:,:) :: glob_gca_spectra
+    real, allocatable         :: glob_gca_spectra(:,:,:,:,:)
   #endif
 
   #ifdef RADIATION
+    real              :: rad_spec_bin_size
     real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   #endif
 

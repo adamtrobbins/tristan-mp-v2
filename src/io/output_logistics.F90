@@ -40,15 +40,48 @@ contains
     call getInput('output', 'spec_min', spec_min, 1e-2)
     call getInput('output', 'spec_max', spec_max, 1e2)
     call getInput('output', 'spec_num', spec_num, 100)
+
+    call getInput('output', 'spec_dynamic_bins', spec_dynamic_bins, .false.)
+
+    #ifdef oneD
+      call getInput('output', 'spec_nx', spec_nx, 1)
+      spec_ny = 1; spec_nz = 1
+    #elif twoD
+      call getInput('output', 'spec_nx', spec_nx, 1)
+      call getInput('output', 'spec_ny', spec_ny, 1)
+      spec_nz = 1
+    #elif threeD
+      call getInput('output', 'spec_nx', spec_nx, 1)
+      call getInput('output', 'spec_ny', spec_ny, 1)
+      call getInput('output', 'spec_nz', spec_nz, 1)
+    #endif
+
     if (spec_log_bins) then
       spec_min = log(spec_min)
       spec_max = log(spec_max)
     endif
+    spec_bin_size = (spec_max - spec_min) / spec_num
+
+    #ifdef RADIATION
+      call getInput('output', 'rad_spec_min', rad_spec_min, spec_min)
+      call getInput('output', 'rad_spec_max', rad_spec_max, spec_max)
+      call getInput('output', 'rad_spec_num', rad_spec_num, spec_num)
+      if (spec_log_bins) then
+        rad_spec_min = log(rad_spec_min)
+        rad_spec_max = log(rad_spec_max)
+      endif
+      rad_spec_bin_size = (rad_spec_max - rad_spec_min) / rad_spec_num
+
+      if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, rad_spec_num))
+      if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, rad_spec_num))
+      rad_spectra(:, :) = 0.0
+      glob_rad_spectra(:, :) = 0.0
+    #endif
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl_enable, .false.)
     call getInput('output', 'write_xdmf', xdmf_enable, .true.)
-    call getInput('output', 'write_nablas', derivatives_enable, .true.)
-    call getInput('output', 'write_momenta', momenta_enable, .true.)
+    call getInput('output', 'write_nablas', derivatives_enable, .false.)
+    call getInput('output', 'write_momenta', momenta_enable, .false.)
 
     #if defined(HDF5) && defined(MPI08)
       h5comm = MPI_COMM_WORLD%MPI_VAL
@@ -156,90 +189,151 @@ contains
 
   subroutine prepareSpectraForOutput()
     implicit none
-    real                      :: energy, u_, v_, w_
+    real                      :: energy, u_, v_, w_, x_g, y_g, z_g, emax, glob_emax
     integer                   :: s, i, ti, tj, tk, p, spec_index
-    integer                   :: ierr
-    real, allocatable, dimension(:,:)     :: spectra
-    real, allocatable, dimension(:)       :: send_spec, recv_spec
+    integer                   :: spec_x_index, spec_y_index, spec_z_index
+    integer                   :: ierr, root_rnk
+    real, allocatable         :: spectra(:,:,:,:,:)
+    real, allocatable         :: send_spec(:,:,:,:), recv_spec(:,:,:,:)
     #ifdef GCA
-      real, allocatable, dimension(:,:)     :: gca_spectra
+      real, allocatable         :: gca_spectra(:,:,:,:,:)
     #endif
 
-    ! compute spectra
-    if (.not. allocated(glob_spectra)) then
-      allocate(glob_spectra(nspec, spec_num))
+    root_rnk = 0
+
+    if (spec_dynamic_bins) then
+      ! find global max energy
+      emax = 0.0
+      if (spec_log_bins) emax = -10.0
+      do s = 1, nspec
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+                v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+                w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+                if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+                  energy = sqrt(u_**2 + v_**2 + w_**2)
+                else
+                  energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
+                end if
+                if (spec_log_bins) energy = log(energy + 1e-8)
+                if (energy .gt. emax) emax = energy
+              end do
+            end do
+          end do
+        end do
+      end do
+      call MPI_ALLREDUCE(emax, glob_emax, 1, MPI_REAL, MPI_MAX, MPI_COMM_WORLD, ierr)
+      if (glob_emax .gt. spec_max) then
+        spec_max = glob_emax
+        spec_num = INT(CEILING((spec_max - spec_min) / spec_bin_size))
+      end if
     end if
-    allocate(spectra(nspec, spec_num))
-    allocate(send_spec(spec_num), recv_spec(spec_num))
-    spectra(:,:) = 0
+
+    ! compute spectra
+    if (mpi_rank .eq. root_rnk) then
+      if (.not. allocated(glob_spectra)) then
+        allocate(glob_spectra(nspec, spec_nx, spec_ny, spec_nz, spec_num))
+      end if
+      #ifdef GCA
+        if (.not. allocated(glob_gca_spectra)) then
+          allocate(glob_gca_spectra(2 * nspec, spec_nx, spec_ny, spec_nz, spec_num))
+        end if
+      #endif
+    end if
+
+    allocate(spectra(nspec, spec_nx, spec_ny, spec_nz, spec_num))
+    allocate(send_spec(spec_nx, spec_ny, spec_nz, spec_num), recv_spec(spec_nx, spec_ny, spec_nz, spec_num))
+    spectra(:,:,:,:,:) = 0
 
     #ifdef GCA
-      if (.not. allocated(glob_gca_spectra)) then
-        allocate(glob_gca_spectra(2 * nspec, spec_num))
-      end if
-      allocate(gca_spectra(2 * nspec, spec_num))
-      gca_spectra(:,:) = 0
+      allocate(gca_spectra(2 * nspec, spec_nx, spec_ny, spec_nz, spec_num))
+      gca_spectra(:,:,:,:,:) = 0
     #endif
 
     do s = 1, nspec
-     do ti = 1, species(s)%tile_nx
-       do tj = 1, species(s)%tile_ny
-         do tk = 1, species(s)%tile_nz
-           do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-            u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
-            v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
-            w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
-            if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
-              energy = sqrt(u_**2 + v_**2 + w_**2)
-            else
-              energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
-            end if
-            if (spec_log_bins) energy = log(energy + 1e-8)
-            if (energy .le. spec_min) then
-              spec_index = 1
-            else if (energy .ge. spec_max) then
-              spec_index = spec_num
-            else
-              spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
-              if (spec_index .lt. 1) spec_index = 1
-              if (spec_index .gt. spec_num) spec_index = spec_num
-            end if
-            spectra(s, spec_index) = spectra(s, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              x_g = REAL(this_meshblock%ptr%x0 + species(s)%prtl_tile(ti, tj, tk)%xi(p)) +&
+                      & species(s)%prtl_tile(ti, tj, tk)%dx(p)
+              y_g = REAL(this_meshblock%ptr%y0 + species(s)%prtl_tile(ti, tj, tk)%yi(p)) +&
+                      & species(s)%prtl_tile(ti, tj, tk)%dy(p)
+              z_g = REAL(this_meshblock%ptr%z0 + species(s)%prtl_tile(ti, tj, tk)%zi(p)) +&
+                      & species(s)%prtl_tile(ti, tj, tk)%dz(p)
 
-            #ifdef GCA
-              if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .ge. mpi_size) then
-                ! particle doing GCA
-                gca_spectra(nspec + s, spec_index) = gca_spectra(nspec + s, spec_index) +&
-                                                   & species(s)%prtl_tile(ti, tj, tk)%weight(p)
+              ! find energy bin
+              u_ = species(s)%prtl_tile(ti, tj, tk)%u(p)
+              v_ = species(s)%prtl_tile(ti, tj, tk)%v(p)
+              w_ = species(s)%prtl_tile(ti, tj, tk)%w(p)
+              if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
+                energy = sqrt(u_**2 + v_**2 + w_**2)
               else
-                ! particle doing BORIS
-                gca_spectra(s, spec_index) = gca_spectra(s, spec_index) +&
-                                           & species(s)%prtl_tile(ti, tj, tk)%weight(p)
+                energy = sqrt(1.0 + u_**2 + v_**2 + w_**2) - 1.0
               end if
-            #endif
-           end do
-         end do
-       end do
-     end do
+              if (spec_log_bins) energy = log(energy + 1e-8)
+              if (energy .le. spec_min) then
+                spec_index = 1
+              else if (energy .ge. spec_max) then
+                spec_index = spec_num
+              else
+                spec_index = INT(CEILING((energy - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+                if (spec_index .lt. 1) spec_index = 1
+                if (spec_index .gt. spec_num) spec_index = spec_num
+              end if
+
+              ! find spatial bin
+              spec_x_index = CEILING(x_g / (REAL(global_mesh%sx) / REAL(spec_nx)))
+              spec_y_index = CEILING(y_g / (REAL(global_mesh%sy) / REAL(spec_ny)))
+              spec_z_index = CEILING(z_g / (REAL(global_mesh%sz) / REAL(spec_nz)))
+
+              spectra(s, spec_x_index, spec_y_index, spec_z_index, spec_index) =&
+                    & spectra(s, spec_x_index, spec_y_index, spec_z_index, spec_index) + species(s)%prtl_tile(ti, tj, tk)%weight(p)
+
+              #ifdef GCA
+                if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .ge. mpi_size) then
+                  ! particle doing GCA
+                  gca_spectra(nspec + s, spec_x_index, spec_y_index, spec_z_index, spec_index) =&
+                      & gca_spectra(nspec + s, spec_x_index, spec_y_index, spec_z_index, spec_index) +&
+                                                              & species(s)%prtl_tile(ti, tj, tk)%weight(p)
+                else
+                  ! particle doing BORIS
+                  gca_spectra(s, spec_x_index, spec_y_index, spec_z_index, spec_index) =&
+                      & gca_spectra(s, spec_x_index, spec_y_index, spec_z_index, spec_index) +&
+                                                              & species(s)%prtl_tile(ti, tj, tk)%weight(p)
+                end if
+              #endif
+            end do
+          end do
+        end do
+      end do
     end do
 
     ! send to root rank
     do s = 1, nspec
-      send_spec(:) = spectra(s,:)
-      call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
-                    & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-      glob_spectra(s,:) = recv_spec(:)
+      send_spec(:,:,:,:) = spectra(s,:,:,:,:)
+      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, MPI_REAL,&
+                    & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
+      if (mpi_rank .eq. root_rnk) then
+        glob_spectra(s,:,:,:,:) = recv_spec(:,:,:,:)
+      end if
 
       #ifdef GCA
-        send_spec(:) = gca_spectra(s,:)
-        call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
-                      & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-        glob_gca_spectra(s,:) = recv_spec(:)
+        send_spec(:,:,:,:) = gca_spectra(s,:,:,:,:)
+        call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, MPI_REAL,&
+                      & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
 
-        send_spec(:) = gca_spectra(nspec + s,:)
-        call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
-                      & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-        glob_gca_spectra(nspec + s,:) = recv_spec(:)
+        send_spec(:,:,:,:) = gca_spectra(nspec + s,:,:,:,:)
+        call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, MPI_REAL,&
+                      & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
+
+        if (mpi_rank .eq. root_rnk) then
+          glob_gca_spectra(s,:,:,:,:) = recv_spec(:,:,:,:)
+          glob_gca_spectra(nspec + s,:,:,:,:) = recv_spec(:,:,:,:)
+        end if
       #endif
 
       #ifdef RADIATION
@@ -247,7 +341,7 @@ contains
         if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
           send_spec(:) = rad_spectra(s,:)
           call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
-                        & MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+                        & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
           glob_rad_spectra(s,:) = recv_spec(:)
           rad_spectra(s,:) = 0.0
         end if

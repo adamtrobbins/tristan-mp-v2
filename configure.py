@@ -184,8 +184,7 @@ specific_cluster = False
 if args['perseus']:
   specific_cluster = True
   args['intel'] = True
-  args['mpi08'] = True
-  args['mpi'] = False
+  args['mpi'] = True
   args['ifport'] = True
   args['avx2'] = True
 

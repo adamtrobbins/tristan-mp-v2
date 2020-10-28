@@ -332,7 +332,6 @@ contains
       call getInput('adaptive_load_balancing', 'sz_min', alb_szmin, 10)
       call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
       call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
-
     #endif
   end subroutine initializeLB
 
@@ -345,7 +344,7 @@ contains
     call getInput('algorithm', 'fieldsolver', enable_fieldsolver, .true.)
     call getInput('algorithm', 'currdeposit', enable_currentdeposit, .true.)
     call getInput('plasma', 'ppc0', ppc0)
-    call getInput('plasma', 'sigma', sigma, 1.0)
+    call getInput('plasma', 'sigma', sigma)
     if (sigma .le. 0.0) then
       call throwError('Reference sigma value must be > 0.')
     endif
@@ -373,14 +372,18 @@ contains
 
     allocate(species(nspec))
     do s = 1, nspec
-      call getInput('grid', 'tileX', species(s)%tile_sx)
-      call getInput('grid', 'tileY', species(s)%tile_sy)
-      call getInput('grid', 'tileZ', species(s)%tile_sz)
       #ifdef oneD
+        call getInput('grid', 'tileX', species(s)%tile_sx)
         species(s)%tile_sy = 1
         species(s)%tile_sz = 1
       #elif twoD
+        call getInput('grid', 'tileX', species(s)%tile_sx)
+        call getInput('grid', 'tileY', species(s)%tile_sy)
         species(s)%tile_sz = 1
+      #elif threeD
+        call getInput('grid', 'tileX', species(s)%tile_sx)
+        call getInput('grid', 'tileY', species(s)%tile_sy)
+        call getInput('grid', 'tileZ', species(s)%tile_sz)
       #endif
       species(s)%tile_nx = ceiling(real(this_meshblock%ptr%sx) / real(species(s)%tile_sx))
       species(s)%tile_ny = ceiling(real(this_meshblock%ptr%sy) / real(species(s)%tile_sy))
@@ -923,20 +926,14 @@ contains
       call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
       call getInput('radiation', 'dens_limit', rad_dens_lim, 0.0)
       #ifdef EMIT
-        call getInput('radiation', 'photon_sp', rad_photon_sp, 0)
-        if (rad_photon_sp .ne. 0) then
-          if ((nspec .lt. rad_photon_sp) .or.&
-            & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
-            & (species(rad_photon_sp)%m_sp .ne. 0)) then
-            call throwError('Wrong choice of `photon_sp`.')
-          end if
+        call getInput('radiation', 'photon_sp', rad_photon_sp, 3)
+        if ((rad_photon_sp .le. 0) .or.&
+          & (nspec .lt. rad_photon_sp) .or.&
+          & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
+          & (species(rad_photon_sp)%m_sp .ne. 0)) then
+          call throwError('Wrong choice of `photon_sp`.')
         end if
       #endif
-
-      if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, spec_num))
-      if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, spec_num))
-      rad_spectra(:, :) = 0.0
-      glob_rad_spectra(:, :) = 0.0
     end subroutine initializeRadiation
   #endif
 
