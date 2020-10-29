@@ -381,6 +381,7 @@ contains
 
   subroutine fillDownsamplingTile(tile, dwn_tile, p, p_ind)
     implicit none
+    ! DEP_PRT [particle-dependent]
     type(particle_tile), intent(in)                   :: tile
     type(particle_tile), intent(inout)                :: dwn_tile
     integer, intent(in)                               :: p

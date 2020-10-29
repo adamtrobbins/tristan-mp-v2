@@ -54,12 +54,12 @@ contains
     integer :: bin_limit
 
     type(positionBin_XYZ), allocatable  :: position_grid(:,:,:)
-    type(particle_tile), allocatable    :: downsampling_tile
+    type(particle_tile), allocatable    :: downsampling_tile ! [ADDING NEW TILE FOR DOWNSAMPLING]
     integer                             :: n_rad_x, n_rad_y, n_rad_z
     integer                             :: pi, pj, pk, p_ind, p
-    integer                             :: dwn_rad_x = 1 ! Make this an input parameter
-    integer                             :: dwn_rad_y = 1 ! Make this an input parameter
-    integer                             :: dwn_rad_z = 1 ! Make this an input parameter
+    integer                             :: dwn_rad_x = 1 ! Make this an input parameter [ASK HAYK]
+    integer                             :: dwn_rad_y = 1 ! Make this an input parameter [ASK HAYK]
+    integer                             :: dwn_rad_z = 1 ! Make this an input parameter [ASK HAYK]
 
     do s = 1, nspec
       if (species(s)%dwn_sp) then
@@ -68,7 +68,7 @@ contains
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
 
-              ! TODO Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions)
+              ! TODO Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions) [ASK HAYK]
               n_rad_x = INT(species(s)%tile_sx / dwn_rad_x)
               n_rad_y = INT(species(s)%tile_sy / dwn_rad_y)
               n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
@@ -79,9 +79,9 @@ contains
               if (allocated(downsampling_tile)) deallocate(downsampling_tile)
               allocate(downsampling_tile)
 
-                do pi = 1, n_rad_x
-                  do pj = 1, n_rad_y
-                    do pk = 1, n_rad_z
+                do pi = 1, n_rad_x ! [ADDITIONAL LOOP]
+                  do pj = 1, n_rad_y ! [ADDITIONAL LOOP]
+                    do pk = 1, n_rad_z ! [ADDITIONAL LOOP]
 
                     call allocateParticlesOnEmptyTile(s, downsampling_tile, position_grid(pi, pj, pk)%npart)
 
