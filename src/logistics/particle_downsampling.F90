@@ -57,8 +57,8 @@ contains
     type(particle_tile), allocatable    :: downsampling_tile ! [ADDING NEW TILE FOR DOWNSAMPLING]
     integer                             :: n_rad_x, n_rad_y, n_rad_z
     integer                             :: pi, pj, pk, p_ind, p
-    integer                             :: dwn_rad_x = 1 ! Make this an input parameter [ASK HAYK]
-    integer                             :: dwn_rad_y = 1 ! Make this an input parameter [ASK HAYK]
+    integer                             :: dwn_rad_x = 2 ! Make this an input parameter [ASK HAYK]
+    integer                             :: dwn_rad_y = 2 ! Make this an input parameter [ASK HAYK]
     integer                             :: dwn_rad_z = 1 ! Make this an input parameter [ASK HAYK]
 
     do s = 1, nspec
