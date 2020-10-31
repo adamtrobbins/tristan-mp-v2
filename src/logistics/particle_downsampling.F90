@@ -74,7 +74,7 @@ contains
               n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
 
               call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
-              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
+              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, dwn_rad_x, dwn_rad_y, dwn_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
 
               if (allocated(downsampling_tile)) deallocate(downsampling_tile)
               allocate(downsampling_tile)
@@ -551,11 +551,11 @@ contains
     #endif
 
     ! take two random particles to position the new ones
-    p_ind = INT((random(dseed) * group%size + 1))
-    p = group%indices(p_ind)
-    xAi = tile%xi(p); dxA = tile%dx(p)
-    yAi = tile%yi(p); dyA = tile%dy(p)
-    zAi = tile%zi(p); dzA = tile%dz(p)
+    ! p_ind = INT((random(dseed) * group%size + 1))
+    ! p = group%indices(p_ind)
+    ! xAi = tile%xi(p); dxA = tile%dx(p)
+    ! yAi = tile%yi(p); dyA = tile%dy(p)
+    ! zAi = tile%zi(p); dzA = tile%dz(p)
 
     ! p = p_ind
     ! do while (p .eq. p_ind)
@@ -582,25 +582,25 @@ contains
     do p_ind = 1, group%size
       p = group%indices(p_ind)
 
-      x2 = x2 + tile%weight(p) * tile%dx(p)
-      y2 = y2 + tile%weight(p) * tile%dy(p)
-      z2 = z2 + tile%weight(p) * tile%dz(p)
+      x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
+      y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
+      z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
 
       totweight = totweight + tile%weight(p)
 
     enddo
 
-    xAi = tile%xi(p); dxA = x2 / totweight
-    yAi = tile%yi(p); dyA = y2 / totweight
-    zAi = tile%zi(p); dzA = z2 / totweight
+    x2 = x2 / totweight
+    y2 = y2 / totweight
+    z2 = z2 / totweight
 
-    xBi = tile%xi(p); dxB = x2 / totweight
-    yBi = tile%yi(p); dyB = y2 / totweight
-    zBi = tile%zi(p); dzB = z2 / totweight
+    xAi = floor(x2); dxA = real(x2 - xAi)
+    yAi = floor(y2); dyA = real(y2 - yAi)
+    zAi = floor(z2); dzA = real(z2 - zAi)
 
-      x2 = x2 + real(tile%xi(p))
-      y2 = y2 + real(tile%yi(p))
-      z2 = z2 + real(tile%zi(p))
+    xBi = xAi; dxB = dxA
+    yBi = yAi; dyB = dyA
+    zBi = zAi; dzB = dzA
 
     ! Extra current deposit
     do p_ind = 1, group%size
