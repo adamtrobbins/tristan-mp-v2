@@ -444,6 +444,10 @@ contains
       pj = floor(REAL(mod(tile%yi(p),n_tile_sy)) / REAL(n_rad_y)) + 1
       pk = floor(REAL(mod(tile%zi(p),n_tile_sz)) / REAL(n_rad_z)) + 1
 
+      if((pi.lt.1).or.(pi.gt.n_rad_x).or.(pj.lt.1).or.(pj.gt.n_rad_y).or.(pk.lt.1).or.(pk.gt.n_rad_z)) then
+        print *, pi, n_rad_x, pj, n_rad_y, pk, n_rad_z
+      endif
+
       position_bins(pi, pj, pk)%npart = position_bins(pi, pj, pk)%npart + 1
       position_bins(pi, pj, pk)%indices(position_bins(pi, pj, pk)%npart) = p
 

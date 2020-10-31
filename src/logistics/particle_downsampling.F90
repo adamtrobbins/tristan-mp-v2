@@ -74,7 +74,7 @@ contains
               n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
 
               call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
-              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, dwn_rad_x, dwn_rad_y, dwn_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
+              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
 
               if (allocated(downsampling_tile)) deallocate(downsampling_tile)
               allocate(downsampling_tile)
@@ -102,7 +102,7 @@ contains
 
                     enddo
 
-                      if (downsampling_tile%npart_sp .gt. 2) then
+                      if (downsampling_tile%npart_sp .gt. 5) then
 
                         ! decide whether to use cartesian OR spherical binning
                         if (dwn_cartesian_bins) then
@@ -175,7 +175,7 @@ contains
               ! tile%ind(p) = 100*100 * (e_b+1) + 100 * (th_b+1) + (ph_b+1)
             end do
           #endif
-          if (npart .gt. 2) then
+          if (npart .gt. 5) then
             call downsampleBin_Spherical(tile,&
                         & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
                         & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
@@ -251,7 +251,7 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 2) then
+          if (group%size .gt. 5) then
             call mergeParticlesInGroup(group, tile)
           end if
           group%indices(:) = -1
@@ -330,7 +330,7 @@ contains
       do pj = 1, dwn_n_mom_bins
         do pk = 1, dwn_n_mom_bins
           npart = momentum_bins(pi, pj, pk)%npart
-          if (npart .gt. 2) then
+          if (npart .gt. 5) then
             px_mid = 0.5 * (momentum_bins(pi, pj, pk)%px_max + momentum_bins(pi, pj, pk)%px_min)
             py_mid = 0.5 * (momentum_bins(pi, pj, pk)%py_max + momentum_bins(pi, pj, pk)%py_min)
             pz_mid = 0.5 * (momentum_bins(pi, pj, pk)%pz_max + momentum_bins(pi, pj, pk)%pz_min)
@@ -405,7 +405,7 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 2) then
+          if (group%size .gt. 5) then
             call mergeParticlesInGroup(group, tile)
           end if
           group%indices(:) = -1
@@ -551,11 +551,11 @@ contains
     #endif
 
     ! take two random particles to position the new ones
-    ! p_ind = INT((random(dseed) * group%size + 1))
-    ! p = group%indices(p_ind)
-    ! xAi = tile%xi(p); dxA = tile%dx(p)
-    ! yAi = tile%yi(p); dyA = tile%dy(p)
-    ! zAi = tile%zi(p); dzA = tile%dz(p)
+    p_ind = INT((random(dseed) * group%size + 1))
+    p = group%indices(p_ind)
+    xAi = tile%xi(p); dxA = tile%dx(p)
+    yAi = tile%yi(p); dyA = tile%dy(p)
+    zAi = tile%zi(p); dzA = tile%dz(p)
 
     ! p = p_ind
     ! do while (p .eq. p_ind)

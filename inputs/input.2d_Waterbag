@@ -37,7 +37,7 @@
 <output>
 
   start         = 0              # first output step
-  interval      = 2          # interval between output steps
+  interval      = 200          # interval between output steps
   stride        = 1            # particle stride
   istep         = 1             # field downsampling
   flds_at_prtl  = 1              # save fields at particle position
@@ -71,7 +71,7 @@
 <downsampling>
 
   # particle downsampling (merging) parameters
-  interval      = 25
+  interval      = 75
   start         = 1             # starting timestep
   max_weight    = 10000000000           # maximum weight of merging particles
 
@@ -82,6 +82,6 @@
 
   dynamic_bins  = 1             # take min/max energy locally in each tile...
                                 # (energ_max/min still set the global maxima)
-  mom_bins      = 5            # number of momentum bins in XYZ phase space
+  mom_bins      = 8            # number of momentum bins in XYZ phase space
   mom_spread    = 10000000000           # max momentum spread allowed for dynamic bins
 
