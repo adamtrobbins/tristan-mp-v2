@@ -603,15 +603,15 @@ contains
     !   z2 = z2 + real(tile%zi(p))
 
     ! Extra current deposit
-    ! do p_ind = 1, group%size
-    !   p = group%indices(p_ind)
+    do p_ind = 1, group%size
+      p = group%indices(p_ind)
 
-    !   x1 = real(tile%xi(p)) + tile%dx(p)
-    !   y1 = real(tile%yi(p)) + tile%dy(p)
-    !   z1 = real(tile%zi(p)) + tile%dz(p)
+      x1 = real(tile%xi(p)) + tile%dx(p)
+      y1 = real(tile%yi(p)) + tile%dy(p)
+      z1 = real(tile%zi(p)) + tile%dz(p)
 
-    !   call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
-    ! end do
+      call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
+    end do
 
     ! "nullify" merged particles
     do p_ind = 1, group%size
