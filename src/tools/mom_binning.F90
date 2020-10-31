@@ -358,10 +358,9 @@ contains
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! Cartesian momenta binning.
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
-  subroutine initializePositionBins(tile, position_bins, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z)
+  subroutine initializePositionBins(tile, position_bins, n_rad_x, n_rad_y, n_rad_z)
     implicit none
     type(particle_tile), intent(in)                   :: tile
-    integer, intent(in)                               :: nparts_in_tile
     type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
     integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
     integer                                           :: pi, pj, pk
@@ -373,7 +372,7 @@ contains
       do pj = 1, n_rad_y
         do pk = 1, n_rad_z
           position_bins(pi, pj, pk)%npart = 0
-          allocate(position_bins(pi, pj, pk)%indices(nparts_in_tile))
+          allocate(position_bins(pi, pj, pk)%indices(tile%npart_sp))
         end do
       end do
     end do
@@ -430,17 +429,16 @@ contains
 
   end subroutine fillDownsamplingTile
 
-  subroutine binParticlePositions(tile, position_bins, nparts_in_tile, n_rad_x, n_rad_y, n_rad_z, n_tile_sx, n_tile_sy, n_tile_sz)
+  subroutine binParticlePositions(tile, position_bins, n_rad_x, n_rad_y, n_rad_z, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
     ! FIX: this is for photons only
     type(positionBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
-    integer, intent(in)                               :: nparts_in_tile
     integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
     integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     type(particle_tile), intent(in)   :: tile
     integer :: p, pi, pj, pk
 
-    do p = 1, nparts_in_tile
+    do p = 1, tile%npart_sp
 
       pi = floor(REAL(mod(tile%xi(p),n_tile_sx)) / REAL(n_rad_x)) + 1
       pj = floor(REAL(mod(tile%yi(p),n_tile_sy)) / REAL(n_rad_y)) + 1

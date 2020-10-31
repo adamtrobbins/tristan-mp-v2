@@ -41,7 +41,8 @@
   stride        = 1            # particle stride
   istep         = 1             # field downsampling
   flds_at_prtl  = 1              # save fields at particle position
-
+  write_nablas  = 1
+  
   spec_min      = 1e-4           # `g - 1` for massive and `e` for massless
   spec_max      = 1e4            # `g - 1` for massive and `e` for massless
   spec_num      = 300            # number of energy bins
@@ -49,7 +50,7 @@
 
 <plasma>
 
-  ppc0          = 384
+  ppc0          = 324
   sigma         = 5
   c_omp         = 10
 
@@ -60,7 +61,7 @@
   maxptl1       = 1e8           # max number of particles per core
   m1            = 1
   ch1           = 1
-  dwn1          = 1  
+  dwn1          = 1 
 
   maxptl2       = 1e8           # max number of particles per core
   m2            = 1
@@ -70,7 +71,7 @@
 <downsampling>
 
   # particle downsampling (merging) parameters
-  interval      = 75
+  interval      = 25
   start         = 1             # starting timestep
   max_weight    = 10000000000           # maximum weight of merging particles
 
@@ -81,6 +82,6 @@
 
   dynamic_bins  = 1             # take min/max energy locally in each tile...
                                 # (energ_max/min still set the global maxima)
-  mom_bins      = 8            # number of momentum bins in XYZ phase space
+  mom_bins      = 5            # number of momentum bins in XYZ phase space
   mom_spread    = 10000000000           # max momentum spread allowed for dynamic bins
 

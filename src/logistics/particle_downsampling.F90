@@ -73,8 +73,8 @@ contains
               n_rad_y = INT(species(s)%tile_sy / dwn_rad_y)
               n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
 
-              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, species(s)%prtl_tile(ti, tj, tk)%npart_sp, n_rad_x, n_rad_y, n_rad_z)
-              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, species(s)%prtl_tile(ti, tj, tk)%npart_sp, dwn_rad_x, dwn_rad_y, dwn_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
+              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
+              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, dwn_rad_x, dwn_rad_y, dwn_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
 
               if (allocated(downsampling_tile)) deallocate(downsampling_tile)
               allocate(downsampling_tile)
@@ -436,6 +436,8 @@ contains
     real            :: temp1_x, temp1_y, temp1_z, temp1
     real            :: temp2_x, temp2_y, temp2_z, temp2
     logical         :: masslessQ
+    real            :: x2, y2, z2, totweight
+    real            :: x1, y1, z1
 
     s = tile%spec
     if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) then
@@ -555,14 +557,61 @@ contains
     yAi = tile%yi(p); dyA = tile%dy(p)
     zAi = tile%zi(p); dzA = tile%dz(p)
 
-    p = p_ind
-    do while (p .eq. p_ind)
-      p = INT((random(dseed) * group%size + 1))
-    end do
-    p = group%indices(p)
+    ! p = p_ind
+    ! do while (p .eq. p_ind)
+    !   p = INT((random(dseed) * group%size + 1))
+    ! end do
+    ! p = group%indices(p)
+    ! xBi = tile%xi(p); dxB = tile%dx(p)
+    ! yBi = tile%yi(p); dyB = tile%dy(p)
+    ! zBi = tile%zi(p); dzB = tile%dz(p)
+
     xBi = tile%xi(p); dxB = tile%dx(p)
     yBi = tile%yi(p); dyB = tile%dy(p)
     zBi = tile%zi(p); dzB = tile%dz(p)
+
+    x2 = real(xBi) + dxB
+    y2 = real(yBi) + dyB
+    z2 = real(zBi) + dzB
+
+    ! x2 = 0.0
+    ! y2 = 0.0
+    ! z2 = 0.0
+    ! totweight = 0.0
+
+    ! do p_ind = 1, group%size
+    !   p = group%indices(p_ind)
+
+    !   x2 = x2 + tile%weight(p) * tile%dx(p)
+    !   y2 = y2 + tile%weight(p) * tile%dy(p)
+    !   z2 = z2 + tile%weight(p) * tile%dz(p)
+
+    !   totweight = totweight + tile%weight(p)
+
+    ! enddo
+
+    ! xAi = tile%xi(p); dxA = x2 / totweight
+    ! yAi = tile%yi(p); dyA = y2 / totweight
+    ! zAi = tile%zi(p); dzA = z2 / totweight
+
+    ! xBi = tile%xi(p); dxB = x2 / totweight
+    ! yBi = tile%yi(p); dyB = y2 / totweight
+    ! zBi = tile%zi(p); dzB = z2 / totweight
+
+    !   x2 = x2 + real(tile%xi(p))
+    !   y2 = y2 + real(tile%yi(p))
+    !   z2 = z2 + real(tile%zi(p))
+
+    ! Extra current deposit
+    ! do p_ind = 1, group%size
+    !   p = group%indices(p_ind)
+
+    !   x1 = real(tile%xi(p)) + tile%dx(p)
+    !   y1 = real(tile%yi(p)) + tile%dy(p)
+    !   z1 = real(tile%zi(p)) + tile%dz(p)
+
+    !   call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
+    ! end do
 
     ! "nullify" merged particles
     do p_ind = 1, group%size

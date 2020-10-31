@@ -75,7 +75,9 @@ contains
                   w = - vpm + random(dseed) * 2.0 * vpm
                   ! particles at rest
                   call injectParticleGlobally(1, xg, yg, zg, u, v, w)
-                  call injectParticleGlobally(2, xg, yg, zg, -u, -v, -w)
+                  if (nspec .eq. 2) then
+                    call injectParticleGlobally(2, xg, yg, zg, -u, -v, -w)
+                  endif
                end do
             end do
           end do
