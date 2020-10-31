@@ -551,11 +551,11 @@ contains
     #endif
 
     ! take two random particles to position the new ones
-    ! p_ind = INT((random(dseed) * group%size + 1))
-    ! p = group%indices(p_ind)
-    ! xAi = tile%xi(p); dxA = tile%dx(p)
-    ! yAi = tile%yi(p); dyA = tile%dy(p)
-    ! zAi = tile%zi(p); dzA = tile%dz(p)
+    p_ind = INT((random(dseed) * group%size + 1))
+    p = group%indices(p_ind)
+    xAi = tile%xi(p); dxA = tile%dx(p)
+    yAi = tile%yi(p); dyA = tile%dy(p)
+    zAi = tile%zi(p); dzA = tile%dz(p)
 
     ! p = p_ind
     ! do while (p .eq. p_ind)
@@ -566,41 +566,40 @@ contains
     ! yBi = tile%yi(p); dyB = tile%dy(p)
     ! zBi = tile%zi(p); dzB = tile%dz(p)
 
-    ! xBi = tile%xi(p); dxB = tile%dx(p)
-    ! yBi = tile%yi(p); dyB = tile%dy(p)
-    ! zBi = tile%zi(p); dzB = tile%dz(p)
+    xBi = tile%xi(p); dxB = tile%dx(p)
+    yBi = tile%yi(p); dyB = tile%dy(p)
+    zBi = tile%zi(p); dzB = tile%dz(p)
 
-    ! x2 = real(xBi) + dxB
-    ! y2 = real(yBi) + dyB
-    ! z2 = real(zBi) + dzB
+    x2 = real(xBi) + dxB
+    y2 = real(yBi) + dyB
+    z2 = real(zBi) + dzB
 
-    x2 = 0.0
-    y2 = 0.0
-    z2 = 0.0
-    totweight = 0.0
+    ! x2 = 0.0
+    ! y2 = 0.0
+    ! z2 = 0.0
+    ! totweight = 0.0
 
-    do p_ind = 1, group%size
-      p = group%indices(p_ind)
+    ! do p_ind = 1, group%size
+    !   p = group%indices(p_ind)
 
-      x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
-      y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
-      z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
+    !   x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
+    !   y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
+    !   z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
 
-      totweight = totweight + tile%weight(p)
+    !   totweight = real(totweight + tile%weight(p))
+    ! enddo
 
-    enddo
+    ! x2 = x2 / totweight
+    ! y2 = y2 / totweight
+    ! z2 = z2 / totweight
 
-    x2 = x2 / totweight
-    y2 = y2 / totweight
-    z2 = z2 / totweight
+    ! xBi = floor(x2); dxB = x2 - real(xBi)
+    ! yBi = floor(y2); dyB = y2 - real(yBi)
+    ! zBi = floor(z2); dzB = z2 - real(zBi)
 
-    xAi = floor(x2); dxA = real(x2 - xAi)
-    yAi = floor(y2); dyA = real(y2 - yAi)
-    zAi = floor(z2); dzA = real(z2 - zAi)
-
-    xBi = xAi; dxB = dxA
-    yBi = yAi; dyB = dyA
-    zBi = zAi; dzB = dzA
+    ! xAi = floor(x2); dxA = x2 - real(xBi)
+    ! yAi = floor(y2); dyA = y2 - real(yBi)
+    ! zAi = floor(z2); dzA = z2 - real(zBi)
 
     ! Extra current deposit
     do p_ind = 1, group%size
