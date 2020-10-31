@@ -197,6 +197,19 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! Particle downsampling
+      #ifdef DOWNSAMPLING
+          t_dwnstep = MPI_WTIME()
+          call exchangeParticles()
+          call clearGhostParticles()
+          call checkTileSizes()
+          call downsamplingStep(timestep)
+          call clearGhostParticles()
+          t_dwnstep = MPI_WTIME() - t_dwnstep
+      #endif
+      !.................................................
+
+      !-------------------------------------------------
       ! Exchanging currents
         t_fldexchstep = MPI_WTIME() - t_fldexchstep
       if (enable_currentdeposit) call exchangeCurrents()
@@ -250,15 +263,15 @@ contains
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
 
-      !-------------------------------------------------
-      ! Particle downsampling
-      #ifdef DOWNSAMPLING
-          t_dwnstep = MPI_WTIME()
-        call downsamplingStep(timestep)
-        call clearGhostParticles()
-          t_dwnstep = MPI_WTIME() - t_dwnstep
-      #endif
-      !.................................................
+      ! !-------------------------------------------------
+      ! ! Particle downsampling
+      ! #ifdef DOWNSAMPLING
+      !     t_dwnstep = MPI_WTIME()
+      !   call downsamplingStep(timestep)
+      !   call clearGhostParticles()
+      !     t_dwnstep = MPI_WTIME() - t_dwnstep
+      ! #endif
+      ! !.................................................
 
       !-------------------------------------------------
       ! Output
