@@ -38,6 +38,25 @@ contains
     return
   end function
 
+    function userSLBload(x_glob, y_glob, z_glob,&
+                     & dummy1, dummy2, dummy3)
+    real :: userSLBload
+    ! global coordinates
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    ! global box dimensions
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+
+    return
+  end function
+
+  !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userInitParticles()
     implicit none
     real                :: nUP
@@ -67,7 +86,7 @@ contains
             xp = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p)) + species(s)%prtl_tile(ti, tj, tk)%dx(p)
             xp = xp + REAL(this_meshblock%ptr%x0)
             u_ = amplitude * sin(kx * xp)
-            species(s)%prtl_tile(ti, tj, tk)%u(p) = u_
+            species(s)%prtl_tile(ti, tj, tk)%u(p) = species(s)%prtl_tile(ti, tj, tk)%u(p) + u_
           end do
         end do
       end do
@@ -106,15 +125,9 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
-  subroutine userCurrentDeposit(step)
+  subroutine userDriveParticles(step)
     implicit none
-    integer, optional, intent(in) :: step
-    ! called after particles move and deposit ...
-    ! ... and before the currents are added to the electric field
-  end subroutine userCurrentDeposit
-
-  subroutine userDriveParticles()
-    implicit none
+        integer, optional, intent(in)             :: step
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
@@ -132,8 +145,9 @@ contains
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
-  subroutine userParticleBoundaryConditions()
+  subroutine userParticleBoundaryConditions(step)
     implicit none
+      integer, optional, intent(in)             :: step
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)

@@ -66,7 +66,7 @@ contains
 
     maxw3%temperature = 1.0e-5
 
-    npart = INT(global_mesh%sx * global_mesh%sy * ppc0 * 0.5 * amplitude)
+    npart = INT(global_mesh%sx * global_mesh%sy * 0.25 * ppc0) !INT(global_mesh%sx * global_mesh%sy * ppc0 * 0.5 * amplitude)
     do n = 1, npart
       xg = random(dseed) * global_mesh%sx
       yg = 0.5
@@ -77,7 +77,7 @@ contains
       call injectParticleGlobally(1, xg, yg, 0.5, u_, v_, w_)
       if (nspec .eq. 3) then
         call generateFromMaxwellian(maxw3, u_, v_, w_)
-        call injectParticleGlobally(3, xg, yg, 0.5, 0.0, 0.0, 0.0)
+        call injectParticleGlobally(3, xg, yg, 0.5, u_, v_, w_)
       end if
       xg = random(dseed) * global_mesh%sx
       yg = 0.5
@@ -88,7 +88,7 @@ contains
       call injectParticleGlobally(2, xg, yg, 0.5, u_, v_, w_)
       if (nspec .eq. 3) then
         call generateFromMaxwellian(maxw3, u_, v_, w_)
-        call injectParticleGlobally(3, xg, yg, 0.5, 0.0, 0.0, 0.0)
+        call injectParticleGlobally(3, xg, yg, 0.5, u_, v_, w_)
       end if
     end do
   end subroutine userInitParticles
