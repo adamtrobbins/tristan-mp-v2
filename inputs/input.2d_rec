@@ -44,7 +44,7 @@
   flds_at_prtl  = 1              # save fields at particle position
 
   spec_min      = 1e-4           # `g - 1` for massive and `e` for massless
-  spec_max      = 1e4            # `g - 1` for massive and `e` for massless
+  spec_max      = 5e3            # `g - 1` for massive and `e` for massless
   spec_num      = 300            # number of energy bins
 
 <plasma>
