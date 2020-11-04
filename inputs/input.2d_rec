@@ -44,7 +44,7 @@
   flds_at_prtl  = 1              # save fields at particle position
 
   spec_min      = 1e-4           # `g - 1` for massive and `e` for massless
-  spec_max      = 5e3            # `g - 1` for massive and `e` for massless
+  spec_max      = 1e4            # `g - 1` for massive and `e` for massless
   spec_num      = 300            # number of energy bins
 
 <plasma>
@@ -83,12 +83,16 @@
   start         = 1             # starting timestep
   max_weight    = 10000000000           # maximum weight of merging particles
 
-  cartesian_bins = 1            # cartesian or spherical momentum binning
-  energy_min    = 0             # min energy of merged particle
-  energy_max    = 10000000000           # max energy of merged particle
+  cartesian_bins = 0            # cartesian or spherical momentum binning
+  energy_min    = 10             # min energy of merged particle
+  energy_max    = 3e3           # max energy of merged particle
   int_weights   = 0             # force integer weights when merging
 
-  dynamic_bins  = 1             # take min/max energy locally in each tile...
-                                # (energ_max/min still set the global maxima)
-  mom_bins      = 5             # number of momentum bins in XYZ phase space
-  mom_spread    = 10000000000           # max momentum spread allowed for dynamic bins
+ # dynamic_bins  = 1             # take min/max energy locally in each tile...
+  angular_bins  = 5             # number of angular bins (theta/phi) [5]
+  energy_bins   = 5             # number of log energy bins [5]
+  log_e_bins    = 1             # log or linear energy bins [1]
+
+ #                               # (energ_max/min still set the global maxima)
+ # mom_bins      = 5             # number of momentum bins in XYZ phase space
+ # mom_spread    = 10000000000           # max momentum spread allowed for dynamic bins
