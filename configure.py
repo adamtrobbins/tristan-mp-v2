@@ -35,6 +35,10 @@ parser.add_argument('-hdf5',
                     action='store_true',
                     default=False,
                     help='enable HDF5 & use h5pfc compiler')
+parser.add_argument('-serial',
+                    action='store_true',
+                    default=False,
+                    help='enable serial output')
 
 vec_group = parser.add_mutually_exclusive_group(required=False)
 vec_group.add_argument('-avx2',
@@ -58,7 +62,7 @@ mpi_group.add_argument('-mpi',
                        help='enable mpi')
 mpi_group.add_argument('-mpi08',
                        action='store_true',
-                       default=True,
+                       default=False,
                        help='enable mpi_f08')
 
 # user file
@@ -180,8 +184,7 @@ specific_cluster = False
 if args['perseus']:
   specific_cluster = True
   args['intel'] = True
-  args['mpi08'] = True
-  args['mpi'] = False
+  args['mpi'] = True
   args['ifport'] = True
   args['avx2'] = True
 
@@ -196,6 +199,9 @@ else:
     makefile_options['COMPILER_COMMAND'] += 'mpif90 '
 if args['ifport']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
+
+if args['serial']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DSERIALOUTPUT '
 
 # mpi version
 if args['mpi']:
@@ -319,7 +325,7 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                         (' [avx512]' if args['avx512'] else '')
                                       ))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
-print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'N/A'))
+print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 

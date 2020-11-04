@@ -497,7 +497,7 @@ contains
     integer, intent(in) :: s
     real, intent(in)    :: x_glob, y_glob, z_glob
     real, intent(in)    :: u, v, w
-    real                :: x_loc, y_loc, z_loc
+    real                :: x_g, y_g, z_g, x_loc, y_loc, z_loc
     real                :: dx_, dy_, dz_
     integer(kind=2)     :: xi_, yi_, zi_
     real                :: weight_
@@ -510,7 +510,21 @@ contains
       weight_ = 1.0
     end if
 
-    call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=contained_flag)
+    #ifdef oneD
+      x_g = x_glob
+      y_g = 0.5
+      z_g = 0.5
+    #elif twoD
+      x_g = x_glob
+      y_g = y_glob
+      z_g = 0.5
+    #elif threeD
+      x_g = x_glob
+      y_g = y_glob
+      z_g = z_glob
+    #endif
+
+    call globalToLocalCoords(x_g, y_g, z_g, x_loc, y_loc, z_loc, containedQ=contained_flag)
     x_loc = x_loc + TINYXYZ
     y_loc = y_loc + TINYXYZ
     z_loc = z_loc + TINYXYZ

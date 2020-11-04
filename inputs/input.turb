@@ -51,7 +51,7 @@
   prtl_enable   = 0              # prtl output [defaults to TRUE]
   spec_enable   = 1              # spectra output [defaults to TRUE]
   params_enable = 1              # parameters output [defaults to TRUE]
-  domain_enable = 0              # domain output [defaults to TRUE]
+  diag_enable = 0              # domain output [defaults to TRUE]
 
   start         = 0              # first output step
   interval      = 10             # interval between output steps

@@ -4,8 +4,6 @@ module m_readinput
   use m_globalnamespace
   use m_aux
   use m_errors
-  use m_writeoutput
-  use m_writerestart
   implicit none
 
   interface strToNum

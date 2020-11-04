@@ -2,8 +2,9 @@
 
 module m_radiation
 #ifdef RADIATION
-
   use m_globalnamespace
+  use m_outputnamespace, only: rad_spectra, rad_spec_num, rad_spec_min, rad_spec_max, spec_log_bins
+
   use m_aux
   use m_errors
   use m_particlelogistics
@@ -11,7 +12,6 @@ module m_radiation
 
   real              :: emit_gamma_syn, emit_gamma_ic, cool_gamma_syn, cool_gamma_ic, rad_beta_rec
   real              :: rad_dens_lim
-  real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
   integer           :: rad_photon_sp
   integer           :: rad_interval
 
@@ -99,14 +99,14 @@ contains
       #endif
 
       if (spec_log_bins) eph_emit = log(eph_emit)
-      if (eph_emit .le. spec_min) then
+      if (eph_emit .le. rad_spec_min) then
         spec_index = 1
-      else if (eph_emit .ge. spec_max) then
-        spec_index = spec_num
+      else if (eph_emit .ge. rad_spec_max) then
+        spec_index = rad_spec_num
       else
-        spec_index = INT(CEILING((eph_emit - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+        spec_index = INT(CEILING((eph_emit - rad_spec_min) * REAL(rad_spec_num) / (rad_spec_max - rad_spec_min)))
         if (spec_index .lt. 1) spec_index = 1
-        if (spec_index .gt. spec_num) spec_index = spec_num
+        if (spec_index .gt. rad_spec_num) spec_index = rad_spec_num
       end if
       rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_emit
     end if
@@ -168,15 +168,15 @@ contains
         end if
       #endif
 
-      if (spec_log_bins) eph_emit = log(eph_emit + TINYFLD)
-      if (eph_emit .le. spec_min) then
+      if (spec_log_bins) eph_emit = log(eph_emit)
+      if (eph_emit .le. rad_spec_min) then
         spec_index = 1
-      else if (eph_emit .ge. spec_max) then
-        spec_index = spec_num
+      else if (eph_emit .ge. rad_spec_max) then
+        spec_index = rad_spec_num
       else
-        spec_index = INT(CEILING((eph_emit - spec_min) * REAL(spec_num) / (spec_max - spec_min)))
+        spec_index = INT(CEILING((eph_emit - rad_spec_min) * REAL(rad_spec_num) / (rad_spec_max - rad_spec_min)))
         if (spec_index .lt. 1) spec_index = 1
-        if (spec_index .gt. spec_num) spec_index = spec_num
+        if (spec_index .gt. rad_spec_num) spec_index = rad_spec_num
       end if
       rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_emit
     end if

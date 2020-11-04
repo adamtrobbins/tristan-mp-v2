@@ -20,12 +20,14 @@ EXE_FILE := @EXE_NAME@
 EXECUTABLE := $(EXE_DIR)$(EXE_FILE)
 
 SRC_FILES := $(SRC_DIR)global_namespace.F90 \
+						 $(SRC_DIR)output_namespace.F90 \
              $(SRC_DIR)tools/auxiliary.F90 \
              $(SRC_DIR)objects/domain.F90 \
              $(SRC_DIR)objects/particles.F90 \
              $(SRC_DIR)objects/fields.F90 \
              $(SRC_DIR)logistics/finalize.F90 \
              $(SRC_DIR)tools/error_handling.F90 \
+						 $(SRC_DIR)io/read_input.F90 \
 						 $(SRC_DIR)tools/helpers.F90 \
 						 $(SRC_DIR)tools/mom_binning.F90 \
 						 $(SRC_DIR)logistics/binary_coupling.F90 \
@@ -44,12 +46,16 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)logistics/exchange_fields.F90 \
              $(SRC_DIR)logistics/exchange_currents.F90 \
              $(SRC_DIR)logistics/exchange_array.F90 \
-						 $(SRC_DIR)io/write_logistics.F90 \
-             $(SRC_DIR)io/write_output.F90 \
+						 $(SRC_DIR)io/output_logistics.F90 \
 						 $(SRC_DIR)io/write_slice.F90 \
+						 $(SRC_DIR)io/write_params.F90 \
+						 $(SRC_DIR)io/write_tot_flds.F90 \
+						 $(SRC_DIR)io/write_tot_prtl.F90 \
+						 $(SRC_DIR)io/write_spectra.F90 \
+						 $(SRC_DIR)io/write_diagnostics.F90 \
+             $(SRC_DIR)io/write_tot.F90 \
 						 $(SRC_DIR)io/write_restart.F90 \
              $(SRC_DIR)io/write_history.F90 \
-             $(SRC_DIR)io/read_input.F90 \
              $(addprefix $(USR_DIR), $(USER_FILE).F90) \
              $(SRC_DIR)algorithms/particle_mover.F90 \
              $(SRC_DIR)algorithms/field_solver.F90 \
