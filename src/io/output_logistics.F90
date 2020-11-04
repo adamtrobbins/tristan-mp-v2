@@ -8,7 +8,6 @@ module m_outputlogistics
   use m_domain
   use m_particles
   use m_fields
-  use m_outputnamespace
   use m_readinput, only: getInput
   use m_helpers, only: computeDensity, computeMomentum, interpFromFaces, interpFromEdges
   #ifdef GCA
@@ -199,6 +198,10 @@ contains
       real, allocatable         :: gca_spectra(:,:,:,:,:)
     #endif
 
+    #ifdef RADIATION
+      real, allocatable         :: rad_send_spec(:), rad_recv_spec(:)
+    #endif
+
     root_rnk = 0
 
     if (spec_dynamic_bins) then
@@ -247,6 +250,10 @@ contains
     allocate(spectra(nspec, spec_nx, spec_ny, spec_nz, spec_num))
     allocate(send_spec(spec_nx, spec_ny, spec_nz, spec_num), recv_spec(spec_nx, spec_ny, spec_nz, spec_num))
     spectra(:,:,:,:,:) = 0
+
+    #ifdef RADIATION
+      allocate(rad_send_spec(rad_spec_num), rad_recv_spec(rad_spec_num))
+    #endif
 
     #ifdef GCA
       allocate(gca_spectra(2 * nspec, spec_nx, spec_ny, spec_nz, spec_num))
@@ -339,10 +346,10 @@ contains
       #ifdef RADIATION
         ! compute radiation spectra
         if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
-          send_spec(:) = rad_spectra(s,:)
-          call MPI_REDUCE(send_spec, recv_spec, spec_num, MPI_REAL,&
+          rad_send_spec(:) = rad_spectra(s,:)
+          call MPI_REDUCE(rad_send_spec, rad_recv_spec, rad_spec_num, MPI_REAL,&
                         & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
-          glob_rad_spectra(s,:) = recv_spec(:)
+          glob_rad_spectra(s,:) = rad_recv_spec(:)
           rad_spectra(s,:) = 0.0
         end if
       #endif
@@ -358,10 +365,15 @@ contains
 
   subroutine defineFieldVarsToOutput()
     implicit none
-    integer     :: s
+    integer     :: s, dummy
     ! initialize field variables
     !   total number of fields (excluding particle densities)
     n_fld_vars = 0
+    if (momenta_enable) then
+      dummy = 5
+    else
+      dummy = 2
+    end if
     do s = 1, nspec
       fld_vars(0 * nspec + s) = 'dens' // STR(s)
       fld_vars(1 * nspec + s) = 'enrg' // STR(s)
@@ -373,7 +385,7 @@ contains
         n_fld_vars = n_fld_vars + 3
       end if
       #ifdef GCA
-        fld_vars(5 * nspec + s) = 'dgca' // STR(s)
+        fld_vars(dummy * nspec + s) = 'dgca' // STR(s)
         n_fld_vars = n_fld_vars + 1
       #endif
     end do
@@ -522,7 +534,7 @@ contains
          & (fld_var(1:3) .ne. 'mom') .and.&
          & (fld_var(1:4) .ne. 'dgca')) .or.&
          & (.not. writing_lgarrQ)) then
-        call throwError("ERROR: unrecognized `fldname`")
+        call throwError("ERROR: unrecognized `fldname`: " // trim(fld_var))
       else
         ! interpolating cell-centered values to nodes
         #ifdef oneD
