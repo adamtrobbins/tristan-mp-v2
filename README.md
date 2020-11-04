@@ -8,7 +8,7 @@ To prevent `v2` from growing to become the Lovecraftian monster it once was we h
 
 * For development:
     * all the new features shall be added to `dev/<feature>` branch;
-    * as soon as the new features are tested they can be pushed to the main development branch: `dev`.
+    * as soon as the new features are tested they can be pushed to the main development branch: `dev/main`.
 * For users:
     * user-specific branches are allowed (e.g. to test userfiles), but as soon as it works we highly encourage people to merge their new userfiles to `dev`;
     * the naming for user-specific branches shall be the following: `user/<problem>` or `user/<username>`;
