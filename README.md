@@ -2,7 +2,7 @@
 
 For a detailed tutorials and descriptions please visit our [wiki](https://ntoles.github.io/tristan-wiki/).
 
-### Branch politics
+### Branch policy
 
 To prevent `v2` from growing to become the Lovecraftian monster it once was we highly encourage both users and developers to follow the guidlines on branching politics. 
 
