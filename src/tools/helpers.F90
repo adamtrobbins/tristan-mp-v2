@@ -434,6 +434,76 @@ contains
     end do
   end subroutine computeMomentum
 
+  subroutine computeNpart(s, reset, ds)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in)                   :: s
+    logical, intent(in)                   :: reset
+    integer, optional, intent(in)         :: ds
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
+    integer(kind=2) :: i, j, k
+    integer :: i1, i2, j1, j2, k1, k2, ds_
+    integer :: pow
+    real    :: contrib
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
+    #ifdef oneD
+      pow = 1
+    #elif twoD
+      pow = 2
+    #elif threeD
+      pow = 3
+    #endif
+
+    contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
+
+    if (reset) then
+      lg_arr(:,:,:) = 0
+    end if
+    do ti = 1, species(s)%tile_nx
+      do tj = 1, species(s)%tile_ny
+        do tk = 1, species(s)%tile_nz
+          pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+          pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+          pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+          do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+            i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+            i1 = 0; i2 = 0
+            j1 = 0; j2 = 0
+            k1 = 0; k2 = 0
+            #if defined(oneD) || defined (twoD) || defined (threeD)
+              i1 = max(i - ds_, -NGHOST)
+              i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+            #endif
+            #if defined (twoD) || defined (threeD)
+              j1 = max(j - ds_, -NGHOST)
+              j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+            #endif
+            #if defined (threeD)
+              k1 = max(k - ds_, -NGHOST)
+              k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
+            #endif
+            do k = k1, k2
+              do j = j1, j2
+                do i = i1, i2
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + contrib
+                end do
+              end do
+            end do
+          end do
+          pt_xi => null(); pt_yi => null(); pt_zi => null()
+        end do
+      end do
+    end do
+  end subroutine computeNpart
+
   #ifdef GCA
     subroutine computeDensityGCA(s, reset, ds, charge)
       ! DEP_PRT [particle-dependent]

@@ -9,7 +9,8 @@ module m_outputlogistics
   use m_particles
   use m_fields
   use m_readinput, only: getInput
-  use m_helpers, only: computeDensity, computeMomentum, interpFromFaces, interpFromEdges
+  use m_helpers, only: computeDensity, computeMomentum, computeNpart
+  use m_helpers, only: interpFromFaces, interpFromEdges
   #ifdef GCA
     use m_helpers, only: computeDensityGCA
   #endif
@@ -81,6 +82,7 @@ contains
     call getInput('output', 'write_xdmf', xdmf_enable, .true.)
     call getInput('output', 'write_nablas', derivatives_enable, .false.)
     call getInput('output', 'write_momenta', momenta_enable, .false.)
+    call getInput('output', 'write_npart', npart_enable, .false.)
 
     #if defined(HDF5) && defined(MPI08)
       h5comm = MPI_COMM_WORLD%MPI_VAL
@@ -365,27 +367,26 @@ contains
 
   subroutine defineFieldVarsToOutput()
     implicit none
-    integer     :: s, dummy
+    integer     :: s
     ! initialize field variables
     !   total number of fields (excluding particle densities)
     n_fld_vars = 0
-    if (momenta_enable) then
-      dummy = 5
-    else
-      dummy = 2
-    end if
     do s = 1, nspec
-      fld_vars(0 * nspec + s) = 'dens' // STR(s)
-      fld_vars(1 * nspec + s) = 'enrg' // STR(s)
+      fld_vars(n_fld_vars + 1) = 'dens' // STR(s)
+      fld_vars(n_fld_vars + 2) = 'enrg' // STR(s)
       n_fld_vars = n_fld_vars + 2
       if (momenta_enable) then
-        fld_vars(2 * nspec + s) = 'momX' // STR(s)
-        fld_vars(3 * nspec + s) = 'momY' // STR(s)
-        fld_vars(4 * nspec + s) = 'momZ' // STR(s)
+        fld_vars(n_fld_vars + 1) = 'momX' // STR(s)
+        fld_vars(n_fld_vars + 2) = 'momY' // STR(s)
+        fld_vars(n_fld_vars + 3) = 'momZ' // STR(s)
         n_fld_vars = n_fld_vars + 3
       end if
+      if (npart_enable) then
+        fld_vars(n_fld_vars + 1) = 'nprt' // STR(s)
+        n_fld_vars = n_fld_vars + 1
+      end if
       #ifdef GCA
-        fld_vars(dummy * nspec + s) = 'dgca' // STR(s)
+        fld_vars(n_fld_vars + 1) = 'dgca' // STR(s)
         n_fld_vars = n_fld_vars + 1
       #endif
     end do
@@ -532,6 +533,7 @@ contains
       if (((fld_var(1:4) .ne. 'dens') .and.&
          & (fld_var(1:4) .ne. 'enrg') .and.&
          & (fld_var(1:3) .ne. 'mom') .and.&
+         & (fld_var(1:3) .ne. 'nprt') .and.&
          & (fld_var(1:4) .ne. 'dgca')) .or.&
          & (.not. writing_lgarrQ)) then
         call throwError("ERROR: unrecognized `fldname`: " // trim(fld_var))
@@ -569,6 +571,11 @@ contains
       s = STRtoINT(fldname(5:5))
       ! fill `lg_arr` with energy density of species `s`
       call computeMomentum(s, 0, reset=.true., ds=output_dens_smooth)
+      call exchangeArray()
+    else if (fldname(1:4) .eq. 'nprt') then
+      writing_lgarrQ = .true.
+      s = STRtoINT(fldname(5:5))
+      call computeNpart(s, reset=.true., ds=output_dens_smooth)
       call exchangeArray()
     else if (fldname(1:4) .eq. 'dgca') then
       writing_lgarrQ = .true.
