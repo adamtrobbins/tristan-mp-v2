@@ -1,6 +1,6 @@
 # Tristan-MP v2
 
-For a detailed tutorials and descriptions please visit our [wiki](https://ntoles.github.io/tristan-wiki/).
+For detailed tutorials and code description please visit our [wiki](https://ntoles.github.io/tristan-wiki/). If you are a new user testing the code on a new computer cluster, please consider contributing to [this chapter](https://ntoles.github.io/tristan-wiki/tristanv2-configure.html#cluster-specific-customization) about cluster-specific configuration to make the life easier for future generations.
 
 ### Branch policy
 
