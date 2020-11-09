@@ -67,9 +67,9 @@ contains
       yg = 7.5 + random(dseed) * 5.0
       zg = 0.5
 
-      vx = (25.5 - xg) / 100.0
-      vy = (25.5 - yg) / 100.0
-      vz =  - 0.005 + 0.01 * random(dseed) 
+      vx = (25.5 - xg) * 0.01
+      vy = (25.5 - yg) * 0.01
+      vz =  0.0
       gamma = 1.0 / sqrt(1.0 - vx**2.0 - vy**2.0 - vz**2.0)
 
       u = gamma*vx
@@ -77,6 +77,7 @@ contains
       w = gamma*vz
       ! particles at rest
       call injectParticleGlobally(1, xg, yg, zg, u, v, w)
+      call injectParticleGlobally(2, xg, yg, zg, u, v, w)
     end do
 
 

@@ -302,9 +302,9 @@ contains
     ! generate a random rotation axis and a random rotation angle for a tile
     rot_ax_1 = random(dseed)
     rot_ax_2 = random(dseed)
-    rot_ang = random(dseed)
 
     if (.not. dwn_dynamic_bins) then
+      rot_ang = random(dseed)
       px_min = -dwn_energy_max
       px_max = dwn_energy_max
       py_min = -dwn_energy_max
@@ -312,6 +312,8 @@ contains
       pz_min = -dwn_energy_max
       pz_max = dwn_energy_max
     else
+
+      rot_ang = 0.0
 
       ! px_min = MINVAL(tile%u(1 : tile%npart_sp)) * 1.01
       ! py_min = MINVAL(tile%v(1 : tile%npart_sp)) * 1.01
@@ -326,6 +328,21 @@ contains
       px_max = MAXVAL(tile%u(1 : tile%npart_sp))
       py_max = MAXVAL(tile%v(1 : tile%npart_sp))
       pz_max = MAXVAL(tile%w(1 : tile%npart_sp))
+
+      if (px_min.eq.px_max) then
+        px_min = px_min - 1e-5
+        px_max = px_max + 1e-5
+      endif
+
+      if (py_min.eq.py_max) then
+        py_min = py_min - 1e-5
+        py_max = py_max + 1e-5
+      endif
+
+        if (pz_min.eq.pz_max) then
+        pz_min = pz_min - 1e-5
+        pz_max = pz_max + 1e-5
+      endif
 
       px_min = px_min * (1.0 - sign(1.0, px_min) * 0.01)
       py_min = py_min * (1.0 - sign(1.0, py_min) * 0.01)
