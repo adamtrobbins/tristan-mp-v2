@@ -5,7 +5,7 @@
 <node_configuration>
 
   sizex         = 2              # number of cpus in x direction
-  sizey         = 56             # number of cpus in y direction
+  sizey         = 112             # number of cpus in y direction
   sizez         = 1              # number of cpus in z direction
 
 <time>
@@ -25,8 +25,8 @@
   resize_tiles  = 1              # reallocate particle tiles if necessary
   min_tile_nprt = 1000           # min # of allocated particles per tile
 
-  tileX         = 40             # tile dimension in x
-  tileY         = 40             # tile dimension in y
+  tileX         = 10             # tile dimension in x
+  tileY         = 10             # tile dimension in y
   tileZ         = 1              # tile dimension in z
 
 <algorithm>
@@ -49,7 +49,7 @@
 
 <plasma>
 
-  ppc0          = 10
+  ppc0          = 50
   sigma         = 100
   c_omp         = 5
 
@@ -61,7 +61,6 @@
   m1            = 1
   ch1           = -1
   dwn1          = 1 
-
 
   maxptl2       = 1e8           # max number of particles per core
   m2            = 1
@@ -85,10 +84,14 @@
 
   cartesian_bins = 1            # cartesian or spherical momentum binning
   energy_min    = 0             # min energy of merged particle
-  energy_max    = 10000000000           # max energy of merged particle
+  energy_max    = 100000000000           # max energy of merged particle
   int_weights   = 0             # force integer weights when merging
 
   dynamic_bins  = 1             # take min/max energy locally in each tile...
-                                # (energ_max/min still set the global maxima)
+ # angular_bins  = 5             # number of angular bins (theta/phi) [5]
+ # energy_bins   = 5             # number of log energy bins [5]
+ # log_e_bins    = 1             # log or linear energy bins [1]
+
+ #                               # (energ_max/min still set the global maxima)
   mom_bins      = 5             # number of momentum bins in XYZ phase space
   mom_spread    = 10000000000           # max momentum spread allowed for dynamic bins

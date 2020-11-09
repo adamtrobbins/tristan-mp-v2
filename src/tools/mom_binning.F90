@@ -335,7 +335,6 @@ contains
     real                :: del_ex, del_ey, del_ez
 
     allocate(momentum_bins(dwn_n_mom_bins, dwn_n_mom_bins, dwn_n_mom_bins))
-
     del_ex = (px_max - px_min) / dwn_n_mom_bins
     del_ey = (py_max - py_min) / dwn_n_mom_bins
     del_ez = (pz_max - pz_min) / dwn_n_mom_bins
@@ -449,6 +448,12 @@ contains
       !   print *, pi, n_rad_x, pj, n_rad_y, pk, n_rad_z
       ! endif
 
+      ! #ifdef DEBUG
+      !   if((pi.lt.1).or.(pi.gt.1).or.(pj.lt.1).or.(pj.gt.1).or.(pk.lt.1).or.(pk.gt.1)) then
+      !     print *, pi, n_rad_x, pj, n_rad_y, pk, n_rad_z
+      !   endif
+      ! #endif
+
       position_bins(pi, pj, pk)%npart = position_bins(pi, pj, pk)%npart + 1
       position_bins(pi, pj, pk)%indices(position_bins(pi, pj, pk)%npart) = p
 
@@ -497,6 +502,7 @@ contains
       if ((prtl_energy .ge. dwn_energy_min) .and. (prtl_energy .lt. dwn_energy_max)) then
         ! rotation (not really random, because axis and angles are passed)
         call rotateRandomlyIn3D(prtl_ux, prtl_uy, prtl_uz, ax1, ax2, ang)
+
         if ((prtl_ux .ge. px_min) .and. (prtl_ux .lt. px_max) .and.&
           & (prtl_uy .ge. py_min) .and. (prtl_uy .lt. py_max) .and.&
           & (prtl_uz .ge. pz_min) .and. (prtl_uz .lt. pz_max)) then

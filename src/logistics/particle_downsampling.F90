@@ -60,13 +60,23 @@ contains
     integer                             :: dwn_rad_x = 1 ! Make this an input parameter [ASK HAYK]
     integer                             :: dwn_rad_y = 1 ! Make this an input parameter [ASK HAYK]
     integer                             :: dwn_rad_z = 1 ! Make this an input parameter [ASK HAYK]
+    #ifdef DEBUG
+      real                                        :: nbinned, tmpnpart
+    #endif
 
     do s = 1, nspec
       if (species(s)%dwn_sp) then
 
+
+
         do ti = 1, species(s)%tile_nx
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
+
+              #ifdef DEBUG
+                nbinned = 0
+                tmpnpart = real(species(s)%prtl_tile(ti, tj, tk)%npart_sp)
+              #endif
 
               ! TODO Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions) [ASK HAYK]
               n_rad_x = INT(species(s)%tile_sx / dwn_rad_x)
@@ -95,6 +105,11 @@ contains
                       downsampling_tile%z1 = (tk - 1) * species(s)%tile_sz
                       downsampling_tile%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
 
+                    #ifdef DEBUG
+                      nbinned = nbinned + position_grid(pi, pj, pk)%npart
+                    #endif
+
+
                     do p = 1, position_grid(pi, pj, pk)%npart
 
                       p_ind = position_grid(pi, pj, pk)%indices(p) 
@@ -102,7 +117,7 @@ contains
 
                     enddo
 
-                      if (downsampling_tile%npart_sp .gt. 5) then
+                      if (downsampling_tile%npart_sp .gt. 2) then
 
                         ! decide whether to use cartesian OR spherical binning
                         if (dwn_cartesian_bins) then
@@ -122,6 +137,14 @@ contains
                   enddo
                 enddo
               enddo
+
+                    #ifdef DEBUG
+                      if (nbinned.ne.tmpnpart) then
+                      print *, nbinned, tmpnpart
+                      call throwError('[downsampleParticles] Unequal number of particles in tile and position bins.')
+                      endif
+                    #endif
+
 
               if (allocated(downsampling_tile)) deallocate(downsampling_tile)
 
@@ -175,7 +198,7 @@ contains
               ! tile%ind(p) = 100*100 * (e_b+1) + 100 * (th_b+1) + (ph_b+1)
             end do
           #endif
-          if (npart .gt. 5) then
+          if (npart .gt. 2) then
             call downsampleBin_Spherical(tile,&
                         & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
                         & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
@@ -251,7 +274,7 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 5) then
+          if (group%size .gt. 2) then
             call mergeParticlesInGroup(group, tile)
           end if
           group%indices(:) = -1
@@ -279,9 +302,9 @@ contains
     ! generate a random rotation axis and a random rotation angle for a tile
     rot_ax_1 = random(dseed)
     rot_ax_2 = random(dseed)
-    rot_ang = random(dseed)
 
     if (.not. dwn_dynamic_bins) then
+      rot_ang = random(dseed)
       px_min = -dwn_energy_max
       px_max = dwn_energy_max
       py_min = -dwn_energy_max
@@ -289,12 +312,44 @@ contains
       pz_min = -dwn_energy_max
       pz_max = dwn_energy_max
     else
-      px_min = MINVAL(tile%u(1 : tile%npart_sp)) * 1.01
-      py_min = MINVAL(tile%v(1 : tile%npart_sp)) * 1.01
-      pz_min = MINVAL(tile%w(1 : tile%npart_sp)) * 1.01
-      px_max = MAXVAL(tile%u(1 : tile%npart_sp)) * 1.01
-      py_max = MAXVAL(tile%v(1 : tile%npart_sp)) * 1.01
-      pz_max = MAXVAL(tile%w(1 : tile%npart_sp)) * 1.01
+
+      rot_ang = 0.0
+
+      ! px_min = MINVAL(tile%u(1 : tile%npart_sp)) * 1.01
+      ! py_min = MINVAL(tile%v(1 : tile%npart_sp)) * 1.01
+      ! pz_min = MINVAL(tile%w(1 : tile%npart_sp)) * 1.01
+      ! px_max = MAXVAL(tile%u(1 : tile%npart_sp)) * 1.01
+      ! py_max = MAXVAL(tile%v(1 : tile%npart_sp)) * 1.01
+      ! pz_max = MAXVAL(tile%w(1 : tile%npart_sp)) * 1.01
+
+      px_min = MINVAL(tile%u(1 : tile%npart_sp))
+      py_min = MINVAL(tile%v(1 : tile%npart_sp))
+      pz_min = MINVAL(tile%w(1 : tile%npart_sp))
+      px_max = MAXVAL(tile%u(1 : tile%npart_sp))
+      py_max = MAXVAL(tile%v(1 : tile%npart_sp))
+      pz_max = MAXVAL(tile%w(1 : tile%npart_sp))
+
+      if (px_min.eq.px_max) then
+        px_min = px_min - 1e-5
+        px_max = px_max + 1e-5
+      endif
+
+      if (py_min.eq.py_max) then
+        py_min = py_min - 1e-5
+        py_max = py_max + 1e-5
+      endif
+
+        if (pz_min.eq.pz_max) then
+        pz_min = pz_min - 1e-5
+        pz_max = pz_max + 1e-5
+      endif
+
+      px_min = px_min * (1.0 - sign(1.0, px_min) * 0.01)
+      py_min = py_min * (1.0 - sign(1.0, py_min) * 0.01)
+      pz_min = pz_min * (1.0 - sign(1.0, pz_min) * 0.01)
+      px_max = px_max * (1.0 + sign(1.0, px_max) * 0.01)
+      py_max = py_max * (1.0 + sign(1.0, py_max) * 0.01)
+      pz_max = pz_max * (1.0 + sign(1.0, pz_max) * 0.01)
 
       px_mid = SUM(tile%u(1 : tile%npart_sp)) / tile%npart_sp
       py_mid = SUM(tile%v(1 : tile%npart_sp)) / tile%npart_sp
@@ -330,7 +385,8 @@ contains
       do pj = 1, dwn_n_mom_bins
         do pk = 1, dwn_n_mom_bins
           npart = momentum_bins(pi, pj, pk)%npart
-          if (npart .gt. 5) then
+
+          if (npart .gt. 2) then
             px_mid = 0.5 * (momentum_bins(pi, pj, pk)%px_max + momentum_bins(pi, pj, pk)%px_min)
             py_mid = 0.5 * (momentum_bins(pi, pj, pk)%py_max + momentum_bins(pi, pj, pk)%py_min)
             pz_mid = 0.5 * (momentum_bins(pi, pj, pk)%pz_max + momentum_bins(pi, pj, pk)%pz_min)
@@ -405,7 +461,8 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
-          if (group%size .gt. 5) then
+
+          if (group%size .gt. 2) then
             call mergeParticlesInGroup(group, tile)
           end if
           group%indices(:) = -1
@@ -557,22 +614,22 @@ contains
     yAi = tile%yi(p); dyA = tile%dy(p)
     zAi = tile%zi(p); dzA = tile%dz(p)
 
-    ! p = p_ind
-    ! do while (p .eq. p_ind)
-    !   p = INT((random(dseed) * group%size + 1))
-    ! end do
-    ! p = group%indices(p)
-    ! xBi = tile%xi(p); dxB = tile%dx(p)
-    ! yBi = tile%yi(p); dyB = tile%dy(p)
-    ! zBi = tile%zi(p); dzB = tile%dz(p)
-
+    p = p_ind
+    do while (p .eq. p_ind)
+      p = INT((random(dseed) * group%size + 1))
+    end do
+    p = group%indices(p)
     xBi = tile%xi(p); dxB = tile%dx(p)
     yBi = tile%yi(p); dyB = tile%dy(p)
     zBi = tile%zi(p); dzB = tile%dz(p)
 
-    x2 = real(xBi) + dxB
-    y2 = real(yBi) + dyB
-    z2 = real(zBi) + dzB
+    ! xBi = tile%xi(p); dxB = tile%dx(p)
+    ! yBi = tile%yi(p); dyB = tile%dy(p)
+    ! zBi = tile%zi(p); dzB = tile%dz(p)
+
+    ! x2 = real(xBi) + dxB
+    ! y2 = real(yBi) + dyB
+    ! z2 = real(zBi) + dzB
 
     ! x2 = 0.0
     ! y2 = 0.0
@@ -597,20 +654,20 @@ contains
     ! yBi = floor(y2); dyB = y2 - real(yBi)
     ! zBi = floor(z2); dzB = z2 - real(zBi)
 
-    ! xAi = floor(x2); dxA = x2 - real(xBi)
-    ! yAi = floor(y2); dyA = y2 - real(yBi)
-    ! zAi = floor(z2); dzA = z2 - real(zBi)
+    ! xAi = floor(x2); dxA = dxB
+    ! yAi = floor(y2); dyA = dyB
+    ! zAi = floor(z2); dzA = dzB
 
     ! Extra current deposit
-    do p_ind = 1, group%size
-      p = group%indices(p_ind)
+    ! do p_ind = 1, group%size
+    !   p = group%indices(p_ind)
 
-      x1 = real(tile%xi(p)) + tile%dx(p)
-      y1 = real(tile%yi(p)) + tile%dy(p)
-      z1 = real(tile%zi(p)) + tile%dz(p)
+    !   x1 = real(tile%xi(p)) + tile%dx(p)
+    !   y1 = real(tile%yi(p)) + tile%dy(p)
+    !   z1 = real(tile%zi(p)) + tile%dz(p)
 
-      call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
-    end do
+    !   call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
+    ! end do
 
     ! "nullify" merged particles
     do p_ind = 1, group%size
