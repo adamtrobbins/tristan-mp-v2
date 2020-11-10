@@ -252,6 +252,8 @@ contains
       call userDriveParticles(timestep)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
+      
+      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
       !-------------------------------------------------
       ! Particle downsampling
