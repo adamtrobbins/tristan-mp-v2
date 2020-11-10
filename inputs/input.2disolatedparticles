@@ -50,7 +50,7 @@
 
 <plasma>
 
-  ppc0          = 50
+  ppc0          = 5
   sigma         = 5
   c_omp         = 50
 
@@ -61,7 +61,7 @@
   maxptl1       = 1e8           # max number of particles per core
   m1            = 1
   ch1           = 1
-  dwn1          = 0 
+  dwn1          = 1 
   move1         = 1
 
   maxptl2       = 1e8           # max number of particles per core
@@ -85,6 +85,6 @@
 
   dynamic_bins  = 1             # take min/max energy locally in each tile...
                                 # (energ_max/min still set the global maxima)
-  mom_bins      = 3            # number of momentum bins in XYZ phase space
+  mom_bins      = 1            # number of momentum bins in XYZ phase space
   mom_spread    = 10000000000           # max momentum spread allowed for dynamic bins
 
