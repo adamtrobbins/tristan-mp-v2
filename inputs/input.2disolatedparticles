@@ -31,7 +31,7 @@
 
 <algorithm>
 
-#  nfilter       = 8              # number of current filter passes
+  nfilter       = 0              # number of current filter passes
 <restart>
 
 <output>

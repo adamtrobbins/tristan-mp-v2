@@ -614,14 +614,14 @@ contains
     yAi = tile%yi(p); dyA = tile%dy(p)
     zAi = tile%zi(p); dzA = tile%dz(p)
 
-    p = p_ind
-    do while (p .eq. p_ind)
-      p = INT((random(dseed) * group%size + 1))
-    end do
-    p = group%indices(p)
-    xBi = tile%xi(p); dxB = tile%dx(p)
-    yBi = tile%yi(p); dyB = tile%dy(p)
-    zBi = tile%zi(p); dzB = tile%dz(p)
+    ! p = p_ind
+    ! do while (p .eq. p_ind)
+    !   p = INT((random(dseed) * group%size + 1))
+    ! end do
+    ! p = group%indices(p)
+    ! xBi = tile%xi(p); dxB = tile%dx(p)
+    ! yBi = tile%yi(p); dyB = tile%dy(p)
+    ! zBi = tile%zi(p); dzB = tile%dz(p)
 
     ! xBi = tile%xi(p); dxB = tile%dx(p)
     ! yBi = tile%yi(p); dyB = tile%dy(p)
@@ -631,43 +631,43 @@ contains
     ! y2 = real(yBi) + dyB
     ! z2 = real(zBi) + dzB
 
-    ! x2 = 0.0
-    ! y2 = 0.0
-    ! z2 = 0.0
-    ! totweight = 0.0
+    x2 = 0.0
+    y2 = 0.0
+    z2 = 0.0
+    totweight = 0.0
 
-    ! do p_ind = 1, group%size
-    !   p = group%indices(p_ind)
+    do p_ind = 1, group%size
+      p = group%indices(p_ind)
 
-    !   x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
-    !   y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
-    !   z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
+      x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
+      y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
+      z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
 
-    !   totweight = real(totweight + tile%weight(p))
-    ! enddo
+      totweight = real(totweight + tile%weight(p))
+    enddo
 
-    ! x2 = x2 / totweight
-    ! y2 = y2 / totweight
-    ! z2 = z2 / totweight
+    x2 = x2 / totweight
+    y2 = y2 / totweight
+    z2 = z2 / totweight
 
-    ! xBi = floor(x2); dxB = x2 - real(xBi)
-    ! yBi = floor(y2); dyB = y2 - real(yBi)
-    ! zBi = floor(z2); dzB = z2 - real(zBi)
+    xBi = floor(x2); dxB = x2 - real(xBi)
+    yBi = floor(y2); dyB = y2 - real(yBi)
+    zBi = floor(z2); dzB = z2 - real(zBi)
 
-    ! xAi = floor(x2); dxA = dxB
-    ! yAi = floor(y2); dyA = dyB
-    ! zAi = floor(z2); dzA = dzB
+    xAi = floor(x2); dxA = dxB
+    yAi = floor(y2); dyA = dyB
+    zAi = floor(z2); dzA = dzB
 
     ! Extra current deposit
-    ! do p_ind = 1, group%size
-    !   p = group%indices(p_ind)
+    do p_ind = 1, group%size
+      p = group%indices(p_ind)
 
-    !   x1 = real(tile%xi(p)) + tile%dx(p)
-    !   y1 = real(tile%yi(p)) + tile%dy(p)
-    !   z1 = real(tile%zi(p)) + tile%dz(p)
+      x1 = real(tile%xi(p)) + tile%dx(p)
+      y1 = real(tile%yi(p)) + tile%dy(p)
+      z1 = real(tile%zi(p)) + tile%dz(p)
 
-    !   call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
-    ! end do
+      call depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, x2, y2, z2)
+    end do
 
     ! "nullify" merged particles
     do p_ind = 1, group%size
