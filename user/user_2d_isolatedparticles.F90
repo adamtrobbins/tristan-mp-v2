@@ -50,6 +50,35 @@ contains
     integer, optional, intent(in) :: step
     ! called after particles move and deposit ...
     ! ... and before the currents are added to the electric field
+
+    integer         :: n_refinement
+    real            :: weight_0
+    real            :: splitregion_xmin, splitregion_xmax
+  
+    integer         :: n_split
+    integer, allocatable :: ind_split(:)
+    integer :: s, ti, tj, tk, p
+   
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+
+            allocate(ind_split(prtl_tile(ti, tj, tk)%npart_sp))
+
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              
+
+
+
+            end do
+          end do
+        end do
+      end do
+    end do 
+
+
+
   end subroutine userCurrentDeposit
 
   subroutine userInitParticles()
