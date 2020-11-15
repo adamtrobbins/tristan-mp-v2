@@ -54,24 +54,45 @@ contains
     integer         :: n_refinement
     real            :: weight_0
     real            :: splitregion_xmin, splitregion_xmax
+    real            :: splitfactor
   
     integer         :: n_split
     integer, allocatable :: ind_split(:)
-    integer :: s, ti, tj, tk, p
+    integer         :: s, ti, tj, tk, p
+    real            :: x_glob
+    real            :: min_weight
    
+    min_weight = weight_0 / 2.0**n_refinement
+
+    n_split = 0
+
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-
+            
             allocate(ind_split(prtl_tile(ti, tj, tk)%npart_sp))
+
+            ! IDENTIFY SPLITTABLE PARTICLES THAT ARE LOCATED IN THE SPLITTING REGION AND THROW THEIR INDICES INTO A BIN
 
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               
+              x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                     & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
 
-
+              if((x_glob.ge.splitregion_xmin).and.(x_glob.le.splitregion_xmax).and.(min_weight.ge.min_weight)) then
+                  n_split = n_split + 1
+                  ind_split(n_split) = p
+              endif
 
             end do
+
+            
+
+
+
+
+
           end do
         end do
       end do
