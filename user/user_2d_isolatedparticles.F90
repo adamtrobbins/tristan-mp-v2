@@ -56,13 +56,14 @@ contains
     real            :: splitregion_xmin, splitregion_xmax
     real            :: splitfactor
   
-    integer         :: n_split
+    integer         :: n_split, n_split_frac, split_ind
     integer, allocatable :: ind_split(:)
-    integer         :: s, ti, tj, tk, p
+    integer         :: s, ti, tj, tk, p, i
     real            :: x_glob
-    real            :: min_weight
+    real            :: min_weight, weight_D
+    real            :: x0, y0, z0, vx, vy, vz, dxyz
    
-    min_weight = weight_0 / 2.0**n_refinement
+    min_weight = weight_0 / 4.0**n_refinement
 
     n_split = 0
 
@@ -87,11 +88,34 @@ contains
 
             end do
 
+            n_split_frac = floor(n_split * splitfactor)
             
+            do i = 1, n_split_frac
 
+              split_ind = -1
 
+              do while (split_ind.lt.0) 
+                 split_ind = ind_split(INT((random(dseed) * n_split + 1)))
+              end do
 
+              x0 = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(split_ind) + this_meshblock%ptr%x0)&
+                     & + species(s)%prtl_tile(ti, tj, tk)%dx(split_ind)
+              y0 = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(split_ind) + this_meshblock%ptr%y0)&
+                     & + species(s)%prtl_tile(ti, tj, tk)%dy(split_ind)
+              z0 = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(split_ind) + this_meshblock%ptr%z0)&
+                     & + species(s)%prtl_tile(ti, tj, tk)%dz(split_ind)
+              vx = species(s)%prtl_tile(ti, tj, tk)%u(split_ind)
+              vy = species(s)%prtl_tile(ti, tj, tk)%v(split_ind)
+              vz = species(s)%prtl_tile(ti, tj, tk)%w(split_ind)
+              dxyz = 0.01
 
+              weight_D = species(s)%prtl_tile(ti, tj, tk)%weight(split_ind) / 4.0
+              injectParticleGlobally(s, x0 + dxyz, y0, z0, vx, vy, vz, weight = weight_D)
+              injectParticleGlobally(s, x0 - dxyz, y0, z0, vx, vy, vz, weight = weight_D)
+              injectParticleGlobally(s, x0, y0 + dxyz, z0, vx, vy, vz, weight = weight_D)
+              injectParticleGlobally(s, x0, y0 - dxyz, z0, vx, vy, vz, weight = weight_D)
+
+            end do
 
           end do
         end do
