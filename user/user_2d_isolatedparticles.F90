@@ -51,10 +51,7 @@ contains
     ! called after particles move and deposit ...
     ! ... and before the currents are added to the electric field
 
-    integer         :: n_refinement
-    real            :: weight_0
-    real            :: splitregion_xmin, splitregion_xmax
-    real            :: splitfactor
+
   
     integer         :: n_split, n_split_frac, split_ind
     integer, allocatable :: ind_split(:)
@@ -63,6 +60,17 @@ contains
     real            :: min_weight, weight_D
     real            :: x0, y0, z0, vx, vy, vz, dxyz
    
+    integer         :: n_refinement
+    real            :: weight_0
+    real            :: splitregion_xmin, splitregion_xmax
+    real            :: splitfactor
+
+    n_refinement = 1
+    weight_0 = 1.0
+    splitregion_xmin = 24.5
+    splitregion_xmax = 25.5
+    splitfactor = 1.0
+
     min_weight = weight_0 / 4.0**n_refinement
 
     n_split = 0
@@ -72,7 +80,7 @@ contains
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
             
-            allocate(ind_split(prtl_tile(ti, tj, tk)%npart_sp))
+            allocate(ind_split(species(s)%prtl_tile(ti, tj, tk)%npart_sp))
 
             ! IDENTIFY SPLITTABLE PARTICLES THAT ARE LOCATED IN THE SPLITTING REGION AND THROW THEIR INDICES INTO A BIN
 
@@ -110,14 +118,16 @@ contains
               dxyz = 0.01
 
               weight_D = species(s)%prtl_tile(ti, tj, tk)%weight(split_ind) / 4.0
-              injectParticleGlobally(s, x0 + dxyz, y0, z0, vx, vy, vz, weight=weight_D)
-              injectParticleGlobally(s, x0 - dxyz, y0, z0, vx, vy, vz, weight=weight_D)
-              injectParticleGlobally(s, x0, y0 + dxyz, z0, vx, vy, vz, weight=weight_D)
-              injectParticleGlobally(s, x0, y0 - dxyz, z0, vx, vy, vz, weight=weight_D)
+              call injectParticleGlobally(s, x0 + dxyz, y0, z0, vx, vy, vz, weight=weight_D)
+              call injectParticleGlobally(s, x0 - dxyz, y0, z0, vx, vy, vz, weight=weight_D)
+              call injectParticleGlobally(s, x0, y0 + dxyz, z0, vx, vy, vz, weight=weight_D)
+              call injectParticleGlobally(s, x0, y0 - dxyz, z0, vx, vy, vz, weight=weight_D)
 
               species(s)%prtl_tile(ti, tj, tk)%proc(split_ind) = -1
 
             end do
+
+            deallocate(ind_split)
 
           end do
         end do
