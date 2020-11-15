@@ -105,35 +105,8 @@ doBorisQ = ((.not. species(s)%gca_sp) .or.&                                     
 doBorisQ = (doBorisQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&               ! GCA enforced by the user ...
                                                & u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
 
-! 191           1      140617
-! if (((pt_proc(p) .eq. 241) .or. (pt_proc(p) .eq. 241 + 2 * mpi_size)) .and.&
-!   & (s .eq. 1) .and.&
-!   & (pt_ind(p) .eq. 780)) then
-!   print *, 'particle...', (pt_proc(p) .gt. mpi_size)
-!   print *, 'gamma:', Gamma_
-!   print *, 'E, B:', sqrt(e0_SQR), bb0, sqrt(e0_SQR) / bb0
-!   print *, 'radius:', sqrt(real((xi_ + dx_ + this_meshblock%ptr%x0 - 280.0)**2 +&
-!                               & (yi_ + dy_ + this_meshblock%ptr%y0 - 280.0)**2 +&
-!                               & (zi_ + dz_ + this_meshblock%ptr%z0 - 280.0)**2))
-!
-!   print *, 'upar, uperp, uperp/gamma, gammaE * vE:',&
-!                & u_par, uperp_g, uperp_g / Gamma_, gammaE * sqrt(vE_x**2 + vE_y**2 + vE_z**2)
-!   print *, 'mu:', uperp_g**2 / (bb0 * gammaE)
-!   print *, 'rhoL:', CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)
-!   print *, 'rhoL_real:', CC**2 * uperp_g / (abs(q_over_m) * bb0 * B_norm)
-!
-!   if (doBorisQ) then
-!    print *, 'will do Boris now'
-!   else
-!    print *, 'will do GCA now'
-!   end if
-!
-!   print *, '-----------------------------------------------------'
-! end if
-
-
 #ifdef DEBUG
-  if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e6) then
+  if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
     print *, 'bad particle!!!!', pt_proc(p), s, pt_ind(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
     call throwError('ERROR: runaway particle found!')
   end if

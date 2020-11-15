@@ -6,7 +6,7 @@ module m_writeslice
   #endif
   use m_globalnamespace, only: mpi_rank
   use m_outputnamespace, only: slice_index, fld_vars, n_fld_vars,&
-                             & nslices, slice_axes, slice_pos
+                             & nslices, slice_axes, slice_pos, xdmf_enable
   use m_aux
   use m_errors, only: throwError
   use m_domain
@@ -18,7 +18,7 @@ module m_writeslice
 
   !--- PRIVATE functions -----------------------------------------!
   #ifdef HDF5
-    private :: writeSliceX_hdf5, writeSliceY_hdf5, writeSliceZ_hdf5
+    private :: writeSliceX_hdf5, writeSliceY_hdf5, writeSliceZ_hdf5, writeXDMF_hdf5
   #endif
   !...............................................................!
 
@@ -53,6 +53,74 @@ contains
   end subroutine writeSlices
 
   #ifdef HDF5
+    subroutine writeXDMF_hdf5(step, fname, time, ni, nj)
+      implicit none
+      integer, intent(in)               :: step, time, ni, nj
+      character(len=*), intent(in)      :: fname
+      character(len=STR_MAX)            :: stepchar, filename
+      integer                           :: var
+
+      filename = trim(slice_dir_name) // '/' // trim(fname) // '.xdmf'
+
+      open (UNIT_xdmf, file=filename, status="replace", access="stream", form="formatted")
+      write (UNIT_xdmf, "(A)")&
+                             & '<?xml version="1.0" ?>'
+      write (UNIT_xdmf, "(A)")&
+                             & '<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd">'
+      write (UNIT_xdmf, "(A)")&
+                             & '<Xdmf Version="2.0">'
+      write (UNIT_xdmf, "(A)")&
+                             & '  <Domain>'
+      write (UNIT_xdmf, "(A)")&
+                             & '    <Grid Name="domain" GridType="Uniform">'
+      write (UNIT_xdmf, "(A,A,A,I10,I10,A)")&
+                             & '      <Topology TopologyType=',&
+                                & '"2DCoRectMesh"', ' Dimensions="', &
+                                & nj, ni, '"/>'
+      write (UNIT_xdmf, "(A)")&
+                             & '      <Geometry GeometryType="Origin_DxDy">'
+      write (UNIT_xdmf, "(A,A)")&
+                             & '        <DataItem Format="XML" Dimensions="2"',&
+                                & ' NumberType="Float" Precision="4">'
+      write (UNIT_xdmf, "(A)")&
+                             & '          0.0 0.0'
+      write (UNIT_xdmf, "(A)")&
+                             & '        </DataItem>'
+      write (UNIT_xdmf, "(A,A)")&
+                             & '        <DataItem Format="XML" Dimensions="2"',&
+                                & ' NumberType="Float" Precision="4">'
+      write (UNIT_xdmf, "(A)")&
+                             & '          1.0 1.0'
+      write (UNIT_xdmf, "(A)")&
+                             & '        </DataItem>'
+      write (UNIT_xdmf, "(A)")&
+                             & '      </Geometry>'
+
+      do var = 1, n_fld_vars
+        write (UNIT_xdmf, "(A)")&
+                             & '      <Attribute Name="' // trim(fld_vars(var)) // '" Center="Node">'
+        write (UNIT_xdmf, "(A,I10,I10,A)")&
+                             & '        <DataItem Format="HDF" Dimensions="',&
+                             & nj, ni,&
+                             & '" NumberType="Float" Precision="4">'
+        write (UNIT_xdmf, "(A,A)")&
+                             & trim(fname) // ':/',&
+                             & trim(fld_vars(var))
+        write (UNIT_xdmf, "(A)")&
+                             & '        </DataItem>'
+        write (UNIT_xdmf, "(A)")&
+                             & '      </Attribute>'
+      end do
+
+      write (UNIT_xdmf, "(A)")&
+                             & '    </Grid>'
+      write (UNIT_xdmf, "(A)")&
+                             & '  </Domain>'
+      write (UNIT_xdmf, "(A)")&
+                             & '</Xdmf>'
+      close (UNIT_xdmf)
+    end subroutine writeXDMF_hdf5
+
     subroutine writeSliceX_hdf5(step, time, x_cut)
       implicit none
       integer, intent(in)               :: step, time
@@ -89,6 +157,11 @@ contains
 
         global_dims(1) = global_mesh%sy
         global_dims(2) = global_mesh%sz
+
+        if (xdmf_enable) then
+          call writeXDMF_hdf5(step, 'sliceX=' // trim(xchar) // '.' // trim(stepchar),&
+                            & time, INT(global_dims(1)), INT(global_dims(2)))
+        end if
 
         call H5open_f(error)
         call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
@@ -195,6 +268,11 @@ contains
         global_dims(1) = global_mesh%sx
         global_dims(2) = global_mesh%sz
 
+        if (xdmf_enable) then
+          call writeXDMF_hdf5(step, 'sliceY=' // trim(ychar) // '.' // trim(stepchar),&
+                            & time, INT(global_dims(1)), INT(global_dims(2)))
+        end if
+
         call H5open_f(error)
         call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
@@ -299,6 +377,11 @@ contains
 
         global_dims(1) = global_mesh%sx
         global_dims(2) = global_mesh%sy
+
+        if (xdmf_enable) then
+          call writeXDMF_hdf5(step, 'sliceZ=' // trim(zchar) // '.' // trim(stepchar),&
+                            & time, INT(global_dims(1)), INT(global_dims(2)))
+        end if
 
         call H5open_f(error)
         call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
