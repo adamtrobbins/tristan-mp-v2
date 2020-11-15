@@ -110,10 +110,12 @@ contains
               dxyz = 0.01
 
               weight_D = species(s)%prtl_tile(ti, tj, tk)%weight(split_ind) / 4.0
-              injectParticleGlobally(s, x0 + dxyz, y0, z0, vx, vy, vz, weight = weight_D)
-              injectParticleGlobally(s, x0 - dxyz, y0, z0, vx, vy, vz, weight = weight_D)
-              injectParticleGlobally(s, x0, y0 + dxyz, z0, vx, vy, vz, weight = weight_D)
-              injectParticleGlobally(s, x0, y0 - dxyz, z0, vx, vy, vz, weight = weight_D)
+              injectParticleGlobally(s, x0 + dxyz, y0, z0, vx, vy, vz, weight=weight_D)
+              injectParticleGlobally(s, x0 - dxyz, y0, z0, vx, vy, vz, weight=weight_D)
+              injectParticleGlobally(s, x0, y0 + dxyz, z0, vx, vy, vz, weight=weight_D)
+              injectParticleGlobally(s, x0, y0 - dxyz, z0, vx, vy, vz, weight=weight_D)
+
+              species(s)%prtl_tile(ti, tj, tk)%proc(split_ind) = -1
 
             end do
 
