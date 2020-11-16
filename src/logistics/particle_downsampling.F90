@@ -68,8 +68,8 @@ contains
               nx_bin = species(s)%prtl_tile(ti, tj, tk)%x2 - species(s)%prtl_tile(ti, tj, tk)%x1
               ny_bin = species(s)%prtl_tile(ti, tj, tk)%y2 - species(s)%prtl_tile(ti, tj, tk)%y1
               nz_bin = species(s)%prtl_tile(ti, tj, tk)%z2 - species(s)%prtl_tile(ti, tj, tk)%z1
-              
-              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, nx_bin, ny_bin, nz_bin)
+
+              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid)
               call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid)
 
               ! loop over all cells on a tile

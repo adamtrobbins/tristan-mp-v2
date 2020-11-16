@@ -42,6 +42,10 @@ contains
       call throwError("Pair annihilation requires at least 2 species with opposite charges to participate.")
     end if
 
+    call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid)
+    call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid)
+    ...
+
     call pairAnnihilationOnTile(...)
 
   end subroutine pairAnnihilation
