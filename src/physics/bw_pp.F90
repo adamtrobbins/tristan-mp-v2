@@ -4,16 +4,12 @@ module m_bwpairproduction
 #ifdef BWPAIRPRODUCTION
 
   use m_globalnamespace
+  use m_qednamespace
   use m_aux
   use m_errors
   use m_bincoupling
   use m_particlelogistics
   implicit none
-
-  ! BW parameters
-  real    :: BW_tau
-  integer :: BW_interval, BW_electron_sp, BW_positron_sp
-  integer :: BW_algorithm
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: bwOnTile_bin, bwOnTile_mc, PPfromTwoPhotons

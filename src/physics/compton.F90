@@ -4,18 +4,13 @@ module m_compton
 #ifdef COMPTONSCATTERING
 
   use m_globalnamespace
+  use m_qednamespace
   use m_aux
   use m_errors
   use m_bincoupling
   use m_particlelogistics
   implicit none
 
-  ! Compton scattering parameters
-  real    :: Compton_tau
-  integer :: Compton_interval
-  integer :: Compton_algorithm
-  logical :: Compton_el_recoil
-  real(kind=8)    :: Thomson_lim
   real(kind=8), parameter :: low_eph_lim = 2d-3
 
   !--- PRIVATE variables/functions -------------------------------!
