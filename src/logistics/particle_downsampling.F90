@@ -10,7 +10,7 @@ module m_particledownsampling
   use m_domain
   use m_particles
   use m_particlelogistics
-  use m_momentumbinning
+  use m_particlebinning
   implicit none
 
   ! Auxiliary type for a group of merging particles
@@ -54,77 +54,83 @@ contains
     integer :: bin_limit
 
     type(positionBin_XYZ), allocatable  :: position_grid(:,:,:)
-    type(particle_tile), allocatable    :: downsampling_tile ! [ADDING NEW TILE FOR DOWNSAMPLING]
-    integer                             :: n_rad_x, n_rad_y, n_rad_z
+    type(particle_tile)                 :: downsampling_tile
+    integer                             :: nx_bin, ny_bin, nz_bin
     integer                             :: pi, pj, pk, p_ind, p
-    integer                             :: dwn_rad_x = 1 ! Make this an input parameter [ASK HAYK]
-    integer                             :: dwn_rad_y = 1 ! Make this an input parameter [ASK HAYK]
-    integer                             :: dwn_rad_z = 1 ! Make this an input parameter [ASK HAYK]
+
+    ! this ensures binning for each individual cell for charged particles
+    integer                             :: dwn_rad_x = 1
+    integer                             :: dwn_rad_y = 1
+    integer                             :: dwn_rad_z = 1
 
     do s = 1, nspec
-      if (species(s)%dwn_sp) then
-
+      if (species(s)%dwn_sp .and. species(s)%ch_sp .ne. 0) then
+        ! merging charged particles based on cells
         do ti = 1, species(s)%tile_nx
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
+              ! divide particles on a tile into bins by cells
+              nx_bin = INT(species(s)%tile_sx / dwn_rad_x)
+              ny_bin = INT(species(s)%tile_sy / dwn_rad_y)
+              nz_bin = INT(species(s)%tile_sz / dwn_rad_z)
+              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, nx_bin, ny_bin, nz_bin)
+              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid)
 
-              ! TODO Check modulo(species(s)%tile_sx, dwn_rad_x) = 0 (also other directions) [ASK HAYK]
-              n_rad_x = INT(species(s)%tile_sx / dwn_rad_x)
-              n_rad_y = INT(species(s)%tile_sy / dwn_rad_y)
-              n_rad_z = INT(species(s)%tile_sz / dwn_rad_z)
-
-              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
-              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, dwn_rad_x, dwn_rad_y, dwn_rad_z, species(s)%tile_sx, species(s)%tile_sy, species(s)%tile_sz)
-
-              if (allocated(downsampling_tile)) deallocate(downsampling_tile)
-              allocate(downsampling_tile)
-
-                do pi = 1, n_rad_x ! [ADDITIONAL LOOP]
-                  do pj = 1, n_rad_y ! [ADDITIONAL LOOP]
-                    do pk = 1, n_rad_z ! [ADDITIONAL LOOP]
-
+              ! loop over all cells on a tile
+              do pi = 1, nx_bin
+                do pj = 1, ny_bin
+                  do pk = 1, nz_bin
+                    ! create a "fake" particle tile of size `1x1x1` cells
                     call allocateParticlesOnEmptyTile(s, downsampling_tile, position_grid(pi, pj, pk)%npart)
+                    downsampling_tile%spec = s
+                    downsampling_tile%npart_sp = position_grid(pi, pj, pk)%npart
 
-                      downsampling_tile%spec = s
-                      downsampling_tile%npart_sp = position_grid(pi, pj, pk)%npart
+                    downsampling_tile%x1 = pi - 1
+                    downsampling_tile%x2 = downsampling_tile%x1 + 1
+                    downsampling_tile%y1 = pj - 1
+                    downsampling_tile%y2 = downsampling_tile%y1 + 1
+                    downsampling_tile%z1 = pk - 1
+                    downsampling_tile%z2 = downsampling_tile%z1 + 1
 
-                      downsampling_tile%x1 = (ti - 1) * species(s)%tile_sx
-                      downsampling_tile%x2 = min(ti * species(s)%tile_sx, this_meshblock%ptr%sx)
-                      downsampling_tile%y1 = (tj - 1) * species(s)%tile_sy
-                      downsampling_tile%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
-                      downsampling_tile%z1 = (tk - 1) * species(s)%tile_sz
-                      downsampling_tile%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
+                    if (downsampling_tile%npart_sp .gt. 5) then
+                      do p = 1, position_grid(pi, pj, pk)%npart
+                        p_ind = position_grid(pi, pj, pk)%indices(p)
+                        call fillDownsamplingTile(species(s)%prtl_tile(ti, tj, tk), downsampling_tile, p, p_ind)
+                      end do
 
-                    do p = 1, position_grid(pi, pj, pk)%npart
-
-                      p_ind = position_grid(pi, pj, pk)%indices(p) 
-                      call fillDownsamplingTile(species(s)%prtl_tile(ti, tj, tk), downsampling_tile, p, p_ind)
-
-                    enddo
-
-                      if (downsampling_tile%npart_sp .gt. 5) then
-
-                        ! decide whether to use cartesian OR spherical binning
-                        if (dwn_cartesian_bins) then
-                          call downsampleOnTile_Cartesian(downsampling_tile)
-                        else
-                          call downsampleOnTile_Spherical(downsampling_tile)
-                        end if
+                      ! decide whether to use cartesian OR spherical binning
+                      if (dwn_cartesian_bins) then
+                        call downsampleOnTile_Cartesian(downsampling_tile)
+                      else
+                        call downsampleOnTile_Spherical(downsampling_tile)
                       end if
+                    end if
 
                     do p = 1, position_grid(pi, pj, pk)%npart
-
-                      p_ind = position_grid(pi, pj, pk)%indices(p) 
+                      p_ind = position_grid(pi, pj, pk)%indices(p)
                       species(s)%prtl_tile(ti, tj, tk)%proc(p_ind) = downsampling_tile%proc(p)
+                    end do
 
-                    enddo
+                  end do ! loop pk
+                end do ! loop pj
+              end do ! loop pi
 
-                  enddo
-                enddo
-              enddo
-
-              if (allocated(downsampling_tile)) deallocate(downsampling_tile)
-
+            end do ! loop tk
+          end do ! loop tj
+        end do ! loop ti
+      else if (species(s)%dwn_sp .and. species(s)%ch_sp .eq. 0) then
+        ! merging of photons based on tiles
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. 5) then
+                ! decide whether to use cartesian OR spherical binning
+                if (dwn_cartesian_bins) then
+                  call downsampleOnTile_Cartesian(species(s)%prtl_tile(ti, tj, tk))
+                else
+                  call downsampleOnTile_Spherical(species(s)%prtl_tile(ti, tj, tk))
+                end if
+              end if
             end do
           end do
         end do
@@ -172,7 +178,6 @@ contains
               if ((p .le. 0) .or. (p .gt. tile%npart_sp)) then
                 call throwError('Wrong index in `downsampleAllBinsSpherical()`.')
               end if
-              ! tile%ind(p) = 100*100 * (e_b+1) + 100 * (th_b+1) + (ph_b+1)
             end do
           #endif
           if (npart .gt. 5) then
@@ -314,7 +319,7 @@ contains
                                     & px_min, px_max, py_min, py_max, pz_min, pz_max)
 
     call downsampleAllBins_Cartesian(momentum_bins, tile, rot_ax_1, rot_ax_2, rot_ang)
-  
+
   end subroutine downsampleOnTile_Cartesian
 
   subroutine downsampleAllBins_Cartesian(momentum_bins, tile, ax1, ax2, ang)
@@ -337,7 +342,6 @@ contains
             call downsampleBin_Cartesian(tile, px_mid, py_mid, pz_mid,&
                                        & momentum_bins(pi, pj, pk)%indices, npart,&
                                        & ax1, ax2, ang)
-
           end if
         end do
       end do
