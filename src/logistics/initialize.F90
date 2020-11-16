@@ -7,6 +7,7 @@ module m_initialize
   use m_globalnamespace
   use m_outputnamespace, only: tot_output_index, slice_index,&
                              & tot_output_enable, slice_output_enable, hst_enable
+  use m_qednamespace
   use m_writerestart, only: rst_simulation, rst_enable
   use m_aux
   use m_readinput
@@ -22,9 +23,9 @@ module m_initialize
   use m_writerestart, only: initializeRestart
   use m_helpers
   use m_errors
+  use m_particlebinning
 
   #ifdef DOWNSAMPLING
-    use m_momentumbinning
     use m_particledownsampling
   #endif
 
@@ -34,12 +35,8 @@ module m_initialize
     use m_outputnamespace, only: rad_spectra, glob_rad_spectra
   #endif
 
-  #ifdef BWPAIRPRODUCTION
-    use m_bwpairproduction
-  #endif
-
-  #ifdef COMPTONSCATTERING
-    use m_compton
+  #ifdef QED
+    use m_qedphysics, only: initializeQED
   #endif
 
   implicit none
@@ -58,14 +55,6 @@ module m_initialize
 
   #ifdef DOWNSAMPLING
     private :: initializeDownsampling
-  #endif
-
-  #ifdef BWPAIRPRODUCTION
-    private :: initializeBWPairProduction
-  #endif
-
-  #ifdef COMPTONSCATTERING
-    private :: initializeComptonScattering
   #endif
   !...............................................................!
 contains
@@ -126,14 +115,9 @@ contains
         call printDiag((mpi_rank .eq. 0), "initializeDownsampling()", .true.)
     #endif
 
-    #ifdef BWPAIRPRODUCTION
-      call initializeBWPairProduction()
-        call printDiag((mpi_rank .eq. 0), "initializeBWPairProduction()", .true.)
-    #endif
-
-    #ifdef COMPTONSCATTERING
-      call initializeComptonScattering()
-        call printDiag((mpi_rank .eq. 0), "initializeComptonScattering()", .true.)
+    #ifdef QED
+      call initializeQED()
+        call printDiag((mpi_rank .eq. 0), "initializeQED()", .true.)
     #endif
 
     call initializePrtlExchange()
@@ -438,29 +422,6 @@ contains
         if ((species(s)%cool_sp) .and. (species(s)%m_sp .eq. 0)) then
           call throwError('Unable to cool `m=0` particles.')
         end if
-      #endif
-
-      #ifdef BWPAIRPRODUCTION
-        write (var_name, "(A2,I1)") "bw", s
-        call getInput('particles', var_name, species(s)%bw_sp, 0)
-        if ((species(s)%bw_sp .ne. 0) .and.&
-          & ((species(s)%ch_sp .ne. 0) .or. (species(s)%m_sp .ne. 0))) then
-          call throwError('`ch != 0` or `m != 0` particles cannot pair-produce via BW.')
-        end if
-        if ((species(s)%bw_sp .gt. 2)) then
-          call throwError('only two BW photon populations are allowed.')
-        end if
-      #endif
-
-      #ifdef COMPTONSCATTERING
-        write (var_name, "(A7,I1)") "compton", s
-        call getInput('particles', var_name, species(s)%compton_sp, .false.)
-        if (species(s)%compton_sp) then
-          if ( .not. (((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .eq. 0)) .or. &
-             & ((species(s)%m_sp .eq. 1.0) .and. (abs(species(s)%ch_sp) .eq. 1.0))) ) then
-            call throwError('`Only electron/positron and photon species can Compton scatter.')
-          endif
-        endif
       #endif
 
       do ti = 1, species(s)%tile_nx
@@ -936,37 +897,4 @@ contains
       #endif
     end subroutine initializeRadiation
   #endif
-
-  #ifdef BWPAIRPRODUCTION
-    subroutine initializeBWPairProduction()
-      implicit none
-      call getInput('bw_pp', 'interval', BW_interval, 1)
-      call getInput('bw_pp', 'tau_BW', BW_tau, 0.1)
-      call getInput('bw_pp', 'algorithm', BW_algorithm, 2)
-      call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
-      call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
-    end subroutine initializeBWPairProduction
-  #endif
-
-  #ifdef COMPTONSCATTERING
-    subroutine initializeComptonScattering()
-      implicit none
-      call getInput('compton', 'interval', Compton_interval, 1)
-      call getInput('compton', 'tau_Compton', Compton_tau, 0.1)
-      call getInput('compton', 'algorithm', Compton_algorithm, 2)
-      if (Compton_algorithm .ne. 2) then
-        call throwError('Compton scattering currently only supports the MC algorithm.')
-      endif
-      call getInput('compton', 'el_recoil', Compton_el_recoil, .true.)
-      call getInput('compton', 'Thomson_lim', Thomson_lim, 1d-6)
-    end subroutine initializeComptonScattering
-  #endif
-
-  #if defined(BWPAIRPRODUCTION) && defined(COMPTONSCATTERING)
-    ! check that both tau's are the same:
-    if ((BW_tau .ne. Compton_tau) .and. (mpi_rank .eq. 0)) then
-      print *, 'WARNING: `Compton_tau` not equal to `BW_tau`, physically they should be equal!'
-    endif
-  #endif
-
 end module m_initialize
