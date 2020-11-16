@@ -58,6 +58,11 @@ module m_particles
       logical     :: cool_sp
     #endif
 
+    #ifdef DOWNSAMPLING
+      ! `true/false` - either downsample species or not
+      logical     :: dwn_sp
+    #endif
+
     #ifdef BWPAIRPRODUCTION
       ! `0` means species does not participate in BW process
       ! `1` and `2` would be separate BW groups
@@ -68,10 +73,10 @@ module m_particles
       logical     :: compton_sp
     #endif
 
-    #ifdef DOWNSAMPLING
-      ! `true/false` - either downsample species or not
-      logical     :: dwn_sp
+    #ifdef PAIRANNIHILATION
+      logical     :: annihilation_sp
     #endif
+
   end type particle_species
 
   ! particle types for exchange between processors />
@@ -104,26 +109,6 @@ module m_particles
 
     integer           :: ind, proc
   end type prtl_enroute
-
-  ! #ifndef GCA
-  !   type :: prtl_enroute
-  !     ! DEP_PRT [particle-dependent]
-  !     integer(kind=2)   :: xi, yi, zi
-  !     real              :: dx, dy, dz
-  !     real              :: u, v, w
-  !     real              :: weight
-  !     integer           :: ind, proc
-  !   end type prtl_enroute
-  ! #else
-  !   type :: prtl_enroute
-  !     ! DEP_PRT [particle-dependent]
-  !     integer(kind=2)   :: xi, yi, zi, xi_past, yi_past, zi_past
-  !     real              :: dx, dy, dz, dx_past, dy_past, dz_past
-  !     real              :: u, v, w, u_eff, v_eff, w_eff
-  !     real              :: weight
-  !     integer           :: ind, proc
-  !   end type prtl_enroute
-  ! #endif
 
   type :: enroute_array
     type(prtl_enroute), allocatable     :: send_enroute(:)
