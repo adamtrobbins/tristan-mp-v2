@@ -356,21 +356,28 @@ contains
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! Cartesian momenta binning.
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
-  subroutine initializePositionBins(tile, position_bins, n_rad_x, n_rad_y, n_rad_z)
+  subroutine initializePositionBins(tile, position_bins, nx_bin, ny_bin, nz_bin, npart)
     implicit none
     type(particle_tile), intent(in)                   :: tile
     type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
-    integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
+    integer, intent(in)                               :: nx_bin, ny_bin, nz_bin
+    integer, intent(in), optional                     :: npart
     integer                                           :: pi, pj, pk
-    integer                                           :: s
+    integer                                           :: s, npart_
 
-    allocate(position_bins(n_rad_x, n_rad_y, n_rad_z))
+    if (.not. present(npart)) then
+      npart_ = tile%npart_sp
+    else
+      npart_ = npart
+    end if
 
-    do pi = 1, n_rad_x
-      do pj = 1, n_rad_y
-        do pk = 1, n_rad_z
+    allocate(position_bins(nx_bin, ny_bin, nz_bin))
+
+    do pi = 1, nx_bin
+      do pj = 1, ny_bin
+        do pk = 1, nz_bin
           position_bins(pi, pj, pk)%npart = 0
-          allocate(position_bins(pi, pj, pk)%indices(tile%npart_sp))
+          allocate(position_bins(pi, pj, pk)%indices(npart_))
         end do
       end do
     end do

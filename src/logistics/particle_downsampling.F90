@@ -58,11 +58,6 @@ contains
     integer                             :: nx_bin, ny_bin, nz_bin
     integer                             :: pi, pj, pk, p_ind, p
 
-    ! this ensures binning for each individual cell for charged particles
-    integer                             :: dwn_rad_x = 1
-    integer                             :: dwn_rad_y = 1
-    integer                             :: dwn_rad_z = 1
-
     do s = 1, nspec
       if (species(s)%dwn_sp .and. species(s)%ch_sp .ne. 0) then
         ! merging charged particles based on cells
@@ -70,9 +65,10 @@ contains
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
               ! divide particles on a tile into bins by cells
-              nx_bin = INT(species(s)%tile_sx / dwn_rad_x)
-              ny_bin = INT(species(s)%tile_sy / dwn_rad_y)
-              nz_bin = INT(species(s)%tile_sz / dwn_rad_z)
+              nx_bin = species(s)%prtl_tile(ti, tj, tk)%x2 - species(s)%prtl_tile(ti, tj, tk)%x1
+              ny_bin = species(s)%prtl_tile(ti, tj, tk)%y2 - species(s)%prtl_tile(ti, tj, tk)%y1
+              nz_bin = species(s)%prtl_tile(ti, tj, tk)%z2 - species(s)%prtl_tile(ti, tj, tk)%z1
+              
               call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, nx_bin, ny_bin, nz_bin)
               call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid)
 
