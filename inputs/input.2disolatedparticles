@@ -61,7 +61,7 @@
   maxptl1       = 1e8           # max number of particles per core
   m1            = 1
   ch1           = 1
-  dwn1          = 1 
+  dwn1          = 0 
   move1         = 1
 
   maxptl2       = 1e8           # max number of particles per core

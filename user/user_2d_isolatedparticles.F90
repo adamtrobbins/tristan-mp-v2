@@ -44,97 +44,25 @@ contains
     return
   end function
 
+  function userSplitting(x_glob, y_glob, z_glob,&
+                     & dummy1, dummy2, dummy3)
+    logical :: userSplitting
+    ! global coordinates
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    ! global box dimensions
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real :: splitregion_xmin = 24.5
+    real :: splitregion_xmax = 25.5
+    userSplitting = ((x_glob.ge.splitregion_xmin).and.(x_glob.le.splitregion_xmax))
+    return 
+  end function
+
   !--- driving ------------------------------------------------!
   subroutine userCurrentDeposit(step)
     implicit none
     integer, optional, intent(in) :: step
     ! called after particles move and deposit ...
     ! ... and before the currents are added to the electric field
-
-
-  
-    integer         :: n_split, n_split_frac, split_ind
-    integer, allocatable :: ind_split(:)
-    integer         :: s, ti, tj, tk, p, i
-    real            :: x_glob
-    real            :: min_weight, weight_D
-    real            :: x0, y0, z0, vx, vy, vz, dxyz
-   
-    integer         :: n_refinement
-    real            :: weight_0
-    real            :: splitregion_xmin, splitregion_xmax
-    real            :: splitfactor
-
-    n_refinement = 1
-    weight_0 = 1.0
-    splitregion_xmin = 24.5
-    splitregion_xmax = 25.5
-    splitfactor = 1.0
-
-    min_weight = weight_0 / 4.0**n_refinement
-
-    n_split = 0
-
-    do s = 1, nspec
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            
-            allocate(ind_split(species(s)%prtl_tile(ti, tj, tk)%npart_sp))
-
-            ! IDENTIFY SPLITTABLE PARTICLES THAT ARE LOCATED IN THE SPLITTING REGION AND THROW THEIR INDICES INTO A BIN
-
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              
-              x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
-                     & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-
-              if((x_glob.ge.splitregion_xmin).and.(x_glob.le.splitregion_xmax).and.(min_weight.ge.min_weight)) then
-                  n_split = n_split + 1
-                  ind_split(n_split) = p
-              endif
-
-            end do
-
-            n_split_frac = floor(n_split * splitfactor)
-            
-            do i = 1, n_split_frac
-
-              split_ind = -1
-
-              do while (split_ind.lt.0) 
-                 split_ind = ind_split(INT((random(dseed) * n_split + 1)))
-              end do
-
-              x0 = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(split_ind) + this_meshblock%ptr%x0)&
-                     & + species(s)%prtl_tile(ti, tj, tk)%dx(split_ind)
-              y0 = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(split_ind) + this_meshblock%ptr%y0)&
-                     & + species(s)%prtl_tile(ti, tj, tk)%dy(split_ind)
-              z0 = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(split_ind) + this_meshblock%ptr%z0)&
-                     & + species(s)%prtl_tile(ti, tj, tk)%dz(split_ind)
-              vx = species(s)%prtl_tile(ti, tj, tk)%u(split_ind)
-              vy = species(s)%prtl_tile(ti, tj, tk)%v(split_ind)
-              vz = species(s)%prtl_tile(ti, tj, tk)%w(split_ind)
-              dxyz = 0.01
-
-              weight_D = species(s)%prtl_tile(ti, tj, tk)%weight(split_ind) / 4.0
-              call injectParticleGlobally(s, x0 + dxyz, y0, z0, vx, vy, vz, weight=weight_D)
-              call injectParticleGlobally(s, x0 - dxyz, y0, z0, vx, vy, vz, weight=weight_D)
-              call injectParticleGlobally(s, x0, y0 + dxyz, z0, vx, vy, vz, weight=weight_D)
-              call injectParticleGlobally(s, x0, y0 - dxyz, z0, vx, vy, vz, weight=weight_D)
-
-              species(s)%prtl_tile(ti, tj, tk)%proc(split_ind) = -1
-
-            end do
-
-            deallocate(ind_split)
-
-          end do
-        end do
-      end do
-    end do 
-
-
 
   end subroutine userCurrentDeposit
 
@@ -149,13 +77,13 @@ contains
 
 
     do n = 1, ppc0
-      xg = 10.0 + random(dseed) * 30.0
+      xg = 30.0 + random(dseed) * 15.0
       yg = 7.5 + random(dseed) * 5.0
       zg = 0.5
 
       vx = (25.5 - xg) * 0.01
       vy = (25.5 - yg) * 0.01
-      vz =  0.0
+      vz = 0.0
       gamma = 1.0 / sqrt(1.0 - vx**2.0 - vy**2.0 - vz**2.0)
 
       u = gamma*vx
@@ -226,6 +154,8 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
+
+  
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
