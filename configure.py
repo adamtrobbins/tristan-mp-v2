@@ -162,6 +162,11 @@ parser.add_argument('-compton',
                     default=False,
                     help='enable Compton scattering')
 
+parser.add_argument('-annihilation',
+                    action='store_true',
+                    default=False,
+                    help='enable pair annihilation')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -280,7 +285,10 @@ if args['bwpp']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
 
 if args['compton']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DCOMPTONSCATTERING '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DCOMPTONSCATTERING '
+
+if args['annihilation']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DPAIRANNIHILATION '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
@@ -317,6 +325,7 @@ print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
 print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
 print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
 print('  Compton scattering       ' + ('ON' if args['compton'] else 'OFF'))
+print('  Pair annihilation        ' + ('ON' if args['annihilation'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 
