@@ -162,6 +162,7 @@
   move1         = 1             # does species move? [1]
   cool1         = 1             # does species radiate (`rad` flag required)? [1]
   output1       = 0             # are species written to `prtl` [1]
+	annihilation1 = 1							# species can participate in pair annihilation [0]
 
   maxptl2       = 1e6
   m2            = 1
@@ -170,6 +171,7 @@
   move2         = 1
   cool2         = 0
   gca2          = 1             # does species do GCA (`gcaiter` flag required)? [1] if (ch != 0) else [0]
+	annihilation2 = 1
 
   maxptl3       = 1e6
   m3            = 0
@@ -224,5 +226,19 @@
   algorithm     = 1             # 1 = binary collisions, 2 = MC pairing, 3 = hybrid [1]
   electron_sp   = 1             # save produced electrons to species #... [1]
   positron_sp   = 2             # save produced positrons to species #... [2]
+
+<compton>
+
+  tau_Compton   = 0.01          # fiducial Thomson cross section [0.1]
+  interval      = 1             # scatter once every `interval` timestep [1]
+  algorithm     = 2             # 1 = binary collisions, 2 = MC pairing [2]
+  el_recoil     = 0						  # enable/disable electron recoil [1]
+  Thomson_lim   = 1e-5					# above this energy KN will be used [1e-6]
+
+<annihilation>
+
+	tau_annihilation = 0.01				# fiducial Thomson cross section for annihilation [0.1]
+	interval			= 1							# perform pair annihilation every `interval` timestep [1]
+	photon_sp			= 3							# produced photons are saved to species #... [3]
 
 <problem>
