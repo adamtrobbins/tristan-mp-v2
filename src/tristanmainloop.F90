@@ -25,7 +25,7 @@ module m_mainloop
 
   ! extra physics
   #ifdef QED
-    use m_qedphysics
+    use m_qedphysics, only: QEDstep
   #endif
 
   #ifdef DOWNSAMPLING
@@ -148,6 +148,13 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! User defined driving for particles
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      call userDriveParticles(timestep)
+        t_usrfuncs = MPI_WTIME() - t_usrfuncs
+      !.................................................
+
+      !-------------------------------------------------
       ! Advancing 2nd halfstep of `dB / dt = curl E`
         t_fldslvrstep = MPI_WTIME() - t_fldslvrstep
       if (enable_fieldsolver) call advanceBHalfstep()
@@ -257,24 +264,12 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! User defined driving and ...
-      !     ... boundary conditions for particles
+      ! User defined boundary conditions for particles
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       call userParticleBoundaryConditions(timestep)
       call clearGhostParticles()
-      call userDriveParticles(timestep)
         t_usrfuncs = MPI_WTIME() - t_usrfuncs
       !.................................................
-
-      ! !-------------------------------------------------
-      ! ! Particle downsampling
-      ! #ifdef DOWNSAMPLING
-      !     t_dwnstep = MPI_WTIME()
-      !   call downsamplingStep(timestep)
-      !   call clearGhostParticles()
-      !     t_dwnstep = MPI_WTIME() - t_dwnstep
-      ! #endif
-      ! !.................................................
 
       !-------------------------------------------------
       ! Tot output
