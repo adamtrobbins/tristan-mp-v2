@@ -79,7 +79,7 @@ module m_particlebinning
   integer                   :: dwn_n_mom_bins
   ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-    ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! Position binning ...
   ! ... auxiliary types
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -89,9 +89,7 @@ module m_particlebinning
     ! indices of all the particles in a given bin
     integer, allocatable    :: indices(:)
   end type positionBin_XYZ
-
   ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-
 contains
 
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
@@ -354,34 +352,27 @@ contains
   end subroutine initializeMomentumBins_Cartesian
 
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
-  ! Cartesian momenta binning.
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
-  subroutine initializePositionBins(tile, position_bins, npart)
+  subroutine initializePositionBins(tile, position_bins)
     implicit none
     type(particle_tile), intent(in)                   :: tile
     type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
     integer                                           :: nx_bin, ny_bin, nz_bin
-    integer, intent(in), optional                     :: npart
+    integer, intent(in), optional                     :: size
     integer                                           :: pi, pj, pk
-    integer                                           :: s, npart_
-
-    if (.not. present(npart)) then
-      npart_ = tile%npart_sp
-    else
-      npart_ = npart
-    end if
+    integer                                           :: s
 
     nx_bin = tile%x2 - tile%x1
     ny_bin = tile%y2 - tile%y1
     nz_bin = tile%z2 - tile%z1
-    
+
     allocate(position_bins(nx_bin, ny_bin, nz_bin))
 
     do pi = 1, nx_bin
       do pj = 1, ny_bin
         do pk = 1, nz_bin
           position_bins(pi, pj, pk)%npart = 0
-          allocate(position_bins(pi, pj, pk)%indices(npart_))
+          allocate(position_bins(pi, pj, pk)%indices(tile%npart_sp))
         end do
       end do
     end do
@@ -448,7 +439,6 @@ contains
     integer :: p, pi, pj, pk
 
     do p = 1, tile%npart_sp
-
       pi = tile%xi(p) - tile%x1 + 1
       pj = tile%yi(p) - tile%y1 + 1
       pk = tile%zi(p) - tile%z1 + 1
@@ -470,8 +460,6 @@ contains
     end do
   end subroutine binParticlePositions
   ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-
-
 
   subroutine binParticlesOnTile_Cartesian(momentum_bins, tile, ax1, ax2, ang,&
                                         & px_min, px_max, py_min, py_max, pz_min, pz_max)

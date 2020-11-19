@@ -22,7 +22,7 @@ module m_bincoupling
     !     ... on a single tile
     type(spec_ind_pair) :: part_1
     type(spec_ind_pair) :: part_2
-  end type
+  end type couple
 
   !--- PRIVATE functions -----------------------------------------!
   !...............................................................!
@@ -233,6 +233,6 @@ contains
 
     if (allocated(set_1)) deallocate(set_1)
     if (allocated(set_2)) deallocate(set_2)
-  end subroutine
+  end subroutine coupleParticlesOnTile
 
 end module m_bincoupling
