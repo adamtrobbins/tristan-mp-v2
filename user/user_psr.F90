@@ -20,6 +20,8 @@ module m_userfile
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
   real, private     :: nGJ_limiter, sigGJ_limiter, jdotb_limiter
+  real, private     :: fakepp_density, fakepp_height, fakepp_ppc
+  integer, private  :: fakepp_timestep
   #ifdef GCA
     real, private     :: psr_gca_enforce_rad
   #endif
@@ -73,6 +75,11 @@ contains
       call getInput('problem', 'jdotb_limiter', jdotb_limiter)
       call getInput('problem', 'prtl_kick', prtl_kick)
     end if
+
+    call getInput('problem', 'fakepp_density', fakepp_density, 0.0)
+    call getInput('problem', 'fakepp_timestep', fakepp_timestep, 0)
+    call getInput('problem', 'fakepp_height', fakepp_height, 50.0)
+    call getInput('problem', 'fakepp_ppc', fakepp_ppc, 1.0)
 
     #ifdef GCA
       call getInput('problem', 'gca_radius', psr_gca_enforce_rad)
@@ -223,7 +230,7 @@ contains
     integer                       :: n_part, n, sign
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
-    real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
+    real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig, rmax, rmin
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
@@ -435,6 +442,31 @@ contains
             end do
           end do
         end do
+      end do
+    end if
+
+    rmax = MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) * 0.5 - ds_abs / 2.0
+    rmin = CC / psr_omega0
+    ppc = 0.5 * fakepp_ppc
+    weight = fakepp_density * inj_mult * nGJ / ppc
+    ! n_part = 8 * ppc * fakepp_height * M_PI * rmax**2
+    n_part = this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc
+
+    if ((fakepp_density .gt. 0) .and. (step .gt. fakepp_timestep)) then
+      do n = 1, n_part
+        z_loc = random(dseed) * this_meshblock%ptr%sz
+        z_g = z_loc + this_meshblock%ptr%z0 - zc_g
+        if (random(dseed) .lt. exp(-0.5 * (z_g / fakepp_height)**2) * (z_g / fakepp_height)**2) then
+          x_loc = random(dseed) * this_meshblock%ptr%sx
+          y_loc = random(dseed) * this_meshblock%ptr%sy
+          x_g = x_loc + this_meshblock%ptr%x0
+          y_g = y_loc + this_meshblock%ptr%y0
+          rr = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2)
+          if ((rr .gt. rmin) .and. (rr .lt. rmax)) then
+            call injectParticleLocally(4, x_loc, y_loc, z_loc, 0.0, 0.0, 0.0, weight=weight)
+            call injectParticleLocally(5, x_loc, y_loc, z_loc, 0.0, 0.0, 0.0, weight=weight)
+          end if
+        end if
       end do
     end if
   end subroutine userParticleBoundaryConditions
