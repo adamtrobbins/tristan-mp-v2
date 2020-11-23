@@ -99,7 +99,7 @@ contains
     integer                                       :: set_size, set_size_1, set_size_2
     type(couple)                                  :: pair_of_photons
     integer                                       :: tile_x, tile_y, tile_z
-    real                                          :: rnd, P_12, P_1, delta_P_12, ppt0
+    real                                          :: rnd, P_12, P_1, delta_P_12, ppt0, P_corr
     logical                                       :: thresholdQ
     real                                          :: weight1, weight2, min_weight
     integer                                       :: npairs_produced, npp
@@ -113,6 +113,7 @@ contains
            & species(1)%prtl_tile(ti, tj, tk)%z1
     ! reference # particles on a tile:
     ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
+    P_corr = (3.0 / 16.0) * QED_tau0 * REAL(BW_interval) * CC / ppt0
 
     if (n_sp_2 .ne. 0) then
       ! two separate groups of photons interacting with each other
@@ -156,7 +157,7 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
-          P_12 = P_12 * REAL(BW_interval) / ppt0 ! make rate indep. of ppt0 & qed step
+          P_12 = P_corr * P_12
           min_weight = FLOOR(MIN(weight1, weight2))
           delta_P_12 = P_12 * min_weight * min_weight
           P_1 = P_1 + delta_P_12
@@ -219,7 +220,8 @@ contains
           ! compute `P_12`
           call computeBWCrossSection(ti, tj, tk, pair_of_photons,&
                                    & P_12, thresholdQ)
-          P_12 = P_12 * REAL(BW_interval) / ppt0 ! make rate indep. of ppt0 & qed step
+          P_12 = P_corr * P_12
+          ! make rate indep. of ppt0 & qed step
           min_weight = FLOOR(MIN(weight1, weight2))
           delta_P_12 = P_12 * min_weight * min_weight
           P_1 = P_1 + delta_P_12
@@ -301,8 +303,7 @@ contains
     ! reference # pairs on a tile:
     ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
     ! make it independent of ppt0 & qed step:
-    P_corr = REAL(BW_interval) / ppt0
-    ! match with binary pairing:
+    P_corr = (3.0 / 16.0) * QED_tau0 * REAL(BW_interval) * CC / ppt0
     P_corr = P_corr * max(wei_1, wei_2)
     ! correction for non-integer weights:
     wei_split_tot = 0.0
@@ -314,19 +315,19 @@ contains
     ! ... `wei_split_tot` is what is actually available to scatter due to ...
     ! ... non-ideal pairing:
     P_corr = P_corr * min(wei_1, wei_2) / wei_split_tot
-    if (num_pairs .gt. FLOOR(ppt0)) then
-      ! reduce # pairs to loop over in dense regions:
-      P_max = 0.26 * BW_tau * P_corr ! tight upper bound on max P_12 for BW
-      num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
-      ! limit from below to ppt0 to avoid excessive undersampling:
-      num_pairs_max = max(num_pairs_max, INT(ppt0))
-    else
-      num_pairs_max = num_pairs
-    endif
-    P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
+    ! if (num_pairs .gt. FLOOR(ppt0)) then
+    !   ! reduce # pairs to loop over in dense regions:
+    !   P_max = 0.26 * BW_tau * P_corr ! tight upper bound on max P_12 for BW
+    !   num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
+    !   ! limit from below to ppt0 to avoid excessive undersampling:
+    !   num_pairs_max = max(num_pairs_max, INT(ppt0))
+    ! else
+    ! num_pairs_max = num_pairs
+    ! endif
+    ! P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    do ph = 1, num_pairs_max
+    do ph = 1, num_pairs
       ! compute P_12 for each pair of photons `pairs_of_photons(ph)`
       call computeBWCrossSection(ti, tj, tk, pairs_of_photons(ph), P_12, thresholdQ)
       ! to match the optical depth with the binary pairing case:
@@ -407,10 +408,12 @@ contains
     if (thresholdQ) then
       beta2 = 1.0d0 - 1.0d0 / SS
       beta = sqrt(beta2)
-      fs = 0.1875d0 * (1.0d0 - beta2) *&
+      fs = (1.0d0 - beta2) *&
          & (-2.0d0 * beta * (2.0d0 - beta2) + (3.0d0 - beta2**2) *&
-         & log((1.0d0 + beta) / (1.0d0 - beta))) ! ==> normalized to sigma_T
-      P_12 = BW_tau * REAL(fs)
+         & log((1.0d0 + beta) / (1.0d0 - beta)))
+      ! this last factor appears bc of the transformation to the "lab" frame ...
+      ! ... basically it is `p1_mu * p2^mu / e1 e2`
+      P_12 = REAL(fs) * (1.0d0 - cos_phi)
     else
       P_12 = 0.0
     end if

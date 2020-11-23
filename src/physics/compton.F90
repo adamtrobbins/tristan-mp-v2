@@ -125,7 +125,7 @@ contains
     ! reference # pairs on a tile:
     ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
     ! make it independent of ppt0 & qed step:
-    P_corr = REAL(Compton_interval) / ppt0
+    P_corr = (3.0 / 8.0) * QED_tau0 * REAL(Compton_interval) / ppt0
     ! match with binary pairing (multiply w/ maximum total weight of either set):
     P_corr = P_corr * max(wei_1, wei_2)
     ! correction for non-integer weights:
@@ -139,21 +139,21 @@ contains
     ! ... non-ideal pairing:
     P_corr = P_corr * min(wei_1, wei_2) / wei_split_tot
     ! reduce # pairs to loop over in dense regions:
-    if (num_pairs .gt. FLOOR(ppt0)) then
-      P_max = 2.0 * Compton_tau * P_corr ! tight upper bound on max P_12 for Compton
-      num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
-      ! limit from below to ppt0 to avoid excessive undersampling:
-      num_pairs_max = max(num_pairs_max, FLOOR(ppt0))
-    else
-      num_pairs_max = num_pairs
-    endif
+    ! if (num_pairs .gt. FLOOR(ppt0)) then
+    !   P_max = 2.0 * P_corr ! tight upper bound on max P_12 for Compton
+    !   num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
+    !   ! limit from below to ppt0 to avoid excessive undersampling:
+    !   num_pairs_max = max(num_pairs_max, FLOOR(ppt0))
+    ! else
+    ! num_pairs_max = num_pairs
+    ! endif
     ! this assumes that each of the two undersampled sets has similar ...
     ! ... mean weight as the original set (if this is not true ...
     ! ... the undersampling is not justified in the first place):
-    P_corr =  P_corr * REAL(num_pairs) / REAL(num_pairs_max)
+    ! P_corr = P_corr * REAL(num_pairs) / REAL(num_pairs_max)
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    do el_ph = 1, num_pairs_max
+    do el_ph = 1, num_pairs
       ! "extract" the el-photon pair:
       s1 = el_photon_pairs(el_ph)%part_1%spec
       p1 = el_photon_pairs(el_ph)%part_1%index
@@ -306,12 +306,12 @@ contains
     else
       KleinNishina = .true.
       over_eph_RF = 1.0d0 / eph_RF
-      f_KN = 0.375d0 * over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
+      f_KN = over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
                                  & log(1.0d0 + 2.0d0 * eph_RF) + 0.5d0 + &
                                  & 4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
     end if
     ! Cross section in the *lab* frame:
-    P_12 = Compton_tau * REAL(f_KN * eph_RF / (el_gamma * eph))
+    P_12 = REAL(f_KN * eph_RF / (el_gamma * eph))
   end subroutine computeComptonCrossSection
 
   subroutine boostPhoton(gam, p_x, p_y, p_z, &

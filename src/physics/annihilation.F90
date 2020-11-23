@@ -28,7 +28,8 @@ module m_annihilation
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: pairAnnihilationWithGroups, pairAnnihilationWithGroups_mc,&
-           & breakDownParticles, shuffleGroup, computeAnnihilationCrossSection
+           & breakDownParticles, shuffleGroup, computeAnnihilationCrossSection,&
+           & annihilatePairs
 
   !...............................................................!
 contains
@@ -217,7 +218,7 @@ contains
       rnd = random(dseed)
       if ((rnd .le. P_12) .and. (thresholdQ)) then
         ! pair produce
-        call AnnihilatePairs(ep_pairs(n))
+        call annihilatePairs(ep_pairs(n))
         ! schedule particles for deletion
         s1 = ep_pairs(n)%prtl1%s
         p1 = ep_pairs(n)%prtl1%p
@@ -292,7 +293,15 @@ contains
 
     gamma0 = COM_gamma * (lec_gamma - COM_beta_u * lec_u - COM_beta_v * lec_v - COM_beta_w * lec_w)
     v0 = sqrt(1d0 - gamma0**(-2))
+
+    ! transform to lab frame
+    P_12 = P_12 * REAL(gamma0**2 / (lec_gamma * pos_gamma))
   end subroutine computeAnnihilationCrossSection
+
+  subroutine annihilatePairs(ep_pair)
+    implicit none
+    type(particlePair), intent(in)    :: ep_pair
+  end subroutine annihilatePairs
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ! . . . . Technical functions . . . .

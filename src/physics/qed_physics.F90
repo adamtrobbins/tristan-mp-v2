@@ -28,6 +28,8 @@ contains
   subroutine initializeQED()
     implicit none
 
+    call getInput('qed', 'tau0', QED_tau0, 0.1)
+
     #ifdef BWPAIRPRODUCTION
       call initializeBWPairProduction()
     #endif
@@ -39,13 +41,6 @@ contains
     #ifdef PAIRANNIHILATION
       call initializePairAnnihilation()
     #endif
-
-    #if defined(BWPAIRPRODUCTION) && defined(COMPTONSCATTERING)
-      ! check that both tau's are the same:
-      if ((BW_tau .ne. Compton_tau) .and. (mpi_rank .eq. 0)) then
-        print *, 'WARNING: `Compton_tau` not equal to `BW_tau`, physically they should be equal!'
-      endif
-    #endif
   end subroutine initializeQED
 
   #ifdef BWPAIRPRODUCTION
@@ -55,7 +50,6 @@ contains
       character(len=STR_MAX)  :: var_name
 
       call getInput('bw_pp', 'interval', BW_interval, 1)
-      call getInput('bw_pp', 'tau_BW', BW_tau, 0.1)
       call getInput('bw_pp', 'algorithm', BW_algorithm, 2)
       call getInput('bw_pp', 'electron_sp', BW_electron_sp, 1)
       call getInput('bw_pp', 'positron_sp', BW_positron_sp, 2)
@@ -92,7 +86,6 @@ contains
       character(len=STR_MAX)  :: var_name
 
       call getInput('compton', 'interval', Compton_interval, 1)
-      call getInput('compton', 'tau_Compton', Compton_tau, 0.1)
       call getInput('compton', 'algorithm', Compton_algorithm, 2)
       if (Compton_algorithm .ne. 2) then
         call throwError('Compton scattering currently only supports the MC algorithm.')
@@ -119,7 +112,6 @@ contains
       integer                 :: s
       character(len=STR_MAX)  :: var_name
 
-      call getInput('annihilation', 'tau_annihilation', Annihilation_tau, 0.1)
       call getInput('annihilation', 'interval', Annihilation_interval, 1)
       call getInput('annihilation', 'photon_sp', Annihilation_photon_sp, 3)
 

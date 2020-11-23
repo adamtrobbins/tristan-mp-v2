@@ -218,10 +218,14 @@
   photon_sp     = 3             # emit photons to species (`emit` flag) [3]
   dens_limit    = 100           # density limit on the cooled region (0 = disable limiter) [0]
 
+<qed>
+
+  tau0          = 0.1           # fiducial optical depth based on Thomson cross-section...
+                                # ... per cell-size for ppc density [0.1]
+
 <bw_pp>
 
   # `bw` flag has to be enabled
-  tau_BW        = 0.0001        # fiducial Breit-Wheeler cross section [0.1]
   interval      = 10            # perform BW once every `interval` timestep [1]
   algorithm     = 1             # 1 = binary collisions, 2 = MC pairing, 3 = hybrid [1]
   electron_sp   = 1             # save produced electrons to species #... [1]
@@ -229,7 +233,6 @@
 
 <compton>
 
-  tau_Compton   = 0.01          # fiducial Thomson cross section [0.1]
   interval      = 1             # scatter once every `interval` timestep [1]
   algorithm     = 2             # 1 = binary collisions, 2 = MC pairing [2]
   el_recoil     = 0						  # enable/disable electron recoil [1]
@@ -237,7 +240,6 @@
 
 <annihilation>
 
-	tau_annihilation = 0.01				# fiducial Thomson cross section for annihilation [0.1]
 	interval			= 1							# perform pair annihilation every `interval` timestep [1]
 	photon_sp			= 3							# produced photons are saved to species #... [3]
 
