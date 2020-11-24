@@ -75,7 +75,7 @@ contains
       end do
     end do
 
-    npart = 450
+    npart = 5000
 
     do n = 1, npart
       x_ = 5.0

@@ -226,7 +226,6 @@ contains
         endif
       #endif
       rnd = random(dseed)
-      print *, P_12, rnd, num_couples
       if (rnd .le. P_12) then
         ! pair produce
         call annihilatePairs(ep_pairs(n))
