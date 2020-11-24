@@ -116,7 +116,9 @@ def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
         routine = line.split()[0]
       except:
         continue
+      writing_particles = False
       if (routine == 'species'):
+        writing_particles = True
         routine = line[:15].strip()
       if routine[-1] == ':':
         routine = routine[:-1]
@@ -124,21 +126,33 @@ def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
         line1 = line.split()
         if (isfirst):
           data[routine] = {}
-          data[routine]['dt'] = np.array([])
-          data[routine]['min'] = np.array([])
-          data[routine]['max'] = np.array([])
+          if not writing_particles:
+            data[routine]['dt'] = np.array([])
+            data[routine]['min'] = np.array([])
+            data[routine]['max'] = np.array([])
+          else:
+            data[routine]['average'] = np.array([])
+            data[routine]['min'] = np.array([])
+            data[routine]['max'] = np.array([])
+            data[routine]['total'] = np.array([])
         if len(line1) < 5:
           line1 = line1[-3:]
         else:
-          line1 = line1[-4:-1]
+          line1 = line1[-4:]
         nums = [float(x.strip()) for x in line1]
         if (len(nums) < 3):
           print (nums, line)
           raise ValueError('len(nums) < 3')
         else:
-          data[routine]['dt'] = np.append(data[routine]['dt'], [nums[0]])
-          data[routine]['min'] = np.append(data[routine]['min'], [nums[1]])
-          data[routine]['max'] = np.append(data[routine]['max'], [nums[2]])
+          if not writing_particles:
+            data[routine]['dt'] = np.append(data[routine]['dt'], [nums[0]])
+            data[routine]['min'] = np.append(data[routine]['min'], [nums[1]])
+            data[routine]['max'] = np.append(data[routine]['max'], [nums[2]])
+          else:
+            data[routine]['average'] = np.append(data[routine]['average'], [nums[0]])
+            data[routine]['min'] = np.append(data[routine]['min'], [nums[1]])
+            data[routine]['max'] = np.append(data[routine]['max'], [nums[2]])
+            data[routine]['total'] = np.append(data[routine]['total'], [nums[3]])
   data = {}
   data['t'] = np.array([])
   with open(fname, 'r') as file:
