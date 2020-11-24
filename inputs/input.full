@@ -234,7 +234,6 @@
 <compton>
 
   interval      = 1             # scatter once every `interval` timestep [1]
-  algorithm     = 2             # 1 = binary collisions, 2 = MC pairing [2]
   el_recoil     = 0						  # enable/disable electron recoil [1]
   Thomson_lim   = 1e-5					# above this energy KN will be used [1e-6]
 

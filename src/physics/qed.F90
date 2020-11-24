@@ -7,6 +7,7 @@ module m_qedphysics
   use m_globalnamespace
   use m_qednamespace
   use m_particles
+  use m_readinput, only: getInput
 
   #ifdef BWPAIRPRODUCTION
     use m_bwpairproduction
@@ -114,6 +115,10 @@ contains
 
       call getInput('annihilation', 'interval', Annihilation_interval, 1)
       call getInput('annihilation', 'photon_sp', Annihilation_photon_sp, 3)
+      call getInput('annihilation', 'algorithm', Annihilation_algorithm, 2)
+      if (Annihilation_algorithm .ne. 2) then
+        call throwError('Annihilation currently only supports the MC algorithm.')
+      end if
 
       do s = 1, nspec
         write (var_name, "(A12,I1)") "annihilation", s

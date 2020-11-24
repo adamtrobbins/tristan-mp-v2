@@ -22,7 +22,7 @@ module m_qednamespace
   #ifdef PAIRANNIHILATION
     ! Pair annihilation parameters
     integer :: Annihilation_interval, Annihilation_photon_sp
-    ! integer :: Annihilation_algorithm
+    integer :: Annihilation_algorithm
   #endif
 
 end module m_qednamespace

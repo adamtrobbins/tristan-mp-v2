@@ -20,6 +20,7 @@ EXE_FILE := @EXE_NAME@
 EXECUTABLE := $(EXE_DIR)$(EXE_FILE)
 
 SRC_FILES := $(SRC_DIR)global_namespace.F90 \
+						 $(SRC_DIR)qed_namespace.F90 \
 						 $(SRC_DIR)output_namespace.F90 \
              $(SRC_DIR)tools/auxiliary.F90 \
              $(SRC_DIR)objects/domain.F90 \
@@ -42,7 +43,7 @@ SRC_FILES := $(SRC_DIR)global_namespace.F90 \
              $(SRC_DIR)physics/radiation.F90 \
              $(SRC_DIR)physics/thermal_plasma.F90 \
              $(SRC_DIR)physics/powerlaw_plasma.F90 \
-						 $(SRC_DIR)physics/qed_physics.F90 \
+						 $(SRC_DIR)physics/qed.F90 \
              $(SRC_DIR)logistics/exchange_particles.F90 \
              $(SRC_DIR)logistics/exchange_fields.F90 \
              $(SRC_DIR)logistics/exchange_currents.F90 \

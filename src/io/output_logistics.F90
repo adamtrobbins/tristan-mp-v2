@@ -533,22 +533,26 @@ contains
       if (((fld_var(1:4) .ne. 'dens') .and.&
          & (fld_var(1:4) .ne. 'enrg') .and.&
          & (fld_var(1:3) .ne. 'mom') .and.&
-         & (fld_var(1:3) .ne. 'nprt') .and.&
+         & (fld_var(1:4) .ne. 'nprt') .and.&
          & (fld_var(1:4) .ne. 'dgca')) .or.&
          & (.not. writing_lgarrQ)) then
         call throwError("ERROR: unrecognized `fldname`: " // trim(fld_var))
       else
-        ! interpolating cell-centered values to nodes
-        #ifdef oneD
-          sm_arr(i1, j1, k1) = 0.5 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k))
-        #elif twoD
-          sm_arr(i1, j1, k1) = 0.25 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k) +&
-                                     & lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k))
-        #elif threeD
-          sm_arr(i1, j1, k1) = 0.125 * (lg_arr(i, j, k) + lg_arr(i - 1, j - 1, k - 1) +&
-                                      & lg_arr(i - 1, j, k) + lg_arr(i, j - 1, k) + lg_arr(i, j, k - 1) +&
-                                      & lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k - 1) + lg_arr(i - 1, j, k - 1))
-        #endif
+        ! interpolating cell-centered values to nodes (when smoothing is large enough)
+        if (output_dens_smooth .gt. 1) then
+          #ifdef oneD
+            sm_arr(i1, j1, k1) = 0.5 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k))
+          #elif twoD
+            sm_arr(i1, j1, k1) = 0.25 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k) +&
+                                       & lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k))
+          #elif threeD
+            sm_arr(i1, j1, k1) = 0.125 * (lg_arr(i, j, k) + lg_arr(i - 1, j - 1, k - 1) +&
+                                        & lg_arr(i - 1, j, k) + lg_arr(i, j - 1, k) + lg_arr(i, j, k - 1) +&
+                                        & lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k - 1) + lg_arr(i - 1, j, k - 1))
+          #endif
+        else
+          sm_arr(i1, j1, k1) = lg_arr(i, j, k)
+        end if
 
       end if
     end select

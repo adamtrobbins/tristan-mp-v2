@@ -358,7 +358,6 @@ contains
     type(particle_tile), intent(in)                   :: tile
     type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
     integer                                           :: nx_bin, ny_bin, nz_bin
-    integer, intent(in), optional                     :: size
     integer                                           :: pi, pj, pk
     integer                                           :: s
 
@@ -448,9 +447,9 @@ contains
       ! pk = floor(REAL(mod(tile%zi(p), n_tile_sz)) / REAL(n_rad_z)) + 1
 
       #ifdef DEBUG
-        if ((pi .le. 0) .or. (pi .gt. tile%sx) .or.&
-          & (pj .le. 0) .or. (pj .gt. tile%sy) .or.&
-          & (pk .le. 0) .or. (pk .gt. tile%sz)) then
+        if ((pi .le. 0) .or. (pi .gt. tile%x2 - tile%x1) .or.&
+          & (pj .le. 0) .or. (pj .gt. tile%y2 - tile%y1) .or.&
+          & (pk .le. 0) .or. (pk .gt. tile%z2 - tile%z1)) then
           call throwError('Wrong spatial particle binning in `binParticlePositions`.')
         end if
       #endif
@@ -515,8 +514,6 @@ contains
     end do
   end subroutine binParticlesOnTile_Cartesian
   ! = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-
-#endif
 end module m_particlebinning
 
 

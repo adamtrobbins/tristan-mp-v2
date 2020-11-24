@@ -125,7 +125,7 @@ contains
     ! reference # pairs on a tile:
     ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
     ! make it independent of ppt0 & qed step:
-    P_corr = (3.0 / 8.0) * QED_tau0 * REAL(Compton_interval) / ppt0
+    P_corr = (3.0 / 8.0) * QED_tau0 * REAL(Compton_interval) * CC / ppt0
     ! match with binary pairing (multiply w/ maximum total weight of either set):
     P_corr = P_corr * max(wei_1, wei_2)
     ! correction for non-integer weights:
