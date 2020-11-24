@@ -1,4 +1,4 @@
-#include "defs.F90"
+#include "../defs.F90"
 
 module m_mainloop
   use m_globalnamespace

@@ -1,4 +1,4 @@
-#include "../defs.F90"
+#include "defs.F90"
 
 !--- FIELDS ----------------------------------------------------!
 ! To store all the field related quantities

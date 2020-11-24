@@ -1,4 +1,4 @@
-#include "defs.F90"
+#include "../defs.F90"
 
 program tristan
   use m_initialize
