@@ -62,7 +62,7 @@ contains
         call throwError('BW only produces massive and charged particles.')
       end if
       if ((species(BW_electron_sp)%m_sp .ne. species(BW_positron_sp)%m_sp) .or.&
-        & (species(BW_electron_sp)%ch_sp .ne. species(BW_positron_sp)%ch_sp)) then
+        & (abs(species(BW_electron_sp)%ch_sp) .ne. abs(species(BW_positron_sp)%ch_sp))) then
         call throwError('Masses and charges of `BW_electron_sp` and `BW_positron_sp` have to match.')
       end if
 
