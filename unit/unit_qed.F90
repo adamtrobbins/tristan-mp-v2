@@ -18,6 +18,7 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
+  real, private :: background_T
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -27,6 +28,7 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    call getInput('problem', 'temperature', background_T, 0.001)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -65,27 +67,27 @@ contains
       back_region%z_min = 0.0
       back_region%z_max = REAL(global_mesh%sz)
     #endif
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, ppc0, 1e-5)
-    s = 1
-    do ti = 1, species(s)%tile_nx
-      do tj = 1, species(s)%tile_ny
-        do tk = 1, species(s)%tile_nz
-          species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
-        end do
-      end do
-    end do
-
-    npart = 5000
-
-    do n = 1, npart
-      x_ = 5.0
-      y_ = n * REAL(global_mesh%sy) / (npart + 1.0)
-      z_ = 0.5
-      u_ = 2.0
-      v_ = 0.0
-      w_ = 0.0
-      call injectParticleGlobally(1, x_, y_, z_, u_, v_, w_, weight=1.0)
-    end do
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, ppc0, background_T)
+    ! s = 1
+    ! do ti = 1, species(s)%tile_nx
+    !   do tj = 1, species(s)%tile_ny
+    !     do tk = 1, species(s)%tile_nz
+    !       species(s)%prtl_tile(ti, tj, tk)%npart_sp = 0
+    !     end do
+    !   end do
+    ! end do
+    !
+    ! npart = 5000
+    !
+    ! do n = 1, npart
+    !   x_ = 5.0
+    !   y_ = n * REAL(global_mesh%sy) / (npart + 1.0)
+    !   z_ = 0.5
+    !   u_ = 2.0
+    !   v_ = 0.0
+    !   w_ = 0.0
+    !   call injectParticleGlobally(1, x_, y_, z_, u_, v_, w_, weight=1.0)
+    ! end do
   end subroutine userInitParticles
 
   subroutine userInitFields()
