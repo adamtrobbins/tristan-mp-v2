@@ -15,9 +15,8 @@ module m_writetotflds
 
   !--- PRIVATE functions -----------------------------------------!
   #ifdef HDF5
-    private :: writeFields_hdf5, writeXDMF_hdf5
+    private :: writeFields_hdf5, writeXDMF_hdf5, getBlockDimensions
   #endif
-  private :: getBlockDimensions
   !...............................................................!
 contains
   subroutine writeFields(step, time)
@@ -310,83 +309,85 @@ contains
     #endif
   #endif
 
-  subroutine getBlockDimensions(meshblock, starts, offsets, blocks, global_dims)
-    implicit none
-    type(mesh), intent(in)                          :: meshblock
-    integer(HSSIZE_T), intent(out), dimension(3)    :: offsets
-    integer(HSIZE_T), intent(out), dimension(3)     :: global_dims, blocks
-    integer, intent(out), dimension(3)              :: starts
-    integer                   :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
-    integer                   :: i_start, i_end, j_start, j_end, k_start, k_end
-    integer                   :: offset_i, offset_j, offset_k
-    integer                   :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
+  #ifdef HDF5
+    subroutine getBlockDimensions(meshblock, starts, offsets, blocks, global_dims)
+      implicit none
+      type(mesh), intent(in)                          :: meshblock
+      integer(HSSIZE_T), intent(out), dimension(3)    :: offsets
+      integer(HSIZE_T), intent(out), dimension(3)     :: global_dims, blocks
+      integer, intent(out), dimension(3)              :: starts
+      integer                   :: this_x0, this_y0, this_z0, this_sx, this_sy, this_sz
+      integer                   :: i_start, i_end, j_start, j_end, k_start, k_end
+      integer                   :: offset_i, offset_j, offset_k
+      integer                   :: n_i, n_j, n_k, glob_n_i, glob_n_j, glob_n_k
 
-    ! assuming `global_mesh%{x0,y0,z0} .eq. 0`
-    this_x0 = meshblock%x0
-    this_y0 = meshblock%y0
-    this_z0 = meshblock%z0
-    this_sx = meshblock%sx
-    this_sy = meshblock%sy
-    this_sz = meshblock%sz
+      ! assuming `global_mesh%{x0,y0,z0} .eq. 0`
+      this_x0 = meshblock%x0
+      this_y0 = meshblock%y0
+      this_z0 = meshblock%z0
+      this_sx = meshblock%sx
+      this_sy = meshblock%sy
+      this_sz = meshblock%sz
 
-    if (output_flds_istep .eq. 1) then
-      offset_i = this_x0;   offset_j = this_y0;   offset_k = this_z0
-      n_i = this_sx - 1;    n_j = this_sy - 1;    n_k = this_sz - 1
-      glob_n_i = global_mesh%sx
-      glob_n_j = global_mesh%sy
-      glob_n_k = global_mesh%sz
+      if (output_flds_istep .eq. 1) then
+        offset_i = this_x0;   offset_j = this_y0;   offset_k = this_z0
+        n_i = this_sx - 1;    n_j = this_sy - 1;    n_k = this_sz - 1
+        glob_n_i = global_mesh%sx
+        glob_n_j = global_mesh%sy
+        glob_n_k = global_mesh%sz
 
-      i_start = 0; j_start = 0; k_start = 0
-    else
-      i_start = 0; i_end = 0
-      offset_i = 0; n_i = 0
-      glob_n_i = 1
+        i_start = 0; j_start = 0; k_start = 0
+      else
+        i_start = 0; i_end = 0
+        offset_i = 0; n_i = 0
+        glob_n_i = 1
 
-      j_start = 0; j_end = 0
-      offset_j = 0; n_j = 0
-      glob_n_j = 1
+        j_start = 0; j_end = 0
+        offset_j = 0; n_j = 0
+        glob_n_j = 1
 
-      k_start = 0; k_end = 0
-      offset_k = 0; n_k = 0
-      glob_n_k = 1
-      #if defined(oneD) || defined (twoD) || defined (threeD)
-        offset_i = CEILING(REAL(this_x0) / REAL(output_flds_istep))
-        i_start = CEILING(REAL(this_x0) / REAL(output_flds_istep)) * output_flds_istep - this_x0
-        i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_x0
-        n_i = (i_end - i_start) / output_flds_istep
-        glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_flds_istep))
-        glob_n_i = MAX(1, glob_n_i)
-      #endif
-      #if defined(twoD) || defined (threeD)
-        offset_j = CEILING(REAL(this_y0) / REAL(output_flds_istep))
-        j_start = CEILING(REAL(this_y0) / REAL(output_flds_istep)) * output_flds_istep - this_y0
-        j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_y0
-        n_j = (j_end - j_start) / output_flds_istep
-        glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_flds_istep))
-        glob_n_j = MAX(1, glob_n_j)
-      #endif
-      #if defined(threeD)
-        offset_k = CEILING(REAL(this_z0) / REAL(output_flds_istep))
-        k_start = CEILING(REAL(this_z0) / REAL(output_flds_istep)) * output_flds_istep - this_z0
-        k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_z0
-        n_k = (k_end - k_start) / output_flds_istep
-        glob_n_k = CEILING(REAL(global_mesh%sz) / REAL(output_flds_istep))
-        glob_n_k = MAX(1, glob_n_k)
-      #endif
-    end if
+        k_start = 0; k_end = 0
+        offset_k = 0; n_k = 0
+        glob_n_k = 1
+        #if defined(oneD) || defined (twoD) || defined (threeD)
+          offset_i = CEILING(REAL(this_x0) / REAL(output_flds_istep))
+          i_start = CEILING(REAL(this_x0) / REAL(output_flds_istep)) * output_flds_istep - this_x0
+          i_end = (CEILING(REAL(this_x0 + this_sx) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_x0
+          n_i = (i_end - i_start) / output_flds_istep
+          glob_n_i = CEILING(REAL(global_mesh%sx) / REAL(output_flds_istep))
+          glob_n_i = MAX(1, glob_n_i)
+        #endif
+        #if defined(twoD) || defined (threeD)
+          offset_j = CEILING(REAL(this_y0) / REAL(output_flds_istep))
+          j_start = CEILING(REAL(this_y0) / REAL(output_flds_istep)) * output_flds_istep - this_y0
+          j_end = (CEILING(REAL(this_y0 + this_sy) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_y0
+          n_j = (j_end - j_start) / output_flds_istep
+          glob_n_j = CEILING(REAL(global_mesh%sy) / REAL(output_flds_istep))
+          glob_n_j = MAX(1, glob_n_j)
+        #endif
+        #if defined(threeD)
+          offset_k = CEILING(REAL(this_z0) / REAL(output_flds_istep))
+          k_start = CEILING(REAL(this_z0) / REAL(output_flds_istep)) * output_flds_istep - this_z0
+          k_end = (CEILING(REAL(this_z0 + this_sz) / REAL(output_flds_istep)) - 1) * output_flds_istep - this_z0
+          n_k = (k_end - k_start) / output_flds_istep
+          glob_n_k = CEILING(REAL(global_mesh%sz) / REAL(output_flds_istep))
+          glob_n_k = MAX(1, glob_n_k)
+        #endif
+      end if
 
-    starts(1) = i_start
-    starts(2) = j_start
-    starts(3) = k_start
-    offsets(1) = offset_i
-    offsets(2) = offset_j
-    offsets(3) = offset_k
-    blocks(1) = n_i + 1
-    blocks(2) = n_j + 1
-    blocks(3) = n_k + 1
-    global_dims(1) = glob_n_i
-    global_dims(2) = glob_n_j
-    global_dims(3) = glob_n_k
-  end subroutine getBlockDimensions
+      starts(1) = i_start
+      starts(2) = j_start
+      starts(3) = k_start
+      offsets(1) = offset_i
+      offsets(2) = offset_j
+      offsets(3) = offset_k
+      blocks(1) = n_i + 1
+      blocks(2) = n_j + 1
+      blocks(3) = n_k + 1
+      global_dims(1) = glob_n_i
+      global_dims(2) = glob_n_j
+      global_dims(3) = glob_n_k
+    end subroutine getBlockDimensions
+  #endif
 
 end module m_writetotflds

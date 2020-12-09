@@ -4,20 +4,36 @@ module m_radiation
 #ifdef RADIATION
   use m_globalnamespace
   use m_outputnamespace, only: rad_spectra, rad_spec_num, rad_spec_min, rad_spec_max, spec_log_bins
+  use m_qednamespace
 
   use m_aux
   use m_errors
   use m_particlelogistics
   implicit none
 
-  real              :: emit_gamma_syn, emit_gamma_ic, cool_gamma_syn, cool_gamma_ic, rad_beta_rec
-  real              :: rad_dens_lim
-  integer           :: rad_photon_sp
-  integer           :: rad_interval
-
   !--- PRIVATE variables/functions -------------------------------!
   !...............................................................!
 contains
+  subroutine initializeRadiation()
+    implicit none
+    call getInput('radiation', 'interval', rad_interval, 1)
+    call getInput('radiation', 'emit_gamma_syn', emit_gamma_syn, 10.0)
+    call getInput('radiation', 'emit_gamma_ic', emit_gamma_ic, 10.0)
+    call getInput('radiation', 'gamma_syn', cool_gamma_syn, 10.0)
+    call getInput('radiation', 'gamma_ic', cool_gamma_ic, 10.0)
+    call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
+    call getInput('radiation', 'dens_limit', rad_dens_lim, 0.0)
+    #ifdef EMIT
+      call getInput('radiation', 'photon_sp', rad_photon_sp, 3)
+      if ((rad_photon_sp .le. 0) .or.&
+        & (nspec .lt. rad_photon_sp) .or.&
+        & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
+        & (species(rad_photon_sp)%m_sp .ne. 0)) then
+        call throwError('Wrong choice of `photon_sp`.')
+      end if
+    #endif
+  end subroutine initializeRadiation
+
   subroutine particleRadiateSync(timestep, s,&
                                & u0, v0, w0, ui, vi, wi,&
                                & dx, dy, dz, xi, yi, zi,&
