@@ -69,6 +69,10 @@ contains
     do ti = 1, species(s0)%tile_nx
       do tj = 1, species(s0)%tile_ny
         do tk = 1, species(s0)%tile_nz
+          if ((Annihilation_sporadic) .and. (random(dseed) * Annihilation_interval .gt. 1.0)) then
+            cycle
+          end if
+
           ! number of cells on a tile
           nx_bin = species(s0)%prtl_tile(ti, tj, tk)%x2 - species(s0)%prtl_tile(ti, tj, tk)%x1
           ny_bin = species(s0)%prtl_tile(ti, tj, tk)%y2 - species(s0)%prtl_tile(ti, tj, tk)%y1

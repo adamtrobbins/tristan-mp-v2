@@ -31,6 +31,15 @@ contains
 
     call getInput('qed', 'tau0', QED_tau0, 0.1)
 
+    #ifdef RADIATION
+      #ifdef SYNCHROTRON
+        QED_tau0 = rad_beta_rec / (cool_gamma_syn**2 * sqrt(sigma) * c_omp)
+        if (mpi_rank .eq. 0) then
+          print *, 'WARNING: `QED_tau0` is defined via `cool_gamma_syn`; input value is ignored.'
+        end if
+      #endif
+    #endif
+
     #ifdef BWPAIRPRODUCTION
       call initializeBWPairProduction()
     #endif
@@ -116,6 +125,8 @@ contains
       call getInput('annihilation', 'interval', Annihilation_interval, 1)
       call getInput('annihilation', 'photon_sp', Annihilation_photon_sp, 3)
       call getInput('annihilation', 'algorithm', Annihilation_algorithm, 2)
+      call getInput('annihilation', 'sporadic', Annihilation_sporadic, .false.)
+
       if (Annihilation_algorithm .ne. 2) then
         call throwError('Annihilation currently only supports the MC algorithm.')
       end if
@@ -149,7 +160,8 @@ contains
     #endif
 
     #ifdef PAIRANNIHILATION
-      if (modulo(timestep, Annihilation_interval) .eq. 0) then
+      if (((.not. Annihilation_sporadic) .and. (modulo(timestep, Annihilation_interval) .eq. 0)) .or.&
+        & (Annihilation_sporadic)) then
         call pairAnnihilation()
       end if
     #endif
