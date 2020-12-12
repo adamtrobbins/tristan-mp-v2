@@ -241,5 +241,6 @@
 
 	interval			= 1							# perform pair annihilation every `interval` timestep [1]
 	photon_sp			= 3							# produced photons are saved to species #... [3]
+	sporadic      = 0							# enable/disable sporadic annihilation for interval > 1 [0]
 
 <problem>

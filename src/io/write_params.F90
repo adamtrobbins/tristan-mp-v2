@@ -23,7 +23,7 @@ contains
   subroutine writeParams(step, time)
     implicit none
     integer, intent(in)     :: step, time
-    #ifndef HDF5
+    #ifdef HDF5
       call writeParams_hdf5(step, time)
     #else
       call writeParams_fmt(step, time)

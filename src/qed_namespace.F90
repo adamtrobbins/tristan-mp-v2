@@ -4,7 +4,16 @@ module m_qednamespace
   use m_globalnamespace
   implicit none
 
-  real :: QED_tau0
+  #ifdef RADIATION
+    real            :: emit_gamma_syn, emit_gamma_ic, cool_gamma_syn, cool_gamma_ic, rad_beta_rec
+    real            :: rad_dens_lim
+    integer         :: rad_photon_sp
+    integer         :: rad_interval
+  #endif
+
+  #ifdef QED
+    real            :: QED_tau0
+  #endif
 
   #ifdef BWPAIRPRODUCTION
     ! BW pair production parameters
@@ -23,6 +32,7 @@ module m_qednamespace
     ! Pair annihilation parameters
     integer :: Annihilation_interval, Annihilation_photon_sp
     integer :: Annihilation_algorithm
+    logical :: Annihilation_sporadic
   #endif
 
 end module m_qednamespace

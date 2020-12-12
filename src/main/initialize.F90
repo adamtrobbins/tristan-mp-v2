@@ -31,7 +31,7 @@ module m_initialize
 
   ! extra physics
   #ifdef RADIATION
-    use m_radiation
+    use m_radiation, only: initializeRadiation
     use m_outputnamespace, only: rad_spectra, glob_rad_spectra
   #endif
 
@@ -49,9 +49,6 @@ module m_initialize
            & initializePrtlExchange, initializeFields,&
            & initializeSimulation, checkEverything,&
            & restartSimulation
-  #ifdef RADIATION
-    private :: initializeRadiation
-  #endif
 
   #ifdef DOWNSAMPLING
     private :: initializeDownsampling
@@ -154,10 +151,11 @@ contains
     implicit none
     integer                 :: n
     character(len=STR_MAX)  :: FMT
+    real                    :: dummy
     ! printing simulation parameters in the report
 
     if (mpi_rank .eq. 0) then
-      FMT = '== Simulation parameters ==============================================='
+      FMT = '== Full simulation parameters =========================================='
       write(*, '(A)') trim(FMT)
       do n = 1, sim_params%count
         if (sim_params%param_type(n) .eq. 1) then
@@ -182,6 +180,72 @@ contains
       end do
       FMT = '........................................................................'
       write(*, '(A)') trim(FMT)
+
+      print *, ""
+      FMT = '== Fiducial physical parameters ========================================'
+      write(*, '(A)') trim(FMT)
+
+      dummy = c_omp
+      FMT = getFMTForReal(dummy)
+      FMT = '(A35,' // trim(FMT) // ')'
+      write (*, FMT) trim('skin depth [dx]:'), dummy
+
+      dummy = 2.0 * M_PI * c_omp / CC
+      FMT = getFMTForReal(dummy)
+      FMT = '(A35,' // trim(FMT) // ')'
+      write (*, FMT) trim('plasma oscillation period [dt]:'), dummy
+
+      dummy = c_omp / sqrt(sigma)
+      FMT = getFMTForReal(dummy)
+      FMT = '(A35,' // trim(FMT) // ')'
+      write (*, FMT) trim('gyroradius [dx]:'), dummy
+
+      dummy = 2.0 * M_PI * c_omp / (CC * sqrt(sigma))
+      FMT = getFMTForReal(dummy)
+      FMT = '(A35,' // trim(FMT) // ')'
+      write (*, FMT) trim('gyration period [dt]:'), dummy
+
+      #ifdef RADIATION
+        #ifdef SYNCHROTRON
+          dummy = cool_gamma_syn
+          FMT = getFMTForReal(dummy)
+          FMT = '(A35,' // trim(FMT) // ')'
+          write (*, FMT) trim('synchrotron break:'), dummy
+
+          dummy = emit_gamma_syn
+          FMT = getFMTForReal(dummy)
+          FMT = '(A35,' // trim(FMT) // ')'
+          write (*, FMT) trim('synchrotron peak is mc^2 for:'), dummy
+        #endif
+
+        #ifdef INVERSECOMPTON
+          dummy = cool_gamma_ic
+          FMT = getFMTForReal(dummy)
+          FMT = '(A35,' // trim(FMT) // ')'
+          write (*, FMT) trim('inverse Compton break:'), dummy
+
+          dummy = emit_gamma_ic
+          FMT = getFMTForReal(dummy)
+          FMT = '(A35,' // trim(FMT) // ')'
+          write (*, FMT) trim('inverse Compton peak is mc^2 for:'), dummy
+        #endif
+      #endif
+
+      #ifdef QED
+        dummy = QED_tau0
+        FMT = getFMTForReal(dummy)
+        FMT = '(A35,' // trim(FMT) // ')'
+        write (*, FMT) trim('Thomson optical depth:'), dummy
+
+        dummy = 1.0 / QED_tau0
+        FMT = getFMTForReal(dummy)
+        FMT = '(A35,' // trim(FMT) // ')'
+        write (*, FMT) trim('Thomson mean free path [dx]:'), dummy
+      #endif
+
+      FMT = '........................................................................'
+      write(*, '(A)') trim(FMT)
+      print *, ""
     end if
   end subroutine printParams
 
@@ -873,28 +937,5 @@ contains
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
       call getInput('downsampling', 'int_weights', dwn_int_weights, .false.)
     end subroutine initializeDownsampling
-  #endif
-
-  ! extra physics
-  #ifdef RADIATION
-    subroutine initializeRadiation()
-      implicit none
-      call getInput('radiation', 'interval', rad_interval, 1)
-      call getInput('radiation', 'emit_gamma_syn', emit_gamma_syn, 10.0)
-      call getInput('radiation', 'emit_gamma_ic', emit_gamma_ic, 10.0)
-      call getInput('radiation', 'gamma_syn', cool_gamma_syn, 10.0)
-      call getInput('radiation', 'gamma_ic', cool_gamma_ic, 10.0)
-      call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
-      call getInput('radiation', 'dens_limit', rad_dens_lim, 0.0)
-      #ifdef EMIT
-        call getInput('radiation', 'photon_sp', rad_photon_sp, 3)
-        if ((rad_photon_sp .le. 0) .or.&
-          & (nspec .lt. rad_photon_sp) .or.&
-          & (species(rad_photon_sp)%ch_sp .ne. 0) .or.&
-          & (species(rad_photon_sp)%m_sp .ne. 0)) then
-          call throwError('Wrong choice of `photon_sp`.')
-        end if
-      #endif
-    end subroutine initializeRadiation
   #endif
 end module m_initialize
