@@ -328,10 +328,75 @@ contains
   subroutine annihilatePairs(ep_pair)
     implicit none
     type(particlePair), intent(in)    :: ep_pair
+    integer                         :: s1, s2, p1, p2
+    integer                         :: ti1, tj1, tk1, ti2, tj2, tk2
+    real(kind=8)                    :: lec_u, lec_v, lec_w, pos_u, pos_v, pos_w, lec_gamma, pos_gamma
+    real                            :: wei1, wei2
+
+    s1 = ep_pair%prtl1%s
+    p1 = ep_pair%prtl1%p
+    ti1 = ep_pair%prtl1%ti
+    tj1 = ep_pair%prtl1%tj
+    tk1 = ep_pair%prtl1%tk
+    wei1 = ep_pair%prtl1%wei
+    s2 = ep_pair%prtl2%s
+    p2 = ep_pair%prtl2%p
+    ti2 = ep_pair%prtl2%ti
+    tj2 = ep_pair%prtl2%tj
+    tk2 = ep_pair%prtl2%tk
+    wei2 = ep_pair%prtl2%wei
+
+    #ifdef DEBUG
+      if ((wei1 .ne. wei2) .or. (wei1 .ne. 1.0)) then
+        call throwError('Unequal weights in `computeAnnihilationCrossSection`: '//STR(wei1)//':'//STR(wei2))
+      end if
+    #endif
+
+    lec_u = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%u(p1), 8)
+    lec_v = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%v(p1), 8)
+    lec_w = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%w(p1), 8)
+    lec_gamma = sqrt(1d0 + lec_u**2 + lec_v**2 + lec_w**2)
+    pos_u = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%u(p2), 8)
+    pos_v = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%v(p2), 8)
+    pos_w = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%w(p2), 8)
+    pos_gamma = sqrt(1d0 + pos_u**2 + pos_v**2 + pos_w**2)
+
+
   end subroutine annihilatePairs
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ! . . . . Technical functions . . . .
+  subroutine LorentzBoost(beta_frame_x, beta_frame_y, beta_frame_z,&
+                        & beta_frame_sq, gamma_frame,&
+                        & old_k_0,&
+                        & old_k_x, old_k_y, old_k_z,&
+                        & new_k_x, new_k_y, new_k_z)
+    implicit none
+    real(kind=8), intent(in)  :: beta_frame_x, beta_frame_y, beta_frame_z
+    real(kind=8), intent(in)  :: beta_frame_sq, gamma_frame
+    real(kind=8), intent(in)  :: old_k_x, old_k_y, old_k_z, old_k_0
+    real(kind=8), intent(out) :: new_k_x, new_k_y, new_k_z
+    real(kind=8)              :: gamma_frame_m1
+
+    if (beta_frame_sq .gt. 0.0d0) then
+      gamma_frame_m1 = gamma_frame - 1.0d0
+      new_k_x = -beta_frame_x * gamma_frame * old_k_0 +&
+              & old_k_x * (1.0d0 + (beta_frame_x**2 / beta_frame_sq) * gamma_frame_m1) +&
+              & old_k_y * (beta_frame_x * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_z * (beta_frame_x * beta_frame_z / beta_frame_sq) * gamma_frame_m1
+      new_k_y = -beta_frame_y * gamma_frame * old_k_0 +&
+              & old_k_x * (beta_frame_y * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_y * (1.0d0 + (beta_frame_y**2 / beta_frame_sq) * gamma_frame_m1) +&
+              & old_k_z * (beta_frame_y * beta_frame_z / beta_frame_sq) * gamma_frame_m1
+      new_k_z = -beta_frame_z * gamma_frame * old_k_0 +&
+              & old_k_x * (beta_frame_z * beta_frame_x / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_y * (beta_frame_z * beta_frame_y / beta_frame_sq) * gamma_frame_m1 +&
+              & old_k_z * (1.0d0 + (beta_frame_z**2 / beta_frame_sq) * gamma_frame_m1)
+    else
+      new_k_x = old_k_x; new_k_y = old_k_y; new_k_z = old_k_z
+    end if
+  end subroutine LorentzBoost
+
   subroutine breakDownParticles(group, set, set_weight)
     implicit none
     type(particleGroup)                           :: group
