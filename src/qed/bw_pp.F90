@@ -13,7 +13,7 @@ module m_bwpairproduction
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: bwOnTile_bin, bwOnTile_mc, PPfromTwoPhotons
-  private :: generateRandomThetaBW, dSdO_BW
+  private :: generateRandomThetaBW, dSdO_BW, LorentzBoost
   !...............................................................!
 contains
   subroutine bwPairProduction()

@@ -1,5 +1,6 @@
 import tristanVis.aux as aux
 
+from contextlib import contextmanager
 import ipywidgets as ipyW
 from IPython.display import display
 
@@ -91,6 +92,11 @@ class Simulation():
     self._extraVariables = extraVariables
     self._coordinateTransformation = coordinateTransformation
 
+  def __del__(self):
+    del self.fields
+    del self.spectra
+    del self.particles
+
   def maskData(self, mask):
     self._mask = mask
 
@@ -117,7 +123,7 @@ class Simulation():
 
     if (self._useSlices):
       files = aux.listFiles(self._root + 'slices/')
-      self._slices = np.unique([file[:-6] for file in files])
+      self._slices = np.unique([file[:-6] for file in files if (not 'xdmf' in file)])
       self._slices = np.array(['='.join((lambda x: [x[0], str(int(x[1]))])(sl.lower()[5:].split('='))) for sl in self._slices])
     else:
       files = aux.listFiles(self._root)
@@ -135,7 +141,7 @@ class Simulation():
                         extraVariables=self._extraVariables,
                         coordinateTransformation=self._coordinateTransformation)
       self.fields.update({st: fld})
-
+      
   def loadData(self):
     self.readFiles()
     [fld.loadData() for st, fld in self.fields.items()]
@@ -203,6 +209,10 @@ class FieldPlot2D(ipyW.VBox):
       self.children = [self.controls, output]
     else:
       self.children = [output]
+
+  def __del__(self):
+    del self.fig
+    del self.children
 
   def findMinMax(self):
     import numpy as np
@@ -365,6 +375,11 @@ class PlotGrid():
     self.button_panel = ipyW.HBox([self.addPlot_button, self.step_slider], layout={'margin': '0px 0px 20px 0px'})
     self.generateGrid()
 
+  def __del__(self):
+    del self.simulation
+    del self.plotgrid
+    del self.panels
+
   def addPanel(self, b):
     if (self.controls):
       self.parameters.append({})
@@ -376,12 +391,30 @@ class PlotGrid():
     # self.simulation.step = change.new
     # self.redraw()
 
-  def savePng(self, b):
-    fname = 'sim_%05d.png' % self.simulation.step
+  def savePng(self, filename):
     NN, ncols, nrows = self.getNxM()
-    # fig = plt.figure()
-    # ....
-    # add save PNG
+    import os
+    import numpy as np
+    import shutil
+    import PIL
+    from PIL import Image
+    temp = 'temp_'
+    if not os.path.exists(temp):
+      os.mkdir(temp)
+    filenames = []
+    for ii, subplot in enumerate(self.plotgrid.children[0].children[1].children):
+      fname = temp + '/pic_%03d.png'%ii
+      filenames.append(fname)
+      subplot.fig.savefig(fname)
+    imgs = [PIL.Image.open(i) for i in filenames]
+    min_shape = sorted([(np.sum(i.size), i.size ) for i in imgs])[0][1]
+    img_rows = []
+    for nr in range(nrows):
+      img_row = np.hstack([np.asarray(i.resize(min_shape)) for i in imgs[nr * ncols : nr * ncols + ncols]])
+      img_rows.append(img_row)
+    imgs_comb = PIL.Image.fromarray(np.vstack(img_rows))
+    shutil.rmtree(temp)
+    imgs_comb.save(filename)
 
   def getNxM(self):
     import numpy as np
