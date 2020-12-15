@@ -327,11 +327,135 @@ contains
 
   subroutine annihilatePairs(ep_pair)
     implicit none
-    type(particlePair), intent(in)    :: ep_pair
+    type(particlePair), intent(in)  :: ep_pair
+    integer                         :: s1, s2, p1, p2
+    integer                         :: ti1, tj1, tk1, ti2, tj2, tk2
+    real(kind=8)                    :: dummy
+    real(kind=8)                    :: lec_Ux, lec_Uy, lec_Uz, pos_Ux, pos_Uy, pos_Uz, lec_gamma, pos_gamma
+    real(kind=8)                    :: beta_CM_x, beta_CM_y, beta_CM_z, beta_CM_sq, gamma_inCM
+    real(kind=8)                    :: a_x, a_y, a_z                     ! CoM basis vector along momentum
+    real(kind=8)                    :: b_x, b_y, b_z, c_x, c_y, c_z   ! CoM basis vector perp to momentum
+    real(kind=8)                    :: rand_theta_CM, rand_phi_CM
+    real(kind=8)                    :: cos_rand_theta_CM, cos_rand_phi_CM, sin_rand_theta_CM, sin_rand_phi_CM
+    real(kind=8)                    :: kprime_x, kprime_y, kprime_z
+    real(kind=8)                    :: eph_prime, k_x, k_y, k_z
+
+    s1 = ep_pair%prtl1%s
+    p1 = ep_pair%prtl1%p
+    ti1 = ep_pair%prtl1%ti
+    tj1 = ep_pair%prtl1%tj
+    tk1 = ep_pair%prtl1%tk
+    s2 = ep_pair%prtl2%s
+    p2 = ep_pair%prtl2%p
+    ti2 = ep_pair%prtl2%ti
+    tj2 = ep_pair%prtl2%tj
+    tk2 = ep_pair%prtl2%tk
+
+    lec_Ux = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%u(p1), 8)
+    lec_Uy = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%v(p1), 8)
+    lec_Uz = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%w(p1), 8)
+    lec_gamma = sqrt(1d0 + lec_Ux**2 + lec_Uy**2 + lec_Uz**2)
+    pos_Ux = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%u(p2), 8)
+    pos_Uy = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%v(p2), 8)
+    pos_Uz = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%w(p2), 8)
+    pos_gamma = sqrt(1d0 + pos_Ux**2 + pos_Uy**2 + pos_Uz**2)
+
+    dummy = lec_gamma + pos_gamma
+    beta_CM_x = (lec_Ux + pos_Ux) / dummy
+    beta_CM_y = (lec_Uy + pos_Uy) / dummy
+    beta_CM_z = (lec_Uz + pos_Uz) / dummy
+    call LorentzBoost(beta_CM_x, beta_CM_y, beta_CM_z,&
+                    & lec_gamma,&
+                    & lec_Ux, lec_Uy, lec_Uz,&
+                    & a_x, a_y, a_z)
+    dummy = a_x**2 + a_y**2 + a_z**2
+    gamma_inCM = sqrt(1.0d0 + dummy) ! electron/positron energy in CoM frame
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Pick 3 basis vectors in the CoM frame
+    ! normalize 1st basis vector
+    dummy = sqrt(dummy)
+    a_x = a_x / dummy
+    a_y = a_y / dummy
+    a_z = a_z / dummy
+    ! choose 2nd basis vector
+    if (a_x .ne. 0.0d0) then
+      b_x = -a_y / a_x; b_y = 1.0d0; b_z = 0.0d0
+      dummy = sqrt(b_x**2 + b_y**2)
+      b_x = b_x / dummy; b_y = b_y / dummy
+    else
+      b_x = 1.0d0; b_y = 0.0d0; b_z = 0.0d0
+    end if
+    ! ... 3rd basis vector
+    c_x = a_y * b_z - a_z * b_y
+    c_y = -a_x * b_z + a_z * b_x
+    c_z = a_x * b_y - a_y * b_x
+    dummy = sqrt(c_x**2 + c_y**2 + c_z**2)
+    c_x = c_x / dummy; c_y = c_y / dummy; c_z = c_z / dummy
+
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! Generate random vector in the CoM frame ...
+    ! ... respecting the differential cross section ...
+    ! ... at angle `theta` w.r.t. `k1_CM`
+    ! call generateRandomThetaAnn(SS / (wei1 * wei2 / wei**2), rand_theta_CM)
+    rand_theta_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
+    rand_phi_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
+    cos_rand_theta_CM = cos(rand_theta_CM)
+    sin_rand_theta_CM = sin(rand_theta_CM)
+    cos_rand_phi_CM = cos(rand_phi_CM)
+    sin_rand_phi_CM = sin(rand_phi_CM)
+
+    ! direction of the newly created photon in CoM frame
+    kprime_x = a_x * cos_rand_theta_CM +&
+             & b_x * sin_rand_theta_CM * cos_rand_phi_CM +&
+             & c_x * sin_rand_theta_CM * sin_rand_phi_CM
+    kprime_y = a_y * cos_rand_theta_CM +&
+             & b_y * sin_rand_theta_CM * cos_rand_phi_CM +&
+             & c_y * sin_rand_theta_CM * sin_rand_phi_CM
+    kprime_z = a_z * cos_rand_theta_CM +&
+             & b_z * sin_rand_theta_CM * cos_rand_phi_CM +&
+             & c_z * sin_rand_theta_CM * sin_rand_phi_CM
+    #ifdef DEBUG
+      if (sqrt(kprime_x**2 + kprime_y**2 + kprime_z**2) - 1.0d0 .gt. 1e-6) then
+        call throwError('ERROR: `|k_prime|` is not 1 in annihilatePairs.')
+      end if
+    #endif
+    eph_prime = gamma_inCM
+
+    kprime_x = kprime_x * eph_prime
+    kprime_y = kprime_y * eph_prime
+    kprime_z = kprime_z * eph_prime
+
+    call LorentzBoost(-beta_CM_x, -beta_CM_y, -beta_CM_z,&
+                    & eph_prime,&
+                    & kprime_x, kprime_y, kprime_z,&
+                    & k_x, k_y, k_z)
   end subroutine annihilatePairs
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ! . . . . Technical functions . . . .
+  subroutine LorentzBoost(L_vx, L_vy, L_vz,&
+                        & U0_old,&
+                        & Ux_old, Uy_old, Uz_old,&
+                        & Ux_new, Uy_new, Uz_new)
+    implicit none
+    real(kind=8), intent(in)  :: L_vx, L_vy, L_vz
+    real(kind=8), intent(in)  :: U0_old, Ux_old, Uy_old, Uz_old
+    real(kind=8), intent(out) :: Ux_new, Uy_new, Uz_new
+    real(kind=8)              :: L_gamma, dummy, L_vSQR
+
+    L_vSQR = L_vx**2 + L_vy**2 + L_vz**2
+    if (L_vSQR .gt. 0.0d0) then
+      L_gamma = 1.0d0 / sqrt(1.0d0 - L_vSQR)
+      dummy = ((L_gamma - 1.0d0) * (L_vx * Ux_old + L_vy * Uy_old + L_vz * Uz_old) / L_vSQR) - (L_gamma * U0_old)
+      Ux_new = Ux_old + dummy * L_vx
+      Uy_new = Uy_old + dummy * L_vy
+      Uz_new = Uz_old + dummy * L_vz
+    else
+      Ux_new = Ux_old; Uy_new = Uy_old; Uz_new = Uz_old
+    end if
+  end subroutine LorentzBoost
+
   subroutine breakDownParticles(group, set, set_weight)
     implicit none
     type(particleGroup)                           :: group
