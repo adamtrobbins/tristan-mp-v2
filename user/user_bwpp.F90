@@ -17,8 +17,6 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-
-
   !--- PRIVATE variables -----------------------------------------!
   real      :: ph_energy_1, ph_energy_2
 

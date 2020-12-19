@@ -12,8 +12,8 @@ module m_bwpairproduction
   implicit none
 
   !--- PRIVATE variables/functions -------------------------------!
-  private :: bwOnTile_bin, bwOnTile_mc, PPfromTwoPhotons
-  private :: generateRandomThetaBW, dSdO_BW, LorentzBoost
+  private :: bwOnTile_bin, bwOnTile_mc, PPfromTwoPhotons,&
+           & generateRandomThetaBW, LorentzBoost
   !...............................................................!
 contains
   subroutine bwPairProduction()
@@ -460,7 +460,7 @@ contains
     integer(kind=2)          :: xi_new, yi_new, zi_new
 
     real(kind=8)             :: ph1_u, ph1_v, ph1_w, ph2_u, ph2_v, ph2_w, eps1, eps2
-    real(kind=8)             :: k1_x, k1_y, k1_z, k2_x, k2_y, k2_z, cos_phi, SS
+    real(kind=8)             :: k1_x, k1_y, k1_z, k2_x, k2_y, k2_z, cos_phi, SS, SS_prob
     real(kind=8)             :: gamma_prtl_CM, beta_prtl_CM
     real(kind=8)             :: prtl1_CM_u, prtl1_CM_v, prtl1_CM_w
     real(kind=8)             :: beta_CM_x, beta_CM_y, beta_CM_z, beta_CM_sq, gamma_CM
@@ -505,16 +505,17 @@ contains
 
     ! angle between photons in lab frame
     cos_phi = k1_x * k2_x + k1_y * k2_y + k1_z * k2_z
-    ! `S` parameter (which does not depend on weights, hence the denominator)
-    SS = eps1 * eps2 * (1.0d0 - cos_phi) * 0.5d0
+    ! `S` parameter (which does not depend on weights)
+    SS = 2.0d0 * eps1 * eps2 * (1.0d0 - cos_phi)
+    SS_prob = SS / (wei1 * wei2 / wei**2)
     #ifdef DEBUG
-      if (SS / (wei1 * wei2 / wei**2) .le. 1.0d0) then
-        call throwError('`S` <= 1 when creating BW pairs.')
+      if (SS_prob .le. 4.0d0) then
+        call throwError('`S` <= 4 when creating BW pairs.')
       end if
     #endif
     ! Lorentz-factor of electron/positron in CoM frame
-    gamma_prtl_CM = sqrt(SS)
-    beta_prtl_CM = sqrt(1.0d0 - 1.0d0 / SS)
+    gamma_prtl_CM = sqrt(SS) * 0.5d0
+    beta_prtl_CM = sqrt(1.0d0 - 4.0d0 / SS)
 
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! 3-velocity of the CoM frame
@@ -562,7 +563,7 @@ contains
     ! Generate random vector in the CoM frame ...
     ! ... respecting the differential cross section ...
     ! ... at angle `theta` w.r.t. `k1_CM`
-    call generateRandomThetaBW(SS / (wei1 * wei2 / wei**2), rand_theta_CM)
+    call generateRandomThetaBW(SS_prob, rand_theta_CM)
     rand_phi_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
     cos_rand_theta_CM = cos(rand_theta_CM)
     sin_rand_theta_CM = sin(rand_theta_CM)
@@ -623,22 +624,26 @@ contains
 
   subroutine generateRandomThetaBW(SS, theta_final)
     implicit none
-    real(kind=8), intent(in)  :: SS
+    real(kind=8), intent(in)  :: SS ! this parameter is > 4
     real(kind=8), intent(out) :: theta_final
     real(kind=8)              :: rand_theta
-    real                      :: rand_prob
-    real(kind=8)              :: beta, beta2, beta4, asinh_beta
+    real                      :: rand_prob, dSigma_dO
+    real(kind=8)              :: beta2, beta4
+    real(kind=8)              :: dummy0
     integer                   :: iter
     iter = 0
     ! precompute the coefs:
-    beta2 = 1.0d0 - 1.0d0 / SS
+    beta2 = 1.0d0 - 4.0d0 / SS
     beta4 = beta2**2
-    beta = sqrt(beta2)
-    asinh_beta = asinh(beta / sqrt(1.0d0 - beta2))
+    ! see DOI:https://doi.org/10.1103/PhysRevAccelBeams.20.043402
+    dummy0 = 4.0d0 * sqrt(beta2) / SS
     do while (.true.)
       rand_prob = random(dseed)
       rand_theta = REAL(M_PI * random(dseed), 8)
-      if (rand_prob .le. dSdO_BW(SS, rand_theta, beta, beta2, beta4, asinh_beta)) then
+      dSigma_dO = REAL(dummy0 * sin(rand_theta) * (1.0d0 + 2.0d0 * beta2 * sin(rand_theta)**2 -&
+                                                      & beta4 * (1.0d0 + sin(rand_theta)**4)) /&
+                                                  & (1.0d0 - beta2 * cos(rand_theta)**2)**2)
+      if (rand_prob .le. dSigma_dO) then
         exit
       end if
       iter = iter + 1
@@ -650,17 +655,6 @@ contains
     end do
     theta_final = rand_theta
   end subroutine generateRandomThetaBW
-
-  real function dSdO_BW(s, theta, beta, beta2, beta4, asinh_beta)
-    implicit none
-    real(kind=8), intent(in)  :: s, theta
-    real(kind=8), intent(in)  :: beta, beta2, beta4, asinh_beta
-    dSdO_BW = REAL((beta * (-8.0d0 - 8.0d0 * beta2 + 11.0d0 * beta4 -&
-            & 4.0d0 * beta2 * (-2.0d0 + beta2) * cos(2.0d0 * theta) +&
-            & beta4 * cos(4.0d0 * theta)) * sin(theta)) /&
-            & (4.0d0 * (-(beta * (-2.0d0 + beta2)) + (-3.0d0 + beta4) * asinh_beta) *&
-            & (-2.0d0 + beta2 + beta2 * cos(2.0d0 * theta))**2))
-  end function dSdO_BW
 
 #endif
 end module m_bwpairproduction
