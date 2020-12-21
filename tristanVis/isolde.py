@@ -88,17 +88,82 @@ def convertToXarray(fields,
 #   plt.pcolor(x_, y_, ex_) # <- 2D plot
 # ```
 
-def getSpectra(fname):
+class Spectra:
+  def __init__(self, raw, radiation = False, gca = False):
+    self.__radiation = radiation
+    self.__gca = gca
+    self.initialize(raw)
+  def findSpecname(self, s, onlyGCA, onlyBoris):
+    if (not self.__gca and (onlyGCA or onlyBoris)):
+      raise ValueError('GCA set to `False` in `Spectra` class.')
+    elif onlyGCA and onlyBoris:
+      raise ValueError('At least one of `onlyGCA` and `onlyBoris` have to be `False`.')
+    if (not onlyGCA) and (not onlyBoris):
+      specname = 'n'
+    elif (onlyGCA):
+      specname = 'ngca'
+    elif (onlyBoris):
+      specname = 'nbor'
+    return specname + str(s)
+  def getBin(self, i, j, k):
+    x0 = self.xbins[i]; y0 = self.ybins[j]; z0 = self.zbins[k]
+    return (x0, y0, z0)
+  def getTotal(self, s):
+    ss = 'n' + str(s)
+    return np.sum(self.__data[ss], axis=(0, 1, 2))
+  def getBySpatialBin(self, s, ijk, onlyGCA = False, onlyBoris = False):
+    i, j, k = ijk
+    specname = self.findSpecname(s, onlyGCA, onlyBoris)
+    xyz0 = self.getBin(i, j, k)
+    if (len(self.xbins) == 1):
+      sx = 1
+    else:
+      sx = self.xbins[1] - self.xbins[0]
+    if (len(self.ybins) == 1):
+      sy = 1
+    else:
+      sy = self.ybins[1] - self.ybins[0]
+    if (len(self.zbins) == 1):
+      sz = 1
+    else:
+      sz = self.zbins[1] - self.zbins[0]
+    sxyz = (sx, sy, sz)
+    return (xyz0, sxyz, self.__data[specname][i, j, k])
+  def getByCoordinate(self, s, xyz, onlyGCA = False, onlyBoris = False):
+    x, y, z = xyz
+    ijk = [-1, -1, -1]
+    bins = [self.xbins, self.ybins, self.zbins]
+    for ind, (bn, crd) in enumerate(zip(bins, xyz)):
+      for o in range(len(bn)):
+        if bn[o] > crd:
+          ijk[ind] = o - 1
+          break
+    return self.getBySpatialBin(s, ijk, onlyGCA, onlyBoris)
+  def initialize(self, raw):
+    import re
+    self.__data = {}
+    self.xbins = raw['xbins'][:]
+    self.ybins = raw['ybins'][:]
+    self.zbins = raw['zbins'][:]
+    self.ebins = raw['ebins'][:]
+    keylist = list(raw.keys())
+    allspecies = ([int(re.findall("^n(\d+)", key)[0]) for key in keylist if re.match("^n\d+", key)])
+    for s in allspecies:
+      self.__data['n' + str(s)] = np.transpose(raw['n' + str(s)])
+    if self.__radiation:
+      self.rbins = raw['rbins'][:]
+      radspecies = ([int(re.findall("^nr(\d+)", key)[0]) for key in keylist if re.match("^nr\d+", key)])
+      for rs in radspecies:
+        self.__data['nr' + str(rs)] = raw['nr' + str(rs)][:]
+    if self.__gca:
+      for s in allspecies:
+        self.__data['nbor' + str(s)] = np.transpose(raw['nbor' + str(s)])
+        self.__data['ngca' + str(s)] = np.transpose(raw['ngca' + str(s)])
+
+def getSpectra(fname, radiation = False, gca = False):
   with h5py.File(fname, 'r') as file:
-    keys = list(file.keys())
-    species = np.unique([int(''.join(filter(str.isdigit, key))) for key in keys])
-    types = np.unique([''.join([i for i in key if not i.isdigit()]) for key in keys])
-    data = {}
-    for sp in species:
-      data[str(sp)] = {}
-      for tp in types:
-        (data[str(sp)])[tp] = file[tp + str(sp)][:]
-    return data
+    spec = Spectra(file, radiation, gca)
+  return spec
 
 def getDomains(fname):
   with h5py.File(fname, 'r') as file:

@@ -103,6 +103,15 @@ contains
       !.................................................
 
       !-------------------------------------------------
+      ! Reset currents to zero
+        t_depositstep = MPI_WTIME()
+      if (enable_currentdeposit) then
+        call resetCurrents()
+      end if
+        t_depositstep = MPI_WTIME() - t_depositstep
+      !.................................................
+
+      !-------------------------------------------------
       ! Exchanging `E` and `B`-fields
         t_fldexchstep = MPI_WTIME()
       call exchangeFields(exchangeE=.true., exchangeB=.true.)
@@ -191,9 +200,8 @@ contains
 
       !-------------------------------------------------
       ! Depositing current: `j_s = rho_s * v_s`
-        t_depositstep = MPI_WTIME()
+        t_depositstep = MPI_WTIME() - t_depositstep
       if (enable_currentdeposit) then
-        call resetCurrents()
         call depositCurrents()
       end if
         t_depositstep = MPI_WTIME() - t_depositstep
