@@ -29,8 +29,7 @@ module m_annihilation
   !--- PRIVATE variables/functions -------------------------------!
   private :: pairAnnihilationWithGroups, pairAnnihilationWithGroups_mc,&
            & breakDownParticles, shuffleGroup, computeAnnihilationCrossSection,&
-           & annihilatePairs
-
+           & annihilatePairs, generateRandomThetaAnn
   !...............................................................!
 contains
   subroutine pairAnnihilation()
@@ -331,14 +330,15 @@ contains
     integer                         :: s1, s2, p1, p2
     integer                         :: ti1, tj1, tk1, ti2, tj2, tk2
     real(kind=8)                    :: dummy
+    real(kind=8)                    :: x_ph, y_ph, z_ph, lec_x, lec_y, lec_z, pos_x, pos_y, pos_z
     real(kind=8)                    :: lec_Ux, lec_Uy, lec_Uz, pos_Ux, pos_Uy, pos_Uz, lec_gamma, pos_gamma
     real(kind=8)                    :: beta_CM_x, beta_CM_y, beta_CM_z, beta_CM_sq, gamma_inCM
     real(kind=8)                    :: a_x, a_y, a_z                     ! CoM basis vector along momentum
-    real(kind=8)                    :: b_x, b_y, b_z, c_x, c_y, c_z   ! CoM basis vector perp to momentum
+    real(kind=8)                    :: b_x, b_y, b_z, c_x, c_y, c_z      ! CoM basis vector perp to momentum
     real(kind=8)                    :: rand_theta_CM, rand_phi_CM
     real(kind=8)                    :: cos_rand_theta_CM, cos_rand_phi_CM, sin_rand_theta_CM, sin_rand_phi_CM
     real(kind=8)                    :: kprime_x, kprime_y, kprime_z
-    real(kind=8)                    :: eph_prime, k_x, k_y, k_z
+    real(kind=8)                    :: eph_prime, k_x, k_y, k_z, eph
 
     s1 = ep_pair%prtl1%s
     p1 = ep_pair%prtl1%p
@@ -350,6 +350,44 @@ contains
     ti2 = ep_pair%prtl2%ti
     tj2 = ep_pair%prtl2%tj
     tk2 = ep_pair%prtl2%tk
+
+    ! Photons will be put in the center of mass of two particles
+    lec_x = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%dx(p1), 8) + REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%xi(p1), 8)
+    lec_y = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%dy(p1), 8) + REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%yi(p1), 8)
+    lec_z = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%dz(p1), 8) + REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%zi(p1), 8)
+    pos_x = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%dx(p2), 8) + REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%xi(p2), 8)
+    pos_y = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%dy(p2), 8) + REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%yi(p2), 8)
+    pos_z = REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%dz(p2), 8) + REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%zi(p2), 8)
+
+    #if defined (oneD) || defined (twoD) || defined(threeD)
+      x_ph = 0.5 * (lec_x + pos_x)
+    #else
+      call throwError('ERROR: No dimension specified.')
+    #endif
+
+    #if defined (twoD) || defined(threeD)
+      y_ph = 0.5 * (lec_y + pos_y)
+    #else
+      y_ph = 0.5
+    #endif
+
+    #if defined(threeD)
+      z_ph = 0.5 * (lec_z + pos_z)
+    #else
+      z_ph = 0.5
+    #endif
+
+    ! Compensate for currents
+    dummy = 1.0d0 / REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%weight(p1), 8)
+    call depositCurrentsFromSingleParticle(s1, species(s1)%prtl_tile(ti1, tj1, tk1), p1,&
+                                         & REAL(lec_x, 4), REAL(lec_y, 4), REAL(lec_z, 4),&
+                                         & REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4),&
+                                         & multiplier=REAL(dummy, 4))
+    dummy = 1.0d0 / REAL(species(s2)%prtl_tile(ti2, tj2, tk2)%weight(p2), 8)
+    call depositCurrentsFromSingleParticle(s2, species(s2)%prtl_tile(ti2, tj2, tk2), p2,&
+                                         & REAL(pos_x, 4), REAL(pos_y, 4), REAL(pos_z, 4),&
+                                         & REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4),&
+                                         & multiplier=REAL(dummy, 4))
 
     lec_Ux = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%u(p1), 8)
     lec_Uy = REAL(species(s1)%prtl_tile(ti1, tj1, tk1)%v(p1), 8)
@@ -397,8 +435,7 @@ contains
     ! Generate random vector in the CoM frame ...
     ! ... respecting the differential cross section ...
     ! ... at angle `theta` w.r.t. `k1_CM`
-    ! call generateRandomThetaAnn(SS / (wei1 * wei2 / wei**2), rand_theta_CM)
-    rand_theta_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
+    call generateRandomThetaAnn(gamma_inCM, rand_theta_CM)
     rand_phi_CM = 2.0d0 * REAL(M_PI * random(dseed), 8)
     cos_rand_theta_CM = cos(rand_theta_CM)
     sin_rand_theta_CM = sin(rand_theta_CM)
@@ -416,7 +453,7 @@ contains
              & b_z * sin_rand_theta_CM * cos_rand_phi_CM +&
              & c_z * sin_rand_theta_CM * sin_rand_phi_CM
     #ifdef DEBUG
-      if (sqrt(kprime_x**2 + kprime_y**2 + kprime_z**2) - 1.0d0 .gt. 1e-6) then
+      if (abs(sqrt(kprime_x**2 + kprime_y**2 + kprime_z**2) - 1.0d0) .gt. 1e-6) then
         call throwError('ERROR: `|k_prime|` is not 1 in annihilatePairs.')
       end if
     #endif
@@ -430,7 +467,67 @@ contains
                     & eph_prime,&
                     & kprime_x, kprime_y, kprime_z,&
                     & k_x, k_y, k_z)
+    call injectParticleLocally(Annihilation_photon_sp, REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4),&
+                                                     & REAL(k_x, 4), REAL(k_y, 4), REAL(k_z, 4))
+    call LorentzBoost(-beta_CM_x, -beta_CM_y, -beta_CM_z,&
+                    & eph_prime,&
+                    & -kprime_x, -kprime_y, -kprime_z,&
+                    & k_x, k_y, k_z)
+    call injectParticleLocally(Annihilation_photon_sp, REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4),&
+                                                     & REAL(k_x, 4), REAL(k_y, 4), REAL(k_z, 4))
   end subroutine annihilatePairs
+
+  subroutine generateRandomThetaAnn(gamma, theta_final)
+    implicit none
+    real(kind=8), intent(in)  :: gamma ! lorentz factor of e+/e- in CoM frame
+    real(kind=8), intent(out) :: theta_final
+    real(kind=8)              :: beta2, beta4, dSigma_dO
+    real(kind=8)              :: rand_theta, rand_prob, dummy0
+    integer                   :: iter
+    iter = 0
+    if (gamma .gt. 1.05d0) then
+      ! use full expression for dSigma/dO
+      beta2 = 1.0d0 - 1.0d0 / gamma**2
+      beta4 = beta2**2
+      dummy0 = 1.0d0 / (4.0d0 * sqrt(beta2) * gamma**2)
+      do while (.true.)
+        rand_prob = random(dseed)
+        rand_theta = REAL(M_PI * random(dseed), 8)
+        dSigma_dO = REAL(dummy0 * (1.0d0 + beta2 * sin(2.0 * rand_theta)**2 -&
+                                 & beta4 * (1.0d0 - sin(rand_theta)**4)) * sin(rand_theta) /&
+                                 & (1.0d0 - beta2 * cos(rand_theta)**2)**2)
+        if (rand_prob .le. dSigma_dO) then
+          exit
+        end if
+        iter = iter + 1
+        #ifdef DEBUG
+          if (iter .gt. 10000) then
+            call throwError('Too many iterations in `generateRandomThetaAnn()`.')
+          end if
+        #endif
+      end do
+    else
+      ! use normalized Taylor expansion
+      dummy0 = gamma**2 - 1.0d0
+      do while (.true.)
+        rand_prob = random(dseed)
+        rand_theta = REAL(M_PI * random(dseed), 8)
+        dSigma_dO = (2.0d0 * (1.0d0 + dummy0 + dummy0 * cos(2.0d0 * rand_theta)) -&
+                      & dummy0 * cos(4.0d0 * rand_theta)) *&
+                    & sin(rand_theta) / (2.0d0 - dummy0)
+        if (rand_prob .le. dSigma_dO) then
+          exit
+        end if
+        iter = iter + 1
+        #ifdef DEBUG
+          if (iter .gt. 10000) then
+            call throwError('Too many iterations in `generateRandomThetaAnn()`.')
+          end if
+        #endif
+      end do
+    end if
+    theta_final = rand_theta
+  end subroutine generateRandomThetaAnn
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   ! . . . . Technical functions . . . .
