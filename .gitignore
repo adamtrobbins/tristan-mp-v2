@@ -12,3 +12,4 @@ vis/
 .DS_Store
 submit*
 backup_*
+backups/
