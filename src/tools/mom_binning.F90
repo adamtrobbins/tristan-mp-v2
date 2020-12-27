@@ -357,19 +357,19 @@ contains
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! Cartesian momenta binning.
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
-  subroutine initializePositionBins(tile, position_bins, n_rad_x, n_rad_y, n_rad_z)
+  subroutine initializePositionBins(tile, position_bins, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
     type(particle_tile), intent(in)                   :: tile
     type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
-    integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
+    integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     integer                                           :: pi, pj, pk
     integer                                           :: s
 
-    allocate(position_bins(n_rad_x, n_rad_y, n_rad_z))
+    allocate(position_bins(n_tile_sx, n_tile_sy, n_tile_sz))
 
-    do pi = 1, n_rad_x
-      do pj = 1, n_rad_y
-        do pk = 1, n_rad_z
+    do pi = 1, n_tile_sx
+      do pj = 1, n_tile_sy
+        do pk = 1, n_tile_sz
           position_bins(pi, pj, pk)%npart = 0
           allocate(position_bins(pi, pj, pk)%indices(tile%npart_sp))
         end do
@@ -428,31 +428,19 @@ contains
 
   end subroutine fillDownsamplingTile
 
-  subroutine binParticlePositions(tile, position_bins, n_rad_x, n_rad_y, n_rad_z, n_tile_sx, n_tile_sy, n_tile_sz)
+  subroutine binParticlePositions(tile, position_bins, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
-    ! FIX: this is for photons only
+
     type(positionBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
-    integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
     integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     type(particle_tile), intent(in)   :: tile
     integer :: p, pi, pj, pk
 
     do p = 1, tile%npart_sp
 
-      pi = floor(REAL(mod(tile%xi(p),n_tile_sx)) / REAL(n_rad_x)) + 1
-      pj = floor(REAL(mod(tile%yi(p),n_tile_sy)) / REAL(n_rad_y)) + 1
-      pk = floor(REAL(mod(tile%zi(p),n_tile_sz)) / REAL(n_rad_z)) + 1
-
-! MAKE DEBUGGING FLAG HERE
-      ! if((pi.lt.1).or.(pi.gt.5).or.(pj.lt.1).or.(pj.gt.5).or.(pk.lt.1).or.(pk.gt.1)) then
-      !   print *, pi, n_rad_x, pj, n_rad_y, pk, n_rad_z
-      ! endif
-
-      ! #ifdef DEBUG
-      !   if((pi.lt.1).or.(pi.gt.1).or.(pj.lt.1).or.(pj.gt.1).or.(pk.lt.1).or.(pk.gt.1)) then
-      !     print *, pi, n_rad_x, pj, n_rad_y, pk, n_rad_z
-      !   endif
-      ! #endif
+      pi = floor(REAL(mod(tile%xi(p),n_tile_sx))) + 1
+      pj = floor(REAL(mod(tile%yi(p),n_tile_sy))) + 1
+      pk = floor(REAL(mod(tile%zi(p),n_tile_sz))) + 1
 
       position_bins(pi, pj, pk)%npart = position_bins(pi, pj, pk)%npart + 1
       position_bins(pi, pj, pk)%indices(position_bins(pi, pj, pk)%npart) = p
