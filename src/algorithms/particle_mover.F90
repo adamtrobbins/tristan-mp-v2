@@ -27,7 +27,7 @@ contains
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
-    real                                  :: u0, v0, w0, u1, v1, w1, dummy_, dx, dy, dz
+    real                                  :: u0, v0, w0, u1, v1, w1, dummy_, dummy2_, dx, dy, dz
     logical                               :: dummy_flag
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
@@ -110,7 +110,7 @@ contains
                 ! ... inverse energy: `over_e_temp` ...
                 ! ... reads the velocities from: `pt_*(p)` ...
                 ! ... and updates the particle position `pt_*(p)`
-                include "boris_update.F"
+                include "position_update.F"
               end do ! p
               pt_xi => null();  pt_yi => null();  pt_zi => null()
               pt_dx => null();  pt_dy => null();  pt_dz => null()
@@ -162,7 +162,7 @@ contains
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
               #if !defined(RADIATION) && !defined(EXTERNALFIELDS) && !defined(GCA)
-              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
+              !$omp simd private(lind, dummy_, dummy2_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
@@ -170,7 +170,7 @@ contains
               !dir$ vector aligned
               #endif
               #ifdef GCA
-              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
+              !$omp simd private(lind, dummy_, dummy2_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
@@ -213,14 +213,6 @@ contains
                   bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
                 #endif
 
-                ! ATTENTION. ONLY ADDED GOR TEST PURPOSES [JM]
-                ex0 = 0.0
-                ey0 = 0.0
-                ez0 = 0.0
-                bx0 = 0.0
-                by0 = 0.0
-                bz0 = 0.0
-
                 #ifdef RADIATION
                   ! save fields at time `t = n`
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
@@ -241,14 +233,18 @@ contains
                   ! ... the field quantities: `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0` ...
                   ! ... and the velocities: `u0`, `v0`, `w0` ...
                   ! ... and returns the updated velocities `u0`, `v0`, `w0`
-                  include "boris_push.F"
+                  #ifdef VAY
+                    include "vay_push.F"
+                  #else
+                    include "boris_push.F"
+                  #endif
                   pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
                   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
                   ! this "function" takes
                   ! ... inverse energy: `over_e_temp` ...
                   ! ... reads the velocities from: `pt_*(p)` ...
                   ! ... and updates the particle position `pt_*(p)`
-                  include "boris_update.F"
+                  include "position_update.F"
                 #else
                   ! . . . . hybrid Boris/GCA pusher . . . .
                   ! this "function"
