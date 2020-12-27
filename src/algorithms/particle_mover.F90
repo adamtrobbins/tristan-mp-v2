@@ -213,6 +213,14 @@ contains
                   bx0 = bx0 + bx_ext; by0 = by0 + by_ext; bz0 = bz0 + bz_ext
                 #endif
 
+                ! ATTENTION. ONLY ADDED GOR TEST PURPOSES [JM]
+                ex0 = 0.0
+                ey0 = 0.0
+                ez0 = 0.0
+                bx0 = 0.0
+                by0 = 0.0
+                bz0 = 0.0
+
                 #ifdef RADIATION
                   ! save fields at time `t = n`
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
