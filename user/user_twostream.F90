@@ -11,8 +11,6 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   real      :: amplitude, shift_gamma
   private   :: amplitude, shift_gamma
@@ -68,7 +66,7 @@ contains
 
     maxw3%temperature = 1.0e-5
 
-    npart = INT(global_mesh%sx * global_mesh%sy * ppc0 * 0.5 * amplitude)
+    npart = INT(global_mesh%sx * global_mesh%sy * 0.25 * ppc0) !INT(global_mesh%sx * global_mesh%sy * ppc0 * 0.5 * amplitude)
     do n = 1, npart
       xg = random(dseed) * global_mesh%sx
       yg = 0.5
@@ -79,7 +77,7 @@ contains
       call injectParticleGlobally(1, xg, yg, 0.5, u_, v_, w_)
       if (nspec .eq. 3) then
         call generateFromMaxwellian(maxw3, u_, v_, w_)
-        call injectParticleGlobally(3, xg, yg, 0.5, 0.0, 0.0, 0.0)
+        call injectParticleGlobally(3, xg, yg, 0.5, u_, v_, w_)
       end if
       xg = random(dseed) * global_mesh%sx
       yg = 0.5
@@ -90,7 +88,7 @@ contains
       call injectParticleGlobally(2, xg, yg, 0.5, u_, v_, w_)
       if (nspec .eq. 3) then
         call generateFromMaxwellian(maxw3, u_, v_, w_)
-        call injectParticleGlobally(3, xg, yg, 0.5, 0.0, 0.0, 0.0)
+        call injectParticleGlobally(3, xg, yg, 0.5, u_, v_, w_)
       end if
     end do
   end subroutine userInitParticles
@@ -117,6 +115,13 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step

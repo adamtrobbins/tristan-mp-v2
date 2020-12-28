@@ -108,6 +108,13 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
@@ -195,24 +202,24 @@ contains
       end if
     end if
 
-    ! ! inject background particles at the injectors' positions
-    ! nUP = 0.5 * ppc0
-    !
-    ! ! left injector
-    ! back_region%x_min = injector_x1
-    ! back_region%x_max = old_x1
-    ! back_region%y_min = 0.0
-    ! back_region%y_max = REAL(global_mesh%sy)
-    !
-    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
-    !
-    ! ! right injector
-    ! back_region%x_min = old_x2
-    ! back_region%x_max = injector_x2
-    ! back_region%y_min = 0.0
-    ! back_region%y_max = REAL(global_mesh%sy)
-    !
-    ! call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    ! inject background particles at the injectors' positions
+    nUP = 0.5 * ppc0
+
+    ! left injector
+    back_region%x_min = injector_x1
+    back_region%x_max = old_x1
+    back_region%y_min = 0.0
+    back_region%y_max = REAL(global_mesh%sy)
+
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+
+    ! right injector
+    back_region%x_min = old_x2
+    back_region%x_max = injector_x2
+    back_region%y_min = 0.0
+    back_region%y_max = REAL(global_mesh%sy)
+
+    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)

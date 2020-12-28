@@ -11,8 +11,6 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   real      :: eph0, gamma_e0
   private   :: eph0, gamma_e0
@@ -56,7 +54,7 @@ contains
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    ntot = global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0 
+    ntot = global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0
     do n = 1, ntot
       xg = random(dseed) * (global_mesh%sx)
       yg = random(dseed) * (global_mesh%sy)
@@ -75,7 +73,7 @@ contains
       yg = random(dseed) * (global_mesh%sy)
       zg = random(dseed) * (global_mesh%sz)
       u = sqrt(gamma_e0**2 - 1.0)
-      v = 0.0; w = 0.0      
+      v = 0.0; w = 0.0
       ! monoenergetic electrons and positrons streaming in x:
       call injectParticleGlobally(1, xg, yg, zg, u, v, w)
       call injectParticleGlobally(2, xg, yg, zg, u, v, w)
@@ -93,6 +91,13 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step

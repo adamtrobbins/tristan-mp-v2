@@ -256,7 +256,7 @@ contains
     implicit none
     character(len=*), intent(in)          :: msg
     character(len=STR_MAX)                :: dummy, dummy1, FMT
-    integer, intent(in)                   :: npart_arr(:)
+    integer(kind=8), intent(in)           :: npart_arr(:)
     real                                  :: npart_mean, npart_max, npart_min, npart_sum
     integer                               :: sz, sz1, i
     npart_sum = SUM(npart_arr)
@@ -494,4 +494,36 @@ contains
        & (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ +&
        & (one_m_cos_phi * uz**2   + cos_phi)      * rz_
   end subroutine rotateRandomlyIn3D
+
+  subroutine rotateIn3D(rx, ry, rz, ax, ay, az, ang)
+    implicit none
+    real, intent(inout)         :: rx, ry, rz
+    real, optional, intent(in)  :: ax, ay, az
+    real                        :: ang
+    real                        :: rx_, ry_, rz_
+    real                        :: ux, uy, uz, cos_phi, one_m_cos_phi, sin_phi
+    ! generate optional arguments
+    ux = ax
+    uy = ay
+    uz = az
+    cos_phi = cos(ang)
+    sin_phi = sin(ang)
+    ! copy old values
+    rx_ = rx; ry_ = ry; rz_ = rz
+
+    one_m_cos_phi = (1.0 - cos_phi)
+
+    rx = (one_m_cos_phi * ux**2   + cos_phi)      * rx_ +&
+       & (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ +&
+       & (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
+
+    ry = (one_m_cos_phi * ux * uy + sin_phi * uz) * rx_ +&
+       & (one_m_cos_phi * uy**2   + cos_phi)      * ry_ +&
+       & (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
+
+    rz = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ +&
+       & (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ +&
+       & (one_m_cos_phi * uz**2   + cos_phi)      * rz_
+  end subroutine rotateIn3D
+
 end module m_aux

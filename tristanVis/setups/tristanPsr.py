@@ -59,6 +59,10 @@ class PulsarSimulationSlice(SliceSimulation):
       self.data['jz'] = (axes, fields['jz'][:])
 
       self.data['b'] = (axes, np.sqrt(b_sqr))
+      try:
+        self.data['rhoph'] = (axes, fields['dens3'][:])
+      except:
+        pass
       self.data['rho+'] = (axes, fields['dens2'][:])
       self.data['gca+'] = (axes, fields['dgca2'][:] / fields['dens2'][:])
       self.data['rho-'] = (axes, fields['dens1'][:])
@@ -94,6 +98,11 @@ class PulsarSimulationSlice(SliceSimulation):
       self.data['jz'] = (axes, fields['jz'][:])
 
       self.data['b'] = (axes, np.sqrt(b_sqr))
+      try:
+        self.data['rhoph'] = (axes, fields['dens3'][:])
+        self.data['nrgph'] = (axes, fields['enrg3'][:])
+      except:
+        pass
       self.data['rho+'] = (axes, fields['dens2'][:])
       self.data['gca+'] = (axes, fields['dgca2'][:] / fields['dens2'][:])
       self.data['rho-'] = (axes, fields['dens1'][:])
@@ -169,8 +178,8 @@ class PulsarSimulationSlice(SliceSimulation):
     ny = 3
     nn = 1
 
-    rhomin = 10
-    rhomax = 1e5
+    rhomin = 1e1
+    rhomax = 1e4
     rhocmap = 'fire'
 
     ax = plt.subplot(ny, nx, nn)
@@ -178,6 +187,10 @@ class PulsarSimulationSlice(SliceSimulation):
     ax.set_aspect(1)
     fig.get_axes()[-1].axhline(self.data.attrs['nGJ'], lw=2.5, c='white')
     im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
+    # ax = plt.subplot(ny, nx, nn)
+    # im = (self.data['enrg-.xz'] / self.data['rho-.xz']).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e2), cmap='turbo', interpolation='gaussian')
+    # ax.set_aspect(1)
+    # im.colorbar.set_label('gmean-')
 
     # nn += 1
     # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
@@ -190,8 +203,17 @@ class PulsarSimulationSlice(SliceSimulation):
     im = self.data['gca-.xz'].plot.imshow(norm=mpl.colors.Normalize(vmin=0, vmax=1), cmap='jet', interpolation='gaussian')
     ax.set_aspect(1)
     im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
+    # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
+    # im = self.data['by.xz'].plot.imshow(norm=mpl.colors.Normalize(vmin=-10, vmax=10), cmap='bipolar', interpolation='gaussian')
+    # ax.set_aspect(1)
+    # im.colorbar.set_label(im.colorbar.ax.get_yaxis().get_label().get_text()[:-3])
+
 
     nn += 1
+    # ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
+    # im = (self.data['enrg+.xz'] / self.data['rho+.xz']).plot.imshow(norm=mpl.colors.LogNorm(vmin=1, vmax=1e2), cmap='turbo', interpolation='gaussian')
+    # ax.set_aspect(1)
+    # im.colorbar.set_label('gmean+')
     ax = plt.subplot(ny, nx, nn, sharex=ax, sharey=ax)
     im = self.data['rho+.xz'].plot.imshow(norm=mpl.colors.LogNorm(vmin=rhomin, vmax=rhomax), cmap=rhocmap, interpolation='gaussian')
     ax.set_aspect(1)
