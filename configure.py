@@ -25,7 +25,7 @@ rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 parser.add_argument('-perseus',
                     action='store_true',
                     default=False,
-                    help='Configure for `Perseus` cluster.')
+                    help='configure for `Perseus` cluster.')
 
 parser.add_argument('-intel',
                     action='store_true',
