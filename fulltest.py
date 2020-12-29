@@ -120,12 +120,13 @@ with open(testdir_full + '/test.log', 'w+') as testlog:
         sub.write('#SBATCH --output={}/tristan-v2.out\n'.format(simulation.path))
         sub.write('#SBATCH --error={}/tristan-v2.err\n\n'.format(simulation.path))
 
-        sub.write('EXECUTABLE={}\n'.format(simulation.exe_full))
-        sub.write('INPUT={}\n'.format(simulation.input_full))
-        sub.write('OUTPUT_DIR={}/output\n'.format(simulation.path))
-        sub.write('SLICE_DIR={}/slices\n'.format(simulation.path))
-        sub.write('REPORT_FILE={}/report\n'.format(simulation.path))
-        sub.write('ERROR_FILE={}/error\n\n'.format(simulation.path))
+        sub.write('DIR={}\n'.format(simulation.path))
+        sub.write('EXECUTABLE=$DIR/{}\n'.format(simulation.exe))
+        sub.write('INPUT=$DIR/{}\n'.format(simulation.input))
+        sub.write('OUTPUT_DIR=$DIR/output\n'.format(simulation.path))
+        sub.write('SLICE_DIR=$DIR/slices\n'.format(simulation.path))
+        sub.write('REPORT_FILE=$DIR/report\n'.format(simulation.path))
+        sub.write('ERROR_FILE=$DIR/error\n\n'.format(simulation.path))
 
         for module in modules:
           sub.write('module load {}\n'.format(module))
