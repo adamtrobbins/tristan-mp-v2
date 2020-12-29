@@ -54,7 +54,7 @@ contains
     integer :: bin_limit
 
     type(positionBin_XYZ), allocatable  :: position_grid(:,:,:)
-    type(particle_tile)                 :: downsampling_tile
+    type(particle_tile), allocatable    :: downsampling_tile
     integer                             :: nx_bin, ny_bin, nz_bin
     integer                             :: pi, pj, pk, p_ind, p
     #ifdef DEBUG
@@ -74,19 +74,19 @@ contains
                 tmpnpart = real(species(s)%prtl_tile(ti, tj, tk)%npart_sp)
               #endif
 
-              n_rad_x = INT(species(s)%tile_sx)
-              n_rad_y = INT(species(s)%tile_sy)
-              n_rad_z = INT(species(s)%tile_sz)
+              nx_bin = INT(species(s)%tile_sx)
+              ny_bin = INT(species(s)%tile_sy)
+              nz_bin = INT(species(s)%tile_sz)
 
-              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
-              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
+              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, nx_bin, ny_bin, nz_bin)
+              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, nx_bin, ny_bin, nz_bin)
 
               if (allocated(downsampling_tile)) deallocate(downsampling_tile)
               allocate(downsampling_tile)
 
-                do pi = 1, n_rad_x
-                  do pj = 1, n_rad_y
-                    do pk = 1, n_rad_z
+                do pi = 1, nx_bin
+                  do pj = 1, ny_bin
+                    do pk = 1, nz_bin
 
                     call allocateParticlesOnEmptyTile(s, downsampling_tile, position_grid(pi, pj, pk)%npart)
 
@@ -117,7 +117,6 @@ contains
                           call downsampleOnTile_Spherical(downsampling_tile)
                         end if
                       end if
-                    end if
 
                     do p = 1, position_grid(pi, pj, pk)%npart
                       p_ind = position_grid(pi, pj, pk)%indices(p)
@@ -140,22 +139,6 @@ contains
             end do ! loop tk
           end do ! loop tj
         end do ! loop ti
-      else if (species(s)%dwn_sp .and. species(s)%ch_sp .eq. 0) then
-        ! merging of photons based on tiles
-        do ti = 1, species(s)%tile_nx
-          do tj = 1, species(s)%tile_ny
-            do tk = 1, species(s)%tile_nz
-              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. 5) then
-                ! decide whether to use cartesian OR spherical binning
-                if (dwn_cartesian_bins) then
-                  call downsampleOnTile_Cartesian(species(s)%prtl_tile(ti, tj, tk))
-                else
-                  call downsampleOnTile_Spherical(species(s)%prtl_tile(ti, tj, tk))
-                end if
-              end if
-            end do
-          end do
-        end do
       else if (species(s)%dwn_sp .and. species(s)%ch_sp .eq. 0) then
         ! merging of photons based on tiles
         do ti = 1, species(s)%tile_nx
