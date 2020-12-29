@@ -121,8 +121,8 @@ if (doBorisQ) then
   include "boris_push.F"
   pt_u(p) = u0;     pt_v(p) = v0;     pt_w(p) = w0
   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
-  include "boris_update.F"
   ! compute "effective" velocities for the deposit
+  include "position_update.F"
   pt_u_eff(p) = u0 * CC * over_e_temp
   pt_v_eff(p) = v0 * CC * over_e_temp
   pt_w_eff(p) = w0 * CC * over_e_temp

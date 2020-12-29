@@ -11,3 +11,5 @@ vis/
 .sync-config.cson
 .DS_Store
 submit*
+backup_*
+backups/

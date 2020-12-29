@@ -331,7 +331,6 @@ contains
     real                :: del_ex, del_ey, del_ez
 
     allocate(momentum_bins(dwn_n_mom_bins, dwn_n_mom_bins, dwn_n_mom_bins))
-
     del_ex = (px_max - px_min) / dwn_n_mom_bins
     del_ey = (py_max - py_min) / dwn_n_mom_bins
     del_ez = (pz_max - pz_min) / dwn_n_mom_bins
@@ -353,23 +352,19 @@ contains
 
   ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! - - - initializing bins - - - - - - - - - - - - - - - - - - - - - - - -
-  subroutine initializePositionBins(tile, position_bins)
+  subroutine initializePositionBins(tile, position_bins, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
     type(particle_tile), intent(in)                   :: tile
     type(positionBin_XYZ), intent(out), allocatable   :: position_bins(:,:,:)
-    integer                                           :: nx_bin, ny_bin, nz_bin
+    integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     integer                                           :: pi, pj, pk
     integer                                           :: s
 
-    nx_bin = tile%x2 - tile%x1
-    ny_bin = tile%y2 - tile%y1
-    nz_bin = tile%z2 - tile%z1
+    allocate(position_bins(n_tile_sx, n_tile_sy, n_tile_sz))
 
-    allocate(position_bins(nx_bin, ny_bin, nz_bin))
-
-    do pi = 1, nx_bin
-      do pj = 1, ny_bin
-        do pk = 1, nz_bin
+    do pi = 1, n_tile_sx
+      do pj = 1, n_tile_sy
+        do pk = 1, n_tile_sz
           position_bins(pi, pj, pk)%npart = 0
           allocate(position_bins(pi, pj, pk)%indices(tile%npart_sp))
         end do
@@ -428,12 +423,11 @@ contains
 
   end subroutine fillDownsamplingTile
 
-  ! bin particles on a tile into cell-based bins
-  subroutine binParticlePositions(tile, position_bins)
+  subroutine binParticlePositions(tile, position_bins, n_tile_sx, n_tile_sy, n_tile_sz)
     implicit none
+
     type(positionBin_XYZ), allocatable, intent(inout) :: position_bins(:,:,:)
-    ! integer, intent(in)                               :: n_rad_x, n_rad_y, n_rad_z
-    ! integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
+    integer, intent(in)                               :: n_tile_sx, n_tile_sy, n_tile_sz
     type(particle_tile), intent(in)   :: tile
     integer :: p, pi, pj, pk
 
@@ -442,17 +436,9 @@ contains
       pj = tile%yi(p) - tile%y1 + 1
       pk = tile%zi(p) - tile%z1 + 1
 
-      ! pi = floor(REAL(mod(tile%xi(p), n_tile_sx)) / REAL(n_rad_x)) + 1
-      ! pj = floor(REAL(mod(tile%yi(p), n_tile_sy)) / REAL(n_rad_y)) + 1
-      ! pk = floor(REAL(mod(tile%zi(p), n_tile_sz)) / REAL(n_rad_z)) + 1
-
-      #ifdef DEBUG
-        if ((pi .le. 0) .or. (pi .gt. tile%x2 - tile%x1) .or.&
-          & (pj .le. 0) .or. (pj .gt. tile%y2 - tile%y1) .or.&
-          & (pk .le. 0) .or. (pk .gt. tile%z2 - tile%z1)) then
-          call throwError('Wrong spatial particle binning in `binParticlePositions`.')
-        end if
-      #endif
+      pi = floor(REAL(mod(tile%xi(p),n_tile_sx))) + 1
+      pj = floor(REAL(mod(tile%yi(p),n_tile_sy))) + 1
+      pk = floor(REAL(mod(tile%zi(p),n_tile_sz))) + 1
 
       position_bins(pi, pj, pk)%npart = position_bins(pi, pj, pk)%npart + 1
       position_bins(pi, pj, pk)%indices(position_bins(pi, pj, pk)%npart) = p
@@ -498,6 +484,7 @@ contains
       if ((prtl_energy .ge. dwn_energy_min) .and. (prtl_energy .lt. dwn_energy_max)) then
         ! rotation (not really random, because axis and angles are passed)
         call rotateRandomlyIn3D(prtl_ux, prtl_uy, prtl_uz, ax1, ax2, ang)
+
         if ((prtl_ux .ge. px_min) .and. (prtl_ux .lt. px_max) .and.&
           & (prtl_uy .ge. py_min) .and. (prtl_uy .lt. py_max) .and.&
           & (prtl_uz .ge. pz_min) .and. (prtl_uz .lt. pz_max)) then

@@ -57,63 +57,105 @@ contains
     type(particle_tile)                 :: downsampling_tile
     integer                             :: nx_bin, ny_bin, nz_bin
     integer                             :: pi, pj, pk, p_ind, p
+    #ifdef DEBUG
+      real                                        :: nbinned, tmpnpart
+    #endif
 
     do s = 1, nspec
       if (species(s)%dwn_sp .and. species(s)%ch_sp .ne. 0) then
-        ! merging charged particles based on cells
+        ! merging of charged particles based on cells
+
         do ti = 1, species(s)%tile_nx
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
-              ! divide particles on a tile into bins by cells
-              nx_bin = species(s)%prtl_tile(ti, tj, tk)%x2 - species(s)%prtl_tile(ti, tj, tk)%x1
-              ny_bin = species(s)%prtl_tile(ti, tj, tk)%y2 - species(s)%prtl_tile(ti, tj, tk)%y1
-              nz_bin = species(s)%prtl_tile(ti, tj, tk)%z2 - species(s)%prtl_tile(ti, tj, tk)%z1
 
-              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid)
-              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid)
+              #ifdef DEBUG
+                nbinned = 0
+                tmpnpart = real(species(s)%prtl_tile(ti, tj, tk)%npart_sp)
+              #endif
 
-              ! loop over all cells on a tile
-              do pi = 1, nx_bin
-                do pj = 1, ny_bin
-                  do pk = 1, nz_bin
-                    ! create a "fake" particle tile of size `1x1x1` cells
+              n_rad_x = INT(species(s)%tile_sx)
+              n_rad_y = INT(species(s)%tile_sy)
+              n_rad_z = INT(species(s)%tile_sz)
+
+              call initializePositionBins(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
+              call binParticlePositions(species(s)%prtl_tile(ti, tj, tk), position_grid, n_rad_x, n_rad_y, n_rad_z)
+
+              if (allocated(downsampling_tile)) deallocate(downsampling_tile)
+              allocate(downsampling_tile)
+
+                do pi = 1, n_rad_x
+                  do pj = 1, n_rad_y
+                    do pk = 1, n_rad_z
+
                     call allocateParticlesOnEmptyTile(s, downsampling_tile, position_grid(pi, pj, pk)%npart)
-                    downsampling_tile%spec = s
-                    downsampling_tile%npart_sp = position_grid(pi, pj, pk)%npart
 
-                    downsampling_tile%x1 = pi - 1
-                    downsampling_tile%x2 = downsampling_tile%x1 + 1
-                    downsampling_tile%y1 = pj - 1
-                    downsampling_tile%y2 = downsampling_tile%y1 + 1
-                    downsampling_tile%z1 = pk - 1
-                    downsampling_tile%z2 = downsampling_tile%z1 + 1
+                      downsampling_tile%spec = s
+                      downsampling_tile%npart_sp = position_grid(pi, pj, pk)%npart
 
-                    if (downsampling_tile%npart_sp .gt. 5) then
-                      do p = 1, position_grid(pi, pj, pk)%npart
-                        p_ind = position_grid(pi, pj, pk)%indices(p)
-                        call fillDownsamplingTile(species(s)%prtl_tile(ti, tj, tk), downsampling_tile, p, p_ind)
-                      end do
+                      downsampling_tile%x1 = (ti - 1) * species(s)%tile_sx
+                      downsampling_tile%x2 = min(ti * species(s)%tile_sx, this_meshblock%ptr%sx)
+                      downsampling_tile%y1 = (tj - 1) * species(s)%tile_sy
+                      downsampling_tile%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
+                      downsampling_tile%z1 = (tk - 1) * species(s)%tile_sz
+                      downsampling_tile%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
 
-                      ! decide whether to use cartesian OR spherical binning
-                      if (dwn_cartesian_bins) then
-                        call downsampleOnTile_Cartesian(downsampling_tile)
-                      else
-                        call downsampleOnTile_Spherical(downsampling_tile)
+                    #ifdef DEBUG
+                      nbinned = nbinned + position_grid(pi, pj, pk)%npart
+                    #endif
+
+                    do p = 1, position_grid(pi, pj, pk)%npart
+                      p_ind = position_grid(pi, pj, pk)%indices(p)
+                      call fillDownsamplingTile(species(s)%prtl_tile(ti, tj, tk), downsampling_tile, p, p_ind)
+                    enddo
+
+                      if (downsampling_tile%npart_sp .gt. 5) then
+                        ! decide whether to use cartesian OR spherical binning
+                        if (dwn_cartesian_bins) then
+                          call downsampleOnTile_Cartesian(downsampling_tile)
+                        else
+                          call downsampleOnTile_Spherical(downsampling_tile)
+                        end if
                       end if
                     end if
 
                     do p = 1, position_grid(pi, pj, pk)%npart
                       p_ind = position_grid(pi, pj, pk)%indices(p)
                       species(s)%prtl_tile(ti, tj, tk)%proc(p_ind) = downsampling_tile%proc(p)
-                    end do
+                    enddo
 
-                  end do ! loop pk
-                end do ! loop pj
-              end do ! loop pi
+                  enddo
+                enddo
+              enddo
+
+              #ifdef DEBUG
+                if (nbinned.ne.tmpnpart) then
+                  print *, nbinned, tmpnpart
+                  call throwError('[downsampleParticles] Unequal number of particles in tile and position bins.')
+                endif
+              #endif
+
+              if (allocated(downsampling_tile)) deallocate(downsampling_tile)
 
             end do ! loop tk
           end do ! loop tj
         end do ! loop ti
+      else if (species(s)%dwn_sp .and. species(s)%ch_sp .eq. 0) then
+        ! merging of photons based on tiles
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .gt. 5) then
+                ! decide whether to use cartesian OR spherical binning
+                if (dwn_cartesian_bins) then
+                  call downsampleOnTile_Cartesian(species(s)%prtl_tile(ti, tj, tk))
+                else
+                  call downsampleOnTile_Spherical(species(s)%prtl_tile(ti, tj, tk))
+                end if
+              end if
+            end do
+          end do
+        end do
       else if (species(s)%dwn_sp .and. species(s)%ch_sp .eq. 0) then
         ! merging of photons based on tiles
         do ti = 1, species(s)%tile_nx
@@ -176,7 +218,7 @@ contains
               end if
             end do
           #endif
-          if (npart .gt. 5) then
+          if (npart .gt. 2) then
             call downsampleBin_Spherical(tile,&
                         & momentum_bins(e_b)%theta_bins(th_b)%theta_mid,&
                         & momentum_bins(e_b)%theta_bins(th_b)%phi_bins(ph_b)%phi_mid,&
@@ -280,9 +322,9 @@ contains
     ! generate a random rotation axis and a random rotation angle for a tile
     rot_ax_1 = random(dseed)
     rot_ax_2 = random(dseed)
-    rot_ang = random(dseed)
 
     if (.not. dwn_dynamic_bins) then
+      rot_ang = random(dseed)
       px_min = -dwn_energy_max
       px_max = dwn_energy_max
       py_min = -dwn_energy_max
@@ -290,12 +332,37 @@ contains
       pz_min = -dwn_energy_max
       pz_max = dwn_energy_max
     else
-      px_min = MINVAL(tile%u(1 : tile%npart_sp)) * 1.01
-      py_min = MINVAL(tile%v(1 : tile%npart_sp)) * 1.01
-      pz_min = MINVAL(tile%w(1 : tile%npart_sp)) * 1.01
-      px_max = MAXVAL(tile%u(1 : tile%npart_sp)) * 1.01
-      py_max = MAXVAL(tile%v(1 : tile%npart_sp)) * 1.01
-      pz_max = MAXVAL(tile%w(1 : tile%npart_sp)) * 1.01
+
+      rot_ang = 0.0
+
+      px_min = MINVAL(tile%u(1 : tile%npart_sp))
+      py_min = MINVAL(tile%v(1 : tile%npart_sp))
+      pz_min = MINVAL(tile%w(1 : tile%npart_sp))
+      px_max = MAXVAL(tile%u(1 : tile%npart_sp))
+      py_max = MAXVAL(tile%v(1 : tile%npart_sp))
+      pz_max = MAXVAL(tile%w(1 : tile%npart_sp))
+
+      if (px_min.eq.px_max) then
+        px_min = px_min - 1e-5
+        px_max = px_max + 1e-5
+      endif
+
+      if (py_min.eq.py_max) then
+        py_min = py_min - 1e-5
+        py_max = py_max + 1e-5
+      endif
+
+        if (pz_min.eq.pz_max) then
+        pz_min = pz_min - 1e-5
+        pz_max = pz_max + 1e-5
+      endif
+
+      px_min = px_min * (1.0 - sign(1.0, px_min) * 0.01)
+      py_min = py_min * (1.0 - sign(1.0, py_min) * 0.01)
+      pz_min = pz_min * (1.0 - sign(1.0, pz_min) * 0.01)
+      px_max = px_max * (1.0 + sign(1.0, px_max) * 0.01)
+      py_max = py_max * (1.0 + sign(1.0, py_max) * 0.01)
+      pz_max = pz_max * (1.0 + sign(1.0, pz_max) * 0.01)
 
       px_mid = SUM(tile%u(1 : tile%npart_sp)) / tile%npart_sp
       py_mid = SUM(tile%v(1 : tile%npart_sp)) / tile%npart_sp
@@ -331,6 +398,7 @@ contains
       do pj = 1, dwn_n_mom_bins
         do pk = 1, dwn_n_mom_bins
           npart = momentum_bins(pi, pj, pk)%npart
+
           if (npart .gt. 5) then
             px_mid = 0.5 * (momentum_bins(pi, pj, pk)%px_max + momentum_bins(pi, pj, pk)%px_min)
             py_mid = 0.5 * (momentum_bins(pi, pj, pk)%py_max + momentum_bins(pi, pj, pk)%py_min)
@@ -405,6 +473,7 @@ contains
           ! once there are enough particles in the group...
           ! ... send a group of these particles to merge...
           ! ... then reset the quantities
+
           if (group%size .gt. 5) then
             call mergeParticlesInGroup(group, tile)
           end if
@@ -550,58 +619,35 @@ contains
       end if
     #endif
 
-    ! take two random particles to position the new ones
-    p_ind = INT((random(dseed) * group%size + 1))
-    p = group%indices(p_ind)
-    xAi = tile%xi(p); dxA = tile%dx(p)
-    yAi = tile%yi(p); dyA = tile%dy(p)
-    zAi = tile%zi(p); dzA = tile%dz(p)
+    ! Determine center of mass of particles to-be-merged
+    x2 = 0.0
+    y2 = 0.0
+    z2 = 0.0
+    totweight = 0.0
 
-    ! p = p_ind
-    ! do while (p .eq. p_ind)
-    !   p = INT((random(dseed) * group%size + 1))
-    ! end do
-    ! p = group%indices(p)
-    ! xBi = tile%xi(p); dxB = tile%dx(p)
-    ! yBi = tile%yi(p); dyB = tile%dy(p)
-    ! zBi = tile%zi(p); dzB = tile%dz(p)
+    do p_ind = 1, group%size
+      p = group%indices(p_ind)
 
-    xBi = tile%xi(p); dxB = tile%dx(p)
-    yBi = tile%yi(p); dyB = tile%dy(p)
-    zBi = tile%zi(p); dzB = tile%dz(p)
+      x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
+      y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
+      z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
 
-    x2 = real(xBi) + dxB
-    y2 = real(yBi) + dyB
-    z2 = real(zBi) + dzB
+      totweight = real(totweight + tile%weight(p))
+    enddo
 
-    ! x2 = 0.0
-    ! y2 = 0.0
-    ! z2 = 0.0
-    ! totweight = 0.0
+    x2 = x2 / totweight
+    y2 = y2 / totweight
+    z2 = z2 / totweight
 
-    ! do p_ind = 1, group%size
-    !   p = group%indices(p_ind)
+    xBi = floor(x2); dxB = x2 - real(xBi)
+    yBi = floor(y2); dyB = y2 - real(yBi)
+    zBi = floor(z2); dzB = z2 - real(zBi)
 
-    !   x2 = x2 + tile%weight(p) * (real(tile%xi(p)) + tile%dx(p))
-    !   y2 = y2 + tile%weight(p) * (real(tile%yi(p)) + tile%dy(p))
-    !   z2 = z2 + tile%weight(p) * (real(tile%zi(p)) + tile%dz(p))
+    xAi = xBi; dxA = dxB
+    yAi = yBi; dyA = dyB
+    zAi = zBi; dzA = dzB
 
-    !   totweight = real(totweight + tile%weight(p))
-    ! enddo
-
-    ! x2 = x2 / totweight
-    ! y2 = y2 / totweight
-    ! z2 = z2 / totweight
-
-    ! xBi = floor(x2); dxB = x2 - real(xBi)
-    ! yBi = floor(y2); dyB = y2 - real(yBi)
-    ! zBi = floor(z2); dzB = z2 - real(zBi)
-
-    ! xAi = floor(x2); dxA = x2 - real(xBi)
-    ! yAi = floor(y2); dyA = y2 - real(yBi)
-    ! zAi = floor(z2); dzA = z2 - real(zBi)
-
-    ! Extra current deposit
+    ! Extra current deposit for center-of-mass shift
     do p_ind = 1, group%size
       p = group%indices(p_ind)
 
