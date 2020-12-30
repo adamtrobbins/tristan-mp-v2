@@ -12,7 +12,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-c', action='store_true', default=False, help='only test compilation.')
 parser.add_argument('-v', action='store_true', default=False, help='verbose mode (full output).')
 parser.add_argument('-d', action='store_true', default=False, help='diagnostic mode.')
+parser.add_argument('-t','--test', type=str, default=','.join(map(str, list(range(15)))), help='tests to run.')
 options = parser.parse_args()
+tests = [int(t) for t in options.test.split(',')]
 
 suffix = '' if options.v else ' >/dev/null 2>&1'
 
@@ -52,22 +54,23 @@ class TwoStream(Simulation):
   jobid = 'twostream'
   userfile = 'user_twostream'
   dimension = 1
-  def diag(self, ax):
+  def diag(self, ax, fig=None):
     hist = isolde.parseHistory(self.path + '/output/history')
     omegap0 = self.params['algorithm']['c'] / self.params['plasma']['c_omp']
     rate = 0.5 * (0.5)**0.5 / (self.params['problem']['shift_gamma'])**(1.5)
-    time = hist['time'] * omegap0; E2 = hist['E^2'] / hist['Etot'][0]; ax.plot(time, E2)
-    xs = np.linspace(10, 40, 10); ys = np.exp(2 * rate * xs); ys = (E2[time>10][0]) * (ys / ys[0]); ax.plot(xs, ys)
+    time = hist['time'] * omegap0; E2 = hist['E^2'] / hist['Etot'][0]; ax.plot(time, E2, label='sim')
+    xs = np.linspace(10, 40, 10); ys = np.exp(2 * rate * xs); ys = (E2[time>10][0]) * (ys / ys[0]); ax.plot(xs, ys, label=r'$\omega/\omega_{\textrm{p}b}=\gamma_b^{-3/2}$')
     ax.set_ylim(1e-4, 1e-1); ax.set_xlim(0, 200); ax.set_yscale('log');
     ax.set_xlabel(r'$t\omega_{\rm p0}$'); ax.set_ylabel(r'$U_E / E_{\rm tot}$')
     ax.axvline(ax.get_xlim()[0], color='black'); ax.axhline(ax.get_ylim()[0], color='black')
-    ax.set_title(self.jobid)
+    ax.text(110, 0.6e-3, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=1'))
+    ax.set_title(self.jobid); plt.legend()
 
 class PlasmaOsc(Simulation):
   jobid = 'plasmaosc'
   userfile = 'user_langmuir'
   dimension = 1
-  def diag(self, ax):
+  def diag(self, ax, fig=None):
     exs = []; steps = np.arange(50)
     for step in steps:
       flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % step)
@@ -75,6 +78,34 @@ class PlasmaOsc(Simulation):
     ax.plot(steps * self.params['output']['interval'] / (2 * np.pi * self.params['plasma']['c_omp'] / 0.45), exs)
     ax.set_xlabel(r'$t\omega_{\rm p0}$'); ax.set_ylabel(r'$E_x$')
     ax.set_title(self.jobid)
+    for i in range(4):
+      ax.axvline(i, c='gray', lw=1, ls='--')
+    hist = isolde.parseHistory(self.path + '/output/history')
+    ax.text(2, -1, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=1'))
+
+class Weibel(Simulation):
+  jobid = 'weibel'
+  userfile = 'user_weibel'
+  dimension = 2
+  def diag(self, ax, fig=None):
+    ax.set_title(self.jobid); ax.grid(False)
+    from matplotlib.animation import FuncAnimation
+    flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % 0)
+    xmin = flds['xx'][0].min() / self.params['plasma']['c_omp']; xmax = flds['xx'][0].max() / self.params['plasma']['c_omp']
+    ymin = flds['yy'][0].min() / self.params['plasma']['c_omp']; ymax = flds['yy'][0].max() / self.params['plasma']['c_omp']
+    im = ax.imshow(flds['bz'][0], origin='lower', cmap='bipolar', vmin=-0.01, vmax=0.01, extent=(xmin,xmax,ymin,ymax))
+    ax.set_xlabel(r'$x/d_{e0}$'); ax.set_ylabel(r'$y/d_{e0}$')
+    txt1 = ax.text(10, 120, r'$B_z$', color='white')
+    txt2 = ax.text(90, 120, r'', color='white', zorder=100)
+    def init():
+      im.set_data(flds['bz'][0])
+      txt2.set_text(r'$t\omega_{{\rm p0}}=0$')
+      return im, txt1, txt2,
+    def animate(i):
+      flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % i); im.set_data(flds['bz'][0]);
+      txt2.set_text(r'$t\omega_{{\rm p0}}={{{}}}$'.format(i * self.params['output']['interval'] * 0.45 / self.params['plasma']['c_omp']))
+      return im, txt1, txt2,
+    anim = FuncAnimation(fig, animate, init_func=init, frames=50, interval=100, blit=True, repeat=True)
 
 # Here specify the test simulations and give additional specs of the environment
 common_flags = ' -perseus -hdf5 -debug'
@@ -96,26 +127,39 @@ simulations = [
                             'time': {'last' : 1000},
                             'grid': {'mx0' : 1120, 'tileX' : 10},
                             'algorithm': {'nfilter': 8},
-                            'output': {'enable' : 1, 'interval': 10, 'hst_enable' : 1, 'hst_interval' : 5},
+                            'output': {'enable' : 1, 'prtl_enable' : 0, 'spec_enable' : 0, 'interval': 10, 'hst_enable' : 1, 'hst_interval' : 5},
                             'plasma': {'ppc0' : 500, 'sigma' : 1, 'c_omp' : 10},
                             'particles': {'nspec' : 2, 'maxptl1' : 1e8, 'm1' : 1, 'ch1' : -1, 'maxptl2' : 1e8, 'm2' : 1, 'ch2' : 1},
                             'problem': {'upstream_T' : 1e-5, 'amplitude' : 0.01, 'nwaves' : 1}}
-                         )]
+                         ),
+               Weibel(common_flags, nproc=28,
+                          params={
+                            'node_configuration': {'sizex' : 7, 'sizey' : 4},
+                            'time': {'last' : 500},
+                            'grid': {'mx0' : 1400, 'my0' : 1400, 'tileX' : 20, 'tileY' : 20},
+                            'algorithm': {'nfilter': 8},
+                            'output': {'enable' : 1, 'prtl_enable' : 0, 'spec_enable' : 0, 'interval': 10, 'hst_enable' : 1, 'hst_interval' : 10},
+                            'plasma': {'ppc0' : 16, 'sigma' : 10, 'c_omp' : 10},
+                            'particles': {'nspec' : 2, 'maxptl1' : 1e8, 'm1' : 1, 'ch1' : -1, 'maxptl2' : 1e8, 'm2' : 1, 'ch2' : 1},
+                            'problem': {'backgr_T' : 1e-5, 'shift_beta' : 0.5}}
+                         )
+               ]
 
 if (options.d):
   # diagnostic mode where you analize the test results
   import matplotlib.pyplot as plt
   import numpy as np
   import tristanVis.isolde as isolde
-  from matplotlib import rc
-  plt.style.use('fivethirtyeight')
-  rc('font',**{'family':'monospace', 'size':15})
-  rc('text', usetex=True)
+  import tristanVis.aux as aux
+  aux.loadCustomStyles(style='fivethirtyeight', fs=15)
   fig = plt.figure(figsize=(16, 10))
   for ii, simulation in enumerate(simulations):
+    if not (ii + 1 in tests):
+      continue
     ax = plt.subplot(2, 2, ii + 1)
     simulation.path = testdir_full + '/%02d_' % (ii + 1) + simulation.jobid
-    simulation.diag(ax)
+    simulation.diag(ax, fig)
+  plt.tight_layout()
   plt.show()
 else:
   # regular mode where you compile and run tests
@@ -125,6 +169,8 @@ else:
   with open(testdir_full + '/test.log', 'w+') as testlog:
     # load modules
     for ii, simulation in enumerate(simulations):
+      if not (ii + 1 in tests):
+        continue
       # create directory for simulation
       simulation.path = testdir_full + '/%02d_' % (ii + 1) + simulation.jobid
       if os.path.exists(simulation.path):
@@ -198,6 +244,8 @@ else:
 
     testlog.write('\n\n')
     if not options.c:
-      for simulation in simulations:
+      for ii, simulation in enumerate(simulations):
+        if not (ii + 1 in tests):
+          continue
         os.system('sbatch ' + simulation.submit_full)
         testlog.write(('`{}`'.format(simulation.jobid)).ljust(41, '.') + 'submitted\n')

@@ -239,43 +239,36 @@ def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
       ni += 1
   return data
 
-def parseHistory(fname, nsteps = None):
-  keys = []
-  if (not nsteps):
-    nsteps = int(1e6)
-  def parseBlock(block, data, isfirst = False):
-    if (isfirst):
-      block = block.split('\n')[2:-2]
-      for subblock in block:
-        for word in subblock.split():
-          if word[0] == '[' and word[-1] == ']':
-            if ('%' not in word): # sanity check
-              keys.append(word[1:-1])
-              data[word[1:-1]] = np.array([])
-    else:
-      block = block.split('\n')[2:-2]
-      k = 0
-      for subblock in block:
-        for word in subblock.split():
-          if ('%' not in word) and ('|' not in word) and k < len(keys):
-            data[keys[k]] = np.append(data[keys[k]], np.float(word))
-            k = k + 1
-  data = {}
-  with open(fname, 'r') as file:
-    isfirst = True
-    ni = 0
-    while ni <= nsteps:
-      block = ""
-      for i in range(8):
-        line = file.readline()
-        if line == '':
-          ni = nsteps + 1
+def parseHistory(fname):
+  from itertools import groupby
+  import re
+  def make_grouper():
+    counter = 0
+    def key(line):
+      nonlocal counter
+      if line.startswith('===='):
+        counter += 1
+      return counter
+    return key
+  with open(fname, 'r') as f:
+    data = {}
+    for k, group in groupby(f, key=make_grouper()):
+      fasta_section = ''.join(group)
+      block = fasta_section.split("\n", 1)[1]
+      if (k == 1):
+        template = block
+        template_keys = np.array(re.findall('\[.+?\]', template))
+        mask = (template_keys != '[% Etot]')
+        template_keys = np.array(list(map(lambda x: x[1:-1], template_keys[mask])))
+        data = {key: np.array([]) for key in template_keys}
+      else:
+        block_values = np.array(re.findall('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *[-|+]?\ *[0-9]+)?', block))
+        if (len(block) == 0):
           break
-        else:
-          block += line
-      parseBlock(block, data, isfirst)
-      isfirst = False
-      ni = ni + 1
+        block_values = np.array(list(map(np.float, block_values[mask])))
+        pairs = {key: v for key, v in zip(template_keys, block_values)}
+        for key in template_keys:
+          data[key] = np.append(data[key], pairs[key])
   return data
 
 # easy plotting functions
