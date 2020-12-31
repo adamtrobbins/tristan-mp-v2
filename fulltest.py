@@ -63,7 +63,7 @@ class TwoStream(Simulation):
     ax.set_ylim(1e-4, 1e-1); ax.set_xlim(0, 200); ax.set_yscale('log');
     ax.set_xlabel(r'$t\omega_{\rm p0}$'); ax.set_ylabel(r'$U_E / E_{\rm tot}$')
     ax.axvline(ax.get_xlim()[0], color='black'); ax.axhline(ax.get_ylim()[0], color='black')
-    ax.text(110, 0.6e-3, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=1'))
+    ax.text(110, 0.6e-3, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.5'))
     ax.set_title(self.jobid); plt.legend()
 
 class PlasmaOsc(Simulation):
@@ -81,7 +81,7 @@ class PlasmaOsc(Simulation):
     for i in range(4):
       ax.axvline(i, c='gray', lw=1, ls='--')
     hist = isolde.parseHistory(self.path + '/output/history')
-    ax.text(2, -1, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=1'))
+    ax.text(2, -1, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.5'))
 
 class Weibel(Simulation):
   jobid = 'weibel'
@@ -105,7 +105,74 @@ class Weibel(Simulation):
       flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % i); im.set_data(flds['bz'][0]);
       txt2.set_text(r'$t\omega_{{\rm p0}}={{{}}}$'.format(i * self.params['output']['interval'] * 0.45 / self.params['plasma']['c_omp']))
       return im, txt1, txt2,
-    anim = FuncAnimation(fig, animate, init_func=init, frames=50, interval=100, blit=True, repeat=True)
+    anim = FuncAnimation(fig, animate, init_func=init, frames=50, interval=1000, blit=True, repeat=True)
+
+class Merging(Simulation):
+  jobid = 'merging'
+  userfile = 'unit_chargedmerging'
+  dimension = 2
+  def diag(self, ax, fig=None):
+    from matplotlib.animation import FuncAnimation
+    import matplotlib.collections as mcoll
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divE_max = 1e-11;
+    def getMomenta(prtls):
+      en = np.sum(np.sqrt(1.0 + prtls['1']['u']**2 + prtls['1']['v']**2 + prtls['1']['w']**2) * prtls['1']['wei']) + np.sum(np.sqrt(1.0 + prtls['2']['u']**2 + prtls['2']['v']**2 + prtls['2']['w']**2) * prtls['2']['wei'])
+      mx = np.sum(prtls['1']['u'] * prtls['1']['wei']) + np.sum(prtls['2']['u'] * prtls['2']['wei'])
+      my = np.sum(prtls['1']['v'] * prtls['1']['wei']) + np.sum(prtls['2']['v'] * prtls['2']['wei'])
+      mz = np.sum(prtls['1']['w'] * prtls['1']['wei']) + np.sum(prtls['2']['w'] * prtls['2']['wei'])
+      return (en, mx, my, mz)
+    energy0, momx0, momy0, momz0 = getMomenta(isolde.getParticles(self.path + '/output/prtl.tot.%05d' % 0))
+    def template(prtls):
+      energy1, momx1, momy1, momz1 = getMomenta(prtls)
+      return r'npart: {} ($\times$2)'.format(len(prtls['1']['x'])) + \
+              '\ntotal energy [err\%]: {:.3f} [{:.4f}\%]'.format(energy1, np.abs((energy1 - energy0) * 100 / energy0)) + \
+              '\nmomX [err\%]: {:.3f} [{:.4f}\%]'.format(momx1, np.abs((momx1 - momx0) * 100 / momx0)) + \
+              '\nmomY [err\%]: {:.3f} [{:.4f}\%]'.format(momy1, np.abs((momy1 - momy0) * 100 / momy0)) + \
+              '\nmomZ [err\%]: {:.3f} [{:.4f}\%]'.format(momz1, np.abs((momz1 - momz0) * 100 / (momz0 + 1e-10)))
+    sc1 = ax.scatter([-100], [-100], fc='blue', label='lecs', zorder=2)
+    sc2 = ax.scatter([-100], [-100], fc='red', label='ions', zorder=2)
+    lgd = ax.legend(loc='lower right');
+    major_ticks = np.arange(0, self.params['grid']['mx0'], self.params['grid']['tileX']); minor_ticks = np.arange(0, self.params['grid']['my0'], 1)
+    ax.set_xticks(major_ticks); ax.set_xticks(minor_ticks, minor=True)
+    ax.set_yticks(major_ticks); ax.set_yticks(minor_ticks, minor=True)
+    ax.grid(False);
+    lines1 = ([[(x, y) for y in (0, self.params['grid']['mx0'])] for x in major_ticks]
+             + [[(x, y) for x in (0, self.params['grid']['mx0'])] for y in major_ticks])
+    grid1 = mcoll.LineCollection(lines1, linestyles='solid', linewidths=1, color='k', zorder=1, alpha=0.5); ax.add_collection(grid1)
+    lines2 = ([[(x, y) for y in (0, self.params['grid']['mx0'])] for x in minor_ticks]
+             + [[(x, y) for x in (0, self.params['grid']['mx0'])] for y in minor_ticks])
+    grid2 = mcoll.LineCollection(lines2, linestyles='solid', linewidths=0.2, color='k', zorder=1, alpha=0.3); ax.add_collection(grid2)
+    im = ax.imshow(np.zeros((self.params['grid']['mx0'], self.params['grid']['my0'])), origin='lower', extent=(0, self.params['grid']['mx0'], 0,
+     self.params['grid']['my0']), cmap='seismic', vmin=-divE_max, vmax=divE_max, zorder=0)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="2%", pad=0.02)
+    plt.colorbar(im, cax=cax, label=r'$\nabla\cdot \bf{E}$');
+    ttl = ax.text(.1, 0.1, '', transform = ax.transAxes, va='center')
+    diag = ax.text(2, 47, '', multialignment='left', va='top', bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.2'))
+    def init():
+      ax.set_xlim(0, self.params['grid']['mx0']); ax.set_ylim(0, self.params['grid']['my0']);
+      ax.set_xlabel(r'$x$'); ax.set_ylabel(r'$y$');
+      ax.set_title(self.jobid);
+      prtls = isolde.getParticles(self.path + '/output/prtl.tot.%05d' % 0)
+      flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % 0)
+      sc1.set_offsets(np.array([prtls['1']['x'], prtls['1']['y']]).T)
+      sc2.set_offsets(np.array([prtls['2']['x'], prtls['2']['y']]).T)
+      im.set_data(flds['divE'][0])
+      ttl.set_text('t=0')
+      diag.set_text(template(prtls))
+      return sc1, sc2, im, ttl, diag, lgd, grid1, grid2,
+    def animate(i):
+      prtls = isolde.getParticles(self.path + '/output/prtl.tot.%05d' % i)
+      flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % i)
+      sc1.set_offsets(np.array([prtls['1']['x'], prtls['1']['y']]).T)
+      sc2.set_offsets(np.array([prtls['2']['x'], prtls['2']['y']]).T)
+      im.set_data(flds['divE'][0])
+      ttl.set_text('t=' + str(i))
+      diag.set_text(template(prtls))
+      return sc1, sc2, im, ttl, diag, lgd, grid1, grid2,
+    anim = FuncAnimation(fig, animate, init_func=init,
+                         frames=40, interval=1000, blit=True, repeat=True)
 
 # Here specify the test simulations and give additional specs of the environment
 common_flags = ' -perseus -hdf5 -debug'
@@ -142,7 +209,19 @@ simulations = [
                             'plasma': {'ppc0' : 16, 'sigma' : 10, 'c_omp' : 10},
                             'particles': {'nspec' : 2, 'maxptl1' : 1e8, 'm1' : 1, 'ch1' : -1, 'maxptl2' : 1e8, 'm2' : 1, 'ch2' : 1},
                             'problem': {'backgr_T' : 1e-5, 'shift_beta' : 0.5}}
-                         )
+                         ),
+              Merging(common_flags + ' -dwn', nproc=1,
+                         params={
+                           'node_configuration': {'sizex' : 1, 'sizey' : 1},
+                           'time': {'last' : 500},
+                           'grid': {'mx0' : 50, 'my0' : 50, 'tileX' : 10, 'tileY' : 10},
+                           'algorithm': {'nfilter': 0},
+                           'output': {'interval': 10, 'stride' : 1, 'smooth_window' : 0, 'write_nablas' : 1},
+                           'plasma': {'ppc0' : 50, 'sigma' : 5, 'c_omp' : 50},
+                           'particles': {'nspec' : 2, 'maxptl1' : 1e8, 'm1' : 1, 'ch1' : -1, 'dwn1' : 1, 'maxptl2' : 1e8, 'm2' : 1, 'ch2' : 1, 'dwn2' : 1},
+                           'downsampling' : {'interval' : 1, 'start' : 1, 'max_weight' : 1e5, 'cartesian_bins' : 1, 'energy_min' : 0, 'energy_max' : 1e5, 'int_weights' : 0, 'dynamic_bins' : 1, 'mom_bins' : 1, 'mom_spread' : 1e5}
+                           }
+                        )
                ]
 
 if (options.d):
@@ -151,8 +230,8 @@ if (options.d):
   import numpy as np
   import tristanVis.isolde as isolde
   import tristanVis.aux as aux
-  aux.loadCustomStyles(style='fivethirtyeight', fs=15)
-  fig = plt.figure(figsize=(16, 10))
+  aux.loadCustomStyles(style='fivethirtyeight', fs=10)
+  fig = plt.figure(figsize=(12, 8))
   for ii, simulation in enumerate(simulations):
     if not (ii + 1 in tests):
       continue
@@ -183,7 +262,7 @@ else:
       config_command = 'python configure.py '
       config_command += simulation.flags
       config_command += ' -{}d'.format(simulation.dimension)
-      config_command += ' --user=' + simulation.userfile
+      config_command += ' --{}='.format(simulation.userfile[:4]) + simulation.userfile
       os.system(config_command + suffix)
 
       # clean
