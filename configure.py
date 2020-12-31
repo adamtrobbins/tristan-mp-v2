@@ -328,11 +328,11 @@ print('PHYSICS .................................................................
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
 print('  Absorbing boundaries:    ' + ('ON' if args['absorb'] else 'OFF'))
 print('  Cooling:                 ' + args['radiation'])
-print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
-print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
-print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
-print('  Compton scattering       ' + ('ON' if args['compton'] else 'OFF'))
-print('  Pair annihilation        ' + ('ON' if args['annihilation'] else 'OFF'))
+print('  Photon emission:         ' + ('ON' if args['emit'] else 'OFF'))
+print('  QED step:                ' + ('ON' if args['qed'] else 'OFF'))
+print('  BW pair production:      ' + ('ON' if args['bwpp'] else 'OFF'))
+print('  Compton scattering:      ' + ('ON' if args['compton'] else 'OFF'))
+print('  Pair annihilation:       ' + ('ON' if args['annihilation'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 
