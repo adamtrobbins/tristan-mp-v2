@@ -10,3 +10,6 @@ __pycache__
 vis/
 .sync-config.cson
 .DS_Store
+submit*
+backup_*
+backups/

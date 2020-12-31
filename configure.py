@@ -25,16 +25,30 @@ rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 parser.add_argument('-perseus',
                     action='store_true',
                     default=False,
-                    help='Configure for `Perseus` cluster.')
+                    help='configure for `Perseus` cluster.')
 
 parser.add_argument('-intel',
                     action='store_true',
-                    default=False,
+                    default=True,
                     help='enable intel compiler')
 parser.add_argument('-hdf5',
                     action='store_true',
                     default=False,
                     help='enable HDF5 & use h5pfc compiler')
+parser.add_argument('-serial',
+                    action='store_true',
+                    default=False,
+                    help='enable serial output')
+
+vec_group = parser.add_mutually_exclusive_group(required=False)
+vec_group.add_argument('-avx2',
+                       action='store_true',
+                       default=False,
+                       help='enable avx2 vectorization')
+vec_group.add_argument('-avx512',
+                       action='store_true',
+                       default=False,
+                       help='enable avx512 vectorization')
 
 parser.add_argument('-ifport',
                     action='store_true',
@@ -83,10 +97,20 @@ parser.add_argument('-debug',
                     default=False,
                     help='enable DEBUG flag')
 
-parser.add_argument('-gca',
+parser.add_argument('--gca',
+                    action='store',
+                    default='OFF',
+                    help='enable GCA mover with specific # of iterations')
+
+parser.add_argument('-vay',
                     action='store_true',
                     default=False,
-                    help='enable GCA mover')
+                    help='enable Vay pusher')
+
+parser.add_argument('-payload',
+                    action='store_true',
+                    default=False,
+                    help='enable particle payloads')
 
 dim_group = parser.add_mutually_exclusive_group(required=True)
 dim_group.add_argument('-1d',
@@ -143,6 +167,11 @@ parser.add_argument('-compton',
                     default=False,
                     help='enable Compton scattering')
 
+parser.add_argument('-annihilation',
+                    action='store_true',
+                    default=False,
+                    help='enable pair annihilation')
+
 args = vars(parser.parse_args())
 
 # Step 2. Set definitions and Makefile options based on above arguments
@@ -165,10 +194,9 @@ specific_cluster = False
 if args['perseus']:
   specific_cluster = True
   args['intel'] = True
-  args['mpi08'] = True
-  args['mpi'] = False
+  args['mpi'] = True
   args['ifport'] = True
-  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
+  args['avx2'] = True
 
 # compilation command
 if args['hdf5']:
@@ -182,6 +210,9 @@ else:
 if args['ifport']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 
+if args['serial']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DSERIALOUTPUT '
+
 # mpi version
 if args['mpi']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
@@ -191,17 +222,24 @@ elif args['mpi08']:
 # debug
 if args['debug'] and (not args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
-if args['debug'] and args['intel']:
+elif (args['debug'] and args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
   makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+else:
+  makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
 # compiler (+ vectorization etc)
 if args['intel']:
   makefile_options['MODULE'] = '-module '
-  makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -xHost -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
+  makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
 else:
   makefile_options['MODULE'] = '-J '
   makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
+
+if args['avx2']:
+  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
+elif args['avx512']:
+  makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX512 -qopt-zmm-usage:high '
 
 if args['1d']:
   makefile_options['EXE_NAME'] = 'tristan-mp1d'
@@ -224,8 +262,13 @@ if args['alb'] and (not args['slb']):
 if args['slb']:
   args['alb'] = False
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
-if args['gca']:
-  makefile_options['PREPROCESSOR_FLAGS'] += '-DGCA '
+
+if args['gca'] != 'OFF':
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DGCA -DGCAITER=' + str(args['gca']) + ' '
+if args['vay']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DVAY '
+if args['payload']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
 
 # extra physics
 if args['extfields']:
@@ -249,7 +292,10 @@ if args['bwpp']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DBWPAIRPRODUCTION '
 
 if args['compton']:
-    makefile_options['PREPROCESSOR_FLAGS'] += '-DCOMPTONSCATTERING '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DCOMPTONSCATTERING '
+
+if args['annihilation']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DPAIRANNIHILATION '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
@@ -275,22 +321,27 @@ print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
-print('  Particle pusher:         ' + ('Boris/GCA' if args['gca'] else 'Boris'))
+print('  Particle pusher:         ' + ('Boris/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ('Vay' if args['vay'] else 'Boris')))
+print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
 
 print('PHYSICS ......................................................................')
 print('  External fields:         ' + ('ON' if args['extfields'] else 'OFF'))
 print('  Absorbing boundaries:    ' + ('ON' if args['absorb'] else 'OFF'))
 print('  Cooling:                 ' + args['radiation'])
-print('  Photon emission          ' + ('ON' if args['emit'] else 'OFF'))
-print('  QED step                 ' + ('ON' if args['qed'] else 'OFF'))
-print('  BW pair production       ' + ('ON' if args['bwpp'] else 'OFF'))
-print('  Compton scattering       ' + ('ON' if args['compton'] else 'OFF'))
+print('  Photon emission:         ' + ('ON' if args['emit'] else 'OFF'))
+print('  QED step:                ' + ('ON' if args['qed'] else 'OFF'))
+print('  BW pair production:      ' + ('ON' if args['bwpp'] else 'OFF'))
+print('  Compton scattering:      ' + ('ON' if args['compton'] else 'OFF'))
+print('  Pair annihilation:       ' + ('ON' if args['annihilation'] else 'OFF'))
 
 print('TECHNICAL ....................................................................')
 
-print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc'))
+print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
+                                      (' [avx2]' if args['avx2'] else
+                                        (' [avx512]' if args['avx512'] else '')
+                                      ))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
-print('  Output:                  ' + ('HDF5' if args['hdf5'] else 'binary'))
+print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 

@@ -12,8 +12,6 @@ module m_userfile
   use m_helpers
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   real, private     :: velocity, angle
   !...............................................................!
@@ -111,6 +109,13 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step

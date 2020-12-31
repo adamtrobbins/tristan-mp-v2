@@ -119,3 +119,7 @@
                                 # ... except for the first t < 0.1 * period
 
   prtl_kick     = 2.0           # radially kick with a 4-velocity of ...
+  gca_radius    = 10            # enforce GCA below this distance above the stellar surface
+
+  fakepp_density  = 1
+  fakepp_timestep = 1600

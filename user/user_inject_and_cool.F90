@@ -11,8 +11,6 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   real      :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
   private   :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
@@ -87,6 +85,13 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step

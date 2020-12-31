@@ -12,8 +12,6 @@ module m_userfile
   use m_helpers
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
-
   !--- PRIVATE variables -----------------------------------------!
   integer, private  :: fld_geometry, inj_method, e_par_method
   real, private     :: xc_g, yc_g, zc_g, psr_spinupT
@@ -22,6 +20,11 @@ module m_userfile
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
   real, private     :: nGJ_limiter, sigGJ_limiter, jdotb_limiter
+  real, private     :: fakepp_density, fakepp_height, fakepp_ppc
+  integer, private  :: fakepp_timestep
+  #ifdef GCA
+    real, private     :: psr_gca_enforce_rad
+  #endif
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -73,6 +76,15 @@ contains
       call getInput('problem', 'prtl_kick', prtl_kick)
     end if
 
+    call getInput('problem', 'fakepp_density', fakepp_density, 0.0)
+    call getInput('problem', 'fakepp_timestep', fakepp_timestep, 0)
+    call getInput('problem', 'fakepp_height', fakepp_height, 50.0)
+    call getInput('problem', 'fakepp_ppc', fakepp_ppc, 1.0)
+
+    #ifdef GCA
+      call getInput('problem', 'gca_radius', psr_gca_enforce_rad)
+    #endif
+
     ! safety check
     if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
       psr_angle = psr_angle * M_PI / 180.0
@@ -107,11 +119,12 @@ contains
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
-    real                        :: radius2
+    real                        :: radius2, psrrad
+    psrrad = dummy1 / 14.0
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
-    userSLBload = 40**2 / radius2
-    if (radius2 .lt. 40**2) then
-      userSLBload = 1.0 / exp((40**2 - radius2) / 40**2)
+    userSLBload = psrrad**2 / radius2
+    if (radius2 .lt. psrrad**2) then
+      userSLBload = 1.0 / exp((psrrad**2 - radius2) / psrrad**2)
     end if
     return
   end function
@@ -126,7 +139,7 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    real    :: bx0, by0, bz0
+    real    :: bx0, by0, bz0, x_, y_, z_
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
@@ -137,11 +150,17 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          call getBfield(0, 0.0, REAL(i_glob), REAL(j_glob) + 0.5, REAL(k_glob) + 0.5, bx0, by0, bz0)
+
+          x_ = REAL(i_glob);  y_ = REAL(j_glob) + 0.5;  z_ = REAL(k_glob) + 0.5
+          call getBfield(0, 0.0, x_, y_, z_, bx0, by0, bz0)
           bx(i, j, k) = bx0
-          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob), REAL(k_glob) + 0.5, bx0, by0, bz0)
+
+          x_ = REAL(i_glob) + 0.5;  y_ = REAL(j_glob);  z_ = REAL(k_glob) + 0.5
+          call getBfield(0, 0.0, x_, y_, z_, bx0, by0, bz0)
           by(i, j, k) = by0
-          call getBfield(0, 0.0, REAL(i_glob) + 0.5, REAL(j_glob) + 0.5, REAL(k_glob), bx0, by0, bz0)
+
+          x_ = REAL(i_glob) + 0.5;  y_ = REAL(j_glob) + 0.5;  z_ = REAL(k_glob)
+          call getBfield(0, 0.0, x_, y_, z_, bx0, by0, bz0)
           bz(i, j, k) = bz0
         end do
       end do
@@ -150,6 +169,13 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
@@ -179,6 +205,20 @@ contains
     ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
     bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
   end subroutine userExternalFields
+
+  #ifdef GCA
+    logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
+      implicit none
+      integer(kind=2), intent(in), optional   :: xi, yi, zi
+      real, intent(in), optional              :: dx, dy, dz, u, v, w
+      real, intent(in), optional              :: weight
+      real :: rr
+      rr = sqrt((real(xi + this_meshblock%ptr%x0) + dx - xc_g)**2 +&
+              & (real(yi + this_meshblock%ptr%y0) + dy - yc_g)**2 +&
+              & (real(zi + this_meshblock%ptr%z0) + dz - zc_g)**2)
+      userEnforceGCA = (rr .lt. psr_radius + psr_gca_enforce_rad)
+    end function userEnforceGCA
+  #endif
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
@@ -187,14 +227,18 @@ contains
     integer, optional, intent(in) :: step
     integer                       :: s, ti, tj, tk, p
     real                          :: x_g, y_g, z_g, r_g
-    integer                       :: n_part, n
+    integer                       :: n_part, n, sign
     real                          :: x_loc, y_loc, z_loc, dx, dy, dz
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
-    real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig
+    real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig, rmax, rmin
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
     logical                       :: dummy_flag
+    #ifdef GCA
+      real                          :: dummy_, vE_x, vE_y, vE_z
+      real                          :: e0_SQR, b0_SQR
+    #endif
 
     nGJ = 2 * psr_omega0 * B_norm / (CC * abs(unit_ch))
     sigma_nGJ = sigma * ppc0 / nGJ
@@ -279,6 +323,8 @@ contains
         if (dummy_flag) then
           call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
           dummy_flag = .true.
+
+          ! limiter on sigma
           if ((sigGJ_limiter .ne. 0) .and. dummy_flag) then
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
             density = lg_arr(xi, yi, zi)
@@ -291,36 +337,85 @@ contains
             dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter)
           end if
 
+          ! limiter on density
           if ((nGJ_limiter .ne. 0) .and. dummy_flag) then
             density = lg_arr(xi, yi, zi)
             dummy_flag = (density .lt. nGJ * nGJ_limiter)
           end if
 
+          ! limiter on j_||
           if ((jdotb_limiter .ne. 0) .and. dummy_flag) then
             call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-            j_dot_b = (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
-            dummy_flag = ((abs(j_dot_b) * B_norm .gt. jdotb_limiter * nGJ * CC * unit_ch) .or. (step .lt. 0.1 * psr_period))
+            j_dot_b = B_norm * (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
+            ! local GJ density
+            density = 2 * psr_omega0 * B_norm * bz0 / CC
+            dummy_flag = ((abs(j_dot_b) .gt. jdotb_limiter * abs(density) * CC) .or. (step .lt. 50))
+            ! j_dot_b = (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
+            ! dummy_flag = ((abs(j_dot_b) * B_norm .gt. jdotb_limiter * nGJ * CC * unit_ch) .or. (step .lt. 0.1 * psr_period))
           end if
 
           if (dummy_flag) then
-            ! kick along local b-field
+            ! kick along local b-field:
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
             b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
+            sign = 1
             if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
+              sign = -1
               bx0 = -bx0; by0 = -by0; bz0 = -bz0
             end if
             nx = bx0 / b_sqr
             ny = by0 / b_sqr
             nz = bz0 / b_sqr
-            u_ = nx * prtl_kick
-            v_ = ny * prtl_kick
-            w_ = nz * prtl_kick
+
             weight = inj_mult * nGJ / ppc
-            call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
-            call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
-            ! call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-            ! call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
+
+            #ifndef GCA
+              u_ = nx * prtl_kick
+              v_ = ny * prtl_kick
+              w_ = nz * prtl_kick
+              call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+              call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+            #else
+              ! kick along ExB:
+              call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+              call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+              b0_SQR = bx0**2 + by0**2 + bz0**2
+              e0_SQR = ex0**2 + ey0**2 + ez0**2
+
+              dummy_ = 1.0 / (b0_SQR + TINYFLD)
+
+              vE_x = (bz0 * ey0 - by0 * ez0) * dummy_
+              vE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
+              vE_z = (by0 * ex0 - bx0 * ey0) * dummy_
+
+              dummy_ = 1.0 / sqrt(abs(1.0 - vE_x**2 - vE_y**2 - vE_z**2) + TINYFLD)
+
+              u_ = vE_x * dummy_
+              v_ = vE_y * dummy_
+              w_ = vE_z * dummy_
+
+              dummy_ = sqrt(abs(prtl_kick**2 - dummy_**2))
+
+              u_ = u_ + nx * dummy_
+              v_ = v_ + ny * dummy_
+              w_ = w_ + nz * dummy_
+
+              call createParticleFromAttributes(1, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                & xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                & dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                & u=u_, v=v_, w=w_,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
+                                                & ind=species(1)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+              species(1)%cntr_sp = species(1)%cntr_sp + 1
+              call createParticleFromAttributes(2, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                & xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                & dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                & u=u_, v=v_, w=w_,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
+                                                & ind=species(2)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+              species(2)%cntr_sp = species(2)%cntr_sp + 1
+            #endif
           end if
         end if
       end do
@@ -347,6 +442,31 @@ contains
             end do
           end do
         end do
+      end do
+    end if
+
+    rmax = MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) * 0.5 - ds_abs / 2.0
+    rmin = CC / psr_omega0
+    ppc = 0.5 * fakepp_ppc
+    weight = fakepp_density * inj_mult * nGJ / ppc
+    ! n_part = 8 * ppc * fakepp_height * M_PI * rmax**2
+    n_part = this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc
+
+    if ((fakepp_density .gt. 0) .and. (step .gt. fakepp_timestep)) then
+      do n = 1, n_part
+        z_loc = random(dseed) * this_meshblock%ptr%sz
+        z_g = z_loc + this_meshblock%ptr%z0 - zc_g
+        if (random(dseed) .lt. exp(-0.5 * (z_g / fakepp_height)**2) * (z_g / fakepp_height)**2) then
+          x_loc = random(dseed) * this_meshblock%ptr%sx
+          y_loc = random(dseed) * this_meshblock%ptr%sy
+          x_g = x_loc + this_meshblock%ptr%x0
+          y_g = y_loc + this_meshblock%ptr%y0
+          rr = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2)
+          if ((rr .gt. rmin) .and. (rr .lt. rmax)) then
+            call injectParticleLocally(4, x_loc, y_loc, z_loc, 0.0, 0.0, 0.0, weight=weight)
+            call injectParticleLocally(5, x_loc, y_loc, z_loc, 0.0, 0.0, 0.0, weight=weight)
+          end if
+        end if
       end do
     end if
   end subroutine userParticleBoundaryConditions
@@ -446,6 +566,34 @@ contains
     real                          :: scaleEpar, scaleEperp, scaleBperp, scaleBpar, scale
     real                          :: vx, vy, vz, ex_dip, ey_dip, ez_dip
     real                          :: shift_E, e_int_dot_r, e_dip_dot_r
+    real                          :: rr, x_, y_, z_, rlimit
+
+    ! rlimit = step * CC + psr_radius + shell_width + inj_dr
+    ! if (rlimit .lt. 0.6 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz)) then
+    !   ! check if the sphere with radius `rlimit` intersects the current meshblock ...
+    !   ! ... this additional step should speed things up a bit
+    !   x_ = max(REAL(this_meshblock%ptr%x0), min(xc_g, REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx - 1)))
+    !   y_ = max(REAL(this_meshblock%ptr%y0), min(yc_g, REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy - 1)))
+    !   z_ = max(REAL(this_meshblock%ptr%z0), min(zc_g, REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz - 1)))
+    !   rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
+    !   if (rr .le. rlimit + 2) then
+    !     ! damp E-field inside a sphere
+    !     do i = 0, this_meshblock%ptr%sx - 1
+    !       i_glob = i + this_meshblock%ptr%x0
+    !       do j = 0, this_meshblock%ptr%sy - 1
+    !         j_glob = j + this_meshblock%ptr%y0
+    !         do k = 0, this_meshblock%ptr%sz - 1
+    !           k_glob = k + this_meshblock%ptr%z0
+    !           x_ = REAL(i_glob);  y_ = REAL(j_glob);  z_ = REAL(k_glob)
+    !           rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
+    !           if (rr .gt. rlimit) then
+    !             ex(i, j, k) = 0;  ey(i, j, k) = 0;  ez(i, j, k) = 0
+    !           end if
+    !         end do
+    !       end do
+    !     end do
+    !   end if
+    ! end if
 
     if (present(updateE)) then
       updateE_ = updateE

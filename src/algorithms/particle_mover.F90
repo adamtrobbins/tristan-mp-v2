@@ -8,6 +8,7 @@ module m_mover
   use m_particles
   use m_fields
   use m_userfile
+  use m_exchangearray, only: exchangeArray
 
   ! extra physics
   #ifdef RADIATION
@@ -26,9 +27,7 @@ contains
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:),&
                                            & pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     real                                  :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
-    real                                  :: u0, v0, w0, u1, v1, w1, dummy_, dx, dy, dz
-    real                                  :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
-    real                                  :: u_init, v_init, w_init, du_rad, dv_rad, dw_rad
+    real                                  :: u0, v0, w0, u1, v1, w1, dummy_, dummy2_, dx, dy, dz
     logical                               :: dummy_flag
     real                                  :: ex_ext, ey_ext, ez_ext
     real                                  :: bx_ext, by_ext, bz_ext
@@ -43,7 +42,7 @@ contains
       integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
       integer, pointer, contiguous          :: pt_proc(:)
       real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
-      real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:)
+      real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:), pt_u_par(:), pt_u_perp(:)
       integer(kind=2)                       :: xi_, yi_, zi_
       real                                  :: x_, y_, z_, dx_, dy_, dz_, Gamma_, mu_
       real                                  :: x_n1, y_n1, z_n1, x_n, y_n, z_n
@@ -55,7 +54,15 @@ contains
       real                                  :: vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR
       real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n
       real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
+      logical                               :: doBorisQ
       integer                               :: iter
+    #endif
+
+    #ifdef RADIATION
+      integer(kind=2)     :: xi_rad, yi_rad, zi_rad
+      real                :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
+      real                :: u_init, v_init, w_init, dx_rad, dy_rad, dz_rad
+      integer, pointer, contiguous    :: pt_ind(:)
     #endif
 
     iy = this_meshblock%ptr%sx + 2 * NGHOST
@@ -103,7 +110,7 @@ contains
                 ! ... inverse energy: `over_e_temp` ...
                 ! ... reads the velocities from: `pt_*(p)` ...
                 ! ... and updates the particle position `pt_*(p)`
-                include "boris_update.F"
+                include "position_update.F"
               end do ! p
               pt_xi => null();  pt_yi => null();  pt_zi => null()
               pt_dx => null();  pt_dy => null();  pt_dz => null()
@@ -143,12 +150,19 @@ contains
                 pt_u_eff => species(s)%prtl_tile(ti, tj, tk)%u_eff
                 pt_v_eff => species(s)%prtl_tile(ti, tj, tk)%v_eff
                 pt_w_eff => species(s)%prtl_tile(ti, tj, tk)%w_eff
+
+                pt_u_par => species(s)%prtl_tile(ti, tj, tk)%u_par
+                pt_u_perp => species(s)%prtl_tile(ti, tj, tk)%u_perp
+              #endif
+
+              #if defined(RADIATION)
+                pt_ind => species(s)%prtl_tile(ti, tj, tk)%ind
               #endif
 
               ! routine for massive particles
               q_over_m = species(s)%ch_sp / species(s)%m_sp
               #if !defined(RADIATION) && !defined(EXTERNALFIELDS) && !defined(GCA)
-              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
+              !$omp simd private(lind, dummy_, dummy2_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
@@ -156,7 +170,7 @@ contains
               !dir$ vector aligned
               #endif
               #ifdef GCA
-              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
+              !$omp simd private(lind, dummy_, dummy2_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
@@ -171,7 +185,7 @@ contains
               !$omp  vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR,&
               !$omp  vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n,&
               !$omp  vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1,&
-              !$omp  iter)
+              !$omp  iter, doBorisQ)
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -200,12 +214,16 @@ contains
                 #endif
 
                 #ifdef RADIATION
+                  ! save fields at time `t = n`
                   ex_rad = ex0; ey_rad = ey0; ez_rad = ez0
                   bx_rad = bx0; by_rad = by0; bz_rad = bz0
 
-                  u_init = pt_u(p)
-                  v_init = pt_v(p)
-                  w_init = pt_w(p)
+                  ! save velocities before the push
+                  u_init = pt_u(p); v_init = pt_v(p); w_init = pt_w(p)
+
+                  ! save coordinates before the push
+                  dx_rad = pt_dx(p); dy_rad = pt_dy(p); dz_rad = pt_dz(p)
+                  xi_rad = pt_xi(p); yi_rad = pt_yi(p); zi_rad = pt_zi(p)
                 #endif
 
                 #ifndef GCA
@@ -215,14 +233,18 @@ contains
                   ! ... the field quantities: `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0` ...
                   ! ... and the velocities: `u0`, `v0`, `w0` ...
                   ! ... and returns the updated velocities `u0`, `v0`, `w0`
-                  include "boris_push.F"
+                  #ifdef VAY
+                    include "vay_push.F"
+                  #else
+                    include "boris_push.F"
+                  #endif
                   pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
                   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
                   ! this "function" takes
                   ! ... inverse energy: `over_e_temp` ...
                   ! ... reads the velocities from: `pt_*(p)` ...
                   ! ... and updates the particle position `pt_*(p)`
-                  include "boris_update.F"
+                  include "position_update.F"
                 #else
                   ! . . . . hybrid Boris/GCA pusher . . . .
                   ! this "function"
@@ -236,20 +258,20 @@ contains
                 #ifdef RADIATION
                   #ifdef SYNCHROTRON
                     if (species(s)%cool_sp) then
-                      call particleRadiateSync(s,&
+                      call particleRadiateSync(timestep, s,&
                                              & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                             & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                             & pt_wei(p),&
-                                             & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                                             & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
+                                             & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad,&
+                                             & index=pt_ind(p), proc=pt_proc(p))
                     end if
                   #endif
                   #ifdef INVERSECOMPTON
                     if (species(s)%cool_sp) then
-                      call particleRadiateIC(s,&
+                      call particleRadiateIC(timestep, s,&
                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
-                                           & pt_dx(p), pt_dy(p), pt_dz(p), pt_xi(p), pt_yi(p), pt_zi(p),&
-                                           & pt_wei(p),&
-                                           & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad)
+                                           & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
+                                           & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad,&
+                                           & index=pt_ind(p))
                     end if
                   #endif
                 #endif
@@ -267,7 +289,14 @@ contains
                 pt_xi_past => null();   pt_yi_past => null();   pt_zi_past => null()
                 pt_dx_past => null();   pt_dy_past => null();   pt_dz_past => null()
                 pt_u_eff => null();     pt_v_eff => null();     pt_w_eff => null()
+
+                pt_u_par => null();     pt_u_perp => null()
               #endif
+
+              #if defined(RADIATION)
+                pt_ind => null()
+              #endif
+
             end do ! tk
           end do ! tj
         end do ! ti
