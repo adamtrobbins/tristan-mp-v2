@@ -25,7 +25,7 @@ modules = ['intel-mkl/2017.4/5/64',
             'hdf5/intel-17.0/intel-mpi/1.10.0']
 
 # global variables
-outdir = "/scratch/gpfs/hakobyan/tristan_2/test"
+outdir = "test/path"
 
 codedir = os.getcwd()
 testdir = 'test_0'
