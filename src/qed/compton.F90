@@ -300,11 +300,11 @@ contains
     ! note: f_KN is normalized to sigma_T
     if (eph_RF .lt. Thomson_lim) then
       KleinNishina = .false.  ! use classical Thomson cross-section
-      f_KN = 1.0d0
+      f_KN = (8.0d0 / 3.0d0)
     else if (eph_RF .lt. low_eph_lim) then
       ! correctly handle the eph_RF << 1 limit using 2nd order expansion of f_KN:
       KleinNishina = .true.  ! Klein-Nishina
-      f_KN = 1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2
+      f_KN = (1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2) * (8.0d0 / 3.0d0)
     else
       KleinNishina = .true.
       over_eph_RF = 1.0d0 / eph_RF
