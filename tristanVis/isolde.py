@@ -1,9 +1,9 @@
 import struct
 import numpy as np
-import h5py
 import os
 
 def getParticles(fname):
+  import h5py
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
     species = np.unique([int(key.split('_')[1]) for key in keys])
@@ -18,7 +18,7 @@ def getParticles(fname):
   return data
 
 def getFields(fname, nodes = False):
-  # hdf5 file
+  import h5py
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
     data = {}
@@ -27,6 +27,7 @@ def getFields(fname, nodes = False):
   return data
 
 def getParameters(fname):
+  import h5py
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
     params = {}
@@ -161,11 +162,13 @@ class Spectra:
         self.__data['ngca' + str(s)] = np.transpose(raw['ngca' + str(s)])
 
 def getSpectra(fname, radiation = False, gca = False):
+  import h5py
   with h5py.File(fname, 'r') as file:
     spec = Spectra(file, radiation, gca)
   return spec
 
 def getDomains(fname):
+  import h5py
   with h5py.File(fname, 'r') as file:
     data = {}
     for k in file.keys():
