@@ -4,7 +4,7 @@ For detailed tutorials and code description please visit our [wiki](https://ntol
 
 ### Branch policy
 
-To prevent `v2` from growing to become the Lovecraftian monster it once was we highly encourage both users and developers to follow the guidlines on branching politics.
+To prevent `v2` from growing to become the Lovecraftian monster it once was we highly encourage both users and developers to follow the guidlines on branching policies.
 
 * For development:
     * all the new features shall be added to `dev/<feature>` branch;
