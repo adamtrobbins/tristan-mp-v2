@@ -18,6 +18,11 @@ The `dev/main` branch is the most up-to-date **tested** version of the code, and
 
 ### Latest updates
 
+We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>`, increment the:
+- `MAJOR` version when you make incompatible changes,
+- `MINOR` version when you add functionality in a backwards compatible manner, and
+- `PATCH` version when you make backwards compatible bug fixes.
+
 * `v2.0.1` __Jul 2020__
   * Compton scattering and GCA pusher added
   * Slice outputs for 3d added
