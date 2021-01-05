@@ -18,12 +18,12 @@ The `dev/main` branch is the most up-to-date **tested** version of the code, and
 
 ### Latest updates
 
-* `v2.0.1` [Jul 2020]
+* `v2.0.1` __Jul 2020__
   * Compton scattering and GCA pusher added
   * Slice outputs for 3d added
   * Particle momentum binning improved for downsampling
   * Minor bugs fixed
-* `v2.1` [Dec 2020]
+* `v2.1` __Dec 2020__
   * Pair annihilation module (+ advanced test for all QED modules coupled)
   * Merging of charged particles
   * Particle payloads
@@ -34,6 +34,6 @@ The `dev/main` branch is the most up-to-date **tested** version of the code, and
   * Major restructuring of output modules
   * Major restructuring of QED modules
   * Minor issues fixed for GCA pusher
-* 2.1.1 [Jan 2021]
+* `v2.1.1` __Jan 2021__
   * Patched the Compton cross section normalization
   * Minor bug fixes
