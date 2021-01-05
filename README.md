@@ -34,3 +34,6 @@ The `dev/main` branch is the most up-to-date **tested** version of the code, and
   * Major restructuring of output modules
   * Major restructuring of QED modules
   * Minor issues fixed for GCA pusher
+* 2.1.1 [Jan 2021]
+  * Patched the Compton cross section normalization
+  * Minor bug fixes
