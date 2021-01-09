@@ -1,5 +1,10 @@
 #include "../src/defs.F90"
 
+! Configuration for this userfile:
+! ```
+!   $ python configure.py -3d --user=user_psr -slb --gca=2 --radiation=sync -debug -absorb
+! ```
+
 module m_userfile
   use m_globalnamespace
   use m_aux
