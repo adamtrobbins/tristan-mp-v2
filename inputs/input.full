@@ -213,6 +213,7 @@
 
   emit_gamma_syn = 10           # determines synchrotron photon peak energy [10]
   gamma_syn     = 5             # determines the synchrotron cooling rate [10]
+	emit_gamma_ic = 10            # determines IC photon peak energy [10]
   gamma_ic      = 5             # determines the IC cooling rate [10]
   beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic` [0.1]
   photon_sp     = 3             # emit photons to species (`emit` flag) [3]
