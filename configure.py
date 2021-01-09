@@ -25,7 +25,11 @@ rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 parser.add_argument('-perseus',
                     action='store_true',
                     default=False,
-                    help='configure for `Perseus` cluster.')
+                    help='configure for the `Perseus` cluster.')
+parser.add_argument('-frontera',
+                    action='store_true',
+                    default=False,
+                    help='configure for the `Frontera` cluster.')
 
 parser.add_argument('-intel',
                     action='store_true',
@@ -191,12 +195,21 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 
 # specific cluster:
 specific_cluster = False
+clustername = ''
 if args['perseus']:
   specific_cluster = True
   args['intel'] = True
   args['mpi'] = True
   args['ifport'] = True
   args['avx2'] = True
+  clustername = 'Perseus'
+elif args['frontera']:
+  specific_cluster = True
+  args['intel'] = True
+  args['mpi08'] = True
+  args['ifport'] = True
+  args['avx512'] = True
+  clustername = 'Frontera'
 
 # compilation command
 if args['hdf5']:
@@ -312,8 +325,7 @@ with open(makefile_output, 'w') as current_file:
 print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
 if (specific_cluster):
-  if (args['perseus']):
-    print('  Cluster configurations:  `Perseus`' )
+  print('  Cluster configurations:  `{}`'.format(clustername) )
 
 print('SETUP ........................................................................')
 print('  Userfile:                ' + makefile_options['USER_FILE'])
