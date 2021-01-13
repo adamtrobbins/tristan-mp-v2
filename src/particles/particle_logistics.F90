@@ -40,6 +40,8 @@ contains
     integer                                 :: ti, tj, tk
     integer, intent(in)                     :: ind, proc
     real                                    :: weight
+    character(len=STR_MAX)                  :: dummy_string
+
     ti = 1; tj = 1; tk = 1
     #if defined(oneD) || defined (twoD) || defined (threeD)
       ti = FLOOR(REAL(xi) / REAL(species(s)%tile_sx)) + 1
@@ -84,7 +86,8 @@ contains
       end if
     #endif
     if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .eq. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-      call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes')
+      write(dummy_string,'(I5)') s
+      call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes for species #' // trim(dummy_string))
     end if
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
     p = species(s)%prtl_tile(ti, tj, tk)%npart_sp

@@ -39,7 +39,7 @@ def getSlice(output, proj, step):
   if (output[-1] != '/'):
     output += '/'
   proj, shift = proj.split('=')
-  return getFields(output + '/slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
+  return getFields(output + 'slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
 
 def convertToXarray(fields,
                     coordinateTransformation = {'x': lambda f: f,

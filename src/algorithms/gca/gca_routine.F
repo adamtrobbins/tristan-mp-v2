@@ -107,7 +107,7 @@ doBorisQ = (doBorisQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,& 
 
 #ifdef DEBUG
   if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
-    print *, 'bad particle!!!!', pt_proc(p), s, pt_ind(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
+    print *, 'bad particle!!!!', s, sqrt(1.0 + u0**2 + v0**2 + w0**2)
     call throwError('ERROR: runaway particle found!')
   end if
 #endif
