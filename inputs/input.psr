@@ -123,3 +123,6 @@
 
   fakepp_density  = 1
   fakepp_timestep = 1600
+	fakepp_height   = 10          # scale height for fake pp [50]
+	fakepp_ppc      = 0.1					# characteristic ppc for fake injection [1]
+	fakepp_rmin     = 2.0         # min radius (in LC) for fake pp [1]

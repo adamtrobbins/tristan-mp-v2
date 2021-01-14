@@ -97,3 +97,5 @@
   current_width   = 20
   injector_sx     = 150
   injector_betax  = 0.99999
+	open_boundaries = -1          # timestep to open boundaries (-1 = keep periodic) [-1]
+	perturb         = 0           # perturb the middle of the current sheet to trigger [0]

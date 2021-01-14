@@ -25,7 +25,7 @@ module m_userfile
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
   real, private     :: nGJ_limiter, sigGJ_limiter, jdotb_limiter
-  real, private     :: fakepp_density, fakepp_height, fakepp_ppc
+  real, private     :: fakepp_density, fakepp_height, fakepp_ppc, fakepp_rmin
   integer, private  :: fakepp_timestep
   #ifdef GCA
     real, private     :: psr_gca_enforce_rad
@@ -85,6 +85,7 @@ contains
     call getInput('problem', 'fakepp_timestep', fakepp_timestep, 0)
     call getInput('problem', 'fakepp_height', fakepp_height, 50.0)
     call getInput('problem', 'fakepp_ppc', fakepp_ppc, 1.0)
+    call getInput('problem', 'fakepp_rmin', fakepp_rmin, 1.0)
 
     #ifdef GCA
       call getInput('problem', 'gca_radius', psr_gca_enforce_rad)
@@ -451,7 +452,7 @@ contains
     end if
 
     rmax = MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) * 0.5 - ds_abs / 2.0
-    rmin = CC / psr_omega0
+    rmin = fakepp_rmin * (CC / psr_omega0)
     ppc = 0.5 * fakepp_ppc
     weight = fakepp_density * inj_mult * nGJ / ppc
     ! n_part = 8 * ppc * fakepp_height * M_PI * rmax**2
