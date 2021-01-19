@@ -45,7 +45,7 @@ def convertToXarray(fields,
                     coordinateTransformation = {'x': lambda f: f,
                                                 'y': lambda f: f,
                                                 'z': lambda f: f},
-                    additionalVariables = {}):
+                    additionalVariables = {}, mask = None):
   import xarray as xr
   import numpy as np
   np.seterr(divide='ignore', invalid='ignore')
@@ -64,6 +64,7 @@ def convertToXarray(fields,
     if (len(xr_axes) != 2):
       raise ValueError("Incorrect `xr_axes`.")
     x1, x2 = xr_axes
+    xr_axes = xr_axes[::-1]
     xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,:]))
     xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][:,0]))
   elif dimension == 3:
@@ -76,7 +77,22 @@ def convertToXarray(fields,
     xr_data[k] = (xr_axes, fields[k][:])
   for k in additionalVariables.keys():
     xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:])
+  if mask is not None:
+    xr_data = xr_data.where(mask(xr_data))
   return xr_data
+
+def getTimeAverageData(steps, loadScript):
+  data = {}
+  for step in steps:
+    fields = loadScript(step)
+    for key in fields.keys():
+      if not (key in data.keys()):
+        data[key] = fields[key]
+      else:
+        data[key] += fields[key]
+  for fld in data.keys():
+    data[fld] /= len(steps)
+  return data
 
 # usage example for 2D uniform grid:
 # ```
