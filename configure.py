@@ -333,7 +333,7 @@ print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
-print('  Particle pusher:         ' + ('Boris/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ('Vay' if args['vay'] else 'Boris')))
+print('  Particle pusher:         ' + ('Vay' if args['vay'] else 'Boris') + ('/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ''))
 print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
 
 print('PHYSICS ......................................................................')

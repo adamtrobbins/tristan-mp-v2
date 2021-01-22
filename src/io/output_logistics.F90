@@ -309,7 +309,7 @@ contains
                       & gca_spectra(nspec + s, spec_x_index, spec_y_index, spec_z_index, spec_index) +&
                                                               & species(s)%prtl_tile(ti, tj, tk)%weight(p)
                 else
-                  ! particle doing BORIS
+                  ! particle doing normal push
                   gca_spectra(s, spec_x_index, spec_y_index, spec_z_index, spec_index) =&
                       & gca_spectra(s, spec_x_index, spec_y_index, spec_z_index, spec_index) +&
                                                               & species(s)%prtl_tile(ti, tj, tk)%weight(p)

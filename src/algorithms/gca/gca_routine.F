@@ -81,7 +81,7 @@ if (pt_proc(p) .ge. mpi_size) then
     uperp_g = 0.0
   end if
 else
-  ! particle was doing Boris last timestep
+  ! particle was doing normal push last timestep
   u_par = bpar_x * u0 + bpar_y * v0 + bpar_z * w0
 
   uperp_g_x = u0 - u_par * bpar_x - vE_x * Gamma_
@@ -96,13 +96,13 @@ else
   end if
 end if
 
-doBorisQ = ((.not. species(s)%gca_sp) .or.&                                                   ! if species cannot do GCA
+doNormalPushQ = ((.not. species(s)%gca_sp) .or.&                                                   ! if species cannot do GCA
           & (bb0 * bb0_n .eq. 0.0) .or.&                                                      ! if B = 0
           & ((CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)) .ge. gca_rhomin) .or.&         ! if Larmor too large
           & (uperp_g / Gamma_ .gt. gca_vperpmax) .or.&                                        ! if uperp_g too large
           & (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0))                                          ! of E > B * fraction
 
-doBorisQ = (doBorisQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&               ! GCA enforced by the user ...
+doNormalPushQ = (doNormalPushQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&               ! GCA enforced by the user ...
                                                & u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
 
 #ifdef DEBUG
@@ -112,13 +112,17 @@ doBorisQ = (doBorisQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,& 
   end if
 #endif
 
-! GCA/Boris condition . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-if (doBorisQ) then
+! GCA/normal push condition . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+if (doNormalPushQ) then
   if (pt_proc(p) .ge. mpi_size) pt_proc(p) = pt_proc(p) - 2 * mpi_size
-  ! use Boris here
+  ! use normal push here
   ex0 = ex0_n; ey0 = ey0_n; ez0 = ez0_n
   bx0 = bx0_n; by0 = by0_n; bz0 = bz0_n
-  include "boris_push.F"
+  #ifndef VAY
+    include "boris_push.F"
+  #else
+    include "vay_push.F"
+  #endif
   pt_u(p) = u0;     pt_v(p) = v0;     pt_w(p) = w0
   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
   ! compute "effective" velocities for the deposit
@@ -312,7 +316,7 @@ else
   ! save par/perp velocities
   pt_u_par(p) = u_par
   pt_u_perp(p) = uperp_g
-end if ! boris/gca criterion
+end if ! normal pusher / gca criterion
 ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 
@@ -349,8 +353,8 @@ end if ! boris/gca criterion
 !     print *, 'rhoL_real:', CC**2 * uperp_g / (abs(q_over_m) * bb0 * B_norm)
 !     print *, 'omegaC_real:', abs(q_over_m) * bb0 * B_norm / (CC * uperp_g)
 !
-!     if (doBorisQ) then
-!       print *, 'will do Boris now'
+!     if (doNormalPushQ) then
+!       print *, 'will do normal push now'
 !     else
 !       print *, 'will do GCA now'
 !     end if

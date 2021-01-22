@@ -54,7 +54,7 @@ contains
       real                                  :: vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR
       real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n
       real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
-      logical                               :: doBorisQ
+      logical                               :: doNormalPushQ
       integer                               :: iter
     #endif
 
@@ -185,7 +185,7 @@ contains
               !$omp  vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR,&
               !$omp  vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n,&
               !$omp  vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1,&
-              !$omp  iter, doBorisQ)
+              !$omp  iter, doNormalPushQ)
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -227,16 +227,16 @@ contains
                 #endif
 
                 #ifndef GCA
-                  ! . . . . simple Boris pusher . . . .
+                  ! . . . . simple Boris/Vay pusher . . . .
                   u0 = pt_u(p); v0 = pt_v(p); w0 = pt_w(p)
                   ! this "function" takes
                   ! ... the field quantities: `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0` ...
                   ! ... and the velocities: `u0`, `v0`, `w0` ...
                   ! ... and returns the updated velocities `u0`, `v0`, `w0`
-                  #ifdef VAY
-                    include "vay_push.F"
-                  #else
+                  #ifndef VAY
                     include "boris_push.F"
+                  #else
+                    include "vay_push.F"
                   #endif
                   pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
                   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
