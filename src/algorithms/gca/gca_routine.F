@@ -96,13 +96,13 @@ else
   end if
 end if
 
-doNormalPushQ = ((.not. species(s)%gca_sp) .or.&                                                   ! if species cannot do GCA
+doNormalPushQ = ((.not. species(s)%gca_sp) .or.&                                              ! if species cannot do GCA
           & (bb0 * bb0_n .eq. 0.0) .or.&                                                      ! if B = 0
           & ((CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)) .ge. gca_rhomin) .or.&         ! if Larmor too large
           & (uperp_g / Gamma_ .gt. gca_vperpmax) .or.&                                        ! if uperp_g too large
           & (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0))                                          ! of E > B * fraction
 
-doNormalPushQ = (doNormalPushQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&               ! GCA enforced by the user ...
+doNormalPushQ = (doNormalPushQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&     ! GCA enforced by the user ...
                                                & u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
 
 #ifdef DEBUG
@@ -299,7 +299,7 @@ else
   bpar_y = by0 * dummy_
   bpar_z = bz0 * dummy_
 
-  Gamma_ = gammaE * sqrt(1.0 + u_par**2 + mu_ * bb0 * gammaE)
+  Gamma_ = gammaE * sqrt(1.0 + u_par**2 + uperp_g**2)
 
   if (.not. gca_enforce_mu0) then
     ! recover cartesian velocities
@@ -318,53 +318,3 @@ else
   pt_u_perp(p) = uperp_g
 end if ! normal pusher / gca criterion
 ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-
-
-! ! FOR PARTICLE DIAGNOSTICS >>>>
-! if (gca_follow) then
-!   if (((pt_proc(p) .eq. gca_follow_proc) .or. (pt_proc(p) .eq. gca_follow_proc + 2 * mpi_size)) .and.&
-!     & (s .eq. gca_follow_sp) .and.&
-!     & (pt_ind(p) .eq. gca_follow_ind)) then
-!     print *, 'mu [prev]:', mu_
-!     print *, 'uperp_g [prev]:', uperp_g
-!     print *, 'uperp_g [new]:', sqrt(mu_ * bb0 * gammaE)
-!     print *, '-----------------------------------------------------'
-!   end if
-! end if
-! ! <<<< FOR PARTICLE DIAGNOSTICS
-
-! ! FOR PARTICLE DIAGNOSTICS >>>>
-! if (gca_follow) then
-!   if (((pt_proc(p) .eq. gca_follow_proc) .or. (pt_proc(p) .eq. gca_follow_proc + 2 * mpi_size)) .and.&
-!     & (s .eq. gca_follow_sp) .and.&
-!     & (pt_ind(p) .eq. gca_follow_ind)) then
-!     dummy_ = sqrt(1.0 + u0**2 + v0**2 + w0**2)
-!     print *, 'particle...', (pt_proc(p) .gt. mpi_size)
-!     print *, 'gamma:', dummy_
-!     print *, 'E, B:', sqrt(e0_SQR), bb0, sqrt(e0_SQR) / bb0
-!     print *, 'radius:', sqrt(real((xi_ + dx_ + this_meshblock%ptr%x0 - 280.0)**2 +&
-!                                 & (yi_ + dy_ + this_meshblock%ptr%y0 - 280.0)**2 +&
-!                                 & (zi_ + dz_ + this_meshblock%ptr%z0 - 280.0)**2))
-!
-!     print *, 'upar, uperp, uperp/gamma, gammaE * vE:',&
-!                   & u_par, uperp_g, uperp_g / Gamma_, gammaE * sqrt(vE_x**2 + vE_y**2 + vE_z**2)
-!     print *, 'mu:', uperp_g**2 / (bb0 * gammaE)
-!     print *, 'rhoL:', CC**2 * dummy_ / (abs(q_over_m) * bb0 * B_norm)
-!     print *, 'rhoL_real:', CC**2 * uperp_g / (abs(q_over_m) * bb0 * B_norm)
-!     print *, 'omegaC_real:', abs(q_over_m) * bb0 * B_norm / (CC * uperp_g)
-!
-!     if (doNormalPushQ) then
-!       print *, 'will do normal push now'
-!     else
-!       print *, 'will do GCA now'
-!     end if
-!
-!     print *, '-----------------------------------------------------'
-!   end if
-! end if
-!
-! if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
-!   print *, 'bad particle!!!!', pt_proc(p), s, pt_ind(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
-!   stop
-! end if
-! ! <<<< FOR PARTICLE DIAGNOSTICS
