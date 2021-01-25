@@ -87,7 +87,11 @@ contains
     #endif
     if (species(s)%prtl_tile(ti, tj, tk)%npart_sp .eq. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
       write(dummy_string,'(I5)') s
-      call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes for species #' // trim(dummy_string))
+      if (resize_tiles) then
+        call reallocTileSize(species(s)%prtl_tile(ti, tj, tk), .true.)
+      else
+        call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes for species #' // trim(dummy_string))
+      end if
     end if
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
     p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
