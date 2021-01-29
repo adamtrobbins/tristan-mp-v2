@@ -58,7 +58,7 @@ def cart2sph(ax, ay, az, x, y, z, xc, yc, zc):
 
 class Fields:
   __slots__ = ("dataset",)
-  vectors = ['e', 'b', 'j', 'curlB', 'v', 'ExB']
+  vectors = ['e', 'b', 'j', 'curlB', 'vel', 'ExB']
   specbased = ['dens', 'dgca', 'enrg', 'momX', 'momY', 'momZ']
   sph = False
   def __init__(self, ds, xyz0):

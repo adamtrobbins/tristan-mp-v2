@@ -9,7 +9,7 @@ module m_outputlogistics
   use m_particles
   use m_fields
   use m_readinput, only: getInput
-  use m_helpers, only: computeDensity, computeMomentum, computeNpart
+  use m_helpers, only: computeDensity, computeMomentum, computeNpart, computeFluidVelocity, computeFluidDensity
   use m_helpers, only: interpFromFaces, interpFromEdges
   #ifdef GCA
     use m_helpers, only: computeDensityGCA
@@ -183,9 +183,8 @@ contains
     ! initialize domain output variables
     !   FIX1: maybe add # of particles per domain
     n_dom_vars = 6
-    dom_vars(1 : 6) = (/'x0   ', 'y0   ', 'z0   ',&
-                      & 'sx   ', 'sy   ', 'sz   '/)
-
+    dom_vars(1 : n_dom_vars) = (/'x0   ', 'y0   ', 'z0   ',&
+                               & 'sx   ', 'sy   ', 'sz   '/)
   end subroutine prepareOutput
 
   subroutine prepareSpectraForOutput()
@@ -391,12 +390,13 @@ contains
       #endif
     end do
 
-    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 12) =&
+    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 15) =&
                                  & (/'ex   ', 'ey   ', 'ez   ',&
                                    & 'bx   ', 'by   ', 'bz   ',&
                                    & 'jx   ', 'jy   ', 'jz   ',&
+                                   & 'velx ', 'vely ', 'velz ',&
                                    & 'xx   ', 'yy   ', 'zz   '/)
-    n_fld_vars = n_fld_vars + 12
+    n_fld_vars = n_fld_vars + 15
     if (derivatives_enable) then
       fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 4) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
       n_fld_vars = n_fld_vars + 4
@@ -534,6 +534,7 @@ contains
          & (fld_var(1:4) .ne. 'enrg') .and.&
          & (fld_var(1:3) .ne. 'mom') .and.&
          & (fld_var(1:4) .ne. 'nprt') .and.&
+         & (fld_var(1:3) .ne. 'vel') .and.&
          & (fld_var(1:4) .ne. 'dgca')) .or.&
          & (.not. writing_lgarrQ)) then
         call throwError("ERROR: unrecognized `fldname`: " // trim(fld_var))
@@ -574,8 +575,27 @@ contains
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
       ! fill `lg_arr` with energy density of species `s`
-      call computeMomentum(s, 0, reset=.true., ds=output_dens_smooth)
+      call computeMomentum(s, component=0, reset=.true., ds=output_dens_smooth)
       call exchangeArray()
+    else if (fldname(1:3) .eq. 'vel') then
+      writing_lgarrQ = .true.
+      ! fill `lg_arr` with 3-velocity components of all massive/charged species
+      if (fldname(4:4) .eq. 'x') then
+        call computeFluidVelocity(component=0, ds=output_dens_smooth)
+      else if (fldname(4:4) .eq. 'y') then
+        call computeFluidVelocity(component=1, ds=output_dens_smooth)
+      else if (fldname(4:4) .eq. 'z') then
+        call computeFluidVelocity(component=2, ds=output_dens_smooth)
+      else
+        call throwError('ERROR: unknown component in `vel` output:' // trim(fldname(4:4)) // '.')
+      end if
+      call exchangeArray()
+      ! save the sum of 3-velocities to `jz_buff`
+      jz_buff(:,:,:) = lg_arr(:,:,:)
+      call computeFluidDensity(ds=output_dens_smooth)
+      call exchangeArray()
+      ! save the average 3-velocities to `lg_arr`
+      lg_arr(:,:,:) = jz_buff(:,:,:) / (lg_arr(:,:,:) + TINYFLD)
     else if (fldname(1:4) .eq. 'nprt') then
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
@@ -590,20 +610,18 @@ contains
         call computeDensityGCA(s, reset=.true., ds=output_dens_smooth)
         call exchangeArray()
       #endif
-    else if (fldname(1:4) .eq. 'momX') then
+    else if (fldname(1:3) .eq. 'mom') then
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
-      call computeMomentum(s, 1, reset=.true., ds=output_dens_smooth)
-      call exchangeArray()
-    else if (fldname(1:4) .eq. 'momY') then
-      writing_lgarrQ = .true.
-      s = STRtoINT(fldname(5:5))
-      call computeMomentum(s, 2, reset=.true., ds=output_dens_smooth)
-      call exchangeArray()
-    else if (fldname(1:4) .eq. 'momZ') then
-      writing_lgarrQ = .true.
-      s = STRtoINT(fldname(5:5))
-      call computeMomentum(s, 3, reset=.true., ds=output_dens_smooth)
+      if (fldname(4:4) .eq. 'X') then
+        call computeMomentum(s, component=0, reset=.true., ds=output_dens_smooth)
+      else if (fldname(4:4) .eq. 'Y') then
+        call computeMomentum(s, component=1, reset=.true., ds=output_dens_smooth)
+      else if (fldname(4:4) .eq. 'Z') then
+        call computeMomentum(s, component=2, reset=.true., ds=output_dens_smooth)
+      else
+        call throwError('ERROR: unknown component in `mom` output:' // trim(fldname(4:4)) // '.')
+      end if
       call exchangeArray()
     else
       writing_lgarrQ = .false.

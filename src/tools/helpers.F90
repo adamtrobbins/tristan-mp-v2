@@ -434,6 +434,173 @@ contains
     end do
   end subroutine computeMomentum
 
+  subroutine computeFluidVelocity(component, ds)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in)                   :: component
+    integer, optional, intent(in)         :: ds
+    integer                               :: s
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
+    integer                               :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
+    real                                  :: contrib, comp
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
+    #ifdef oneD
+      pow = 1
+    #elif twoD
+      pow = 2
+    #elif threeD
+      pow = 3
+    #endif
+
+    lg_arr(:,:,:) = 0.0
+    do s = 1, nspec
+      if (.not. species(s)%move_sp) cycle
+      if (.not. species(s)%deposit_sp) cycle
+      if (species(s)%m_sp .eq. 0) cycle
+
+      ! this factor takes into account smoothing and mass of the species
+      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
+            pt_u => species(s)%prtl_tile(ti, tj, tk)%u
+            pt_v => species(s)%prtl_tile(ti, tj, tk)%v
+            pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              ! compute 3-velocity
+              if (component .eq. 0) then
+                comp = pt_u(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              else if (component .eq. 1) then
+                comp = pt_v(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              else if (component .eq. 2) then
+                comp = pt_w(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+              end if
+
+              i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+
+              i1 = 0; i2 = 0
+              j1 = 0; j2 = 0
+              k1 = 0; k2 = 0
+              #if defined(oneD) || defined (twoD) || defined (threeD)
+                i1 = max(i - ds_, -NGHOST)
+                i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+              #endif
+              #if defined (twoD) || defined (threeD)
+                j1 = max(j - ds_, -NGHOST)
+                j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+              #endif
+              #if defined (threeD)
+                k1 = max(k - ds_, -NGHOST)
+                k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
+              #endif
+
+              do k = k1, k2
+                do j = j1, j2
+                  do i = i1, i2
+                    lg_arr(i, j, k) = lg_arr(i, j, k) + comp * pt_wei(p) * contrib
+                  end do
+                end do
+              end do
+            end do ! particles on tile
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_u => null(); pt_v => null(); pt_w => null()
+            pt_wei => null()
+          end do
+        end do
+      end do ! tiles
+    end do ! species
+  end subroutine computeFluidVelocity
+
+  subroutine computeFluidDensity(ds)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, optional, intent(in)         :: ds
+    integer                               :: s
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_wei(:)
+    integer                               :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
+    real                                  :: contrib, comp
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
+    #ifdef oneD
+      pow = 1
+    #elif twoD
+      pow = 2
+    #elif threeD
+      pow = 3
+    #endif
+
+    lg_arr(:,:,:) = 0.0
+    do s = 1, nspec
+      if (.not. species(s)%move_sp) cycle
+      if (.not. species(s)%deposit_sp) cycle
+      if (species(s)%m_sp .eq. 0) cycle
+
+      ! this factor takes into account smoothing and mass of the species
+      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              ! compute density
+              i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+
+              i1 = 0; i2 = 0
+              j1 = 0; j2 = 0
+              k1 = 0; k2 = 0
+              #if defined(oneD) || defined (twoD) || defined (threeD)
+                i1 = max(i - ds_, -NGHOST)
+                i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+              #endif
+              #if defined (twoD) || defined (threeD)
+                j1 = max(j - ds_, -NGHOST)
+                j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+              #endif
+              #if defined (threeD)
+                k1 = max(k - ds_, -NGHOST)
+                k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
+              #endif
+
+              do k = k1, k2
+                do j = j1, j2
+                  do i = i1, i2
+                    lg_arr(i, j, k) = lg_arr(i, j, k) + pt_wei(p) * contrib
+                  end do
+                end do
+              end do
+            end do ! particles on tile
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_wei => null()
+          end do
+        end do
+      end do ! tiles
+    end do ! species
+  end subroutine computeFluidDensity
+
   subroutine computeNpart(s, reset, ds)
     ! DEP_PRT [particle-dependent]
     implicit none
