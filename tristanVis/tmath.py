@@ -1,5 +1,8 @@
 import numpy as np
 
+def ADD(ax, ay, az, bx, by, bz):
+  return (ax + bx, ay + by, az + bz)
+
 def DIVIDE(ax, ay, az, bx, by, bz):
   return (ax / bx, ay / by, az / bz)
 
