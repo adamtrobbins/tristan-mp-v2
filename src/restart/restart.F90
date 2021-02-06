@@ -6,12 +6,13 @@ module m_restart
   #endif
   use m_globalnamespace
   use m_outputnamespace, only: tot_output_index, slice_index
+  use m_readinput, only: getInput
   use m_aux
   use m_errors
   use m_domain
   use m_particles
   use m_fields
-  use m_readinput, only: getInput
+  use m_particlelogistics, only: allocateParticlesOnEmptyTile
   use m_helpers
   implicit none
 

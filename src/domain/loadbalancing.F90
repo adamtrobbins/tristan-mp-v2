@@ -2,6 +2,7 @@
 
 module m_loadbalancing
   use m_globalnamespace
+  use m_readinput, only: getInput
   use m_aux
   use m_errors
   use m_domain
