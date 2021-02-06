@@ -10,7 +10,7 @@ module m_mainloop
   use m_writeslice, only: writeSlices
   use m_writetot, only: writeTotOutput
   use m_writehistory, only: writeHistory
-  use m_writerestart, only: writeRestart, rst_enable, rst_interval, rst_start
+  use m_restart, only: writeRestart, rst_enable, rst_interval, rst_start
   use m_fldsolver
   use m_mover
   use m_currentdeposit

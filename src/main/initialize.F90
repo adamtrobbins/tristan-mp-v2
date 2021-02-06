@@ -8,7 +8,7 @@ module m_initialize
   use m_outputnamespace, only: tot_output_index, slice_index,&
                              & tot_output_enable, slice_output_enable, hst_enable
   use m_qednamespace
-  use m_writerestart, only: rst_simulation, rst_enable
+  use m_restart, only: rst_simulation, rst_enable
   use m_aux
   use m_readinput
   use m_domain
@@ -20,7 +20,7 @@ module m_initialize
                       & userInitFields, user_slb_load_ptr => userSLBload
   use m_outputlogistics, only: initializeOutput, initializeSlice
   use m_writehistory, only: initializeHistory
-  use m_writerestart, only: initializeRestart
+  use m_restart, only: initializeRestart, restartSimulation
   use m_helpers
   use m_errors
   use m_particlebinning
@@ -761,135 +761,6 @@ contains
       end if
     #endif
   end subroutine firstRankInitialize
-
-  subroutine restartSimulation()
-    implicit none
-    character(len=STR_MAX)      :: mpichar, filename
-    integer                     :: s, ti, tj, tk, num, pid
-    integer                     :: dummy_int1, dummy_int2, dummy_int3
-    real                        :: dummy_real
-    write(mpichar, "(i8.8)") mpi_rank
-
-    if (mpi_rank .eq. 0) then
-      print *, 'Reading restart data...'
-    end if
-
-    ! loading fields
-    filename = trim(restart_from) // '/flds.rst.' // trim(mpichar)
-    open(UNIT_restart_fld, file=filename, form="unformatted")
-    rewind(UNIT_restart_fld)
-    read(UNIT_restart_fld) start_timestep, dseed, tot_output_index, slice_index
-    read(UNIT_restart_fld) ex, ey, ez, bx, by, bz
-    read(UNIT_restart_fld) CC, ppc0, c_omp, sigma
-    close(UNIT_restart_fld)
-    start_timestep = start_timestep + 1
-
-    call renormalizeUnits()
-
-    if (mpi_rank .eq. 0) then
-      print *, '`CC`, `ppc0`, `c_omp` & `sigma` are read from restart ...'
-      print *, '... values read from input are ignored.'
-    end if
-
-    ! loading particles
-    filename = trim(restart_from) // '/prtl.rst.' // trim(mpichar)
-    open(UNIT_restart_prtl, file=filename, form="unformatted")
-    do s = 1, nspec
-      read(UNIT_restart_prtl) species(s)%cntr_sp
-      ! check that the tile sizes are the same
-      read(UNIT_restart_prtl) dummy_int1, dummy_int2, dummy_int3
-      if ((dummy_int1 .ne. species(s)%tile_sx) .or.&
-        & (dummy_int2 .ne. species(s)%tile_sy) .or.&
-        & (dummy_int3 .ne. species(s)%tile_sz)) then
-        call throwError('ERROR. Wrong tile sizes after the restart')
-      end if
-      ! check that the # of tiles are the same
-      read(UNIT_restart_prtl) dummy_int1, dummy_int2, dummy_int3
-      if ((dummy_int1 .ne. species(s)%tile_nx) .or.&
-        & (dummy_int2 .ne. species(s)%tile_ny) .or.&
-        & (dummy_int3 .ne. species(s)%tile_nz)) then
-        call throwError('ERROR. Wrong # of tiles after the restart')
-      end if
-
-      ! loop through all the tiles and read
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%spec
-
-            ! reallocate the tile if necessary
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%maxptl_sp) then
-              call allocateParticlesOnEmptyTile(s, species(s)%prtl_tile(ti, tj, tk), dummy_int1)
-            end if
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%npart_sp
-            num = species(s)%prtl_tile(ti, tj, tk)%npart_sp
-
-            ! read out and check tile dimensions
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%x1) then
-              call throwError('ERROR. Wrong tile dimension after the restart')
-            end if
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%x2) then
-              call throwError('ERROR. Wrong tile dimension after the restart')
-            end if
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%y1) then
-              call throwError('ERROR. Wrong tile dimension after the restart')
-            end if
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%y2) then
-              call throwError('ERROR. Wrong tile dimension after the restart')
-            end if
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%z1) then
-              call throwError('ERROR. Wrong tile dimension after the restart')
-            end if
-            read(UNIT_restart_prtl) dummy_int1
-            if (dummy_int1 .ne. species(s)%prtl_tile(ti, tj, tk)%z2) then
-              call throwError('ERROR. Wrong tile dimension after the restart')
-            end if
-
-            ! finally read out all the particles
-            ! DEP_PRT [particle-dependent]
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%weight(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%ind(1:num)
-            read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%proc(1:num)
-            #ifdef GCA
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%xi_past(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%yi_past(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%zi_past(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dx_past(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dy_past(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%dz_past(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_eff(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%v_eff(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%w_eff(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_par(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%u_perp(1:num)
-            #endif
-
-            #ifdef PRTLPAYLOADS
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload1(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload2(1:num)
-              read(UNIT_restart_prtl) species(s)%prtl_tile(ti, tj, tk)%payload3(1:num)
-            #endif
-          end do
-        end do
-      end do
-    end do
-    close(UNIT_restart_prtl)
-  end subroutine restartSimulation
 
   subroutine checkEverything()
     implicit none
