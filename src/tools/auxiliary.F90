@@ -58,25 +58,20 @@ contains
     integer, optional, intent(in) :: level
     character(len=STR_MAX)        :: dummy
     integer                       :: sz, i, ierr
-    #ifdef DEBUG
-      if (mpi_rank .eq. 0) then
-        sz = len(trim(msg))
-        if (present(level)) then
-          if (level .ge. 1) then
-            dummy(1:level*3) = '.'
-          end if
-          sz = sz + level * 3
-        else
-          dummy = ''
-        end if
-        dummy = trim(dummy) // trim(msg)
-        do i = 1, (38 - sz)
-          dummy = trim(dummy) // '.'
+    if (mpi_rank .eq. 0) then
+      open(UNIT_diag, file=diag_file_name, status="old", position="append", form="formatted")
+      sz = len(trim(msg))
+      dummy = ''
+      if (present(level)) then
+        sz = sz + level * 3
+        do i = 1, level*3
+          dummy(i:i) = '.'
         end do
-        dummy = trim(dummy) // '[OK]'
-        print *, trim(dummy)
       end if
-    #endif
+      dummy = trim(dummy) // trim(msg)
+      write(UNIT_diag, *) trim(dummy)
+      close(UNIT_diag)
+    end if
   end subroutine printDiag
 
   function getFMTForReal(value, w) result(FMT)
@@ -117,32 +112,6 @@ contains
     write(dummy, '(I10)') w_
     FMT = 'ES' // trim(dummy) // '.3'
   end function getFMTForRealScientific
-
-  subroutine printReport(bool, msg, prepend)
-    implicit none
-    character(len=*), intent(in)  :: msg
-    logical, intent(in)           :: bool
-    logical, optional, intent(in) :: prepend
-    character(len=STR_MAX)        :: dummy
-    integer                       :: sz, i, ierr
-    if (bool) then
-      sz = len(trim(msg))
-      if (present(prepend)) then
-        if (prepend) then
-          dummy = '...'
-          sz = sz + 3
-        end if
-      else
-        dummy = ''
-      end if
-      dummy = trim(dummy) // trim(msg)
-      do i = 1, (38 - sz)
-        dummy = trim(dummy) // '.'
-      end do
-      dummy = trim(dummy) // '[OK]'
-      print *, trim(dummy)
-    end if
-  end subroutine printReport
 
   subroutine printTimeHeader(tstep)
     implicit none

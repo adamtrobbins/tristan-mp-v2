@@ -43,7 +43,7 @@ module m_initialize
 
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
-           & firstRankInitialize, initializeParticles,&
+           & preInitialize, initializeParticles,&
            & printParams, initializeSlice,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
@@ -58,6 +58,7 @@ contains
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
+    call preInitialize()
 
     ! initializing the simulation parameters class ...
     ! ... which stores all the input values for the simulation
@@ -121,11 +122,6 @@ contains
 
     call initializeRandomSeed(mpi_rank)
       call printDiag("initializeRandomSeed()", 1)
-
-    if (mpi_rank .eq. 0) then
-      call firstRankInitialize()
-      call printDiag("firstRankInitialize()", 1)
-    end if
 
     if (.not. rst_simulation) then
       call userReadInput()
@@ -696,7 +692,7 @@ contains
     allocate(recv_fld(sendrecv_offsetsz))
   end subroutine initializeFields
 
-  subroutine firstRankInitialize()
+  subroutine preInitialize()
     ! create output/restart directories
     !   if does not already exist
     !     note: some compilers may not support IFPORT
@@ -722,7 +718,9 @@ contains
         call system('mkdir -p ' // trim(slice_dir_name))
       end if
     #endif
-  end subroutine firstRankInitialize
+    open(UNIT_diag, file=diag_file_name, status="replace", form="formatted")
+    close(UNIT_diag)
+  end subroutine preInitialize
 
   subroutine checkEverything()
     implicit none

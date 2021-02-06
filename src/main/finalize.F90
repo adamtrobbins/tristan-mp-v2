@@ -20,7 +20,7 @@ contains
       call finalizeCommunications()
       call printDiag("finalizeCommunications()", 1)
 
-    call printReport((mpi_rank .eq. 0), "FinalizeAll()")
+    call printDiag("FinalizeAll()", 0)
   end subroutine finalizeAll
 
   subroutine deallocateArrays()
