@@ -1,9 +1,9 @@
 *
-!src/
-!inputs/
-!tristanVis/
-!unit/
-!user/
+!src/*
+!inputs/*
+!tristanVis/*
+!unit/*
+!user/*
 !.gitignore
 !configure.py
 !fulltest.py

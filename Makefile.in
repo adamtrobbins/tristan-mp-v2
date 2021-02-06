@@ -59,8 +59,8 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)io/write_spectra.F90 \
 						$(SRC_DIR)io/write_diagnostics.F90 \
 						$(SRC_DIR)io/write_tot.F90 \
-						$(SRC_DIR)io/write_restart.F90 \
 						$(SRC_DIR)io/write_history.F90 \
+						$(SRC_DIR)restart/write_restart.F90 \
 						$(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						$(SRC_DIR)algorithms/particle_mover.F90 \
 						$(SRC_DIR)algorithms/field_solver.F90 \
