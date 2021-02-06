@@ -16,9 +16,9 @@ contains
     implicit none
     integer :: ierr
     call deallocateArrays()
-      call printDiag((mpi_rank .eq. 0), "deallocateArrays()", .true.)
-    call finalizeCommunications()
-      call printDiag((mpi_rank .eq. 0), "finalizeCommunications()", .true.)
+      call printDiag("deallocateArrays()", 1)
+      call finalizeCommunications()
+      call printDiag("finalizeCommunications()", 1)
 
     call printReport((mpi_rank .eq. 0), "FinalizeAll()")
   end subroutine finalizeAll

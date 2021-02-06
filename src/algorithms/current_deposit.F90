@@ -112,6 +112,6 @@ contains
       end do
     end do ! species loop
 
-    call printDiag((mpi_rank .eq. 0), "depositCurrents()", .true.)
+    call printDiag("depositCurrents()", 2)
   end subroutine depositCurrents
 end module m_currentdeposit

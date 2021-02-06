@@ -12,7 +12,7 @@ module m_initialize
   use m_aux
   use m_readinput
   use m_domain
-  use m_loadbalancing
+  use m_loadbalancing, only: initializeLB, redistributeMeshblocksSLB
   use m_particles
   use m_particlelogistics
   use m_fields
@@ -44,11 +44,10 @@ module m_initialize
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
            & firstRankInitialize, initializeParticles,&
-           & initializeLB, printParams, initializeSlice,&
+           & printParams, initializeSlice,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
-           & initializeSimulation, checkEverything,&
-           & restartSimulation
+           & initializeSimulation, checkEverything
 
   #ifdef DOWNSAMPLING
     private :: initializeDownsampling
@@ -71,80 +70,80 @@ contains
     call initializeDomain()
 
     call initializeCommunications()
-      call printDiag((mpi_rank .eq. 0), "initializeCommunications()", .true.)
+      call printDiag("initializeCommunications()", 1)
 
     call distributeMeshblocks()
-      call printDiag((mpi_rank .eq. 0), "distributeMeshblocks()", .true.)
+      call printDiag("distributeMeshblocks()", 1)
 
     call initializeLB()
-      call printDiag((mpi_rank .eq. 0), "initializeLB()", .true.)
+      call printDiag("initializeLB()", 1)
 
     #ifdef SLB
       call redistributeMeshblocksSLB(user_slb_load_ptr)
-        call printDiag((mpi_rank .eq. 0), "redistributeMeshblocksSLB()", .true.)
+        call printDiag("redistributeMeshblocksSLB()", 1)
     #endif
 
     call initializeSimulation()
-      call printDiag((mpi_rank .eq. 0), "initializeSimulation()", .true.)
+      call printDiag("initializeSimulation()", 1)
 
     call initializeOutput()
-      call printDiag((mpi_rank .eq. 0), "initializeOutput()", .true.)
+      call printDiag("initializeOutput()", 1)
     call initializeHistory()
-      call printDiag((mpi_rank .eq. 0), "initializeHistory()", .true.)
+      call printDiag("initializeHistory()", 1)
     call initializeSlice()
-      call printDiag((mpi_rank .eq. 0), "initializeSlice()", .true.)
+      call printDiag("initializeSlice()", 1)
     call initializeRestart()
-      call printDiag((mpi_rank .eq. 0), "initializeRestart()", .true.)
+      call printDiag("initializeRestart()", 1)
 
     call initializeFields()
-      call printDiag((mpi_rank .eq. 0), "initializeFields()", .true.)
+      call printDiag("initializeFields()", 1)
 
     call initializeParticles()
-      call printDiag((mpi_rank .eq. 0), "initializeParticles()", .true.)
+      call printDiag("initializeParticles()", 1)
 
     #ifdef RADIATION
       call initializeRadiation()
-        call printDiag((mpi_rank .eq. 0), "initializeRadiation()", .true.)
+        call printDiag("initializeRadiation()", 1)
     #endif
 
     #ifdef DOWNSAMPLING
       call initializeDownsampling()
-        call printDiag((mpi_rank .eq. 0), "initializeDownsampling()", .true.)
+        call printDiag("initializeDownsampling()", 1)
     #endif
 
     #ifdef QED
       call initializeQED()
-        call printDiag((mpi_rank .eq. 0), "initializeQED()", .true.)
+        call printDiag("initializeQED()", 1)
     #endif
 
     call initializePrtlExchange()
-      call printDiag((mpi_rank .eq. 0), "initializePrtlExchange()", .true.)
+      call printDiag("initializePrtlExchange()", 1)
 
     call initializeRandomSeed(mpi_rank)
-      call printDiag((mpi_rank .eq. 0), "initializeRandomSeed()", .true.)
+      call printDiag("initializeRandomSeed()", 1)
 
     if (mpi_rank .eq. 0) then
       call firstRankInitialize()
-      call printDiag(.true., "firstRankInitialize()", .true.)
+      call printDiag("firstRankInitialize()", 1)
     end if
 
     if (.not. rst_simulation) then
       call userReadInput()
       call userInitParticles()
       call userInitFields()
-        call printDiag((mpi_rank .eq. 0), "userInitialize()", .true.)
+        call printDiag("userInitialize()", 1)
     else
       call userReadInput()
       call restartSimulation()
-        call printDiag((mpi_rank .eq. 0), "restartSimulation()", .true.)
+        call printDiag("restartSimulation()", 1)
     end if
 
     call checkEverything()
-      call printDiag((mpi_rank .eq. 0), "checkEverything()", .true.)
+      call printDiag("checkEverything()", 1)
 
     call printParams()
 
-    call printReport((mpi_rank .eq. 0), "InitializeAll()")
+    call printDiag("InitializeAll()", 0)
   end subroutine initializeAll
 
   subroutine printParams()
@@ -344,44 +343,7 @@ contains
     call reassignNeighborsForAll()
   end subroutine distributeMeshblocks
 
-  subroutine initializeLB()
-    implicit none
-    ! initializing static LB variables
-    slb_x = .false.; slb_sxmin = -1
-    slb_y = .false.; slb_symin = -1
-    slb_z = .false.; slb_szmin = -1
 
-    alb_x = .false.; alb_sxmin = -1; alb_int_x = -1; alb_start_x = -1
-    alb_y = .false.; alb_symin = -1; alb_int_y = -1; alb_start_y = -1
-    alb_z = .false.; alb_szmin = -1; alb_int_z = -1; alb_start_z = -1
-    #if defined(oneD) || defined (twoD) || defined (threeD)
-      call getInput('static_load_balancing', 'in_x', slb_x, .false.)
-      call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
-
-      call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
-      call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
-      call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
-      call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
-    #endif
-    #if defined(twoD) || defined (threeD)
-      call getInput('static_load_balancing', 'in_y', slb_y, .false.)
-      call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
-
-      call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
-      call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
-      call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
-      call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
-    #endif
-    #if defined(threeD)
-      call getInput('static_load_balancing', 'in_z', slb_z, .false.)
-      call getInput('static_load_balancing', 'sz_min', slb_szmin, 10)
-
-      call getInput('adaptive_load_balancing', 'in_z', alb_z, .false.)
-      call getInput('adaptive_load_balancing', 'sz_min', alb_szmin, 10)
-      call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
-      call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
-    #endif
-  end subroutine initializeLB
 
   subroutine initializeSimulation()
     implicit none

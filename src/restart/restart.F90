@@ -105,7 +105,7 @@ contains
     if (mpi_rank .eq. 0) then
       print *, '[DONE] Restart written into ', trim(rst_dir)
     end if
-    call printDiag((mpi_rank .eq. 0), "restart()", .true.)
+    call printDiag("writeRestart()", 2)
   end subroutine writeRestart
 
   subroutine writeFldRestart(timestep, rst_dir)

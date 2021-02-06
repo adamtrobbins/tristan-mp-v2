@@ -52,21 +52,20 @@ module m_aux
   private :: intToStr, realToStr
   !...............................................................!
 contains
-  subroutine printDiag(bool, msg, prepend)
+  subroutine printDiag(msg, level)
     implicit none
     character(len=*), intent(in)  :: msg
-    logical, intent(in)           :: bool
-    logical, optional, intent(in) :: prepend
+    integer, optional, intent(in) :: level
     character(len=STR_MAX)        :: dummy
     integer                       :: sz, i, ierr
     #ifdef DEBUG
-      if (bool) then
+      if (mpi_rank .eq. 0) then
         sz = len(trim(msg))
-        if (present(prepend)) then
-          if (prepend) then
-            dummy = '...'
-            sz = sz + 3
+        if (present(level)) then
+          if (level .ge. 1) then
+            dummy(1:level*3) = '.'
           end if
+          sz = sz + level * 3
         else
           dummy = ''
         end if

@@ -280,7 +280,7 @@ contains
         end do ! ind1
       end do ! global loop
     end do ! loop over species
-    call printDiag((mpi_rank .eq. 0), "exchangeParticles()", .true.)
+    call printDiag("exchangeParticles()", 2)
   end subroutine exchangeParticles
 
   subroutine redistributeParticlesBetweenMeshblocks()
@@ -610,7 +610,7 @@ contains
       #endif
 
     end do ! loop over species
-    call printDiag((mpi_rank .eq. 0), "redistributeParticlesBetweenMeshblocks()", .true.)
+    call printDiag("redistributeParticlesBetweenMeshblocks()", 3)
   end subroutine redistributeParticlesBetweenMeshblocks
 
   subroutine copyToEnroute(spec_id, ti, tj, tk, prtl_id, enroute)

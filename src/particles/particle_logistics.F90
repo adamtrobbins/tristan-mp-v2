@@ -438,15 +438,6 @@ contains
     deallocate(dummy_int2)
     deallocate(dummy_int)
     deallocate(dummy_real)
-    if (increase_flag) then
-      call printDiag(.true., "...reallocTileSize(+).."//trim(STR(tile%npart_sp))&
-                    & //".."//trim(STR(tile%maxptl_sp)),&
-                    & .true.)
-    else
-      call printDiag(.true., "...reallocTileSize(-).."//trim(STR(tile%npart_sp))&
-                    & //".."//trim(STR(tile%maxptl_sp)),&
-                    & .true.)
-    end if
   end subroutine reallocTileSize
 
   ! Subroutine to create brand new particles
@@ -586,7 +577,7 @@ contains
         end do ! tj
       end do ! ti
     end do ! s
-    call printDiag((mpi_rank .eq. 0), "clearGhostParticles()", .true.)
+    call printDiag("clearGhostParticles()", 2)
   end subroutine clearGhostParticles
 
   subroutine removeParticleFromTile(s, ti, tj, tk, p)

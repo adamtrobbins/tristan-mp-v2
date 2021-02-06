@@ -199,7 +199,7 @@ contains
 
       close(UNIT_history)
     end if
-    call printDiag((mpi_rank .eq. 0), "history()", .true.)
+    call printDiag("writeHistory()", 2)
   end subroutine writeHistory
 
   subroutine computeEnergyInBox(e_energy, b_energy, prtl_energy)

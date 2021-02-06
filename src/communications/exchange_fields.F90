@@ -207,6 +207,6 @@ contains
         end do ! ind2
       end do ! ind1
     end do ! global loop
-    call printDiag((mpi_rank .eq. 0), "exchangeFields()", .true.)
+    call printDiag((mpi_rank .eq. 0), "exchangeFields()", 2)
   end subroutine exchangeFields
 end module m_exchangefields

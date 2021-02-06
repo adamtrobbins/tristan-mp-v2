@@ -302,7 +302,7 @@ contains
         end do ! ti
       end if
     end do ! species
-    call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
+    call printDiag("moveParticles()", 2)
 
   end subroutine moveParticles
 end module m_mover
