@@ -15,7 +15,7 @@ module m_initialize
   use m_loadbalancing, only: initializeLB, redistributeMeshblocksSLB
   use m_particlelogistics, only: initializeParticles
   use m_exchangeparts, only: initializePrtlExchange
-  use m_fields
+  use m_fields, only: initializeFields
   use m_userfile, only: userReadInput, userInitParticles,&
                       & userInitFields, user_slb_load_ptr => userSLBload
   use m_outputlogistics, only: initializeOutput, initializeSlice
@@ -46,7 +46,6 @@ module m_initialize
            & preInitialize,&
            & printParams, initializeSlice,&
            & distributeMeshblocks, initializeDomain,&
-           & initializeFields,&
            & initializeSimulation, checkEverything
 
   #ifdef DOWNSAMPLING
