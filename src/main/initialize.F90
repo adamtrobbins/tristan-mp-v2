@@ -10,11 +10,10 @@ module m_initialize
   use m_qednamespace
   use m_restart, only: rst_simulation, rst_enable
   use m_aux
-  use m_readinput
+  use m_readinput, only: getInput, readCommandlineArgs
   use m_domain
   use m_loadbalancing, only: initializeLB, redistributeMeshblocksSLB
-  use m_particles
-  use m_particlelogistics
+  use m_particlelogistics, only: initializeParticles
   use m_fields
   use m_userfile, only: userReadInput, userInitParticles,&
                       & userInitFields, user_slb_load_ptr => userSLBload
@@ -43,7 +42,7 @@ module m_initialize
 
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
-           & preInitialize, initializeParticles,&
+           & preInitialize,&
            & printParams, initializeSlice,&
            & distributeMeshblocks, initializeDomain,&
            & initializePrtlExchange, initializeFields,&
@@ -339,8 +338,6 @@ contains
     call reassignNeighborsForAll()
   end subroutine distributeMeshblocks
 
-
-
   subroutine initializeSimulation()
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
@@ -367,95 +364,6 @@ contains
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
   end subroutine initializeSimulation
-
-  subroutine initializeParticles()
-    implicit none
-    integer                 :: s, ti, tj, tk
-    character(len=STR_MAX)  :: var_name
-    integer                 :: maxptl_
-
-    call getInput('particles', 'nspec', nspec, 2)
-
-    allocate(species(nspec))
-    do s = 1, nspec
-      #ifdef oneD
-        call getInput('grid', 'tileX', species(s)%tile_sx)
-        species(s)%tile_sy = 1
-        species(s)%tile_sz = 1
-      #elif twoD
-        call getInput('grid', 'tileX', species(s)%tile_sx)
-        call getInput('grid', 'tileY', species(s)%tile_sy)
-        species(s)%tile_sz = 1
-      #elif threeD
-        call getInput('grid', 'tileX', species(s)%tile_sx)
-        call getInput('grid', 'tileY', species(s)%tile_sy)
-        call getInput('grid', 'tileZ', species(s)%tile_sz)
-      #endif
-      species(s)%tile_nx = ceiling(real(this_meshblock%ptr%sx) / real(species(s)%tile_sx))
-      species(s)%tile_ny = ceiling(real(this_meshblock%ptr%sy) / real(species(s)%tile_sy))
-      species(s)%tile_nz = ceiling(real(this_meshblock%ptr%sz) / real(species(s)%tile_sz))
-      allocate(species(s)%prtl_tile(species(s)%tile_nx,&
-                                  & species(s)%tile_ny,&
-                                  & species(s)%tile_nz))
-    end do
-
-    do s = 1, nspec
-      write (var_name, "(A6,I1)") "maxptl", s
-      call getInput('particles', var_name, maxptl_)
-      write (var_name, "(A1,I1)") "m", s
-      call getInput('particles', var_name, species(s)%m_sp)
-      write (var_name, "(A2,I1)") "ch", s
-      call getInput('particles', var_name, species(s)%ch_sp)
-
-      write (var_name, "(A7,I1)") "deposit", s
-      call getInput('particles', var_name, species(s)%deposit_sp, (species(s)%ch_sp .ne. 0))
-      write (var_name, "(A4,I1)") "move", s
-      call getInput('particles', var_name, species(s)%move_sp, .true.)
-      write (var_name, "(A6,I1)") "output", s
-      call getInput('particles', var_name, species(s)%output_sp, .true.)
-
-      if ((species(s)%m_sp .eq. 0) .and. (species(s)%ch_sp .ne. 0)) then
-        call throwError('ERROR: massless charged particles are not allowed')
-      end if
-      if ((species(s)%m_sp .ne. 0) .and. (species(s)%ch_sp .eq. 0)) then
-        call throwError('ERROR: massive zero-charge particles are not allowed')
-      end if
-      if ((species(s)%ch_sp .eq. 0) .and. (species(s)%deposit_sp .ne. 0)) then
-        call throwError('ERROR: zero-charged particles cannot deposit current')
-      end if
-
-      #ifdef GCA
-        write (var_name, "(A3,I1)") "gca", s
-        call getInput('particles', var_name, species(s)%gca_sp, (species(s)%ch_sp .ne. 0))
-        if ((species(s)%ch_sp .eq. 0) .and. species(s)%gca_sp) then
-          call throwError('ERROR: massless/zero-charged particles cannot be treated with a GCA pusher')
-        end if
-      #endif
-
-      #ifdef DOWNSAMPLING
-        write (var_name, "(A3,I1)") "dwn", s
-        call getInput('particles', var_name, species(s)%dwn_sp, .false.)
-      #endif
-
-      ! extra physics properties
-      #ifdef RADIATION
-        write (var_name, "(A4,I1)") "cool", s
-        call getInput('particles', var_name, species(s)%cool_sp, .false.)
-        if ((species(s)%cool_sp) .and. (species(s)%m_sp .eq. 0)) then
-          call throwError('Unable to cool `m=0` particles.')
-        end if
-      #endif
-
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            call createEmptyTile(s, ti, tj, tk, maxptl_)
-          end do
-        end do
-      end do
-      species(s)%cntr_sp = 0
-    end do
-  end subroutine initializeParticles
 
   subroutine initializePrtlExchange()
     implicit none

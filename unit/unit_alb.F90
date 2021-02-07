@@ -105,6 +105,7 @@ contains
       end do
     end do
     call redistributeParticlesBetweenMeshblocks()
+    call clearGhostParticles()
   end subroutine userDriveParticles
 
   subroutine userExternalFields(xp, yp, zp,&
