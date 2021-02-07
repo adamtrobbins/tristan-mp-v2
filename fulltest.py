@@ -8,7 +8,14 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 import argparse
 
+def dir_path(string):
+  if os.path.isdir(string):
+    return string
+  else:
+    raise NotADirectoryError(string)
+
 parser = argparse.ArgumentParser()
+parser.add_argument('--path', required=True, type=dir_path)
 parser.add_argument('-c', action='store_true', default=False, help='only test compilation.')
 parser.add_argument('-v', action='store_true', default=False, help='verbose mode (full output).')
 parser.add_argument('-d', action='store_true', default=False, help='diagnostic mode.')
@@ -25,7 +32,7 @@ modules = ['intel-mkl/2017.4/5/64',
             'hdf5/intel-17.0/intel-mpi/1.10.0']
 
 # global variables
-outdir = "test/path"
+outdir = options.path
 
 codedir = os.getcwd()
 testdir = 'test_0'
@@ -229,8 +236,11 @@ if (options.d):
   import matplotlib.pyplot as plt
   import numpy as np
   import tristanVis.isolde as isolde
-  import tristanVis.aux as aux
-  aux.loadCustomStyles(style='fivethirtyeight', fs=10)
+  try:
+    import tristanVis.snippets as trS
+    trS.loadCustomStyles(style='fivethirtyeight', fs=10)
+  except:
+    pass
   fig = plt.figure(figsize=(12, 8))
   for ii, simulation in enumerate(simulations):
     if not (ii + 1 in tests):

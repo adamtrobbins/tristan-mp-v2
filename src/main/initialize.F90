@@ -381,9 +381,7 @@ contains
         result = makedirqq(trim(slice_dir_name))
       end if
     #else
-      if (tot_output_enable .or. hst_enable) then
-        call system('mkdir -p ' // trim(output_dir_name))
-      end if
+      call system('mkdir -p ' // trim(output_dir_name))
       if (rst_enable) then
         call system('mkdir -p ' // trim(restart_dir_name))
       end if
@@ -391,6 +389,7 @@ contains
         call system('mkdir -p ' // trim(slice_dir_name))
       end if
     #endif
+    diag_file_name = trim(output_dir_name) // trim(diag_file_name)
     open(UNIT_diag, file=diag_file_name, status="replace", form="formatted")
     close(UNIT_diag)
   end subroutine preInitialize
