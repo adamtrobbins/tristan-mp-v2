@@ -2,9 +2,9 @@
 
 module m_particlelogistics
   use m_globalnamespace
+  use m_readinput, only: getInput
   use m_aux
   use m_helpers
-  use m_readinput, only: getInput
   use m_errors
   use m_domain
   use m_particles

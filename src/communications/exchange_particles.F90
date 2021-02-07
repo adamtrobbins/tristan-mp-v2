@@ -2,6 +2,7 @@
 
 module m_exchangeparts
   use m_globalnamespace
+  use m_readinput, only: getInput
   use m_aux
   use m_errors
   use m_domain
@@ -12,6 +13,123 @@ module m_exchangeparts
            & extractParticlesFromEnroute
   !...............................................................!
 contains
+  subroutine initializePrtlExchange()
+    implicit none
+    integer             :: buffsize, buffsize_x, buffsize_y
+    integer             :: buffsize_xy
+    integer             :: buffsize_z, buffsize_xz, buffsize_yz
+    integer             :: buffsize_xyz
+    integer             :: multiplier, ierr, ind1, ind2, ind3, ind
+    integer             :: additional_real, additional_int, additional_int2
+
+    #ifdef MPI08
+      type(MPI_DATATYPE), dimension(0:2)            :: oldtypes
+    #endif
+
+    #ifdef MPI
+      integer, dimension(0:2)                       :: oldtypes
+    #endif
+
+    integer, dimension(0:2)                         :: blockcounts
+    integer(kind=MPI_ADDRESS_KIND), dimension(0:2)  :: offsets
+    integer(kind=MPI_ADDRESS_KIND)                  :: extent_int2, extent_real, lb
+
+    call getInput('grid', 'max_buff', max_buffsize, 100)
+
+    multiplier = max(INT(ppc0), 1) * max_buffsize
+    ! FIX this might change over time (due to load balancing)
+    buffsize_x = 0
+    buffsize_y = 0; buffsize_xy = 0
+    buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #if defined (oneD) || defined (twoD) || defined (threeD)
+      buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
+    #endif
+    #if defined (twoD) || defined (threeD)
+      buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
+      buffsize_xy = this_meshblock%ptr%sz * multiplier
+    #endif
+    #if defined(threeD)
+      buffsize_z = this_meshblock%ptr%sx * this_meshblock%ptr%sy * multiplier
+      buffsize_xz = this_meshblock%ptr%sz * multiplier
+      buffsize_yz = this_meshblock%ptr%sx * multiplier
+      buffsize_xyz = multiplier
+    #endif
+
+    #ifdef oneD
+      buffsize = multiplier
+    #elif twoD
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
+    #elif threeD
+      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
+    #endif
+
+    allocate(recv_enroute(buffsize))
+
+    do ind1 = -1, 1
+      do ind2 = -1, 1
+        do ind3 = -1, 1
+          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+          #ifdef oneD
+            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+          #elif twoD
+            if (ind3 .ne. 0) cycle
+          #endif
+          if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
+            buffsize = buffsize_x
+          else if ((ind1 .eq. 0) .and. (ind3 .eq. 0)) then
+            buffsize = buffsize_y
+          else if ((ind1 .eq. 0) .and. (ind2 .eq. 0)) then
+            buffsize = buffsize_z
+          else if (ind3 .eq. 0) then
+            buffsize = buffsize_xy
+          else if (ind2 .eq. 0) then
+            buffsize = buffsize_xz
+          else if (ind1 .eq. 0) then
+            buffsize = buffsize_yz
+          else
+            buffsize = buffsize_xyz
+          end if
+          enroute_bot%get(ind1, ind2, ind3)%max_send = buffsize
+          allocate(enroute_bot%get(ind1, ind2, ind3)%send_enroute(buffsize))
+        end do
+      end do
+    end do
+
+    ! DEP_PRT [particle-dependent]
+    ! new type for myMPI_ENROUTE
+    additional_real = 0; additional_int = 0; additional_int2 = 0
+
+    call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
+    call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
+
+    #ifdef GCA
+      additional_int2 = additional_int2 + 3
+      additional_real = additional_real + 8
+    #endif
+
+    #ifdef PRTLPAYLOADS
+      additional_real = additional_real + 3
+    #endif
+
+    !     # of blockcounts = 3:
+    !       3  x integer2  [xi, yi, zi]                       | + 3 if GCA [xi_past, yi_past, zi_past]
+    !       7  x real      [dx, dy, dz, u, v, w, weight]      | + 8 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp]
+    !                                                         | + 3 if PRTLPAYLOADS
+    !       2  x integer   [ind, proc]
+    blockcounts(0) = 3 + additional_int2
+    oldtypes(0) = MPI_INTEGER2
+    blockcounts(1) = 7 + additional_real
+    oldtypes(1) = MPI_REAL
+    blockcounts(2) = 2 + additional_int
+    oldtypes(2) = MPI_INTEGER
+
+    offsets(0) = 0
+    offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
+    offsets(2) = blockcounts(1) * extent_real + offsets(1)
+    call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
+    call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
+  end subroutine initializePrtlExchange
+
   subroutine exchangeParticles()
     implicit none
     integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
