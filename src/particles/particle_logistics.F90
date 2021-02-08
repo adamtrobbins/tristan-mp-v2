@@ -96,6 +96,7 @@ contains
       end do
       species(s)%cntr_sp = 0
     end do
+    call printDiag("initializeParticles()", 1)
   end subroutine initializeParticles
 
   ! Subroutine to move particles around

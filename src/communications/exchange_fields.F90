@@ -209,4 +209,10 @@ contains
     end do ! global loop
     call printDiag("exchangeFields()", 2)
   end subroutine exchangeFields
+
+  subroutine exchangeFieldSlab(rnk1, rnk2, slab_size)
+    implicit none
+    integer, intent(in)       :: rnk1, rnk2, slab_size
+    
+  end subroutine exchangeFieldSlab
 end module m_exchangefields

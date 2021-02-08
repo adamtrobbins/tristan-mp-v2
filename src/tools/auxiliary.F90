@@ -346,6 +346,8 @@ contains
     integer, intent(in) :: rank
     dseed = 123457.D0
     dseed = dseed + rank
+
+    call printDiag("initializeRandomSeed()", 1)
   end subroutine initializeRandomSeed
 
   subroutine log_normal(n_bins, lognorm)

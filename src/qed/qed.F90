@@ -51,6 +51,8 @@ contains
     #ifdef PAIRANNIHILATION
       call initializePairAnnihilation()
     #endif
+
+    call printDiag("initializeQED()", 1)
   end subroutine initializeQED
 
   #ifdef BWPAIRPRODUCTION

@@ -5,7 +5,7 @@ module m_finalize
   use m_aux
   use m_domain
   use m_particles
-  use m_fields
+  use m_fieldlogistics, only: deallocateFields, deallocateFieldBackups
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -54,27 +54,8 @@ contains
     if (allocated(recv_enroute)) deallocate(recv_enroute)
     call MPI_TYPE_FREE(myMPI_ENROUTE, ierr)
 
-    ! dealloc field arrays
-    if (allocated(ex)) deallocate(ex)
-    if (allocated(ey)) deallocate(ey)
-    if (allocated(ez)) deallocate(ez)
-    if (allocated(bx)) deallocate(bx)
-    if (allocated(by)) deallocate(by)
-    if (allocated(bz)) deallocate(bz)
-    if (allocated(jx)) deallocate(jx)
-    if (allocated(jy)) deallocate(jy)
-    if (allocated(jz)) deallocate(jz)
-    if (allocated(jx_buff)) deallocate(jx_buff)
-    if (allocated(jy_buff)) deallocate(jy_buff)
-    if (allocated(jz_buff)) deallocate(jz_buff)
-
-    ! dealloc field exchange
-    if (allocated(send_fld)) deallocate(send_fld)
-    if (allocated(recv_fld)) deallocate(recv_fld)
-
-    ! dealloc field output
-    if (allocated(lg_arr)) deallocate(lg_arr)
-    if (allocated(sm_arr)) deallocate(sm_arr)
+    call deallocateFields()
+    call deallocateFieldBackups()
   end subroutine deallocateArrays
 
   subroutine finalizeCommunications()

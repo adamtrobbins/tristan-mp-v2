@@ -34,6 +34,8 @@ contains
     call getInput('restart', 'rewrite', rst_separate, .false.)
     call getInput('restart', 'cpu_group', rst_cpu_group, 50)
     rst_separate = (.not. rst_separate)
+
+    call printDiag("initializeRestart()", 1)
   end subroutine initializeRestart
 
   subroutine writeRestart(timestep)
@@ -320,6 +322,8 @@ contains
       end do
     end do
     close(UNIT_restart_prtl)
+
+    call printDiag("restartSimulation()", 1)
   end subroutine restartSimulation
 
 end module m_restart

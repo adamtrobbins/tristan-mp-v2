@@ -91,6 +91,7 @@ contains
       end if
     end do
 
+    call printDiag("redistributeMeshblocksSLB()", 1)
   end subroutine redistributeMeshblocksSLB
 
   ! accumulate loads from all the sources

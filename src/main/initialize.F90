@@ -8,21 +8,26 @@ module m_initialize
   use m_outputnamespace, only: tot_output_index, slice_index,&
                              & tot_output_enable, slice_output_enable, hst_enable
   use m_qednamespace
-  use m_restart, only: rst_simulation, rst_enable
+
+  use m_helpers
+  use m_errors
+
   use m_aux
   use m_readinput, only: getInput, readCommandlineArgs
+
   use m_domain
   use m_loadbalancing, only: initializeLB, redistributeMeshblocksSLB
+
+  use m_fieldlogistics, only: initializeFields
   use m_particlelogistics, only: initializeParticles
   use m_exchangeparts, only: initializePrtlExchange
-  use m_fields, only: initializeFields
+
   use m_userfile, only: userReadInput, userInitParticles,&
                       & userInitFields, user_slb_load_ptr => userSLBload
   use m_outputlogistics, only: initializeOutput, initializeSlice
   use m_writehistory, only: initializeHistory
-  use m_restart, only: initializeRestart, restartSimulation
-  use m_helpers
-  use m_errors
+  use m_restart, only: initializeRestart, restartSimulation, rst_simulation, rst_enable
+
   use m_particlebinning
 
   #ifdef DOWNSAMPLING
@@ -70,57 +75,42 @@ contains
     call initializeDomain()
 
     call initializeCommunications()
-      call printDiag("initializeCommunications()", 1)
 
     call distributeMeshblocks()
-      call printDiag("distributeMeshblocks()", 1)
 
     call initializeLB()
       call printDiag("initializeLB()", 1)
 
     #ifdef SLB
       call redistributeMeshblocksSLB(user_slb_load_ptr)
-        call printDiag("redistributeMeshblocksSLB()", 1)
     #endif
 
     call initializeSimulation()
-      call printDiag("initializeSimulation()", 1)
 
     call initializeOutput()
-      call printDiag("initializeOutput()", 1)
     call initializeHistory()
-      call printDiag("initializeHistory()", 1)
     call initializeSlice()
-      call printDiag("initializeSlice()", 1)
     call initializeRestart()
-      call printDiag("initializeRestart()", 1)
 
     call initializeFields()
-      call printDiag("initializeFields()", 1)
 
     call initializeParticles()
-      call printDiag("initializeParticles()", 1)
 
     #ifdef RADIATION
       call initializeRadiation()
-        call printDiag("initializeRadiation()", 1)
     #endif
 
     #ifdef DOWNSAMPLING
       call initializeDownsampling()
-        call printDiag("initializeDownsampling()", 1)
     #endif
 
     #ifdef QED
       call initializeQED()
-        call printDiag("initializeQED()", 1)
     #endif
 
     call initializePrtlExchange()
-      call printDiag("initializePrtlExchange()", 1)
 
     call initializeRandomSeed(mpi_rank)
-      call printDiag("initializeRandomSeed()", 1)
 
     if (.not. rst_simulation) then
       call userReadInput()
@@ -130,11 +120,9 @@ contains
     else
       call userReadInput()
       call restartSimulation()
-        call printDiag("restartSimulation()", 1)
     end if
 
     call checkEverything()
-      call printDiag("checkEverything()", 1)
 
     call printParams()
 
@@ -253,6 +241,8 @@ contains
     if (mpi_size .ne. sizex * sizey * sizez) then
       call throwError('ERROR: # of processors is not equal to the number of processors from input')
     end if
+
+    call printDiag("initializeCommunications()", 1)
   end subroutine initializeCommunications
 
   subroutine initializeDomain()
@@ -336,6 +326,8 @@ contains
     end do
     ! assign all neighbors
     call reassignNeighborsForAll()
+
+    call printDiag("distributeMeshblocks()", 1)
   end subroutine distributeMeshblocks
 
   subroutine initializeSimulation()
@@ -363,6 +355,8 @@ contains
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
+
+    call printDiag("initializeSimulation()", 1)
   end subroutine initializeSimulation
 
   subroutine preInitialize()
@@ -413,6 +407,8 @@ contains
         call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
       end if
     #endif
+
+    call printDiag("checkEverything()", 1)
   end subroutine checkEverything
 
   #ifdef DOWNSAMPLING
@@ -439,6 +435,8 @@ contains
       call getInput('downsampling', 'energy_max', dwn_energy_max, 1e2)
       call getInput('downsampling', 'energy_min', dwn_energy_min, 1e-2)
       call getInput('downsampling', 'int_weights', dwn_int_weights, .false.)
+
+      call printDiag("initializeDownsampling()", 1)
     end subroutine initializeDownsampling
   #endif
 end module m_initialize

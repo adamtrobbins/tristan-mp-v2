@@ -128,6 +128,8 @@ contains
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
     call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
     call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
+
+    call printDiag("initializePrtlExchange()", 1)
   end subroutine initializePrtlExchange
 
   subroutine exchangeParticles()
