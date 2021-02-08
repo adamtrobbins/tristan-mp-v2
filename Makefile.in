@@ -29,10 +29,10 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)tools/error_handling.F90 \
 						$(SRC_DIR)io/read_input.F90 \
 						$(SRC_DIR)domain/domain.F90 \
-						$(SRC_DIR)fields.F90 \
+						$(SRC_DIR)fields/fields.F90 \
 						$(SRC_DIR)particles/particles.F90 \
-						$(SRC_DIR)main/finalize.F90 \
 						$(SRC_DIR)tools/helpers.F90 \
+						$(SRC_DIR)fields/field_logistics.F90 \
 						$(SRC_DIR)particles/particle_binning.F90 \
 						$(SRC_DIR)particles/binary_coupling.F90 \
 						$(SRC_DIR)particles/particle_logistics.F90 \
@@ -67,6 +67,7 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)algorithms/current_deposit.F90 \
 						$(SRC_DIR)algorithms/filtering.F90 \
 						$(SRC_DIR)main/initialize.F90 \
+						$(SRC_DIR)main/finalize.F90 \
 						$(SRC_DIR)main/tristanmainloop.F90 \
 						$(SRC_DIR)main/tristan.F90
 
