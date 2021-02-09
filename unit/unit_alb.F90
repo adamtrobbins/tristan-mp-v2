@@ -3,18 +3,19 @@
 module m_userfile
   use m_globalnamespace
   use m_aux
+  use m_helpers
   use m_readinput
   use m_domain
   use m_particles
   use m_fields
   use m_thermalplasma
-  use m_particlelogistics
-  use m_exchangeparts, only: redistributeParticlesBetweenMeshblocks
 
+  use m_loadbalancing
+  use m_particlelogistics
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-
+  integer, private :: shift
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -24,6 +25,7 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    shift = 5
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -31,7 +33,18 @@ contains
     real :: userSpatialDistribution
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     real, intent(in), optional  :: dummy1, dummy2, dummy3
-
+    real :: r
+    if (present(x_glob) .and. present(y_glob) .and.&
+      & present(dummy1) .and. present(dummy2)) then
+      r = sqrt((x_glob - dummy1)**2 + (y_glob - dummy2)**2)
+      if (r .lt. 10.0) then
+        userSpatialDistribution = 1.0
+      else
+        userSpatialDistribution = 0.0
+      end if
+    else
+      call throwError('ERROR: smth wrong in `userSpatialDistribution()`.')
+    end if
     return
   end function
 
@@ -48,35 +61,43 @@ contains
   subroutine userInitParticles()
     implicit none
     type(region)    :: back_region
+    integer :: i
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
+    ! do i = 1, 10000
+    !   call injectParticleLocally(1, random(dseed) * 16.0, random(dseed) * 10.0, 0.5, 0.0, 0.0, 0.0)
+    !   call injectParticleLocally(2, random(dseed) * 16.0, random(dseed) * 10.0, 0.5, 0.0, 0.0, 0.0)
+    ! end do
+
     back_region%x_min = 0.0
-    back_region%x_max = 0.5 * REAL(global_mesh%sx)
+    back_region%x_max = REAL(global_mesh%sx)
     back_region%y_min = 0.0
     back_region%y_max = REAL(global_mesh%sy)
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, ppc0, 1e-5, &
-                                   & shift_gamma = 1.0, shift_dir = 1, zero_current = .true.)
+                                   & spat_distr_ptr = spat_distr_ptr,&
+                                   & dummy1 = 0.5 * REAL(global_mesh%sx), dummy2 = 0.5 * REAL(global_mesh%sy))
   end subroutine userInitParticles
 
   subroutine userInitFields()
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = mpi_rank * 1.0; ez(:,:,:) = 0
-    bx(:,:,:) = mpi_rank * 1.0; by(:,:,:) = 0; bz(:,:,:) = 0
+    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
+    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     ! ... dummy loop ...
-    ! do i = 0, this_meshblock%ptr%sx - 1
-    !   i_glob = i + this_meshblock%ptr%x0
-    !   do j = 0, this_meshblock%ptr%sy - 1
-    !     j_glob = j + this_meshblock%ptr%y0
-    !     do k = 0, this_meshblock%ptr%sz - 1
-    !       k_glob = k + this_meshblock%ptr%z0
-    !       ...
-    !     end do
-    !   end do
-    ! end do
+    do i = 0, this_meshblock%ptr%sx - 1
+      i_glob = i + this_meshblock%ptr%x0
+      do j = 0, this_meshblock%ptr%sy - 1
+        j_glob = j + this_meshblock%ptr%y0
+        do k = 0, this_meshblock%ptr%sz - 1
+          k_glob = k + this_meshblock%ptr%z0
+          ey(i,j,k) = i_glob
+          bx(i,j,k) = i_glob**2
+        end do
+      end do
+    end do
   end subroutine userInitFields
   !............................................................!
 
@@ -91,6 +112,9 @@ contains
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
+    integer :: nprt, ierr
+    type(enroute_array)   :: recv_enroute_temp
+
     ! ... dummy loop ...
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
@@ -98,14 +122,31 @@ contains
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              species(s)%prtl_tile(ti, tj, tk)%xi(p) = species(s)%prtl_tile(ti, tj, tk)%xi(p) + 10
+              species(s)%prtl_tile(ti, tj, tk)%xi(p) = species(s)%prtl_tile(ti, tj, tk)%xi(p) - INT(6, 2)
             end do
           end do
         end do
       end do
     end do
+
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .gt. mpi_size) then
+                call throwError('SMTH wrong BEFORE redist')
+              end if
+            end do
+          end do
+        end do
+      end do
+    end do
+
+    ! this is necessary because we move over a cell
     call redistributeParticlesBetweenMeshblocks()
     call clearGhostParticles()
+    call checkEverything()
   end subroutine userDriveParticles
 
   subroutine userExternalFields(xp, yp, zp,&
@@ -142,6 +183,8 @@ contains
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
     logical                       :: updateE_, updateB_
+    integer, allocatable          :: left_group(:), right_group(:)
+    integer                       :: ierr, rnk, r
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -153,6 +196,20 @@ contains
       updateB_ = updateB
     else
       updateB_ = .true.
+    end if
+
+    if ((modulo(step, 15) .eq. 0) .and. (step .gt. 0) .and. updateE .and. updateB) then
+      ! just to make sure this is done once at the very beginning of the timestep
+      shift = -shift
+
+      allocate(left_group(4))
+      allocate(right_group(4))
+      left_group = (/0, 2, 4, 6/)
+      right_group = (/1, 3, 5, 7/)
+
+      call reshapeInX(left_group, right_group, shift)
+
+      call checkEverything()
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
