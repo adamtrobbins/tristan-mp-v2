@@ -40,9 +40,11 @@ contains
                                   & species(s)%tile_nz))
     end do
 
+    allocate(maxptl_array(nspec))
+
     do s = 1, nspec
       write (var_name, "(A6,I1)") "maxptl", s
-      call getInput('particles', var_name, maxptl_)
+      call getInput('particles', var_name, maxptl_array(s))
       write (var_name, "(A1,I1)") "m", s
       call getInput('particles', var_name, species(s)%m_sp)
       write (var_name, "(A2,I1)") "ch", s
@@ -90,7 +92,7 @@ contains
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
-            call createEmptyTile(s, ti, tj, tk, maxptl_)
+            call createEmptyTile(s, ti, tj, tk, maxptl_array(s))
           end do
         end do
       end do
@@ -119,18 +121,20 @@ contains
     real, intent(in)                        :: dx, dy, dz, u, v, w
 
     #ifdef GCA
-      integer(kind=2), intent(in)             :: xi_past, yi_past, zi_past
-      real, intent(in)                        :: dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp
+      integer(kind=2), intent(in)           :: xi_past, yi_past, zi_past
+      real, intent(in)                      :: dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp
     #endif
 
     #ifdef PRTLPAYLOADS
-      real                                    :: payload1, payload2, payload3
+      real, intent(in)                      :: payload1, payload2, payload3
     #endif
+
+    integer, intent(in)                     :: ind, proc
+    real, intent(in)                        :: weight
 
     integer                                 :: p
     integer                                 :: ti, tj, tk
-    integer, intent(in)                     :: ind, proc
-    real                                    :: weight
+
     character(len=STR_MAX)                  :: dummy_string
 
     ti = 1; tj = 1; tk = 1
@@ -184,6 +188,55 @@ contains
         call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes for species #' // trim(dummy_string))
       end if
     end if
+
+    call putParticleOnTile(s, ti, tj, tk,&
+                            & xi, yi, zi, dx, dy, dz,&
+                           #ifdef GCA
+                            & xi_past, yi_past, zi_past, dx_past, dy_past, dz_past,&
+                           #endif
+                            & u, v, w,&
+                           #ifdef GCA
+                            & u_eff, v_eff, w_eff, u_par, u_perp,&
+                           #endif
+                           #ifdef PRTLPAYLOADS
+                            & payload1, payload2, payload3,&
+                           #endif
+                           & ind, proc, weight)
+  end subroutine createParticleFromAttributes
+
+  subroutine putParticleOnTile(s, ti, tj, tk,&
+                                & xi, yi, zi, dx, dy, dz,&
+                               #ifdef GCA
+                                & xi_past, yi_past, zi_past, dx_past, dy_past, dz_past,&
+                               #endif
+                                & u, v, w,&
+                               #ifdef GCA
+                                & u_eff, v_eff, w_eff, u_par, u_perp,&
+                               #endif
+                               #ifdef PRTLPAYLOADS
+                                & payload1, payload2, payload3,&
+                               #endif
+                               & ind, proc, weight)
+    implicit none
+    integer, intent(in)                     :: s
+    integer, intent(in)                     :: ti, tj, tk
+    integer(kind=2), intent(in)             :: xi, yi, zi
+    real, intent(in)                        :: dx, dy, dz, u, v, w
+
+    #ifdef GCA
+      integer(kind=2), intent(in)           :: xi_past, yi_past, zi_past
+      real, intent(in)                      :: dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp
+    #endif
+
+    #ifdef PRTLPAYLOADS
+      real, intent(in)                      :: payload1, payload2, payload3
+    #endif
+
+    integer, intent(in)                     :: ind, proc
+    real, intent(in)                        :: weight
+
+    integer                                 :: p
+
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp + 1
     p = species(s)%prtl_tile(ti, tj, tk)%npart_sp
 
@@ -227,7 +280,27 @@ contains
       species(s)%prtl_tile(ti, tj, tk)%payload2(p) = payload2
       species(s)%prtl_tile(ti, tj, tk)%payload3(p) = payload3
     #endif
-  end subroutine createParticleFromAttributes
+  end subroutine putParticleOnTile
+
+  subroutine putEnrouteParticleOnTile(s, ti, tj, tk, enroute)
+    implicit none
+    integer, intent(in)                 :: s, ti, tj, tk
+    type(prtl_enroute), intent(in)      :: enroute
+    call putParticleOnTile(s, ti, tj, tk,&
+                            & enroute%xi, enroute%yi, enroute%zi, enroute%dx, enroute%dy, enroute%dz,&
+                           #ifdef GCA
+                            & enroute%xi_past, enroute%yi_past, enroute%zi_past,&
+                            & enroute%dx_past, enroute%dy_past, enroute%dz_past,&
+                           #endif
+                            & enroute%u, enroute%v, enroute%w,&
+                           #ifdef GCA
+                            & enroute%u_eff, enroute%v_eff, enroute%w_eff, enroute%u_par, enroute%u_perp,&
+                           #endif
+                           #ifdef PRTLPAYLOADS
+                            & enroute%payload1, enroute%payload2, enroute%payload3,&
+                           #endif
+                           & enroute%ind, enroute%proc, enroute%weight)
+  end subroutine putEnrouteParticleOnTile
 
   subroutine copyParticleFromTo(s, p_from, p_to, ti, tj, tk)
     ! DEP_PRT [particle-dependent]
@@ -275,20 +348,28 @@ contains
     #endif
   end subroutine copyParticleFromTo
 
-  subroutine createEmptyTile(s, ti, tj, tk, maxptl)
+  subroutine createEmptyTile(s, ti, tj, tk, maxptl, meshblock)
     implicit none
-    integer, intent(in) :: s, ti, tj, tk, maxptl
-    integer             :: maxptl_on_tile
+    integer, intent(in)                 :: s, ti, tj, tk, maxptl
+    type(mesh), optional, intent(in)    :: meshblock
+    integer                             :: maxptl_on_tile
+    type(mesh)                          :: meshblock_
+    if (present(meshblock)) then
+      meshblock_ = meshblock
+    else
+      meshblock_ = this_meshblock%ptr
+    end if
+
     maxptl_on_tile = maxptl / (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
 
     species(s)%prtl_tile(ti, tj, tk)%spec = s
 
     species(s)%prtl_tile(ti, tj, tk)%x1 = (ti - 1) * species(s)%tile_sx
-    species(s)%prtl_tile(ti, tj, tk)%x2 = min(ti * species(s)%tile_sx, this_meshblock%ptr%sx)
+    species(s)%prtl_tile(ti, tj, tk)%x2 = min(ti * species(s)%tile_sx, meshblock_%sx)
     species(s)%prtl_tile(ti, tj, tk)%y1 = (tj - 1) * species(s)%tile_sy
-    species(s)%prtl_tile(ti, tj, tk)%y2 = min(tj * species(s)%tile_sy, this_meshblock%ptr%sy)
+    species(s)%prtl_tile(ti, tj, tk)%y2 = min(tj * species(s)%tile_sy, meshblock_%sy)
     species(s)%prtl_tile(ti, tj, tk)%z1 = (tk - 1) * species(s)%tile_sz
-    species(s)%prtl_tile(ti, tj, tk)%z2 = min(tk * species(s)%tile_sz, this_meshblock%ptr%sz)
+    species(s)%prtl_tile(ti, tj, tk)%z2 = min(tk * species(s)%tile_sz, meshblock_%sz)
     #ifdef DEBUG
       if ((species(s)%prtl_tile(ti, tj, tk)%x1 .eq. 0) .and.&
         & (species(s)%prtl_tile(ti, tj, tk)%x2 .eq. 0) .and.&
@@ -679,5 +760,336 @@ contains
     end if
     species(s)%prtl_tile(ti, tj, tk)%npart_sp = species(s)%prtl_tile(ti, tj, tk)%npart_sp - 1
   end subroutine removeParticleFromTile
+
+  subroutine copyToEnroute(spec_id, ti, tj, tk, prtl_id, enroute)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in)               :: spec_id, prtl_id, ti, tj, tk
+    type(prtl_enroute), intent(inout) :: enroute
+    enroute%weight = species(spec_id)%prtl_tile(ti, tj, tk)%weight(prtl_id)
+    enroute%xi = species(spec_id)%prtl_tile(ti, tj, tk)%xi(prtl_id)
+    enroute%yi = species(spec_id)%prtl_tile(ti, tj, tk)%yi(prtl_id)
+    enroute%zi = species(spec_id)%prtl_tile(ti, tj, tk)%zi(prtl_id)
+    enroute%dx = species(spec_id)%prtl_tile(ti, tj, tk)%dx(prtl_id)
+    enroute%dy = species(spec_id)%prtl_tile(ti, tj, tk)%dy(prtl_id)
+    enroute%dz = species(spec_id)%prtl_tile(ti, tj, tk)%dz(prtl_id)
+    enroute%u = species(spec_id)%prtl_tile(ti, tj, tk)%u(prtl_id)
+    enroute%v = species(spec_id)%prtl_tile(ti, tj, tk)%v(prtl_id)
+    enroute%w = species(spec_id)%prtl_tile(ti, tj, tk)%w(prtl_id)
+    enroute%ind = species(spec_id)%prtl_tile(ti, tj, tk)%ind(prtl_id)
+    enroute%proc = species(spec_id)%prtl_tile(ti, tj, tk)%proc(prtl_id)
+    #ifdef GCA
+      enroute%xi_past = species(spec_id)%prtl_tile(ti, tj, tk)%xi_past(prtl_id)
+      enroute%yi_past = species(spec_id)%prtl_tile(ti, tj, tk)%yi_past(prtl_id)
+      enroute%zi_past = species(spec_id)%prtl_tile(ti, tj, tk)%zi_past(prtl_id)
+      enroute%dx_past = species(spec_id)%prtl_tile(ti, tj, tk)%dx_past(prtl_id)
+      enroute%dy_past = species(spec_id)%prtl_tile(ti, tj, tk)%dy_past(prtl_id)
+      enroute%dz_past = species(spec_id)%prtl_tile(ti, tj, tk)%dz_past(prtl_id)
+      enroute%u_eff = species(spec_id)%prtl_tile(ti, tj, tk)%u_eff(prtl_id)
+      enroute%v_eff = species(spec_id)%prtl_tile(ti, tj, tk)%v_eff(prtl_id)
+      enroute%w_eff = species(spec_id)%prtl_tile(ti, tj, tk)%w_eff(prtl_id)
+      enroute%u_par = species(spec_id)%prtl_tile(ti, tj, tk)%u_par(prtl_id)
+      enroute%u_perp = species(spec_id)%prtl_tile(ti, tj, tk)%u_perp(prtl_id)
+    #endif
+
+    #ifdef PRTLPAYLOADS
+      enroute%payload1 = species(spec_id)%prtl_tile(ti, tj, tk)%payload1(prtl_id)
+      enroute%payload2 = species(spec_id)%prtl_tile(ti, tj, tk)%payload2(prtl_id)
+      enroute%payload3 = species(spec_id)%prtl_tile(ti, tj, tk)%payload3(prtl_id)
+    #endif
+  end subroutine copyToEnroute
+
+  subroutine copyFromEnroute(enroute, spec_id)
+    implicit none
+    type(prtl_enroute), intent(in)  :: enroute
+    integer, intent(in)             :: spec_id
+    ! DEP_PRT [particle-dependent]
+    call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi,&
+                                             & enroute%dx, enroute%dy, enroute%dz,&
+                                             #ifdef GCA
+                                               & enroute%xi_past, enroute%yi_past, enroute%zi_past,&
+                                               & enroute%dx_past, enroute%dy_past, enroute%dz_past,&
+                                             #endif
+                                             & enroute%u, enroute%v, enroute%w,&
+                                             #ifdef GCA
+                                              & enroute%u_eff, enroute%v_eff, enroute%w_eff,&
+                                              & enroute%u_par, enroute%u_perp,&
+                                             #endif
+                                             #ifdef PRTLPAYLOADS
+                                              & enroute%payload1, enroute%payload2, enroute%payload3,&
+                                             #endif
+                                             & enroute%ind, enroute%proc, enroute%weight)
+  end subroutine copyFromEnroute
+
+  subroutine shiftParticlesX(shift)
+    implicit none
+    integer, intent(in)   :: shift
+    integer               :: s, ti, tj, tk, p
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              species(s)%prtl_tile(ti, tj, tk)%xi(p) = species(s)%prtl_tile(ti, tj, tk)%xi(p) + INT(shift, 2)
+            end do
+          end do
+        end do
+      end do
+    end do
+  end subroutine shiftParticlesX
+
+  subroutine shiftParticlesY(shift)
+    implicit none
+    integer, intent(in)   :: shift
+    integer               :: s, ti, tj, tk, p
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              species(s)%prtl_tile(ti, tj, tk)%yi(p) = species(s)%prtl_tile(ti, tj, tk)%yi(p) + INT(shift, 2)
+            end do
+          end do
+        end do
+      end do
+    end do
+  end subroutine shiftParticlesY
+
+  subroutine shiftParticlesZ(shift)
+    implicit none
+    integer, intent(in)   :: shift
+    integer               :: s, ti, tj, tk, p
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              species(s)%prtl_tile(ti, tj, tk)%zi(p) = species(s)%prtl_tile(ti, tj, tk)%zi(p) + INT(shift, 2)
+            end do
+          end do
+        end do
+      end do
+    end do
+  end subroutine shiftParticlesZ
+
+  subroutine extractParticlesFromEnroute(cnt, spec_id)
+    implicit none
+    integer, intent(in)   :: cnt, spec_id
+    integer               :: p
+    do p = 1, cnt
+      call copyFromEnroute(recv_enroute%enroute(p), spec_id)
+    end do
+  end subroutine extractParticlesFromEnroute
+
+  subroutine reallocateParticles(meshblock)
+    implicit none
+    type(mesh), intent(in)      :: meshblock
+    integer                     :: s, ti, tj, tk
+    character(len=STR_MAX)      :: var_name
+    integer                     :: maxptl_
+
+    call deallocateParticles()
+
+    do s = 1, nspec
+      species(s)%tile_nx = ceiling(real(meshblock%sx) / real(species(s)%tile_sx))
+      species(s)%tile_ny = ceiling(real(meshblock%sy) / real(species(s)%tile_sy))
+      species(s)%tile_nz = ceiling(real(meshblock%sz) / real(species(s)%tile_sz))
+      allocate(species(s)%prtl_tile(species(s)%tile_nx,&
+                                  & species(s)%tile_ny,&
+                                  & species(s)%tile_nz))
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            call createEmptyTile(s, ti, tj, tk, maxptl_array(s), meshblock)
+          end do
+        end do
+      end do
+      species(s)%cntr_sp = 0
+    end do
+
+    call reallocateEnrouteArray(meshblock)
+  end subroutine reallocateParticles
+
+  subroutine reallocateEnrouteArray(meshblock)
+    implicit none
+    type(mesh), intent(in)  :: meshblock
+    integer             :: buffsize, buffsize_x, buffsize_y
+    integer             :: buffsize_xy
+    integer             :: buffsize_z, buffsize_xz, buffsize_yz
+    integer             :: buffsize_xyz, old_buffsize, min_buffsize
+    integer             :: multiplier, ind1, ind2, ind3, ind
+    type(prtl_enroute), allocatable     :: enroute_temp(:)
+
+    multiplier = max(INT(ppc0), 1) * max_buffsize
+
+    buffsize_x = 0
+    buffsize_y = 0; buffsize_xy = 0
+    buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
+    #if defined (oneD) || defined (twoD) || defined (threeD)
+      buffsize_x = meshblock%sy * meshblock%sz * multiplier
+    #endif
+    #if defined (twoD) || defined (threeD)
+      buffsize_y = meshblock%sx * meshblock%sz * multiplier
+      buffsize_xy = meshblock%sz * multiplier
+    #endif
+    #if defined(threeD)
+      buffsize_z = meshblock%sx * meshblock%sy * multiplier
+      buffsize_xz = meshblock%sz * multiplier
+      buffsize_yz = meshblock%sx * multiplier
+      buffsize_xyz = multiplier
+    #endif
+
+    #ifdef oneD
+      buffsize = multiplier
+    #elif twoD
+      buffsize = MAX0(meshblock%sx, meshblock%sy, meshblock%sz) * multiplier
+    #elif threeD
+      buffsize = MAX0(meshblock%sx, meshblock%sy, meshblock%sz)**2 * multiplier
+    #endif
+
+    if (allocated(recv_enroute%enroute)) then
+      old_buffsize = recv_enroute%max
+      min_buffsize = MIN(old_buffsize, buffsize)
+
+      ! reallocate
+      allocate(enroute_temp(1:buffsize))
+      enroute_temp(1:min_buffsize) = recv_enroute%enroute(1:min_buffsize)
+      deallocate(recv_enroute%enroute)
+      allocate(recv_enroute%enroute(1:buffsize))
+      recv_enroute%enroute(1:min_buffsize) = enroute_temp(1:min_buffsize)
+      deallocate(enroute_temp)
+    else
+      ! allocate from scratch
+      allocate(recv_enroute%enroute(1:buffsize))
+    end if
+
+    recv_enroute%max = buffsize
+    recv_enroute%cnt = 0
+
+    do ind1 = -1, 1
+      do ind2 = -1, 1
+        do ind3 = -1, 1
+          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+          #ifdef oneD
+            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+          #elif twoD
+            if (ind3 .ne. 0) cycle
+          #endif
+          if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
+            buffsize = buffsize_x
+          else if ((ind1 .eq. 0) .and. (ind3 .eq. 0)) then
+            buffsize = buffsize_y
+          else if ((ind1 .eq. 0) .and. (ind2 .eq. 0)) then
+            buffsize = buffsize_z
+          else if (ind3 .eq. 0) then
+            buffsize = buffsize_xy
+          else if (ind2 .eq. 0) then
+            buffsize = buffsize_xz
+          else if (ind1 .eq. 0) then
+            buffsize = buffsize_yz
+          else
+            buffsize = buffsize_xyz
+          end if
+          if (allocated(enroute_bot%get(ind1, ind2, ind3)%enroute)) then
+            ! reallocate
+            old_buffsize = enroute_bot%get(ind1, ind2, ind3)%max
+            min_buffsize = MIN(old_buffsize, buffsize)
+            allocate(enroute_temp(1:buffsize))
+            enroute_temp(1:min_buffsize) = enroute_bot%get(ind1, ind2, ind3)%enroute(1:min_buffsize)
+            deallocate(enroute_bot%get(ind1, ind2, ind3)%enroute)
+            allocate(enroute_bot%get(ind1, ind2, ind3)%enroute(1:buffsize))
+            enroute_bot%get(ind1, ind2, ind3)%enroute(1:min_buffsize) = enroute_temp(1:min_buffsize)
+            deallocate(enroute_temp)
+          else
+            ! allocate from scratch
+            allocate(enroute_bot%get(ind1, ind2, ind3)%enroute(buffsize))
+          end if
+          enroute_bot%get(ind1, ind2, ind3)%max = buffsize
+          enroute_bot%get(ind1, ind2, ind3)%cnt = 0
+        end do
+      end do
+    end do
+  end subroutine reallocateEnrouteArray
+
+  subroutine backupParticles()
+    implicit none
+    integer                       :: s, p, ti, tj, tk
+    integer                       :: npart
+    call deallocateParticleBackup()
+    allocate(prtl_backup(nspec))
+
+    do s = 1, nspec
+      ! count number of particles
+      npart = 0
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            npart = npart + species(s)%prtl_tile(ti, tj, tk)%npart_sp
+          end do
+        end do
+      end do
+
+      ! allocate backup array
+      prtl_backup(s)%max = npart
+      allocate(prtl_backup(s)%enroute(npart))
+
+      ! copy particles to backup array
+      prtl_backup(s)%cnt = 0
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              prtl_backup(s)%cnt = prtl_backup(s)%cnt + 1
+              call copyToEnroute(s, ti, tj, tk, p, prtl_backup(s)%enroute(prtl_backup(s)%cnt))
+              #ifdef DEBUG
+                if (prtl_backup(s)%cnt .gt. prtl_backup(s)%max) then
+                  call throwError('ERROR: something went wrong in `backupParticles`: cnt > max.')
+                end if
+              #endif
+            end do
+          end do
+        end do
+      end do
+
+    end do
+  end subroutine backupParticles
+
+  subroutine restoreParticlesFromBackup()
+    implicit none
+    integer               :: s, p, ti, tj, tk
+    do s = 1, nspec
+      do p = 1, prtl_backup(s)%cnt
+        ti = 1; tj = 1; tk = 1
+        #if defined(oneD) || defined (twoD) || defined (threeD)
+          ti = FLOOR(REAL(prtl_backup(s)%enroute(p)%xi) / REAL(species(s)%tile_sx)) + 1
+        #endif
+        #if defined (twoD) || defined (threeD)
+          tj = FLOOR(REAL(prtl_backup(s)%enroute(p)%yi) / REAL(species(s)%tile_sy)) + 1
+        #endif
+        #if defined (threeD)
+          tk = FLOOR(REAL(prtl_backup(s)%enroute(p)%zi) / REAL(species(s)%tile_sz)) + 1
+        #endif
+        ti = MIN(MAX(ti, 1), species(s)%tile_nx)
+        tj = MIN(MAX(tj, 1), species(s)%tile_ny)
+        tk = MIN(MAX(tk, 1), species(s)%tile_nz)
+        call putEnrouteParticleOnTile(s, ti, tj, tk, prtl_backup(s)%enroute(p))
+      end do
+    end do
+  end subroutine restoreParticlesFromBackup
+
+  subroutine deallocateParticles()
+    implicit none
+    integer       :: ind1, ind2, ind3, s
+
+    do s = 1, nspec
+      if (allocated(species(s)%prtl_tile)) deallocate(species(s)%prtl_tile)
+    end do
+  end subroutine deallocateParticles
+
+  subroutine deallocateParticleBackup()
+    implicit none
+    if (allocated(prtl_backup)) deallocate(prtl_backup)
+  end subroutine deallocateParticleBackup
 
 end module m_particlelogistics
