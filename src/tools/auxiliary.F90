@@ -291,6 +291,18 @@ contains
     read (my_str, *) my_int
   end function STRtoINT
 
+  logical function arraysAreEqual(array1, array2)
+    integer, dimension(:), intent(in) :: array1, array2
+    integer :: i
+    arraysAreEqual = (size(array1) .eq. size(array2))
+    if (arraysAreEqual) then
+      do i = 1, size(array1)
+        arraysAreEqual = (array1(i) .eq. array2(i))
+        if (.not. arraysAreEqual) exit
+      end do
+    end if
+  end function arraysAreEqual
+
   real(dprec) function randomNum(DSEED)
   	implicit none
   	real(dprec)    :: DSEED

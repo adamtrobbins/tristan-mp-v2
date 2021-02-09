@@ -325,7 +325,7 @@ contains
       meshblocks(rnk + 1)%z0 = ind(3) * m(3) + global_mesh%z0
     end do
     ! assign all neighbors
-    call reassignNeighborsForAll()
+    call reassignNeighborsForAll(meshblocks)
 
     call printDiag("distributeMeshblocks()", 1)
   end subroutine distributeMeshblocks
@@ -383,33 +383,10 @@ contains
         call system('mkdir -p ' // trim(slice_dir_name))
       end if
     #endif
-    diag_file_name = trim(output_dir_name) // trim(diag_file_name)
+    diag_file_name = trim(output_dir_name) // '/' // trim(diag_file_name)
     open(UNIT_diag, file=diag_file_name, status="replace", form="formatted")
     close(UNIT_diag)
   end subroutine preInitialize
-
-  subroutine checkEverything()
-    implicit none
-    ! check that the domain size is larger than the number of ghost zones
-    #ifdef oneD
-      if (this_meshblock%ptr%sx .lt. NGHOST) then
-        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
-      end if
-    #elif twoD
-      if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
-        & (this_meshblock%ptr%sy .lt. NGHOST)) then
-        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
-      end if
-    #elif threeD
-      if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
-        & (this_meshblock%ptr%sy .lt. NGHOST) .or.&
-        & (this_meshblock%ptr%sz .lt. NGHOST)) then
-        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
-      end if
-    #endif
-
-    call printDiag("checkEverything()", 1)
-  end subroutine checkEverything
 
   #ifdef DOWNSAMPLING
     subroutine initializeDownsampling()

@@ -6,6 +6,7 @@ module m_finalize
   use m_domain
   use m_particles
   use m_fieldlogistics, only: deallocateFields, deallocateFieldBackups
+  use m_particlelogistics, only: deallocateParticles, deallocateParticleBackup
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -41,17 +42,9 @@ contains
     if (allocated(lb_group_z1)) deallocate(lb_group_z1)
 
     ! dealloc particle species
-    if (allocated(species)) deallocate(species)
-
-    ! dealloc exchange arrays
-    do i = -1, 1
-      do j = -1, 1
-        do k = -1, 1
-          if (allocated(enroute_bot%get(i,j,k)%send_enroute)) deallocate(enroute_bot%get(i,j,k)%send_enroute)
-        end do
-      end do
-    end do
-    if (allocated(recv_enroute)) deallocate(recv_enroute)
+    call deallocateParticles()
+    call deallocateParticleBackup()
+    
     call MPI_TYPE_FREE(myMPI_ENROUTE, ierr)
 
     call deallocateFields()
