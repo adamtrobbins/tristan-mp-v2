@@ -9,18 +9,11 @@ module m_exchangeparts
   use m_particles
   use m_particlelogistics
   !--- PRIVATE functions -----------------------------------------!
-  private :: copyToEnroute, copyFromEnroute,&
-           & extractParticlesFromEnroute
   !...............................................................!
 contains
   subroutine initializePrtlExchange()
     implicit none
-    integer             :: buffsize, buffsize_x, buffsize_y
-    integer             :: buffsize_xy
-    integer             :: buffsize_z, buffsize_xz, buffsize_yz
-    integer             :: buffsize_xyz
-    integer             :: multiplier, ierr, ind1, ind2, ind3, ind
-    integer             :: additional_real, additional_int, additional_int2
+    integer             :: ierr, additional_real, additional_int, additional_int2
 
     #ifdef MPI08
       type(MPI_DATATYPE), dimension(0:2)            :: oldtypes
@@ -36,64 +29,7 @@ contains
 
     call getInput('grid', 'max_buff', max_buffsize, 100)
 
-    multiplier = max(INT(ppc0), 1) * max_buffsize
-    ! FIX this might change over time (due to load balancing)
-    buffsize_x = 0
-    buffsize_y = 0; buffsize_xy = 0
-    buffsize_z = 0; buffsize_xz = 0; buffsize_yz = 0; buffsize_xyz = 0
-    #if defined (oneD) || defined (twoD) || defined (threeD)
-      buffsize_x = this_meshblock%ptr%sy * this_meshblock%ptr%sz * multiplier
-    #endif
-    #if defined (twoD) || defined (threeD)
-      buffsize_y = this_meshblock%ptr%sx * this_meshblock%ptr%sz * multiplier
-      buffsize_xy = this_meshblock%ptr%sz * multiplier
-    #endif
-    #if defined(threeD)
-      buffsize_z = this_meshblock%ptr%sx * this_meshblock%ptr%sy * multiplier
-      buffsize_xz = this_meshblock%ptr%sz * multiplier
-      buffsize_yz = this_meshblock%ptr%sx * multiplier
-      buffsize_xyz = multiplier
-    #endif
-
-    #ifdef oneD
-      buffsize = multiplier
-    #elif twoD
-      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz) * multiplier
-    #elif threeD
-      buffsize = MAX0(this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz)**2 * multiplier
-    #endif
-
-    allocate(recv_enroute(buffsize))
-
-    do ind1 = -1, 1
-      do ind2 = -1, 1
-        do ind3 = -1, 1
-          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifdef oneD
-            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-          #elif twoD
-            if (ind3 .ne. 0) cycle
-          #endif
-          if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
-            buffsize = buffsize_x
-          else if ((ind1 .eq. 0) .and. (ind3 .eq. 0)) then
-            buffsize = buffsize_y
-          else if ((ind1 .eq. 0) .and. (ind2 .eq. 0)) then
-            buffsize = buffsize_z
-          else if (ind3 .eq. 0) then
-            buffsize = buffsize_xy
-          else if (ind2 .eq. 0) then
-            buffsize = buffsize_xz
-          else if (ind1 .eq. 0) then
-            buffsize = buffsize_yz
-          else
-            buffsize = buffsize_xyz
-          end if
-          enroute_bot%get(ind1, ind2, ind3)%max_send = buffsize
-          allocate(enroute_bot%get(ind1, ind2, ind3)%send_enroute(buffsize))
-        end do
-      end do
-    end do
+    call reallocateEnrouteArray(this_meshblock%ptr)
 
     ! DEP_PRT [particle-dependent]
     ! new type for myMPI_ENROUTE
@@ -161,7 +97,7 @@ contains
     allocate(mpi_recvflags(sendrecv_neighbors))
 
     do s = 1, nspec ! loop over species
-      enroute_bot%get(:,:,:)%cnt_send = 0
+      enroute_bot%get(:,:,:)%cnt = 0
       ! particle crosses MPI blocks //
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
@@ -195,37 +131,37 @@ contains
                   cycle
                 end if
                 ! copy this particle to temporary `enroute_bot` array
-                enroute_bot%get(send_x, send_y, send_z)%cnt_send = enroute_bot%get(send_x, send_y, send_z)%cnt_send + 1
-                if (enroute_bot%get(send_x, send_y, send_z)%cnt_send .ge.&
-                  & enroute_bot%get(send_x, send_y, send_z)%max_send) then
+                enroute_bot%get(send_x, send_y, send_z)%cnt = enroute_bot%get(send_x, send_y, send_z)%cnt + 1
+                if (enroute_bot%get(send_x, send_y, send_z)%cnt .ge.&
+                  & enroute_bot%get(send_x, send_y, send_z)%max) then
                   call throwError('ERROR: particle send buffer array too small: '//&
-                      & trim(STR(enroute_bot%get(send_x, send_y, send_z)%max_send))//'.')
+                      & trim(STR(enroute_bot%get(send_x, send_y, send_z)%max))//'.')
                 end if
-                cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
-                call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr))
+                cntr = enroute_bot%get(send_x, send_y, send_z)%cnt
+                call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%enroute(cntr))
                 ! make ghost particle
                 pt_proc(p) = -1
 
                 ! shift coordinates to fit the new grid
                 #if defined(oneD) || defined(twoD) || defined(threeD)
-                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi
+                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi
                   temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
                   new_xyz = -(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2
-                  enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi = new_xyz
+                  enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi = new_xyz
                 #endif
 
                 #if defined(twoD) || defined(threeD)
-                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi
+                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi
                   temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
                   new_xyz = -(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2
-                  enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi = new_xyz
+                  enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi = new_xyz
                 #endif
 
                 #if defined(threeD)
-                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi
+                  new_xyz = enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi
                   temp_xyz = this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
                   new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
-                  enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi = new_xyz
+                  enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi = new_xyz
                 #endif
 
                 #ifdef GCA
@@ -233,36 +169,36 @@ contains
                   ! shift past coordinates to fit the new grid
                   #if defined(oneD) || defined(twoD) || defined(threeD)
                     if (send_x .eq. 1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past -&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past -&
                               & this_meshblock%ptr%sx
                     else if (send_x .eq. -1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past +&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past +&
                               & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
                     end if
                   #endif
 
                   #if defined(twoD) || defined(threeD)
                     if (send_y .eq. 1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past -&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past -&
                               & this_meshblock%ptr%sy
                     else if (send_y .eq. -1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past +&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past +&
                               & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
                     end if
                   #endif
 
                   #if defined(threeD)
                     if (send_z .eq. 1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past -&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past -&
                               & this_meshblock%ptr%sz
                     else if (send_z .eq. -1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past +&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past +&
                               & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
                     end if
                   #endif
@@ -294,8 +230,8 @@ contains
 
             ! post non-blocking send requests
             mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-            call MPI_ISEND(enroute_bot%get(ind1,ind2,ind3)%send_enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt_send),&
-                         & enroute_bot%get(ind1,ind2,ind3)%cnt_send, myMPI_ENROUTE,&
+            call MPI_ISEND(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
+                         & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
                          & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
           end do
         end do
@@ -385,7 +321,7 @@ contains
                 call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
                 if (mpi_recvflags(cntr)) then
                   call MPI_GET_COUNT(istat, myMPI_ENROUTE, cnt_recv_enroute, ierr)
-                  call MPI_RECV(recv_enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&
+                  call MPI_RECV(recv_enroute%enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&
                               & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
 
                   ! write received data to local memory
@@ -431,7 +367,7 @@ contains
     allocate(mpi_recvflags(sendrecv_neighbors))
 
     do s = 1, nspec ! loop over species
-      enroute_bot%get(:,:,:)%cnt_send = 0
+      enroute_bot%get(:,:,:)%cnt = 0
       ! particle crosses MPI blocks //
       do ti = 1, species(s)%tile_nx
         do tj = 1, species(s)%tile_ny
@@ -509,84 +445,84 @@ contains
                 #endif
 
                 ! copy this particle to temporary `enroute_bot` array
-                enroute_bot%get(send_x, send_y, send_z)%cnt_send = enroute_bot%get(send_x, send_y, send_z)%cnt_send + 1
-                if (enroute_bot%get(send_x, send_y, send_z)%cnt_send .ge.&
-                  & enroute_bot%get(send_x, send_y, send_z)%max_send) then
-                  call throwError('ERROR: particle send buffer array too small: '//&
-                      & trim(STR(enroute_bot%get(send_x, send_y, send_z)%max_send))//'.')
+                enroute_bot%get(send_x, send_y, send_z)%cnt = enroute_bot%get(send_x, send_y, send_z)%cnt + 1
+                if (enroute_bot%get(send_x, send_y, send_z)%cnt .ge.&
+                  & enroute_bot%get(send_x, send_y, send_z)%max) then
+                  call throwError('ERROR: particle send buffer array too small in `redistributeParticlesBetweenMeshblocks()`: '//&
+                      & trim(STR(enroute_bot%get(send_x, send_y, send_z)%max))//'.')
                 end if
-                cntr = enroute_bot%get(send_x, send_y, send_z)%cnt_send
-                call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr))
+                cntr = enroute_bot%get(send_x, send_y, send_z)%cnt
+                call copyToEnroute(s, ti, tj, tk, p, enroute_bot%get(send_x, send_y, send_z)%enroute(cntr))
                 ! make ghost particle
                 pt_proc(p) = -1
 
                 ! shift coordinates to fit the new grid
                 #if defined(oneD) || defined(twoD) || defined(threeD)
                   if (send_x .eq. -1) then
-                    enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi =&
-                          & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi +&
-                          & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
+                    enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi =&
+                          & INT(enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi +&
+                              & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx, 2)
                   else if (send_x .eq. 1) then
-                    enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi =&
-                          & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi - this_meshblock%ptr%sx
+                    enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi =&
+                          & INT(enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi - this_meshblock%ptr%sx, 2)
                   end if
                 #endif
 
                 #if defined(twoD) || defined(threeD)
                   if (send_y .eq. -1) then
-                    enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi =&
-                          & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi +&
+                    enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi =&
+                          & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi +&
                           & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
                   else if (send_y .eq. 1) then
-                    enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi =&
-                          & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi - this_meshblock%ptr%sy
+                    enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi =&
+                          & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi - this_meshblock%ptr%sy
                   end if
                 #endif
 
                 #if defined(threeD)
                   if (send_z .eq. -1) then
-                    enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi =&
-                          & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi +&
+                    enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi =&
+                          & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi +&
                           & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
                   else if (send_z .eq. 1) then
-                    enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi =&
-                          & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi - this_meshblock%ptr%sz
+                    enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi =&
+                          & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi - this_meshblock%ptr%sz
                   end if
                 #endif
 
                 #ifdef GCA
                   #if defined(oneD) || defined(twoD) || defined(threeD)
                     if (send_x .eq. 1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past -&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past -&
                               & this_meshblock%ptr%sx
                     else if (send_x .eq. -1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%xi_past +&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%xi_past +&
                               & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sx
                     end if
                   #endif
 
                   #if defined(twoD) || defined(threeD)
                     if (send_y .eq. 1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past -&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past -&
                               & this_meshblock%ptr%sy
                     else if (send_y .eq. -1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%yi_past +&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%yi_past +&
                               & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sy
                     end if
                   #endif
 
                   #if defined(threeD)
                     if (send_z .eq. 1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past -&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past -&
                               & this_meshblock%ptr%sz
                     else if (send_z .eq. -1) then
-                      enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past =&
-                              & enroute_bot%get(send_x, send_y, send_z)%send_enroute(cntr)%zi_past +&
+                      enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past =&
+                              & enroute_bot%get(send_x, send_y, send_z)%enroute(cntr)%zi_past +&
                               & this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr%sz
                     end if
                   #endif
@@ -614,12 +550,12 @@ contains
             #endif
             if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
             cntr = cntr + 1
-            mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+            mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1) + 100 * s
 
             ! post non-blocking send requests
             mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-            call MPI_ISEND(enroute_bot%get(ind1,ind2,ind3)%send_enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt_send),&
-                         & enroute_bot%get(ind1,ind2,ind3)%cnt_send, myMPI_ENROUTE,&
+            call MPI_ISEND(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
+                         & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
                          & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
           end do
         end do
@@ -678,19 +614,18 @@ contains
               end if
 
               mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-              mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
+              mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1) + 100 * s
 
               if (.not. mpi_recvflags(cntr)) then
                 quit_loop = .false.
                 call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
                 if (mpi_recvflags(cntr)) then
-                  call MPI_GET_COUNT(istat, myMPI_ENROUTE, cnt_recv_enroute, ierr)
-                  call MPI_RECV(recv_enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&
+                  call MPI_GET_COUNT(istat, myMPI_ENROUTE, recv_enroute%cnt, ierr)
+                  call MPI_RECV(recv_enroute%enroute(1:recv_enroute%cnt), recv_enroute%cnt, myMPI_ENROUTE,&
                               & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
-
                   ! write received data to local memory
-                  if (cnt_recv_enroute .gt. 0) then
-                    call extractParticlesFromEnroute(cnt_recv_enroute, s)
+                  if (recv_enroute%cnt .gt. 0) then
+                    call extractParticlesFromEnroute(recv_enroute%cnt, s)
                   end if ! if > 0 particles received
                 end if ! if the message can be received -> get the size & receive it
               end if ! if the message has already been received
@@ -733,112 +668,44 @@ contains
     call printDiag("redistributeParticlesBetweenMeshblocks()", 3)
   end subroutine redistributeParticlesBetweenMeshblocks
 
-  subroutine copyToEnroute(spec_id, ti, tj, tk, prtl_id, enroute)
-    ! DEP_PRT [particle-dependent]
-    implicit none
-    integer, intent(in)               :: spec_id, prtl_id, ti, tj, tk
-    type(prtl_enroute), intent(inout) :: enroute
-    enroute%weight = species(spec_id)%prtl_tile(ti, tj, tk)%weight(prtl_id)
-    enroute%xi = species(spec_id)%prtl_tile(ti, tj, tk)%xi(prtl_id)
-    enroute%yi = species(spec_id)%prtl_tile(ti, tj, tk)%yi(prtl_id)
-    enroute%zi = species(spec_id)%prtl_tile(ti, tj, tk)%zi(prtl_id)
-    enroute%dx = species(spec_id)%prtl_tile(ti, tj, tk)%dx(prtl_id)
-    enroute%dy = species(spec_id)%prtl_tile(ti, tj, tk)%dy(prtl_id)
-    enroute%dz = species(spec_id)%prtl_tile(ti, tj, tk)%dz(prtl_id)
-    enroute%u = species(spec_id)%prtl_tile(ti, tj, tk)%u(prtl_id)
-    enroute%v = species(spec_id)%prtl_tile(ti, tj, tk)%v(prtl_id)
-    enroute%w = species(spec_id)%prtl_tile(ti, tj, tk)%w(prtl_id)
-    enroute%ind = species(spec_id)%prtl_tile(ti, tj, tk)%ind(prtl_id)
-    enroute%proc = species(spec_id)%prtl_tile(ti, tj, tk)%proc(prtl_id)
-    #ifdef GCA
-      enroute%xi_past = species(spec_id)%prtl_tile(ti, tj, tk)%xi_past(prtl_id)
-      enroute%yi_past = species(spec_id)%prtl_tile(ti, tj, tk)%yi_past(prtl_id)
-      enroute%zi_past = species(spec_id)%prtl_tile(ti, tj, tk)%zi_past(prtl_id)
-      enroute%dx_past = species(spec_id)%prtl_tile(ti, tj, tk)%dx_past(prtl_id)
-      enroute%dy_past = species(spec_id)%prtl_tile(ti, tj, tk)%dy_past(prtl_id)
-      enroute%dz_past = species(spec_id)%prtl_tile(ti, tj, tk)%dz_past(prtl_id)
-      enroute%u_eff = species(spec_id)%prtl_tile(ti, tj, tk)%u_eff(prtl_id)
-      enroute%v_eff = species(spec_id)%prtl_tile(ti, tj, tk)%v_eff(prtl_id)
-      enroute%w_eff = species(spec_id)%prtl_tile(ti, tj, tk)%w_eff(prtl_id)
-      enroute%u_par = species(spec_id)%prtl_tile(ti, tj, tk)%u_par(prtl_id)
-      enroute%u_perp = species(spec_id)%prtl_tile(ti, tj, tk)%u_perp(prtl_id)
-    #endif
-
-    #ifdef PRTLPAYLOADS
-      enroute%payload1 = species(spec_id)%prtl_tile(ti, tj, tk)%payload1(prtl_id)
-      enroute%payload2 = species(spec_id)%prtl_tile(ti, tj, tk)%payload2(prtl_id)
-      enroute%payload3 = species(spec_id)%prtl_tile(ti, tj, tk)%payload3(prtl_id)
-    #endif
-  end subroutine copyToEnroute
-
-  subroutine copyFromEnroute(enroute, spec_id)
-    implicit none
-    type(prtl_enroute), intent(in)  :: enroute
-    integer, intent(in)             :: spec_id
-    ! DEP_PRT [particle-dependent]
-    call createParticleFromAttributes(spec_id, enroute%xi, enroute%yi, enroute%zi,&
-                                             & enroute%dx, enroute%dy, enroute%dz,&
-                                             #ifdef GCA
-                                               & enroute%xi_past, enroute%yi_past, enroute%zi_past,&
-                                               & enroute%dx_past, enroute%dy_past, enroute%dz_past,&
-                                             #endif
-                                             & enroute%u, enroute%v, enroute%w,&
-                                             #ifdef GCA
-                                              & enroute%u_eff, enroute%v_eff, enroute%w_eff,&
-                                              & enroute%u_par, enroute%u_perp,&
-                                             #endif
-                                             #ifdef PRTLPAYLOADS
-                                              & enroute%payload1, enroute%payload2, enroute%payload3,&
-                                             #endif
-                                             & enroute%ind, enroute%proc, enroute%weight)
-  end subroutine copyFromEnroute
-
   subroutine moveParticleBetweenTiles(s, ti, tj, tk, p)
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: s, ti, tj, tk, p
-    call createParticleFromAttributes(s, species(s)%prtl_tile(ti, tj, tk)%xi(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%yi(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%zi(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%dx(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%dy(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%dz(p),&
+    call createParticleFromAttributes(s=s, xi=species(s)%prtl_tile(ti, tj, tk)%xi(p),&
+                                         & yi=species(s)%prtl_tile(ti, tj, tk)%yi(p),&
+                                         & zi=species(s)%prtl_tile(ti, tj, tk)%zi(p),&
+                                         & dx=species(s)%prtl_tile(ti, tj, tk)%dx(p),&
+                                         & dy=species(s)%prtl_tile(ti, tj, tk)%dy(p),&
+                                         & dz=species(s)%prtl_tile(ti, tj, tk)%dz(p),&
                                        #ifdef GCA
-                                         & species(s)%prtl_tile(ti, tj, tk)%xi_past(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%yi_past(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%zi_past(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dx_past(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dy_past(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%dz_past(p),&
+                                         & xi_past=species(s)%prtl_tile(ti, tj, tk)%xi_past(p),&
+                                         & yi_past=species(s)%prtl_tile(ti, tj, tk)%yi_past(p),&
+                                         & zi_past=species(s)%prtl_tile(ti, tj, tk)%zi_past(p),&
+                                         & dx_past=species(s)%prtl_tile(ti, tj, tk)%dx_past(p),&
+                                         & dy_past=species(s)%prtl_tile(ti, tj, tk)%dy_past(p),&
+                                         & dz_past=species(s)%prtl_tile(ti, tj, tk)%dz_past(p),&
                                        #endif
-                                       & species(s)%prtl_tile(ti, tj, tk)%u(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%v(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%w(p),&
+                                       & u=species(s)%prtl_tile(ti, tj, tk)%u(p),&
+                                       & v=species(s)%prtl_tile(ti, tj, tk)%v(p),&
+                                       & w=species(s)%prtl_tile(ti, tj, tk)%w(p),&
                                        #ifdef GCA
-                                         & species(s)%prtl_tile(ti, tj, tk)%u_eff(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%v_eff(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%w_eff(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%u_par(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%u_perp(p),&
+                                         & u_eff=species(s)%prtl_tile(ti, tj, tk)%u_eff(p),&
+                                         & v_eff=species(s)%prtl_tile(ti, tj, tk)%v_eff(p),&
+                                         & w_eff=species(s)%prtl_tile(ti, tj, tk)%w_eff(p),&
+                                         & u_par=species(s)%prtl_tile(ti, tj, tk)%u_par(p),&
+                                         & u_perp=species(s)%prtl_tile(ti, tj, tk)%u_perp(p),&
                                        #endif
                                        #ifdef PRTLPAYLOADS
-                                         & species(s)%prtl_tile(ti, tj, tk)%payload1(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%payload2(p),&
-                                         & species(s)%prtl_tile(ti, tj, tk)%payload3(p),&
+                                         & payload1=species(s)%prtl_tile(ti, tj, tk)%payload1(p),&
+                                         & payload2=species(s)%prtl_tile(ti, tj, tk)%payload2(p),&
+                                         & payload3=species(s)%prtl_tile(ti, tj, tk)%payload3(p),&
                                        #endif
-                                       & species(s)%prtl_tile(ti, tj, tk)%ind(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%proc(p),&
-                                       & species(s)%prtl_tile(ti, tj, tk)%weight(p))
+                                       & ind=species(s)%prtl_tile(ti, tj, tk)%ind(p),&
+                                       & proc=species(s)%prtl_tile(ti, tj, tk)%proc(p),&
+                                       & weight=species(s)%prtl_tile(ti, tj, tk)%weight(p))
     ! schedule particle for deletion
     species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
   end subroutine moveParticleBetweenTiles
 
-  subroutine extractParticlesFromEnroute(cnt, spec_id)
-    implicit none
-    integer, intent(in)   :: cnt, spec_id
-    integer               :: p
-    do p = 1, cnt
-      call copyFromEnroute(recv_enroute(p), spec_id)
-    end do
-  end subroutine extractParticlesFromEnroute
 end module m_exchangeparts
