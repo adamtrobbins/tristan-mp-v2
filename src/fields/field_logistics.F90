@@ -98,6 +98,26 @@ contains
     bz_back(i1:i2, j1:j2, k1:k2) = bz(i1:i2, j1:j2, k1:k2)
   end subroutine backupEBfields
 
+  subroutine restoreFieldsFromBackups(i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                    & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to)
+    implicit none
+    integer, intent(in)   :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from
+    integer, intent(in)   :: i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
+    #ifdef DEBUG
+      if ((i2_from - i1_from .ne. i2_to - i1_to) .or.&
+        & (j2_from - j1_from .ne. j2_to - j1_to) .or.&
+        & (k2_from - k1_from .ne. k2_to - k1_to)) then
+        call throwError('ERROR: wrong dimensions in `restoreFieldsFromBackups()`.')
+      end if
+    #endif
+    ex(i1_to:i2_to,j1_to:j2_to,k1_to:k2_to) = ex_back(i1_from:i2_from,j1_from:j2_from,k1_from:k2_from)
+    ey(i1_to:i2_to,j1_to:j2_to,k1_to:k2_to) = ey_back(i1_from:i2_from,j1_from:j2_from,k1_from:k2_from)
+    ez(i1_to:i2_to,j1_to:j2_to,k1_to:k2_to) = ez_back(i1_from:i2_from,j1_from:j2_from,k1_from:k2_from)
+    bx(i1_to:i2_to,j1_to:j2_to,k1_to:k2_to) = bx_back(i1_from:i2_from,j1_from:j2_from,k1_from:k2_from)
+    by(i1_to:i2_to,j1_to:j2_to,k1_to:k2_to) = by_back(i1_from:i2_from,j1_from:j2_from,k1_from:k2_from)
+    bz(i1_to:i2_to,j1_to:j2_to,k1_to:k2_to) = bz_back(i1_from:i2_from,j1_from:j2_from,k1_from:k2_from)
+  end subroutine restoreFieldsFromBackups
+
   subroutine deallocateFields()
     implicit none
     ! fields
