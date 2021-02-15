@@ -104,6 +104,7 @@
   psr_radius    = 40
   psr_angle     = 0
   psr_period    = 1600
+	psr_bstar     = 1.0
   rmin_dr       = 1.0           # remove particles falling below `radius - rmin_dr`
 
   inj_method    = 2             # 1 = screen E.B; 2 = inject nGJ

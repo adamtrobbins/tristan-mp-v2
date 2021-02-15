@@ -19,7 +19,7 @@ module m_userfile
 
   !--- PRIVATE variables -----------------------------------------!
   integer, private  :: fld_geometry, inj_method, e_par_method
-  real, private     :: xc_g, yc_g, zc_g, psr_spinupT
+  real, private     :: xc_g, yc_g, zc_g, psr_spinupT, psr_bstar
   real, private     :: psr_angle, psr_period, psr_omega, psr_omega0, psr_radius
   real, private     :: inj_mult, e_thr
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
@@ -46,6 +46,7 @@ contains
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
     call getInput('problem', 'psr_spinupT', psr_spinupT, 0.0)
+    call getInput('problem', 'psr_bstar', psr_bstar, 1.0)
 
     ! remove particles which fall below `radius - rmin_dr`
     call getInput('problem', 'rmin_dr', rmin_dr)
@@ -883,9 +884,9 @@ contains
 
     mu_dot_n = mux * nx + muy * ny + muz * nz
 
-    obx = (3.0 * nx * mu_dot_n - mux) * rr
-    oby = (3.0 * ny * mu_dot_n - muy) * rr
-    obz = (3.0 * nz * mu_dot_n - muz) * rr
+    obx = psr_bstar * (3.0 * nx * mu_dot_n - mux) * rr
+    oby = psr_bstar * (3.0 * ny * mu_dot_n - muy) * rr
+    obz = psr_bstar * (3.0 * nz * mu_dot_n - muz) * rr
   end subroutine getDipole
 
   subroutine getMonopole(step, offset, x_g, y_g, z_g,&
@@ -902,9 +903,9 @@ contains
     rr = sqrt(nx**2 + ny**2 + nz**2)
     rr = 1.0 / rr**3
 
-    obx = psr_radius**2 * nx * rr
-    oby = psr_radius**2 * ny * rr
-    obz = psr_radius**2 * nz * rr
+    obx = psr_bstar * psr_radius**2 * nx * rr
+    oby = psr_bstar * psr_radius**2 * ny * rr
+    obz = psr_bstar * psr_radius**2 * nz * rr
   end subroutine getMonopole
 
   real function shape(rad, rad0)
