@@ -194,7 +194,7 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 specific_cluster = False
 if (args['cluster'] is not None):
   specific_cluster = True
-  clustername = args['cluster'].capitalize
+  clustername = args['cluster'].capitalize()
   args['intel'] = True
   args['ifport'] = True
   if args['cluster'] == 'perseus':
