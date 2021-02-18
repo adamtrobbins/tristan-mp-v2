@@ -44,7 +44,7 @@ module m_domain
   integer                            :: sendrecv_neighbors
 
   ! loadbalancing variables
-  type(mesh), allocatable :: new_meshblocks(:)
+  type(mesh), allocatable, target    :: new_meshblocks(:)
 
   ! global constants for SLB
   logical :: slb_x, slb_y, slb_z

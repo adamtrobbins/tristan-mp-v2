@@ -52,32 +52,26 @@ module m_aux
   private :: intToStr, realToStr
   !...............................................................!
 contains
-  subroutine printDiag(bool, msg, prepend)
+  subroutine printDiag(msg, level)
     implicit none
     character(len=*), intent(in)  :: msg
-    logical, intent(in)           :: bool
-    logical, optional, intent(in) :: prepend
+    integer, optional, intent(in) :: level
     character(len=STR_MAX)        :: dummy
     integer                       :: sz, i, ierr
-    #ifdef DEBUG
-      if (bool) then
-        sz = len(trim(msg))
-        if (present(prepend)) then
-          if (prepend) then
-            dummy = '...'
-            sz = sz + 3
-          end if
-        else
-          dummy = ''
-        end if
-        dummy = trim(dummy) // trim(msg)
-        do i = 1, (38 - sz)
-          dummy = trim(dummy) // '.'
+    if (mpi_rank .eq. 0) then
+      open(UNIT_diag, file=diag_file_name, status="old", position="append", form="formatted")
+      sz = len(trim(msg))
+      dummy = ''
+      if (present(level)) then
+        sz = sz + level * 3
+        do i = 1, level*3
+          dummy(i:i) = '.'
         end do
-        dummy = trim(dummy) // '[OK]'
-        print *, trim(dummy)
       end if
-    #endif
+      dummy = trim(dummy) // trim(msg)
+      write(UNIT_diag, *) trim(dummy)
+      close(UNIT_diag)
+    end if
   end subroutine printDiag
 
   function getFMTForReal(value, w) result(FMT)
@@ -118,32 +112,6 @@ contains
     write(dummy, '(I10)') w_
     FMT = 'ES' // trim(dummy) // '.3'
   end function getFMTForRealScientific
-
-  subroutine printReport(bool, msg, prepend)
-    implicit none
-    character(len=*), intent(in)  :: msg
-    logical, intent(in)           :: bool
-    logical, optional, intent(in) :: prepend
-    character(len=STR_MAX)        :: dummy
-    integer                       :: sz, i, ierr
-    if (bool) then
-      sz = len(trim(msg))
-      if (present(prepend)) then
-        if (prepend) then
-          dummy = '...'
-          sz = sz + 3
-        end if
-      else
-        dummy = ''
-      end if
-      dummy = trim(dummy) // trim(msg)
-      do i = 1, (38 - sz)
-        dummy = trim(dummy) // '.'
-      end do
-      dummy = trim(dummy) // '[OK]'
-      print *, trim(dummy)
-    end if
-  end subroutine printReport
 
   subroutine printTimeHeader(tstep)
     implicit none
@@ -323,6 +291,18 @@ contains
     read (my_str, *) my_int
   end function STRtoINT
 
+  logical function arraysAreEqual(array1, array2)
+    integer, dimension(:), intent(in) :: array1, array2
+    integer :: i
+    arraysAreEqual = (size(array1) .eq. size(array2))
+    if (arraysAreEqual) then
+      do i = 1, size(array1)
+        arraysAreEqual = (array1(i) .eq. array2(i))
+        if (.not. arraysAreEqual) exit
+      end do
+    end if
+  end function arraysAreEqual
+
   real(dprec) function randomNum(DSEED)
   	implicit none
   	real(dprec)    :: DSEED
@@ -378,6 +358,8 @@ contains
     integer, intent(in) :: rank
     dseed = 123457.D0
     dseed = dseed + rank
+
+    call printDiag("initializeRandomSeed()", 1)
   end subroutine initializeRandomSeed
 
   subroutine log_normal(n_bins, lognorm)

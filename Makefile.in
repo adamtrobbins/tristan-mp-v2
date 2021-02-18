@@ -26,20 +26,17 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)qed_namespace.F90 \
 						$(SRC_DIR)output_namespace.F90 \
 						$(SRC_DIR)tools/auxiliary.F90 \
-						$(SRC_DIR)domain/domain.F90 \
-						$(SRC_DIR)fields.F90 \
-						$(SRC_DIR)particles/particles.F90 \
-						$(SRC_DIR)main/finalize.F90 \
 						$(SRC_DIR)tools/error_handling.F90 \
 						$(SRC_DIR)io/read_input.F90 \
+						$(SRC_DIR)domain/domain.F90 \
+						$(SRC_DIR)fields/fields.F90 \
+						$(SRC_DIR)particles/particles.F90 \
 						$(SRC_DIR)tools/helpers.F90 \
+						$(SRC_DIR)fields/field_logistics.F90 \
 						$(SRC_DIR)particles/particle_binning.F90 \
 						$(SRC_DIR)particles/binary_coupling.F90 \
 						$(SRC_DIR)particles/particle_logistics.F90 \
 						$(SRC_DIR)particles/particle_downsampling.F90 \
-						$(SRC_DIR)domain/static_lb.F90 \
-						$(SRC_DIR)domain/adaptive_lb.F90 \
-						$(SRC_DIR)domain/loadbalancing.F90 \
 						$(SRC_DIR)qed/bw_pp.F90 \
 						$(SRC_DIR)qed/compton.F90 \
 						$(SRC_DIR)qed/annihilation.F90 \
@@ -59,15 +56,20 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)io/write_spectra.F90 \
 						$(SRC_DIR)io/write_diagnostics.F90 \
 						$(SRC_DIR)io/write_tot.F90 \
-						$(SRC_DIR)io/write_restart.F90 \
 						$(SRC_DIR)io/write_history.F90 \
+						$(SRC_DIR)restart/restart.F90 \
+						$(SRC_DIR)domain/static_lb.F90 \
+						$(SRC_DIR)domain/adaptive_lb.F90 \
+						$(SRC_DIR)domain/loadbalancing.F90 \
 						$(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						$(SRC_DIR)algorithms/particle_mover.F90 \
 						$(SRC_DIR)algorithms/field_solver.F90 \
 						$(SRC_DIR)algorithms/current_deposit.F90 \
 						$(SRC_DIR)algorithms/filtering.F90 \
 						$(SRC_DIR)main/initialize.F90 \
+						$(SRC_DIR)main/finalize.F90 \
 						$(SRC_DIR)main/tristanmainloop.F90 \
+						$(SRC_DIR)main/testsite.F90 \
 						$(SRC_DIR)main/tristan.F90
 
 INCL_FILES := $(SRC_DIR)tools/interp_efield.F \

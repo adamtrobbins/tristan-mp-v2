@@ -91,6 +91,8 @@ contains
       h5comm = MPI_COMM_WORLD
       h5info = MPI_INFO_NULL
     #endif
+
+    call printDiag("initializeOutput()", 1)
   end subroutine initializeOutput
 
   subroutine initializeSlice()
@@ -140,7 +142,8 @@ contains
         exit
       end if
     end do
-
+    
+    call printDiag("initializeSlice()", 1)
   end subroutine initializeSlice
 
   subroutine prepareOutput()

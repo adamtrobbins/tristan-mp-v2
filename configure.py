@@ -66,6 +66,11 @@ mpi_group.add_argument('-mpi08',
                        default=False,
                        help='enable mpi_f08')
 
+mpi_group.add_argument('-test',
+                       action='store_true',
+                       default=False,
+                       help='enable test mode')
+
 # user file
 user_group = parser.add_mutually_exclusive_group(required=True)
 user_group.add_argument('--user',
@@ -97,6 +102,11 @@ parser.add_argument('-debug',
                     action='store_true',
                     default=False,
                     help='enable DEBUG flag')
+
+parser.add_argument('-safe',
+                    action='store_true',
+                    default=False,
+                    help='enable dynamic memory allocations (safe regime)')
 
 parser.add_argument('--gca',
                     action='store',
@@ -237,6 +247,12 @@ elif (args['debug'] and args['intel']):
 else:
   makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
+if args['test']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
+
+if args['safe']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DSAFE '
+
 # compiler (+ vectorization etc)
 if args['intel']:
   makefile_options['MODULE'] = '-module '
@@ -349,6 +365,7 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                         (' [avx512]' if args['avx512'] else '')
                                       ))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
+print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
 print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))

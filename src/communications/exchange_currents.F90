@@ -279,6 +279,6 @@ contains
       jz(:,:,:) = jz(:,:,:) + jz_buff(:,:,:)
     end if
 
-    call printDiag((mpi_rank .eq. 0), "exchangeCurrents()", .true.)
+    call printDiag("exchangeCurrents()", 2)
   end subroutine exchangeCurrents
 end module m_exchangecurrents

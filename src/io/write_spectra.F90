@@ -38,7 +38,7 @@ contains
     #ifdef HDF5
       call writeSpectra_hdf5(step, time)
     #endif
-    call printDiag((mpi_rank .eq. 0), "...writeSpectra()", .true.)
+    call printDiag("writeSpectra()", 3)
   end subroutine writeSpectra
 
   #ifdef HDF5

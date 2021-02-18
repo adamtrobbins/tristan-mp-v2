@@ -21,6 +21,7 @@ contains
     call getInput('output', 'hst_enable', hst_enable, .false.)
     call getInput('output', 'hst_interval', hst_interval, 1)
     call getInput('output', 'hst_readable', hst_human_readable, .false.)
+    call printDiag("initializeHistory()", 1)
   end subroutine initializeHistory
 
   ! FIX2 total E^2, total B^2, total E_kin
@@ -199,7 +200,7 @@ contains
 
       close(UNIT_history)
     end if
-    call printDiag((mpi_rank .eq. 0), "history()", .true.)
+    call printDiag("writeHistory()", 2)
   end subroutine writeHistory
 
   subroutine computeEnergyInBox(e_energy, b_energy, prtl_energy)

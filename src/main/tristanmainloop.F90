@@ -10,7 +10,7 @@ module m_mainloop
   use m_writeslice, only: writeSlices
   use m_writetot, only: writeTotOutput
   use m_writehistory, only: writeHistory
-  use m_writerestart, only: writeRestart, rst_enable, rst_interval, rst_start
+  use m_restart, only: writeRestart, rst_enable, rst_interval, rst_start
   use m_fldsolver
   use m_mover
   use m_currentdeposit
@@ -75,7 +75,7 @@ contains
     integer       :: s, ti, tj, tk, p
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-    call printReport((mpi_rank .eq. 0), "Starting mainloop()")
+    call printDiag("Starting mainloop()", 0)
 
     t_fullstep = 0;       t_movestep = 0
     t_depositstep = 0;    t_filterstep = 0
@@ -92,6 +92,8 @@ contains
     #endif
 
     do timestep = start_timestep, final_timestep
+      call printDiag("", 20)
+      call printDiag("Starting timestep # "//STR(timestep), 0)
         t_fullstep = MPI_WTIME()
 
       ! MAINLOOP >
@@ -331,6 +333,8 @@ contains
       if (ierr .eq. MPI_SUCCESS) then
         call makeReport(timestep)
       end if
+
+      call printDiag("Finished timestep # "//STR(timestep), 0)
     end do
   end subroutine mainloop
 

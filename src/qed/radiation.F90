@@ -33,6 +33,7 @@ contains
         call throwError('Wrong choice of `photon_sp`.')
       end if
     #endif
+    call printDiag("initializeRadiation()", 1)
   end subroutine initializeRadiation
 
   subroutine particleRadiateSync(timestep, s,&
