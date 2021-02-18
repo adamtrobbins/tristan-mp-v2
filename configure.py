@@ -20,16 +20,13 @@ unit_choices = glob.glob(unit_directory + '*.F90')
 unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
 
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
+clusters = ['perseus', 'frontera', 'stellar']
 
 # system
-parser.add_argument('-perseus',
-                    action='store_true',
-                    default=False,
-                    help='configure for the `Perseus` cluster.')
-parser.add_argument('-frontera',
-                    action='store_true',
-                    default=False,
-                    help='configure for the `Frontera` cluster.')
+parser.add_argument('--cluster',
+                    default=None,
+                    choices=clusters,
+                    help='choose cluster-specific configurations.')
 
 parser.add_argument('-intel',
                     action='store_true',
@@ -195,21 +192,20 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 
 # specific cluster:
 specific_cluster = False
-clustername = ''
-if args['perseus']:
+if (args['cluster'] is not None):
   specific_cluster = True
+  clustername = args['cluster'].capitalize
   args['intel'] = True
-  args['mpi'] = True
   args['ifport'] = True
-  args['avx2'] = True
-  clustername = 'Perseus'
-elif args['frontera']:
-  specific_cluster = True
-  args['intel'] = True
-  args['mpi08'] = True
-  args['ifport'] = True
-  args['avx512'] = True
-  clustername = 'Frontera'
+  if args['cluster'] == 'perseus':
+    args['mpi'] = True
+    args['avx2'] = True
+  elif args['cluster'] == 'frontera':
+    args['mpi08'] = True
+    args['avx512'] = True
+  elif args['cluster'] == 'stellar':
+    args['mpi08'] = True
+    args['avx512'] = True
 
 # compilation command
 if args['hdf5']:
@@ -324,7 +320,7 @@ with open(makefile_output, 'w') as current_file:
 # Finish with diagnostic output
 print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
-if (specific_cluster):
+if (args['cluster'] is not None):
   print('  Cluster configurations:  `{}`'.format(clustername) )
 
 print('SETUP ........................................................................')
