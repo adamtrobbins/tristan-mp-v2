@@ -24,6 +24,7 @@ contains
     call getInput('radiation', 'gamma_ic', cool_gamma_ic, 10.0)
     call getInput('radiation', 'beta_rec', rad_beta_rec, 0.1)
     call getInput('radiation', 'dens_limit', rad_dens_lim, 0.0)
+    call getInput('radiation', 'cool_limit', rad_cool_lim, 0.0)
     #ifdef EMIT
       call getInput('radiation', 'photon_sp', rad_photon_sp, 3)
       if ((rad_photon_sp .le. 0) .or.&
@@ -94,6 +95,11 @@ contains
 
       tau_emit = dummy_ * betaci * emit_gamma_syn**2 * chiR
       eph_emit = (gci / emit_gamma_syn)**2 * chiR
+
+      if ((rad_cool_lim .gt. 0) .and. (dummy_ * chiR_sq * gci .gt. rad_cool_lim)) then
+        dummy_ = rad_cool_lim / (chiR_sq * gci)
+        call addWarning(1)
+      end if
 
       #ifndef EMIT
         u0 = u0 + dummy_ * (kappaR_x - chiR_sq * gci * uci)

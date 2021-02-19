@@ -218,6 +218,7 @@
   beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic` [0.1]
   photon_sp     = 3             # emit photons to species (`emit` flag) [3]
   dens_limit    = 100           # density limit on the cooled region (0 = disable limiter) [0]
+	cool_limit    = 0						  # limit cooling if `du > fraction of u` (defines the fraction) (0 = disable limiter) [0]
 
 <qed>
 
