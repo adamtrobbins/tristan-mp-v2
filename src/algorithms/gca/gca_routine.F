@@ -107,9 +107,15 @@ doNormalPushQ = (doNormalPushQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, d
 
 #ifdef DEBUG
   if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
-    print *, 'bad particle!!!!', s, sqrt(1.0 + u0**2 + v0**2 + w0**2)
+    print *, 'bad particle!!!!', s, pt_ind(p), pt_proc(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
     call throwError('ERROR: runaway particle found!')
   end if
+  ! if ((pt_ind(p) .eq. 31731) .and. ((pt_proc(p) .eq. 283) .or. (pt_proc(p) .eq. 283 + 2 * mpi_size))) then
+  !   dummy_ = sqrt(((x_ + this_meshblock%ptr%x0) - global_mesh%sx * 0.5)**2 +&
+  !               & ((y_ + this_meshblock%ptr%y0) - global_mesh%sy * 0.5)**2 +&
+  !               & ((z_ + this_meshblock%ptr%z0) - global_mesh%sz * 0.5)**2)
+  !   print *, 'prtl:', pt_u(p), pt_v(p), pt_w(p), dummy_, uperp_g, pt_proc(p) .gt. mpi_size
+  ! end if
 #endif
 
 ! GCA/normal push condition . . . . . . . . . . . . . . . . . . . . . . . . . . . .

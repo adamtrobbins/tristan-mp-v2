@@ -46,12 +46,33 @@ module m_aux
     end function getFMT
   end interface
 
+  type :: warning
+    character(len=STR_MAX)  :: description
+    integer                 :: counter = 0
+  end type warning
+
+  type(warning)           :: warnings(100)
   type(simulation_params) :: sim_params
 
   !--- PRIVATE functions -----------------------------------------!
   private :: intToStr, realToStr
   !...............................................................!
 contains
+  subroutine initializeSimulationParameters()
+    implicit none
+    sim_params%count = 0
+    allocate(sim_params%param_type(1000))
+    allocate(sim_params%param_group(1000))
+    allocate(sim_params%param_name(1000))
+    allocate(sim_params%param_value(1000))
+  end subroutine initializeSimulationParameters
+
+  subroutine initializeWarnings()
+    implicit none
+    warnings(1)%description = "Cooling is too strong"
+    warnings(2)%description = "QED probability too large"
+  end subroutine initializeWarnings
+
   subroutine printDiag(msg, level)
     implicit none
     character(len=*), intent(in)  :: msg
@@ -73,6 +94,41 @@ contains
       close(UNIT_diag)
     end if
   end subroutine printDiag
+
+  subroutine addWarning(id)
+    implicit none
+    integer, intent(in) :: id
+    warnings(id)%counter = warnings(id)%counter + 1
+  end subroutine addWarning
+
+  subroutine printWarnings(timestep)
+    implicit none
+    integer, intent(in)                     :: timestep
+    integer                                 :: ierr, root_rnk = 0, w
+    integer                                 :: warnings_global(100)
+
+    do w = 1, 100
+      call MPI_REDUCE(warnings(w)%counter, warnings_global(w), 1, MPI_INTEGER,&
+                    & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
+    end do
+
+    if (mpi_rank .eq. root_rnk) then
+      open(UNIT_warn, file=warn_file_name, status="old", position="append", form="formatted")
+      write(UNIT_warn, *) '=================================================='
+      write(UNIT_warn, *) 'Timestep = ' // trim(STR(timestep))
+      do w = 1, 100
+        if (warnings_global(w) .gt. 0) then
+          write(UNIT_warn, *) trim(warnings(w)%description) // ' -> called ' // trim(STR(warnings_global(w))) // ' times'
+        end if
+      end do
+      write(UNIT_warn, *) '..................................................'
+      close(UNIT_warn)
+    end if
+
+    do w = 1, 100
+      warnings(w)%counter = 0
+    end do
+  end subroutine printWarnings
 
   function getFMTForReal(value, w) result(FMT)
     implicit none

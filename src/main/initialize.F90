@@ -48,7 +48,7 @@ module m_initialize
 
   !--- PRIVATE functions -----------------------------------------!
   private :: initializeCommunications, initializeOutput,&
-           & preInitialize,&
+           & initializeDirectories,&
            & printParams, initializeSlice,&
            & distributeMeshblocks, initializeDomain,&
            & initializeSimulation, checkEverything
@@ -62,19 +62,21 @@ contains
   subroutine initializeAll()
     implicit none
     call readCommandlineArgs()
-    call preInitialize()
 
     ! initializing the simulation parameters class ...
     ! ... which stores all the input values for the simulation
-    sim_params%count = 0
-    allocate(sim_params%param_type(1000))
-    allocate(sim_params%param_group(1000))
-    allocate(sim_params%param_name(1000))
-    allocate(sim_params%param_value(1000))
+    call initializeSimulationParameters()
+    call initializeWarnings()
 
     call initializeDomain()
 
     call initializeCommunications()
+
+    call initializeOutput()
+    call initializeHistory()
+    call initializeSlice()
+    call initializeRestart()
+    call initializeDirectories()
 
     call distributeMeshblocks()
 
@@ -86,11 +88,6 @@ contains
     #endif
 
     call initializeSimulation()
-
-    call initializeOutput()
-    call initializeHistory()
-    call initializeSlice()
-    call initializeRestart()
 
     call initializeFields()
 
@@ -241,8 +238,6 @@ contains
     if (mpi_size .ne. sizex * sizey * sizez) then
       call throwError('ERROR: # of processors is not equal to the number of processors from input')
     end if
-
-    call printDiag("initializeCommunications()", 1)
   end subroutine initializeCommunications
 
   subroutine initializeDomain()
@@ -359,34 +354,41 @@ contains
     call printDiag("initializeSimulation()", 1)
   end subroutine initializeSimulation
 
-  subroutine preInitialize()
+  subroutine initializeDirectories()
     ! create output/restart directories
     !   if does not already exist
     !     note: some compilers may not support IFPORT
-    #ifdef IFPORT
-      logical :: result
-      if (tot_output_enable .or. hst_enable) then
-        result = makedirqq(trim(output_dir_name))
-      end if
-      if (rst_enable) then
-        result = makedirqq(trim(restart_dir_name))
-      end if
-      if (slice_output_enable) then
-        result = makedirqq(trim(slice_dir_name))
-      end if
-    #else
-      call system('mkdir -p ' // trim(output_dir_name))
-      if (rst_enable) then
-        call system('mkdir -p ' // trim(restart_dir_name))
-      end if
-      if (slice_output_enable) then
-        call system('mkdir -p ' // trim(slice_dir_name))
-      end if
-    #endif
+    logical :: result
     diag_file_name = trim(output_dir_name) // '/' // trim(diag_file_name)
-    open(UNIT_diag, file=diag_file_name, status="replace", form="formatted")
-    close(UNIT_diag)
-  end subroutine preInitialize
+    warn_file_name = trim(output_dir_name) // '/' // trim(warn_file_name)
+    if (mpi_rank .eq. 0) then
+      #ifdef IFPORT
+        if (tot_output_enable .or. hst_enable) then
+          result = makedirqq(trim(output_dir_name))
+        end if
+        if (rst_enable) then
+          result = makedirqq(trim(restart_dir_name))
+        end if
+        if (slice_output_enable) then
+          result = makedirqq(trim(slice_dir_name))
+        end if
+      #else
+        call system('mkdir -p ' // trim(output_dir_name))
+        if (rst_enable) then
+          call system('mkdir -p ' // trim(restart_dir_name))
+        end if
+        if (slice_output_enable) then
+          call system('mkdir -p ' // trim(slice_dir_name))
+        end if
+      #endif
+      ! diagnostics file
+      open(UNIT_diag, file=diag_file_name, status="replace", form="formatted")
+      close(UNIT_diag)
+      ! warnings file
+      open(UNIT_warn, file=warn_file_name, status="replace", form="formatted")
+      close(UNIT_warn)
+    end if
+  end subroutine initializeDirectories
 
   #ifdef DOWNSAMPLING
     subroutine initializeDownsampling()

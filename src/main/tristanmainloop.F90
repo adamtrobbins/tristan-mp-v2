@@ -455,6 +455,8 @@ contains
       print *, ""
     end if
 
+    call printWarnings(tstep)
+
     deallocate(dt_fullstep, dt_movestep)
     deallocate(dt_depositstep, dt_filterstep)
     deallocate(dt_outputstep, dt_fldexchstep)

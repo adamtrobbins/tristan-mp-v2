@@ -16,7 +16,7 @@ module m_globalnamespace
 
   integer, parameter      :: dprec = kind(1.0d0)
   integer, parameter      :: sprec = kind(1.0e0)
-  integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40
+  integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40, UNIT_warn = 80
   integer, parameter      :: UNIT_params = 50
   integer, parameter      :: UNIT_restart_fld = 60, UNIT_restart_prtl = 70
 
@@ -35,7 +35,7 @@ module m_globalnamespace
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
 
   ! simulation parameters
-  integer                :: start_timestep = 0, final_timestep
+  integer                :: start_timestep = 0, final_timestep, warning_count = 0
   logical                :: resize_tiles
   integer                :: min_tile_nprt = 100, max_buffsize = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
@@ -43,7 +43,8 @@ module m_globalnamespace
                           & slice_dir_name = 'slices',&
                           & restart_dir_name = 'restart',&
                           & restart_from = 'restart/step_00000',&
-                          & diag_file_name = 'diag.log'
+                          & diag_file_name = 'diag.log',&
+                          & warn_file_name = 'warn.log'
 
   integer       :: nfilter
 

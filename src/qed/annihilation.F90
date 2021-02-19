@@ -227,7 +227,7 @@ contains
         end if
       #else
         if ((P_12 .gt. 1.0)) then
-          print '(1X,A,ES10.3,A)', 'Warning: Annihilation cross section P_12 = ', P_12, ' > 1 !!'
+          call addWarning(2)
         endif
       #endif
       rnd = random(dseed)
