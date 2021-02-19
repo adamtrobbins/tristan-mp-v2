@@ -34,8 +34,6 @@ contains
     call getInput('restart', 'rewrite', rst_separate, .false.)
     call getInput('restart', 'cpu_group', rst_cpu_group, 50)
     rst_separate = (.not. rst_separate)
-
-    call printDiag("initializeRestart()", 1)
   end subroutine initializeRestart
 
   subroutine writeRestart(timestep)

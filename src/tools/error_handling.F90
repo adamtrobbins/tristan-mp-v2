@@ -7,6 +7,6 @@ contains
   subroutine throwError(msg)
     character(len=*), intent(in)  :: msg
     print *, msg
-    stop 'TERMINATING EXECUTION'
+    stop
   end subroutine
 end module m_errors
