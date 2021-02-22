@@ -17,7 +17,7 @@ module m_globalnamespace
   integer, parameter      :: dprec = kind(1.0d0)
   integer, parameter      :: sprec = kind(1.0e0)
   integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40, UNIT_warn = 80
-  integer, parameter      :: UNIT_params = 50
+  integer, parameter      :: UNIT_params = 50, UNIT_usrout = 90
   integer, parameter      :: UNIT_restart_fld = 60, UNIT_restart_prtl = 70
 
   ! algorithm specific parameters

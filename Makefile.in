@@ -57,6 +57,7 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)io/write_diagnostics.F90 \
 						$(SRC_DIR)io/write_tot.F90 \
 						$(SRC_DIR)io/write_history.F90 \
+						$(SRC_DIR)io/write_usroutput.F90 \
 						$(SRC_DIR)restart/restart.F90 \
 						$(SRC_DIR)domain/static_lb.F90 \
 						$(SRC_DIR)domain/adaptive_lb.F90 \

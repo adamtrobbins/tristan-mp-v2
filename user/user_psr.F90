@@ -127,9 +127,9 @@ contains
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real                        :: radius2, psrrad
-    psrrad = dummy1 / 14.0
+    psrrad = 20.0
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
-    userSLBload = psrrad**2 / radius2
+    userSLBload = psrrad**2 / radius2 + exp(-(dummy3 * 0.5 - z_glob)**2 / (psrrad * 0.5)**2)
     if (radius2 .lt. psrrad**2) then
       userSLBload = 1.0 / exp((psrrad**2 - radius2) / psrrad**2)
     end if
@@ -247,7 +247,7 @@ contains
       real                          :: e0_SQR, b0_SQR
     #endif
 
-    nGJ = 2 * psr_omega0 * B_norm / (CC * abs(unit_ch))
+    nGJ = 2 * psr_omega0 * B_norm * psr_bstar / (CC * abs(unit_ch))
     sigma_nGJ = sigma * ppc0 / nGJ
 
     if (inj_method .eq. 1) then
@@ -916,5 +916,13 @@ contains
     shape = 0.5 * (1.0 - tanh((rad - rad0) / del))
   end function shape
 
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! ...
+  end subroutine userOutput
   !............................................................!
 end module m_userfile

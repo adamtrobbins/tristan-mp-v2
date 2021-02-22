@@ -54,7 +54,7 @@ contains
     do n = 1, npart
       x_glob = random(dseed) * global_mesh%sx
       y_glob = random(dseed) * global_mesh%sy
-      z_glob = random(dseed) * global_mesh%sz      
+      z_glob = random(dseed) * global_mesh%sz
       u_ = x_glob * y_glob * z_glob / 10.0
       v_ = 0.0; w_ = 0.0
       call rotateRandomlyIn3D(u_, v_, w_)
@@ -158,5 +158,13 @@ contains
       updateB_ = .true.
     end if
   end subroutine userFieldBoundaryConditions
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! ...
+  end subroutine userOutput
   !............................................................!
 end module m_userfile

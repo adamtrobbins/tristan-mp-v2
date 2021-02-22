@@ -26,6 +26,7 @@ module m_initialize
                       & userInitFields, user_slb_load_ptr => userSLBload
   use m_outputlogistics, only: initializeOutput, initializeSlice
   use m_writehistory, only: initializeHistory
+  use m_writeusroutput, only: initializeUsrOutput
   use m_restart, only: initializeRestart, restartSimulation, rst_simulation, rst_enable
 
   use m_particlebinning
@@ -74,6 +75,7 @@ contains
 
     call initializeOutput()
     call initializeHistory()
+    call initializeUsrOutput()
     call initializeSlice()
     call initializeRestart()
     call initializeDirectories()
@@ -363,9 +365,7 @@ contains
     warn_file_name = trim(output_dir_name) // '/' // trim(warn_file_name)
     if (mpi_rank .eq. 0) then
       #ifdef IFPORT
-        if (tot_output_enable .or. hst_enable) then
-          result = makedirqq(trim(output_dir_name))
-        end if
+        result = makedirqq(trim(output_dir_name))
         if (rst_enable) then
           result = makedirqq(trim(restart_dir_name))
         end if
