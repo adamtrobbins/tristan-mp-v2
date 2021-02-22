@@ -15,6 +15,7 @@ module m_userfile
   use m_thermalplasma
   use m_particlelogistics
   use m_helpers
+  use m_writeusroutput
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -127,7 +128,7 @@ contains
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real                        :: radius2, psrrad
-    psrrad = 20.0
+    psrrad = 40.0
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
     userSLBload = psrrad**2 / radius2 + exp(-(dummy3 * 0.5 - z_glob)**2 / (psrrad * 0.5)**2)
     if (radius2 .lt. psrrad**2) then
@@ -922,7 +923,60 @@ contains
   subroutine userOutput(step)
     implicit none
     integer, optional, intent(in) :: step
-    ! ...
+    integer                       :: root_rank = 0
+    real, allocatable             :: r_bins(:)
+    real                          :: dr, x_glob, y_glob, z_glob, r_glob
+    real                          :: dummy_x, dummy_y, dummy_z, dummy
+    real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+    integer                       :: ri, rnum = 50, i, j, k, ierr
+
+    allocate(r_bins(rnum))
+    allocate(sum_ExBr_f(rnum), sum_f(rnum))
+    allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
+    sum_ExBr_f(:) = 0.0
+    sum_f(:) = 0.0
+
+    dr = (REAL(global_mesh%sx) * 0.5 - psr_radius) / REAL(rnum)
+    do ri = 1, rnum
+      r_bins(ri) = psr_radius + ri * dr
+    end do
+
+    do i = 0, this_meshblock%ptr%sx - 1
+      x_glob = REAL(i + this_meshblock%ptr%x0)
+      do j = 0, this_meshblock%ptr%sy - 1
+        y_glob = REAL(j + this_meshblock%ptr%y0)
+        do k = 0, this_meshblock%ptr%sz - 1
+          z_glob = REAL(k + this_meshblock%ptr%z0)
+          r_glob = sqrt((x_glob - xc_g)**2 + (y_glob - yc_g)**2 + (z_glob - zc_g)**2)
+          ! compute ExB_r
+          dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
+          dummy_y = ez(i,j,k) * bx(i,j,k) - ex(i,j,k) * bz(i,j,k)
+          dummy_z = -(ey(i,j,k) * bx(i,j,k)) + ex(i,j,k) * by(i,j,k)
+          if (r_glob .gt. psr_radius / 2.0) then
+            dummy = (dummy_x * (x_glob - xc_g) +&
+                   & dummy_y * (y_glob - yc_g) +&
+                   & dummy_z * (z_glob - zc_g)) / r_glob
+          else
+            dummy = 0.0
+          end if
+          do ri = 1, rnum
+            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy * exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+            sum_f(ri) = sum_f(ri) + exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+          end do
+        end do
+      end do
+    end do
+
+    call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+
+    if (mpi_rank .eq. root_rank) then
+      sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * 4.0 * M_PI * r_bins(:)**2 / sum_f_global(:)
+      call writeUsrOutputTimestep(step)
+      call writeUsrOutputArray('r_bins', r_bins)
+      call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
+      call writeUsrOutputEnd()
+    end if
   end subroutine userOutput
   !............................................................!
 end module m_userfile
