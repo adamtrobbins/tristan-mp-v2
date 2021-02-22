@@ -484,11 +484,11 @@ contains
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               ! compute 3-velocity
               if (component .eq. 0) then
-                comp = pt_u(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+                comp = pt_u(p)
               else if (component .eq. 1) then
-                comp = pt_v(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+                comp = pt_v(p)
               else if (component .eq. 2) then
-                comp = pt_w(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+                comp = pt_w(p)
               end if
 
               i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
