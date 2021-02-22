@@ -350,7 +350,8 @@ contains
 
   subroutine createEmptyTile(s, ti, tj, tk, maxptl, meshblock)
     implicit none
-    integer, intent(in)                 :: s, ti, tj, tk, maxptl
+    integer(kind=8), intent(in)         :: maxptl
+    integer, intent(in)                 :: s, ti, tj, tk
     type(mesh), optional, intent(in)    :: meshblock
     integer                             :: maxptl_on_tile
     type(mesh)                          :: meshblock_
