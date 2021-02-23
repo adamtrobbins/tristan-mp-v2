@@ -191,6 +191,24 @@ def getDomains(fname):
       data[k] = file[k][:]
   return data
 
+def parseInput(fname):
+  from itertools import groupby
+  import re
+  with open(fname, 'r') as f:
+    data = {}
+    curr_blockname = None
+    for line in f:
+      if (line.startswith('<')):
+        blockname = (line[1:].split('>')[0])
+        data[blockname] = {}
+        curr_blockname = blockname
+      elif not line.strip().startswith('#') and not line.strip() == '':
+        line = re.split('=|#|\t|\n', line)
+        var = line[0].strip()
+        value = np.float(line[1])
+        data[curr_blockname].update({var: value})
+  return data
+
 def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
   if (not nsteps):
     nsteps = 1e6
