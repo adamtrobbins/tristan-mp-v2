@@ -80,6 +80,8 @@ contains
     call initializeRestart()
     call initializeDirectories()
 
+    call userReadInput()
+
     call distributeMeshblocks()
 
     call initializeLB()
@@ -112,12 +114,10 @@ contains
     call initializeRandomSeed(mpi_rank)
 
     if (.not. rst_simulation) then
-      call userReadInput()
       call userInitParticles()
       call userInitFields()
         call printDiag("userInitialize()", 1)
     else
-      call userReadInput()
       call restartSimulation()
     end if
 
