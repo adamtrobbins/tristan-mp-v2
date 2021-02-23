@@ -55,6 +55,9 @@ module m_globalnamespace
     integer, parameter  :: UNIT_xdmf = 40
     integer             :: h5comm, h5info
   #endif
+  
+  ! variables visible globally defined by the user
+  real                    :: global_usr_variable_1, global_usr_variable_2, global_usr_variable_3
 contains
   subroutine renormalizeUnits()
     implicit none

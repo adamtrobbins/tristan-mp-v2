@@ -109,6 +109,8 @@ contains
     xc_g = 0.5 * global_mesh%sx
     yc_g = 0.5 * global_mesh%sy
     zc_g = 0.5 * global_mesh%sz
+
+    global_usr_variable_1 = psr_radius
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -128,7 +130,7 @@ contains
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real                        :: radius2, psrrad
-    psrrad = 40.0
+    psrrad = global_usr_variable_1
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
     userSLBload = psrrad**2 / radius2 + exp(-(dummy3 * 0.5 - z_glob)**2 / (psrrad * 0.5)**2)
     if (radius2 .lt. psrrad**2) then
@@ -971,7 +973,7 @@ contains
     call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. root_rank) then
-      sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * 4.0 * M_PI * r_bins(:)**2 / sum_f_global(:)
+      sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
       call writeUsrOutputTimestep(step)
       call writeUsrOutputArray('r_bins', r_bins)
       call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
