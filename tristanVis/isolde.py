@@ -289,3 +289,38 @@ def parseHistory(fname):
         for key in template_keys:
           data[key] = np.append(data[key], pairs[key])
   return data
+
+def parseUsrOutput(fname):
+  from itertools import groupby
+  import re
+  def make_grouper():
+    counter = 0
+    def key(line):
+      nonlocal counter
+      if line.startswith('===='):
+        counter += 1
+      return counter
+    return key
+  def is_float(val):
+    try:
+      num = np.float(val)
+    except ValueError:
+      return False
+    return True
+  with open(fname, 'r') as f:
+    data = {}
+    for k, group in groupby(f, key=make_grouper()):
+      fasta_section = ''.join(group).split('\n')
+      accept_value = False
+      for b in fasta_section:
+        if b.startswith('t ='):
+          time = int(b.split('=')[1])
+          data[time] = {}
+        if ':' in b:
+          var = b.split(':')[0]
+          accept_value = True
+        elif (accept_value):
+          array = np.array([np.float(v) for v in b.split(',') if is_float(v)])
+          data[time].update({var: array if len(array) > 1 else array[0]})
+          accept_value = False
+  return data
