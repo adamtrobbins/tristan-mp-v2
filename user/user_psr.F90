@@ -20,7 +20,7 @@ module m_userfile
 
   !--- PRIVATE variables -----------------------------------------!
   integer, private  :: fld_geometry, inj_method, e_par_method
-  real, private     :: xc_g, yc_g, zc_g, psr_spinupT, psr_bstar
+  real, private     :: xc_g, yc_g, zc_g, psr_spinupT, psr_bstar, cooling_on
   real, private     :: psr_angle, psr_period, psr_omega, psr_omega0, psr_radius
   real, private     :: inj_mult, e_thr
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
@@ -83,6 +83,8 @@ contains
       call getInput('problem', 'prtl_kick', prtl_kick)
     end if
 
+    call getInput('problem', 'cooling_on', cooling_on, 0.0)
+
     call getInput('problem', 'fakepp_density', fakepp_density, 0.0)
     call getInput('problem', 'fakepp_timestep', fakepp_timestep, 0)
     call getInput('problem', 'fakepp_height', fakepp_height, 50.0)
@@ -143,6 +145,9 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
+
+    species(1)%cool_sp = .false.
+    species(2)%cool_sp = .false.
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -249,6 +254,11 @@ contains
       real                          :: dummy_, vE_x, vE_y, vE_z
       real                          :: e0_SQR, b0_SQR
     #endif
+
+    if (step .gt. cooling_on * psr_period) then
+      species(1)%cool_sp = .true.
+      species(2)%cool_sp = .true.
+    end if
 
     nGJ = 2 * psr_omega0 * B_norm * psr_bstar / (CC * abs(unit_ch))
     sigma_nGJ = sigma * ppc0 / nGJ
@@ -405,7 +415,7 @@ contains
               v_ = vE_y * dummy_
               w_ = vE_z * dummy_
 
-              dummy_ = sqrt(abs(prtl_kick**2 - dummy_**2))
+              dummy_ = sqrt(prtl_kick**2 - 1.0)
 
               u_ = u_ + nx * dummy_
               v_ = v_ + ny * dummy_
