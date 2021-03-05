@@ -339,7 +339,7 @@ contains
         end if
       #else
         if ((P_12 .gt. 1.0)) then
-          call addWarning(2)
+          call addWarning(3)
         endif
       #endif
 

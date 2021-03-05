@@ -61,6 +61,8 @@ contains
       call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
       call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
     #endif
+
+    call printDiag("initializeLB()", 1)
   end subroutine initializeLB
 
   subroutine redistributeMeshblocksSLB(spat_load_ptr)

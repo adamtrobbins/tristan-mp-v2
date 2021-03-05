@@ -69,8 +69,9 @@ contains
 
   subroutine initializeWarnings()
     implicit none
-    warnings(1)%description = "Cooling is too strong"
+    warnings(1)%description = "Synchrotron cooling is too strong"
     warnings(2)%description = "QED probability too large"
+    warnings(3)%description = "IC cooling is too strong"
   end subroutine initializeWarnings
 
   subroutine printDiag(msg, level)

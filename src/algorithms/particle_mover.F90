@@ -40,7 +40,6 @@ contains
       ! ... variables with `_n` at the end correspond to `t = n` ...
       ! ... variables with `_n1` at the end correspond to `t = n+1` ...
       integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
-      integer, pointer, contiguous          :: pt_proc(:)
       real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
       real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:), pt_u_par(:), pt_u_perp(:)
       integer(kind=2)                       :: xi_, yi_, zi_
@@ -56,6 +55,10 @@ contains
       real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
       logical                               :: doNormalPushQ
       integer                               :: iter
+    #endif
+
+    #if defined (RADIATION) || defined (GCA)
+      integer, pointer, contiguous          :: pt_proc(:)
     #endif
 
     #ifdef RADIATION
@@ -137,8 +140,6 @@ contains
               pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
               #ifdef GCA
-                pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
-
                 pt_xi_past => species(s)%prtl_tile(ti, tj, tk)%xi_past
                 pt_yi_past => species(s)%prtl_tile(ti, tj, tk)%yi_past
                 pt_zi_past => species(s)%prtl_tile(ti, tj, tk)%zi_past
@@ -153,6 +154,10 @@ contains
 
                 pt_u_par => species(s)%prtl_tile(ti, tj, tk)%u_par
                 pt_u_perp => species(s)%prtl_tile(ti, tj, tk)%u_perp
+              #endif
+
+              #if defined(RADIATION) || defined(GCA)
+                pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
               #endif
 
               #if defined(RADIATION)
@@ -271,7 +276,7 @@ contains
                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
                                            & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
                                            & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad,&
-                                           & index=pt_ind(p))
+                                           & index=pt_ind(p), proc=pt_proc(p))
                     end if
                   #endif
                 #endif
@@ -284,13 +289,15 @@ contains
               pt_wei => null()
 
               #ifdef GCA
-                pt_proc => null();
-
                 pt_xi_past => null();   pt_yi_past => null();   pt_zi_past => null()
                 pt_dx_past => null();   pt_dy_past => null();   pt_dz_past => null()
                 pt_u_eff => null();     pt_v_eff => null();     pt_w_eff => null()
 
                 pt_u_par => null();     pt_u_perp => null()
+              #endif
+
+              #if defined (RADIATION) || defined (GCA)
+                pt_proc => null();
               #endif
 
               #if defined(RADIATION)

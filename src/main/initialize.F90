@@ -79,19 +79,17 @@ contains
     call initializeSlice()
     call initializeRestart()
     call initializeDirectories()
-
-    call userReadInput()
+    call initializeSimulation()
 
     call distributeMeshblocks()
 
+    call userReadInput()
+
     call initializeLB()
-      call printDiag("initializeLB()", 1)
 
     #ifdef SLB
       call redistributeMeshblocksSLB(user_slb_load_ptr)
     #endif
-
-    call initializeSimulation()
 
     call initializeFields()
 
