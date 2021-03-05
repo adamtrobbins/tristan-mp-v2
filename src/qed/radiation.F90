@@ -93,13 +93,13 @@ contains
 
       dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_syn**2
 
-      tau_emit = dummy_ * betaci * emit_gamma_syn**2 * chiR
-      eph_emit = (gci / emit_gamma_syn)**2 * chiR
-
       if ((rad_cool_lim .gt. 0) .and. (dummy_ * chiR_sq * gci .gt. rad_cool_lim)) then
         dummy_ = rad_cool_lim / (chiR_sq * gci)
         call addWarning(1)
       end if
+
+      tau_emit = dummy_ * betaci * emit_gamma_syn**2 * chiR
+      eph_emit = (gci / emit_gamma_syn)**2 * chiR
 
       #ifndef EMIT
         u0 = u0 + dummy_ * (kappaR_x - chiR_sq * gci * uci)
@@ -143,7 +143,7 @@ contains
                              & dx, dy, dz, xi, yi, zi,&
                              & weight,&
                              & bx, by, bz, ex, ey, ez,&
-                             & index)
+                             & index, proc)
     implicit none
     integer, intent(in)           :: timestep
     real, intent(inout)           :: u0, v0, w0
@@ -152,7 +152,7 @@ contains
     real, intent(in)              :: dx, dy, dz
     integer(kind=2), intent(in)   :: xi, yi, zi
     real, intent(in)              :: weight
-    integer, intent(in)           :: s, index
+    integer, intent(in)           :: s, index, proc
 
     real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
 
@@ -162,7 +162,11 @@ contains
     g0 = sqrt(1.0 + u0**2 + v0**2 + w0**2)
     if ( (g0 .gt. 1.5) .and.&
       &  ((rad_dens_lim .eq. 0) .or. (lg_arr(xi, yi, zi) / ppc0 .lt. rad_dens_lim)) .and.&
-      &  (cool_gamma_ic .gt. 0.0) ) then
+      &  (cool_gamma_ic .gt. 0.0)&
+      #ifdef GCA
+        & .and. (proc .lt. mpi_size)&
+      #endif
+      &) then
 
       uci = 0.5 * (u0 + ui)
       vci = 0.5 * (v0 + vi)
@@ -173,6 +177,11 @@ contains
       betaci = sqrt(1.0 - over_gci**2)
 
       dummy_ = B_norm * rad_beta_rec * CCINV / cool_gamma_ic**2
+
+      if ((rad_cool_lim .gt. 0) .and. (dummy_ * gci .gt. rad_cool_lim)) then
+        dummy_ = rad_cool_lim / gci
+        call addWarning(2)
+      end if
 
       tau_emit = dummy_ * betaci * emit_gamma_ic**2
       eph_emit = (gci / emit_gamma_ic)**2
@@ -193,20 +202,20 @@ contains
                             & kx * eph_emit, ky * eph_emit, kz * eph_emit, weight = (weight * rad_interval))
         end if
       #endif
-
-      if (spec_log_bins) eph_emit = log(eph_emit)
-      if (eph_emit .le. rad_spec_min) then
-        spec_index = 1
-      else if (eph_emit .ge. rad_spec_max) then
-        spec_index = rad_spec_num
-      else
-        spec_index = INT(CEILING((eph_emit - rad_spec_min) * REAL(rad_spec_num) / (rad_spec_max - rad_spec_min)))
-        if (spec_index .lt. 1) spec_index = 1
-        if (spec_index .gt. rad_spec_num) spec_index = rad_spec_num
+      if (eph_emit .gt. TINYFLD) then
+        if (spec_log_bins) eph_emit = log(eph_emit)
+        if (eph_emit .le. rad_spec_min) then
+          spec_index = 1
+        else if (eph_emit .ge. rad_spec_max) then
+          spec_index = rad_spec_num
+        else
+          spec_index = INT(CEILING((eph_emit - rad_spec_min) * REAL(rad_spec_num) / (rad_spec_max - rad_spec_min)))
+          if (spec_index .lt. 1) spec_index = 1
+          if (spec_index .gt. rad_spec_num) spec_index = rad_spec_num
+        end if
+        rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_emit
       end if
-      rad_spectra(s, spec_index) = rad_spectra(s, spec_index) + tau_emit
     end if
-
   end subroutine particleRadiateIC
 
 #endif
