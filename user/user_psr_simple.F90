@@ -233,7 +233,7 @@ contains
     end if
 
     nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
-    sigma_nGJ = sigma * ppc0 / nGJ
+    sigma_nGJ = sigma * (ppc0 / nGJ) * (psr_bstar)
 
     ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     ppc = 0.5 * ppc0
@@ -242,97 +242,100 @@ contains
       call computeDensity(1, reset=.true., ds=0, charge=.false.)
       call computeDensity(2, reset=.false., ds=0, charge=.false.)
     end if
-    n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
+    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
     do n = 1, n_part
       call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
       rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
       nx = x_glob / rr
       ny = y_glob / rr
       nz = z_glob / rr
-      x_glob = x_glob + xc_g
-      y_glob = y_glob + yc_g
-      z_glob = z_glob + zc_g
 
-      call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
-      ! if particle is within the current MPI meshblock
+      dummy_flag = ((random(dseed) * 2.0) .lt. abs(3.0 * nz**2 - 1.0))
       if (dummy_flag) then
-        call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-        dummy_flag = .true.
-
-        ! limiter on sigma
-        if ((sigGJ_limiter .ne. 0) .and. dummy_flag) then
-          call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-          density = lg_arr(xi, yi, zi)
-          b_sqr = bx0**2 + by0**2 + bz0**2
-          if (density .gt. 0) then
-            sig = b_sqr * sigma * ppc0 / density
-          else
-            sig = sigma
-          end if
-          dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter)
-        end if
-
+        x_glob = x_glob + xc_g
+        y_glob = y_glob + yc_g
+        z_glob = z_glob + zc_g
+        call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+        ! if particle is within the current MPI meshblock
         if (dummy_flag) then
-          ! kick along local b-field:
-          call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-          b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
-          sign = 1
-          if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
-            sign = -1
-            bx0 = -bx0; by0 = -by0; bz0 = -bz0
-          end if
-          nx = bx0 / b_sqr
-          ny = by0 / b_sqr
-          nz = bz0 / b_sqr
+          call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+          dummy_flag = .true.
 
-          weight = inj_mult * nGJ / ppc
-
-          #ifndef GCA
-            u_ = nx * prtl_kick
-            v_ = ny * prtl_kick
-            w_ = nz * prtl_kick
-            call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
-            call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
-          #else
-            ! kick along ExB:
-            call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+          ! limiter on sigma
+          if ((sigGJ_limiter .ne. 0) .and. dummy_flag) then
             call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-            b0_SQR = bx0**2 + by0**2 + bz0**2
-            e0_SQR = ex0**2 + ey0**2 + ez0**2
+            density = lg_arr(xi, yi, zi)
+            b_sqr = bx0**2 + by0**2 + bz0**2
+            if (density .gt. 0) then
+              sig = b_sqr * sigma * ppc0 / density
+            else
+              sig = sigma
+            end if
+            dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter / (abs(3.0 * nz**2 - 1.0) + TINYFLD))
+          end if
 
-            dummy_ = 1.0 / (b0_SQR + TINYFLD)
+          if (dummy_flag) then
+            ! kick along local b-field:
+            call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+            b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
+            sign = 1
+            if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
+              sign = -1
+              bx0 = -bx0; by0 = -by0; bz0 = -bz0
+            end if
+            nx = bx0 / b_sqr
+            ny = by0 / b_sqr
+            nz = bz0 / b_sqr
 
-            vE_x = (bz0 * ey0 - by0 * ez0) * dummy_
-            vE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
-            vE_z = (by0 * ex0 - bx0 * ey0) * dummy_
+            weight = inj_mult * nGJ / ppc
 
-            dummy_ = 1.0 / sqrt(abs(1.0 - vE_x**2 - vE_y**2 - vE_z**2) + TINYFLD)
+            #ifndef GCA
+              u_ = nx * prtl_kick
+              v_ = ny * prtl_kick
+              w_ = nz * prtl_kick
+              call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+              call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+            #else
+              ! kick along ExB:
+              call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+              call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+              b0_SQR = bx0**2 + by0**2 + bz0**2
+              e0_SQR = ex0**2 + ey0**2 + ez0**2
 
-            u_ = vE_x * dummy_
-            v_ = vE_y * dummy_
-            w_ = vE_z * dummy_
+              dummy_ = 1.0 / (b0_SQR + TINYFLD)
 
-            dummy_ = sqrt(prtl_kick**2 - 1.0)
+              vE_x = (bz0 * ey0 - by0 * ez0) * dummy_
+              vE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
+              vE_z = (by0 * ex0 - bx0 * ey0) * dummy_
 
-            u_ = u_ + nx * dummy_
-            v_ = v_ + ny * dummy_
-            w_ = w_ + nz * dummy_
+              dummy_ = 1.0 / sqrt(abs(1.0 - vE_x**2 - vE_y**2 - vE_z**2) + TINYFLD)
 
-            call createParticleFromAttributes(1, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
-                                              & xi_past=xi, yi_past=yi, zi_past=zi,&
-                                              & dx_past=dx, dy_past=dy, dz_past=dz,&
-                                              & u=u_, v=v_, w=w_,&
-                                              & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
-                                              & ind=species(1)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
-            species(1)%cntr_sp = species(1)%cntr_sp + 1
-            call createParticleFromAttributes(2, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
-                                              & xi_past=xi, yi_past=yi, zi_past=zi,&
-                                              & dx_past=dx, dy_past=dy, dz_past=dz,&
-                                              & u=u_, v=v_, w=w_,&
-                                              & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
-                                              & ind=species(2)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
-            species(2)%cntr_sp = species(2)%cntr_sp + 1
-          #endif
+              u_ = vE_x * dummy_
+              v_ = vE_y * dummy_
+              w_ = vE_z * dummy_
+
+              dummy_ = sqrt(prtl_kick**2 - 1.0)
+
+              u_ = u_ + nx * dummy_
+              v_ = v_ + ny * dummy_
+              w_ = w_ + nz * dummy_
+
+              call createParticleFromAttributes(1, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                & xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                & dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                & u=u_, v=v_, w=w_,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
+                                                & ind=species(1)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+              species(1)%cntr_sp = species(1)%cntr_sp + 1
+              call createParticleFromAttributes(2, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                & xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                & dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                & u=u_, v=v_, w=w_,&
+                                                & u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
+                                                & ind=species(2)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+              species(2)%cntr_sp = species(2)%cntr_sp + 1
+            #endif
+          end if
         end if
       end if
     end do
