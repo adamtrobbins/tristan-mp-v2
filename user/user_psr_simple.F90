@@ -250,7 +250,7 @@ contains
       ny = y_glob / rr
       nz = z_glob / rr
 
-      dummy_flag = ((random(dseed) * 2.0) .lt. abs(3.0 * nz**2 - 1.0))
+      dummy_flag = (((random(dseed) * 2.0) .lt. abs(3.0 * nz**2 - 1.0)) .and. (3.0 * nz**2 - 1.0 .gt. 0.0))
       if (dummy_flag) then
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
@@ -271,7 +271,7 @@ contains
             else
               sig = sigma
             end if
-            dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter / (abs(3.0 * nz**2 - 1.0) + TINYFLD))
+            dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter)
           end if
 
           if (dummy_flag) then

@@ -14,22 +14,35 @@ def dir_path(string):
   else:
     raise NotADirectoryError(string)
 
+def clustername(string):
+  if string in ['perseus', 'stellar']:
+    return string
+  else:
+    raise ValueError(string)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--path', required=True, type=dir_path)
+parser.add_argument('--cluster', required=True, type=clustername)
 parser.add_argument('-c', action='store_true', default=False, help='only test compilation.')
+parser.add_argument('-r', action='store_true', default=False, help='only run simulations.')
 parser.add_argument('-v', action='store_true', default=False, help='verbose mode (full output).')
 parser.add_argument('-d', action='store_true', default=False, help='diagnostic mode.')
-parser.add_argument('-t','--test', type=str, default=','.join(map(str, list(range(15)))), help='tests to run.')
+parser.add_argument('-t', '--test', type=str, default=','.join(map(str, list(range(15)))), help='tests to run.')
 options = parser.parse_args()
 tests = [int(t) for t in options.test.split(',')]
 
 suffix = '' if options.v else ' >/dev/null 2>&1'
 
 # modules for compilation
-modules = ['intel-mkl/2017.4/5/64',
-            'intel/17.0/64/17.0.5.239',
-            'intel-mpi/intel/2017.5/64',
-            'hdf5/intel-17.0/intel-mpi/1.10.0']
+if (options.cluster == 'perseus'):
+  modules = ['intel-mkl/2017.4/5/64',
+             'intel/17.0/64/17.0.5.239',
+             'intel-mpi/intel/2017.5/64',
+             'hdf5/intel-17.0/intel-mpi/1.10.0']
+elif (options.cluster == 'stellar'):
+  modules = ['module load intel/2021.1.2',
+             'module load intel-mpi/intel/2021.1.1',
+             'module load hdf5/intel-2021.1/intel-mpi/1.10.6']
 
 # global variables
 outdir = options.path
@@ -182,7 +195,7 @@ class Merging(Simulation):
                          frames=40, interval=1000, blit=True, repeat=True)
 
 # Here specify the test simulations and give additional specs of the environment
-common_flags = ' -perseus -hdf5 -debug'
+common_flags = ' --cluster={} -hdf5 -debug'.format(options.cluster)
 simulations = [
                TwoStream(common_flags,
                           params={
@@ -252,89 +265,89 @@ if (options.d):
   plt.show()
 else:
   # regular mode where you compile and run tests
-  if not os.path.exists(testdir_full):
-    os.makedirs(testdir_full)
+    if not os.path.exists(testdir_full):
+      os.makedirs(testdir_full)
+    with open(testdir_full + '/test.log', 'w+') as testlog:
+      if (not options.r):
+        # load modules
+        for ii, simulation in enumerate(simulations):
+          if not (ii + 1 in tests):
+            continue
+          # create directory for simulation
+          simulation.path = testdir_full + '/%02d_' % (ii + 1) + simulation.jobid
+          if os.path.exists(simulation.path):
+            shutil.rmtree(simulation.path)
+          os.makedirs(simulation.path)
 
-  with open(testdir_full + '/test.log', 'w+') as testlog:
-    # load modules
-    for ii, simulation in enumerate(simulations):
-      if not (ii + 1 in tests):
-        continue
-      # create directory for simulation
-      simulation.path = testdir_full + '/%02d_' % (ii + 1) + simulation.jobid
-      if os.path.exists(simulation.path):
-        shutil.rmtree(simulation.path)
-      os.makedirs(simulation.path)
+          testlog.write(('TEST_#{}_'.format(ii+1) + simulation.jobid).ljust(50, '.') + '\n')
 
-      testlog.write(('TEST_#{}_'.format(ii+1) + simulation.jobid).ljust(50, '.') + '\n')
+          # configure
+          config_command = 'python configure.py '
+          config_command += simulation.flags
+          config_command += ' -{}d'.format(simulation.dimension)
+          config_command += ' --{}='.format(simulation.userfile[:4]) + simulation.userfile
+          os.system(config_command + suffix)
 
-      # configure
-      config_command = 'python configure.py '
-      config_command += simulation.flags
-      config_command += ' -{}d'.format(simulation.dimension)
-      config_command += ' --{}='.format(simulation.userfile[:4]) + simulation.userfile
-      os.system(config_command + suffix)
+          # clean
+          os.system('make clean' + suffix)
+          # compile
+          os.system('make all' + suffix)
 
-      # clean
-      os.system('make clean' + suffix)
-      # compile
-      os.system('make all' + suffix)
+          # check if compilation successfull
+          simulation.exe = 'tristan-mp{}d'.format(simulation.dimension)
+          simulation.exe_full = simulation.path + '/' + simulation.exe
+          if os.path.isfile(codedir + '/exec/' + simulation.exe):
+            testlog.write('compilation'.ljust(46, '.') + '[OK]\n')
+            print ('Compilation of `{}` done.'.format(simulation.jobid))
 
-      # check if compilation successfull
-      simulation.exe = 'tristan-mp{}d'.format(simulation.dimension)
-      simulation.exe_full = simulation.path + '/' + simulation.exe
-      if os.path.isfile(codedir + '/exec/' + simulation.exe):
-        testlog.write('compilation'.ljust(46, '.') + '[OK]\n')
-        print ('Compilation of `{}` done.'.format(simulation.jobid))
+            # move executable
+            os.system('mv {} {}'.format(codedir + '/exec/' + simulation.exe, simulation.path) + suffix)
 
-        # move executable
-        os.system('mv {} {}'.format(codedir + '/exec/' + simulation.exe, simulation.path) + suffix)
+            # clean
+            os.system('make clean' + suffix)
 
-        # clean
-        os.system('make clean' + suffix)
+            # write input
+            simulation.input = 'input.' + simulation.jobid
+            simulation.input_full = simulation.path + '/' + simulation.input
+            with open(simulation.input_full, 'w+') as inp:
+              for block in simulation.params.keys():
+                inp.write('\n<{}>\n\n'.format(block))
+                for var in simulation.params[block].keys():
+                  inp.write('  {}  =  {}\n'.format(var, simulation.params[block][var]))
+            testlog.write('input file'.ljust(46, '.') + '[OK]\n')
 
-        # write input
-        simulation.input = 'input.' + simulation.jobid
-        simulation.input_full = simulation.path + '/' + simulation.input
-        with open(simulation.input_full, 'w+') as inp:
-          for block in simulation.params.keys():
-            inp.write('\n<{}>\n\n'.format(block))
-            for var in simulation.params[block].keys():
-              inp.write('  {}  =  {}\n'.format(var, simulation.params[block][var]))
-        testlog.write('input file'.ljust(46, '.') + '[OK]\n')
+            # write submit
+            simulation.submit = 'submit_' + simulation.jobid
+            simulation.submit_full = simulation.path + '/' + simulation.submit
+            with open(simulation.submit_full, 'w+') as sub:
+              sub.write('#!/bin/bash\n')
+              sub.write('#SBATCH -t {}\n'.format(simulation.walltime))
+              sub.write('#SBATCH -n {}\n'.format(simulation.nproc))
+              sub.write('#SBATCH -J {}\n'.format(simulation.jobid))
+              sub.write('#SBATCH --output={}/tristan-v2.out\n'.format(simulation.path))
+              sub.write('#SBATCH --error={}/tristan-v2.err\n\n'.format(simulation.path))
 
-        # write submit
-        simulation.submit = 'submit_' + simulation.jobid
-        simulation.submit_full = simulation.path + '/' + simulation.submit
-        with open(simulation.submit_full, 'w+') as sub:
-          sub.write('#!/bin/bash\n')
-          sub.write('#SBATCH -t {}\n'.format(simulation.walltime))
-          sub.write('#SBATCH -n {}\n'.format(simulation.nproc))
-          sub.write('#SBATCH -J {}\n'.format(simulation.jobid))
-          sub.write('#SBATCH --output={}/tristan-v2.out\n'.format(simulation.path))
-          sub.write('#SBATCH --error={}/tristan-v2.err\n\n'.format(simulation.path))
+              sub.write('DIR={}\n'.format(simulation.path))
+              sub.write('EXECUTABLE=$DIR/{}\n'.format(simulation.exe))
+              sub.write('INPUT=$DIR/{}\n'.format(simulation.input))
+              sub.write('OUTPUT_DIR=$DIR/output\n'.format(simulation.path))
+              sub.write('SLICE_DIR=$DIR/slices\n'.format(simulation.path))
+              sub.write('REPORT_FILE=$DIR/report\n'.format(simulation.path))
+              sub.write('ERROR_FILE=$DIR/error\n\n'.format(simulation.path))
 
-          sub.write('DIR={}\n'.format(simulation.path))
-          sub.write('EXECUTABLE=$DIR/{}\n'.format(simulation.exe))
-          sub.write('INPUT=$DIR/{}\n'.format(simulation.input))
-          sub.write('OUTPUT_DIR=$DIR/output\n'.format(simulation.path))
-          sub.write('SLICE_DIR=$DIR/slices\n'.format(simulation.path))
-          sub.write('REPORT_FILE=$DIR/report\n'.format(simulation.path))
-          sub.write('ERROR_FILE=$DIR/error\n\n'.format(simulation.path))
+              for module in modules:
+                sub.write('module load {}\n'.format(module))
 
-          for module in modules:
-            sub.write('module load {}\n'.format(module))
+              sub.write('\nmkdir $OUTPUT_DIR\n\n')
 
-          sub.write('\nmkdir $OUTPUT_DIR\n\n')
+              sub.write('srun $EXECUTABLE -i $INPUT -o $OUTPUT_DIR -s $SLICE_DIR -r $RESTART_DIR -R $RESTART > $REPORT_FILE 2> $ERROR_FILE')
+            testlog.write('submit file'.ljust(46, '.') + '[OK]\n')
+          testlog.write('\n')
 
-          sub.write('srun $EXECUTABLE -i $INPUT -o $OUTPUT_DIR -s $SLICE_DIR -r $RESTART_DIR -R $RESTART > $REPORT_FILE 2> $ERROR_FILE')
-        testlog.write('submit file'.ljust(46, '.') + '[OK]\n')
-      testlog.write('\n')
-
-    testlog.write('\n\n')
-    if not options.c:
-      for ii, simulation in enumerate(simulations):
-        if not (ii + 1 in tests):
-          continue
-        os.system('sbatch ' + simulation.submit_full)
-        testlog.write(('`{}`'.format(simulation.jobid)).ljust(41, '.') + 'submitted\n')
+      testlog.write('\n\n')
+      if (not options.c) or (options.r):
+        for ii, simulation in enumerate(simulations):
+          if not (ii + 1 in tests):
+            continue
+          os.system('sbatch ' + simulation.submit_full)
+          testlog.write(('`{}`'.format(simulation.jobid)).ljust(41, '.') + 'submitted\n')
