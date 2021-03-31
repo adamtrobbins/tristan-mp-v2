@@ -82,7 +82,7 @@ class Fields:
       specs = list(attr[4:])
       f = getattr(self.dataset, attr[:4] + specs[0])
       for s in specs[1:]:
-        f += getattr(self.dataset, attr[:4] + s)
+        f = f + getattr(self.dataset, attr[:4] + s)
       return f.rename(attr)
     else:
       return getattr(self.dataset, attr)
