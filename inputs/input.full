@@ -92,7 +92,10 @@
   # history output
   hst_enable    = 0              # enable/disable history output [0]
   hst_interval  = 1              # interval between history output steps [1]
-  hst_readable  = 1              # enable the human readable format (less accurate) [0]
+
+	# user-specific output
+	usr_enable    = 0							 # enable/disable usr-output [0]
+	usr_interval  = 100						 # interval between usr-output steps [100]
 
   # spectra output
   # bins are `g - 1` for massive and `e` for massless
@@ -218,6 +221,7 @@
   beta_rec      = 0.1           # fiducial number that goes into the definition of `gamma_syn` and `gamma_ic` [0.1]
   photon_sp     = 3             # emit photons to species (`emit` flag) [3]
   dens_limit    = 100           # density limit on the cooled region (0 = disable limiter) [0]
+	cool_limit    = 0						  # limit cooling if `du > fraction of u` (defines the fraction) (0 = disable limiter) [0]
 
 <qed>
 

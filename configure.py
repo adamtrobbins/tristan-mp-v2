@@ -20,16 +20,13 @@ unit_choices = glob.glob(unit_directory + '*.F90')
 unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
 
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
+clusters = ['perseus', 'frontera', 'stellar']
 
 # system
-parser.add_argument('-perseus',
-                    action='store_true',
-                    default=False,
-                    help='configure for the `Perseus` cluster.')
-parser.add_argument('-frontera',
-                    action='store_true',
-                    default=False,
-                    help='configure for the `Frontera` cluster.')
+parser.add_argument('--cluster',
+                    default=None,
+                    choices=clusters,
+                    help='choose cluster-specific configurations.')
 
 parser.add_argument('-intel',
                     action='store_true',
@@ -69,6 +66,11 @@ mpi_group.add_argument('-mpi08',
                        default=False,
                        help='enable mpi_f08')
 
+mpi_group.add_argument('-test',
+                       action='store_true',
+                       default=False,
+                       help='enable test mode')
+
 # user file
 user_group = parser.add_mutually_exclusive_group(required=True)
 user_group.add_argument('--user',
@@ -100,6 +102,11 @@ parser.add_argument('-debug',
                     action='store_true',
                     default=False,
                     help='enable DEBUG flag')
+
+parser.add_argument('-safe',
+                    action='store_true',
+                    default=False,
+                    help='enable dynamic memory allocations (safe regime)')
 
 parser.add_argument('--gca',
                     action='store',
@@ -195,21 +202,20 @@ makefile_options['PREPROCESSOR_FLAGS'] = ''
 
 # specific cluster:
 specific_cluster = False
-clustername = ''
-if args['perseus']:
+if (args['cluster'] is not None):
   specific_cluster = True
+  clustername = args['cluster'].capitalize()
   args['intel'] = True
-  args['mpi'] = True
   args['ifport'] = True
-  args['avx2'] = True
-  clustername = 'Perseus'
-elif args['frontera']:
-  specific_cluster = True
-  args['intel'] = True
-  args['mpi08'] = True
-  args['ifport'] = True
-  args['avx512'] = True
-  clustername = 'Frontera'
+  if args['cluster'] == 'perseus':
+    args['mpi'] = True
+    args['avx2'] = True
+  elif args['cluster'] == 'frontera':
+    args['mpi08'] = True
+    args['avx512'] = True
+  elif args['cluster'] == 'stellar':
+    args['mpi08'] = True
+    args['avx512'] = True
 
 # compilation command
 if args['hdf5']:
@@ -240,6 +246,12 @@ elif (args['debug'] and args['intel']):
   makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
 else:
   makefile_options['COMPILER_FLAGS'] += '-Ofast '
+
+if args['test']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
+
+# if args['safe']:
+#   makefile_options['PREPROCESSOR_FLAGS'] += '-DSAFE '
 
 # compiler (+ vectorization etc)
 if args['intel']:
@@ -324,7 +336,7 @@ with open(makefile_output, 'w') as current_file:
 # Finish with diagnostic output
 print('==============================================================================')
 print('Your TRISTAN distribution has now been configured with the following options:')
-if (specific_cluster):
+if (args['cluster'] is not None):
   print('  Cluster configurations:  `{}`'.format(clustername) )
 
 print('SETUP ........................................................................')
@@ -333,7 +345,7 @@ print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d
 print('  # of ghost zones:        ' + str(args['nghosts']))
 print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
-print('  Particle pusher:         ' + ('Boris/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ('Vay' if args['vay'] else 'Boris')))
+print('  Particle pusher:         ' + ('Vay' if args['vay'] else 'Boris') + ('/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ''))
 print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
 
 print('PHYSICS ......................................................................')
@@ -353,6 +365,7 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                         (' [avx512]' if args['avx512'] else '')
                                       ))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
+# print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
 print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))

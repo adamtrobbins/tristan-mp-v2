@@ -25,7 +25,7 @@ contains
     #ifdef HDF5
       call writeFields_hdf5(step, time)
     #endif
-    call printDiag((mpi_rank .eq. 0), "...writeFields()", .true.)
+    call printDiag("writeFields()", 3)
   end subroutine writeFields
 
   #ifdef HDF5

@@ -39,13 +39,13 @@ def getSlice(output, proj, step):
   if (output[-1] != '/'):
     output += '/'
   proj, shift = proj.split('=')
-  return getFields(output + '/slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
+  return getFields(output + 'slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
 
 def convertToXarray(fields,
                     coordinateTransformation = {'x': lambda f: f,
                                                 'y': lambda f: f,
                                                 'z': lambda f: f},
-                    additionalVariables = {}):
+                    additionalVariables = {}, mask = None):
   import xarray as xr
   import numpy as np
   np.seterr(divide='ignore', invalid='ignore')
@@ -64,6 +64,7 @@ def convertToXarray(fields,
     if (len(xr_axes) != 2):
       raise ValueError("Incorrect `xr_axes`.")
     x1, x2 = xr_axes
+    xr_axes = xr_axes[::-1]
     xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,:]))
     xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][:,0]))
   elif dimension == 3:
@@ -76,7 +77,22 @@ def convertToXarray(fields,
     xr_data[k] = (xr_axes, fields[k][:])
   for k in additionalVariables.keys():
     xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:])
+  if mask is not None:
+    xr_data = xr_data.where(mask(xr_data))
   return xr_data
+
+def getTimeAverageData(steps, loadScript):
+  data = {}
+  for step in steps:
+    fields = loadScript(step)
+    for key in fields.keys():
+      if not (key in data.keys()):
+        data[key] = fields[key]
+      else:
+        data[key] += fields[key]
+  for fld in data.keys():
+    data[fld] /= len(steps)
+  return data
 
 # usage example for 2D uniform grid:
 # ```
@@ -173,6 +189,24 @@ def getDomains(fname):
     data = {}
     for k in file.keys():
       data[k] = file[k][:]
+  return data
+
+def parseInput(fname):
+  from itertools import groupby
+  import re
+  with open(fname, 'r') as f:
+    data = {}
+    curr_blockname = None
+    for line in f:
+      if (line.startswith('<')):
+        blockname = (line[1:].split('>')[0])
+        data[blockname] = {}
+        curr_blockname = blockname
+      elif not line.strip().startswith('#') and not line.strip() == '':
+        line = re.split('=|#|\t|\n', line)
+        var = line[0].strip()
+        value = np.float(line[1])
+        data[curr_blockname].update({var: value})
   return data
 
 def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
@@ -272,4 +306,39 @@ def parseHistory(fname):
         pairs = {key: v for key, v in zip(template_keys, block_values)}
         for key in template_keys:
           data[key] = np.append(data[key], pairs[key])
+  return data
+
+def parseUsrOutput(fname):
+  from itertools import groupby
+  import re
+  def make_grouper():
+    counter = 0
+    def key(line):
+      nonlocal counter
+      if line.startswith('===='):
+        counter += 1
+      return counter
+    return key
+  def is_float(val):
+    try:
+      num = np.float(val)
+    except ValueError:
+      return False
+    return True
+  with open(fname, 'r') as f:
+    data = {}
+    for k, group in groupby(f, key=make_grouper()):
+      fasta_section = ''.join(group).split('\n')
+      accept_value = False
+      for b in fasta_section:
+        if b.startswith('t ='):
+          time = int(b.split('=')[1])
+          data[time] = {}
+        if ':' in b:
+          var = b.split(':')[0]
+          accept_value = True
+        elif (accept_value):
+          array = np.array([np.float(v) for v in b.split(',') if is_float(v)])
+          data[time].update({var: array if len(array) > 1 else array[0]})
+          accept_value = False
   return data

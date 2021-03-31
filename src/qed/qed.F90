@@ -51,6 +51,8 @@ contains
     #ifdef PAIRANNIHILATION
       call initializePairAnnihilation()
     #endif
+
+    call printDiag("initializeQED()", 1)
   end subroutine initializeQED
 
   #ifdef BWPAIRPRODUCTION
@@ -166,7 +168,7 @@ contains
       end if
     #endif
 
-    call printDiag((mpi_rank .eq. 0), "QEDstep()", .true.)
+    call printDiag("QEDstep()", 2)
   end subroutine QEDstep
 
 #endif

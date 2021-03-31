@@ -2,6 +2,7 @@
 
 module m_loadbalancing
   use m_globalnamespace
+  use m_readinput, only: getInput
   use m_aux
   use m_errors
   use m_domain
@@ -10,6 +11,11 @@ module m_loadbalancing
   use m_helpers
   use m_staticlb
   use m_adaptivelb
+
+  use m_particlelogistics
+  use m_fieldlogistics
+  use m_exchangefields
+  use m_exchangeparts, only: redistributeParticlesBetweenMeshblocks
   implicit none
 
   !--- PRIVATE variables/functions -------------------------------!
@@ -18,6 +24,47 @@ module m_loadbalancing
   !...............................................................!
 
 contains
+  subroutine initializeLB()
+    implicit none
+    ! initializing static LB variables
+    slb_x = .false.; slb_sxmin = -1
+    slb_y = .false.; slb_symin = -1
+    slb_z = .false.; slb_szmin = -1
+
+    alb_x = .false.; alb_sxmin = -1; alb_int_x = -1; alb_start_x = -1
+    alb_y = .false.; alb_symin = -1; alb_int_y = -1; alb_start_y = -1
+    alb_z = .false.; alb_szmin = -1; alb_int_z = -1; alb_start_z = -1
+    #if defined(oneD) || defined (twoD) || defined (threeD)
+      call getInput('static_load_balancing', 'in_x', slb_x, .false.)
+      call getInput('static_load_balancing', 'sx_min', slb_sxmin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_x', alb_x, .false.)
+      call getInput('adaptive_load_balancing', 'sx_min', alb_sxmin, 10)
+      call getInput('adaptive_load_balancing', 'interval_x', alb_int_x, 1000)
+      call getInput('adaptive_load_balancing', 'start_x', alb_start_x, 0)
+    #endif
+    #if defined(twoD) || defined (threeD)
+      call getInput('static_load_balancing', 'in_y', slb_y, .false.)
+      call getInput('static_load_balancing', 'sy_min', slb_symin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_y', alb_y, .false.)
+      call getInput('adaptive_load_balancing', 'sy_min', alb_symin, 10)
+      call getInput('adaptive_load_balancing', 'interval_y', alb_int_y, 1000)
+      call getInput('adaptive_load_balancing', 'start_y', alb_start_y, 0)
+    #endif
+    #if defined(threeD)
+      call getInput('static_load_balancing', 'in_z', slb_z, .false.)
+      call getInput('static_load_balancing', 'sz_min', slb_szmin, 10)
+
+      call getInput('adaptive_load_balancing', 'in_z', alb_z, .false.)
+      call getInput('adaptive_load_balancing', 'sz_min', alb_szmin, 10)
+      call getInput('adaptive_load_balancing', 'interval_z', alb_int_z, 1000)
+      call getInput('adaptive_load_balancing', 'start_z', alb_start_z, 0)
+    #endif
+
+    call printDiag("initializeLB()", 1)
+  end subroutine initializeLB
+
   subroutine redistributeMeshblocksSLB(spat_load_ptr)
     implicit none
     ! pointer to a user defined function ...
@@ -51,6 +98,7 @@ contains
       end if
     end do
 
+    call printDiag("redistributeMeshblocksSLB()", 1)
   end subroutine redistributeMeshblocksSLB
 
   ! accumulate loads from all the sources
@@ -274,5 +322,137 @@ contains
       end do
     end do
   end subroutine metaRedistInZ
+
+  subroutine reshapeInX(left_group, right_group, SHIFT)
+    integer, allocatable, intent(in)    :: left_group(:), right_group(:)
+    integer, intent(in)                 :: SHIFT
+    integer                       :: nproc_group, q, left_rnk, right_rnk, ierr
+    integer                       :: new_sx, new_sy, new_sz
+    integer                       :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                   & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
+
+    nproc_group = size(left_group)
+    #ifdef DEBUG
+      if (size(left_group) .ne. size(right_group)) then
+        call throwError('ERROR: wrong groups specified for `reshapeInX`.')
+      end if
+    #endif
+
+    ! backup the fields with current sizes
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call backupEBfields()
+      end if
+    end do
+
+    ! get new meshblock dimensions
+    new_meshblocks(:) = meshblocks(:)
+    call reassignNeighborsForAll(new_meshblocks)
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      new_meshblocks(left_rnk + 1)%sx = new_meshblocks(left_rnk + 1)%sx + SHIFT
+      new_meshblocks(right_rnk + 1)%sx = new_meshblocks(right_rnk + 1)%sx - SHIFT
+      new_meshblocks(right_rnk + 1)%x0 = new_meshblocks(right_rnk + 1)%x0 + SHIFT
+    end do
+    ! at this point DO NOT CHANGE `meshblocks` ...
+    ! ... as the `exchangeFieldSlabIn*` still assumes old dimensions
+
+    ! reallocate field arrays given the new meshblock dimensions
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call deallocateFields()
+        call reallocateFields(new_meshblocks(mpi_rank + 1))
+        call reallocateFieldBuffers(new_meshblocks(mpi_rank + 1))
+      end if
+    end do
+
+    ! send/recv missing fields
+    ! ... and recover from backup
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        ! exchange slab
+        call exchangeFieldSlabInX(left_rnk, right_rnk, SHIFT)
+
+        ! recover from backup
+        if (SHIFT .gt. 0) then
+          ! `left_rnk` inflates
+          ! `right_rnk` shrinks
+          if (mpi_rank .eq. left_rnk) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (mpi_rank .eq. right_rnk) then
+            i1_to = 0; i2_to = new_meshblocks(right_rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(right_rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(right_rnk + 1)%sz - 1
+            i1_from = SHIFT; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        else
+          ! `left_rnk` shrinks
+          ! `right_rnk` inflates
+          if (mpi_rank .eq. left_rnk) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1 - abs(SHIFT)
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (mpi_rank .eq. right_rnk) then
+            i1_to = abs(SHIFT); i2_to = new_meshblocks(right_rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(right_rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(right_rnk + 1)%sz - 1
+            i1_from = 0; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        end if
+
+        call restoreFieldsFromBackups(i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                    & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to)
+      end if
+    end do
+
+    ! resize the meshblocks
+    meshblocks(:) = new_meshblocks(:)
+
+    ! deallocate buffers and redistribute particles
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call deallocateFieldBackups()
+
+        ! shift particles
+        if (mpi_rank .eq. right_rnk) then
+          call shiftParticlesX(-SHIFT)
+        end if
+
+        ! backup particles
+        call backupParticles()
+        ! reshuffle particle tiles
+        call reallocateParticles(this_meshblock%ptr)
+        ! restore particles from backup
+        call restoreParticlesFromBackup()
+        call deallocateParticleBackup()
+
+        ! put particles back on proper meshblocks
+        call redistributeParticlesBetweenMeshblocks()
+        call clearGhostParticles()
+      end if
+    end do
+
+  end subroutine reshapeInX
 
 end module m_loadbalancing

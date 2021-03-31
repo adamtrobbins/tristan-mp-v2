@@ -93,7 +93,7 @@ contains
     ! called after particles move and deposit ...
     ! ... and before the currents are added to the electric field
   end subroutine userCurrentDeposit
-  
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
@@ -186,5 +186,13 @@ contains
       updateB_ = .true.
     end if
   end subroutine userFieldBoundaryConditions
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! ...
+  end subroutine userOutput
   !............................................................!
 end module m_userfile

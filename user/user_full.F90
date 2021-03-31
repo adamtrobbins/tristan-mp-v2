@@ -9,6 +9,7 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
+  use m_writeusroutput
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -143,5 +144,13 @@ contains
       updateB_ = .true.
     end if
   end subroutine userFieldBoundaryConditions
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! ... 
+  end subroutine userOutput
   !............................................................!
 end module m_userfile

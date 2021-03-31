@@ -29,7 +29,7 @@ contains
       call writeParams_fmt(step, time)
     #endif
 
-    call printDiag((mpi_rank .eq. 0), "...writeParams()", .true.)
+    call printDiag("writeParams()", 3)
   end subroutine writeParams
 
   subroutine writeParams_fmt(step, time)

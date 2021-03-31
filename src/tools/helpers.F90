@@ -30,7 +30,7 @@ contains
 
   subroutine checkNpart(msg)
     implicit none
-    integer             :: ti, tj, tk, s, nprt
+    integer             :: ti, tj, tk, s, nprt, ierr
     character(len=*), intent(in) :: msg
     integer :: glob_nprt
     do s = 1, nspec
@@ -42,7 +42,7 @@ contains
           end do
         end do
       end do
-      call MPI_REDUCE(nprt, glob_nprt, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD)
+      call MPI_REDUCE(nprt, glob_nprt, 1, MPI_INTEGER, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
       if (mpi_rank .eq. 0) then
         print *, "npart of", s, msg, ":", glob_nprt
       end if
@@ -194,15 +194,16 @@ contains
     end if
   end function indToRnk
 
-  subroutine reassignNeighborsForAll()
+  subroutine reassignNeighborsForAll(mblocks)
     implicit none
+    type(mesh), allocatable, target, intent(inout)    :: mblocks(:)
     integer   :: rnk
     integer   :: ind1, ind2, ind3
     do rnk = 0, mpi_size - 1
       do ind1 = -1, 1
         do ind2 = -1, 1
           do ind3 = -1, 1
-            call assignNeighbor(rnk, (/ ind1, ind2, ind3/))
+            call assignNeighbor(rnk, (/ ind1, ind2, ind3/), mblocks)
           end do
         end do
       end do
@@ -210,16 +211,17 @@ contains
     call computeNumberOfNeighbors()
   end subroutine reassignNeighborsForAll
 
-  subroutine assignNeighbor(rnk, inds1)
+  subroutine assignNeighbor(rnk, inds1, mblocks)
     implicit none
-    integer, intent(in)       :: rnk, inds1(3)
-    integer                   :: rnk2, inds0(3)
+    type(mesh), allocatable, target, intent(inout)    :: mblocks(:)
+    integer, intent(in)                               :: rnk, inds1(3)
+    integer                                           :: rnk2, inds0(3)
     inds0 = rnkToInd(rnk)
     rnk2 = indToRnk([inds0(1) + inds1(1), inds0(2) + inds1(2), inds0(3) + inds1(3)])
     if (rnk2 .eq. -1) then
-      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
+      mblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
     else
-      meshblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => meshblocks(rnk2 + 1)
+      mblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => mblocks(rnk2 + 1)
     end if
   end subroutine assignNeighbor
 
@@ -433,6 +435,173 @@ contains
       end do
     end do
   end subroutine computeMomentum
+
+  subroutine computeFluidVelocity(component, ds)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in)                   :: component
+    integer, optional, intent(in)         :: ds
+    integer                               :: s
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
+    integer                               :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
+    real                                  :: contrib, comp
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
+    #ifdef oneD
+      pow = 1
+    #elif twoD
+      pow = 2
+    #elif threeD
+      pow = 3
+    #endif
+
+    lg_arr(:,:,:) = 0.0
+    do s = 1, nspec
+      if (.not. species(s)%move_sp) cycle
+      if (.not. species(s)%deposit_sp) cycle
+      if (species(s)%m_sp .eq. 0) cycle
+
+      ! this factor takes into account smoothing and mass of the species
+      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
+            pt_u => species(s)%prtl_tile(ti, tj, tk)%u
+            pt_v => species(s)%prtl_tile(ti, tj, tk)%v
+            pt_w => species(s)%prtl_tile(ti, tj, tk)%w
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              ! compute 3-velocity
+              if (component .eq. 0) then
+                comp = pt_u(p)
+              else if (component .eq. 1) then
+                comp = pt_v(p)
+              else if (component .eq. 2) then
+                comp = pt_w(p)
+              end if
+
+              i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+
+              i1 = 0; i2 = 0
+              j1 = 0; j2 = 0
+              k1 = 0; k2 = 0
+              #if defined(oneD) || defined (twoD) || defined (threeD)
+                i1 = max(i - ds_, -NGHOST)
+                i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+              #endif
+              #if defined (twoD) || defined (threeD)
+                j1 = max(j - ds_, -NGHOST)
+                j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+              #endif
+              #if defined (threeD)
+                k1 = max(k - ds_, -NGHOST)
+                k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
+              #endif
+
+              do k = k1, k2
+                do j = j1, j2
+                  do i = i1, i2
+                    lg_arr(i, j, k) = lg_arr(i, j, k) + comp * pt_wei(p) * contrib
+                  end do
+                end do
+              end do
+            end do ! particles on tile
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_u => null(); pt_v => null(); pt_w => null()
+            pt_wei => null()
+          end do
+        end do
+      end do ! tiles
+    end do ! species
+  end subroutine computeFluidVelocity
+
+  subroutine computeFluidDensity(ds)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, optional, intent(in)         :: ds
+    integer                               :: s
+    integer                               :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_wei(:)
+    integer                               :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
+    real                                  :: contrib, comp
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
+    #ifdef oneD
+      pow = 1
+    #elif twoD
+      pow = 2
+    #elif threeD
+      pow = 3
+    #endif
+
+    lg_arr(:,:,:) = 0.0
+    do s = 1, nspec
+      if (.not. species(s)%move_sp) cycle
+      if (.not. species(s)%deposit_sp) cycle
+      if (species(s)%m_sp .eq. 0) cycle
+
+      ! this factor takes into account smoothing and mass of the species
+      contrib = species(s)%m_sp / (2.0 * REAL(ds_) + 1.0)**pow
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              ! compute density
+              i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+
+              i1 = 0; i2 = 0
+              j1 = 0; j2 = 0
+              k1 = 0; k2 = 0
+              #if defined(oneD) || defined (twoD) || defined (threeD)
+                i1 = max(i - ds_, -NGHOST)
+                i2 = min(i + ds_, this_meshblock%ptr%sx + NGHOST - 1)
+              #endif
+              #if defined (twoD) || defined (threeD)
+                j1 = max(j - ds_, -NGHOST)
+                j2 = min(j + ds_, this_meshblock%ptr%sy + NGHOST - 1)
+              #endif
+              #if defined (threeD)
+                k1 = max(k - ds_, -NGHOST)
+                k2 = min(k + ds_, this_meshblock%ptr%sz + NGHOST - 1)
+              #endif
+
+              do k = k1, k2
+                do j = j1, j2
+                  do i = i1, i2
+                    lg_arr(i, j, k) = lg_arr(i, j, k) + pt_wei(p) * contrib
+                  end do
+                end do
+              end do
+            end do ! particles on tile
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_wei => null()
+          end do
+        end do
+      end do ! tiles
+    end do ! species
+  end subroutine computeFluidDensity
 
   subroutine computeNpart(s, reset, ds)
     ! DEP_PRT [particle-dependent]
@@ -920,4 +1089,180 @@ contains
     ! ... and deposits proper currents to corresponding components
     include "zigzag_deposit.F"
   end subroutine depositCurrentsFromSingleParticle
+
+  subroutine checkEverything()
+    implicit none
+    ! this is an ultimate function that checks that all the implicit assertions are satisfied
+    integer, dimension(3)                 :: field_shape
+    integer                               :: s, ti, tj, tk, p, i, j, k, dummy1, dummy2, ierr
+    integer(kind=2), pointer, contiguous  :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:)
+    integer, pointer, contiguous          :: pt_proc(:)
+
+    ! 1. check that the domain size is larger than the number of ghost zones
+    #ifdef oneD
+      if (this_meshblock%ptr%sx .lt. NGHOST) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #elif twoD
+      if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
+        & (this_meshblock%ptr%sy .lt. NGHOST)) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #elif threeD
+      if ((this_meshblock%ptr%sx .lt. NGHOST) .or.&
+        & (this_meshblock%ptr%sy .lt. NGHOST) .or.&
+        & (this_meshblock%ptr%sz .lt. NGHOST)) then
+        call throwError('ERROR: ghost zones overflow the domain size in ' // trim(STR(mpi_rank)))
+      end if
+    #endif
+
+    ! 2. check field dimensions
+    #ifdef oneD
+      field_shape = (/this_meshblock%ptr%sx + 2 * NGHOST, 1, 1/)
+    #elif twoD
+      field_shape = (/this_meshblock%ptr%sx + 2 * NGHOST, this_meshblock%ptr%sy + 2 * NGHOST, 1/)
+    #elif threeD
+      field_shape = (/this_meshblock%ptr%sx + 2 * NGHOST, this_meshblock%ptr%sy + 2 * NGHOST, this_meshblock%ptr%sz + 2 * NGHOST/)
+    #endif
+
+    if (.not. arraysAreEqual(shape(ex), field_shape)) then
+      print *, shape(ex), field_shape
+      call throwError('ERROR: incorrect shape of `ex`.')
+    end if
+    if (.not. arraysAreEqual(shape(ey), field_shape)) then
+      call throwError('ERROR: incorrect shape of `ey`.')
+    end if
+    if (.not. arraysAreEqual(shape(ez), field_shape)) then
+      call throwError('ERROR: incorrect shape of `ez`.')
+    end if
+    if (.not. arraysAreEqual(shape(bx), field_shape)) then
+      call throwError('ERROR: incorrect shape of `bx`.')
+    end if
+    if (.not. arraysAreEqual(shape(by), field_shape)) then
+      call throwError('ERROR: incorrect shape of `by`.')
+    end if
+    if (.not. arraysAreEqual(shape(bz), field_shape)) then
+      call throwError('ERROR: incorrect shape of `bz`.')
+    end if
+    if (.not. arraysAreEqual(shape(jx), field_shape)) then
+      call throwError('ERROR: incorrect shape of `jx`.')
+    end if
+    if (.not. arraysAreEqual(shape(jy), field_shape)) then
+      call throwError('ERROR: incorrect shape of `jy`.')
+    end if
+    if (.not. arraysAreEqual(shape(jz), field_shape)) then
+      call throwError('ERROR: incorrect shape of `jz`.')
+    end if
+    if (.not. arraysAreEqual(shape(jx_buff), field_shape)) then
+      call throwError('ERROR: incorrect shape of `jx_buff`.')
+    end if
+    if (.not. arraysAreEqual(shape(jy_buff), field_shape)) then
+      call throwError('ERROR: incorrect shape of `jy_buff`.')
+    end if
+    if (.not. arraysAreEqual(shape(jz_buff), field_shape)) then
+      call throwError('ERROR: incorrect shape of `jz_buff`.')
+    end if
+    if (.not. arraysAreEqual(shape(lg_arr), field_shape)) then
+      call throwError('ERROR: incorrect shape of `lg_arr`.')
+    end if
+    field_shape = (/this_meshblock%ptr%sx, this_meshblock%ptr%sy, this_meshblock%ptr%sz/)
+    if (.not. arraysAreEqual(shape(sm_arr), field_shape)) then
+      call throwError('ERROR: incorrect shape of `sm_arr`.')
+    end if
+
+    ! 3. check tiles & particles
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        dummy1 = species(s)%prtl_tile(ti, 1, 1)%x1
+        dummy2 = species(s)%prtl_tile(ti, 1, 1)%x2
+        do tj = 2, species(s)%tile_ny
+          do tk = 2, species(s)%tile_nz
+            if ((species(s)%prtl_tile(ti, tj, tk)%x1 .ne. dummy1) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%x2 .ne. dummy2)) then
+              call throwError('ERROR: tiles are misaligned in x.')
+            end if
+          end do
+        end do
+      end do
+
+      do tj = 1, species(s)%tile_ny
+        dummy1 = species(s)%prtl_tile(1, tj, 1)%y1
+        dummy2 = species(s)%prtl_tile(1, tj, 1)%y2
+        do ti = 2, species(s)%tile_nx
+          do tk = 2, species(s)%tile_nz
+            if ((species(s)%prtl_tile(ti, tj, tk)%y1 .ne. dummy1) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%y2 .ne. dummy2)) then
+              call throwError('ERROR: tiles are misaligned in y.')
+            end if
+          end do
+        end do
+      end do
+
+      do tk = 1, species(s)%tile_nz
+        dummy1 = species(s)%prtl_tile(1, 1, tk)%z1
+        dummy2 = species(s)%prtl_tile(1, 1, tk)%z2
+        do ti = 2, species(s)%tile_nx
+          do tj = 2, species(s)%tile_ny
+            if ((species(s)%prtl_tile(ti, tj, tk)%z1 .ne. dummy1) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%z2 .ne. dummy2)) then
+              call throwError('ERROR: tiles are misaligned in z.')
+            end if
+          end do
+        end do
+      end do
+
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+
+            if ((species(s)%prtl_tile(ti, tj, tk)%x1 .lt. 0) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%x2 .gt. this_meshblock%ptr%sx) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%y1 .lt. 0) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%y2 .gt. this_meshblock%ptr%sy) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%z1 .lt. 0) .or.&
+              & (species(s)%prtl_tile(ti, tj, tk)%z2 .gt. this_meshblock%ptr%sz)) then
+              call throwError('ERROR: incorrect tile sizes.')
+            end if
+
+            pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+            pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+            pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+            pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
+            pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
+            pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
+            pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+              if ((i .lt. species(s)%prtl_tile(ti, tj, tk)%x1) .or.&
+                & (i .ge. species(s)%prtl_tile(ti, tj, tk)%x2) .or.&
+                & (j .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or.&
+                & (j .ge. species(s)%prtl_tile(ti, tj, tk)%y2) .or.&
+                & (k .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or.&
+                & (k .ge. species(s)%prtl_tile(ti, tj, tk)%z2))then
+                call throwError('ERROR: particle in wrong tile.')
+              end if
+
+              if ((pt_dx(p) .lt. 0) .or. (pt_dx(p) .gt. 1) .or.&
+                & (pt_dy(p) .lt. 0) .or. (pt_dy(p) .gt. 1) .or.&
+                & (pt_dz(p) .lt. 0) .or. (pt_dz(p) .gt. 1)) then
+                call throwError('ERROR: invalid particle coordinate.')
+              end if
+
+              if (abs(pt_proc(p)) .gt. 10 * mpi_size) then
+                call throwError('ERROR: particle proc wrong.')
+              end if
+            end do
+            pt_xi => null(); pt_yi => null(); pt_zi => null()
+            pt_dx => null(); pt_dy => null(); pt_dz => null()
+            pt_proc => null()
+          end do
+        end do
+      end do
+    end do
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    call printDiag("checkEverything()", 1)
+  end subroutine checkEverything
 end module m_helpers

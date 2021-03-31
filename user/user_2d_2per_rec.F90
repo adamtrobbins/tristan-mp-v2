@@ -29,6 +29,16 @@ contains
     cs_x1 = 0.25; cs_x2 = 0.75
   end subroutine userReadInput
 
+  function userSLBload(x_glob, y_glob, z_glob,&
+                     & dummy1, dummy2, dummy3)
+    real :: userSLBload
+    ! global coordinates
+    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    ! global box dimensions
+    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    return
+  end function
+
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
                                  & dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
@@ -157,5 +167,13 @@ end subroutine userInitFields
       updateB_ = .true.
     end if
   end subroutine userFieldBoundaryConditions
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! ...
+  end subroutine userOutput
   !............................................................!
 end module m_userfile

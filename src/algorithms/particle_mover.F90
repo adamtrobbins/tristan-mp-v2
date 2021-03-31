@@ -40,7 +40,6 @@ contains
       ! ... variables with `_n` at the end correspond to `t = n` ...
       ! ... variables with `_n1` at the end correspond to `t = n+1` ...
       integer(kind=2), pointer, contiguous  :: pt_xi_past(:), pt_yi_past(:), pt_zi_past(:)
-      integer, pointer, contiguous          :: pt_proc(:)
       real, pointer, contiguous             :: pt_dx_past(:), pt_dy_past(:), pt_dz_past(:)
       real, pointer, contiguous             :: pt_u_eff(:), pt_v_eff(:), pt_w_eff(:), pt_u_par(:), pt_u_perp(:)
       integer(kind=2)                       :: xi_, yi_, zi_
@@ -54,8 +53,12 @@ contains
       real                                  :: vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR
       real                                  :: vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n
       real                                  :: vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1
-      logical                               :: doBorisQ
+      logical                               :: doNormalPushQ
       integer                               :: iter
+    #endif
+
+    #if defined (RADIATION) || defined (GCA)
+      integer, pointer, contiguous          :: pt_proc(:)
     #endif
 
     #ifdef RADIATION
@@ -137,8 +140,6 @@ contains
               pt_wei => species(s)%prtl_tile(ti, tj, tk)%weight
 
               #ifdef GCA
-                pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
-
                 pt_xi_past => species(s)%prtl_tile(ti, tj, tk)%xi_past
                 pt_yi_past => species(s)%prtl_tile(ti, tj, tk)%yi_past
                 pt_zi_past => species(s)%prtl_tile(ti, tj, tk)%zi_past
@@ -153,6 +154,10 @@ contains
 
                 pt_u_par => species(s)%prtl_tile(ti, tj, tk)%u_par
                 pt_u_perp => species(s)%prtl_tile(ti, tj, tk)%u_perp
+              #endif
+
+              #if defined(RADIATION) || defined(GCA)
+                pt_proc => species(s)%prtl_tile(ti, tj, tk)%proc
               #endif
 
               #if defined(RADIATION)
@@ -185,7 +190,7 @@ contains
               !$omp  vE_x, vE_y, vE_z, gammaE, wE_x, wE_y, wE_z, wE_SQR,&
               !$omp  vE_x_n, vE_y_n, vE_z_n, gammaE_n, wE_x_n, wE_y_n, wE_z_n, wE_SQR_n,&
               !$omp  vE_x_n1, vE_y_n1, vE_z_n1, gammaE_n1, wE_x_n1, wE_y_n1, wE_z_n1, wE_SQR_n1,&
-              !$omp  iter, doBorisQ)
+              !$omp  iter, doNormalPushQ)
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
@@ -227,16 +232,16 @@ contains
                 #endif
 
                 #ifndef GCA
-                  ! . . . . simple Boris pusher . . . .
+                  ! . . . . simple Boris/Vay pusher . . . .
                   u0 = pt_u(p); v0 = pt_v(p); w0 = pt_w(p)
                   ! this "function" takes
                   ! ... the field quantities: `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0` ...
                   ! ... and the velocities: `u0`, `v0`, `w0` ...
                   ! ... and returns the updated velocities `u0`, `v0`, `w0`
-                  #ifdef VAY
-                    include "vay_push.F"
-                  #else
+                  #ifndef VAY
                     include "boris_push.F"
+                  #else
+                    include "vay_push.F"
                   #endif
                   pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
                   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -271,7 +276,7 @@ contains
                                            & pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init,&
                                            & dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p),&
                                            & bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad,&
-                                           & index=pt_ind(p))
+                                           & index=pt_ind(p), proc=pt_proc(p))
                     end if
                   #endif
                 #endif
@@ -284,13 +289,15 @@ contains
               pt_wei => null()
 
               #ifdef GCA
-                pt_proc => null();
-
                 pt_xi_past => null();   pt_yi_past => null();   pt_zi_past => null()
                 pt_dx_past => null();   pt_dy_past => null();   pt_dz_past => null()
                 pt_u_eff => null();     pt_v_eff => null();     pt_w_eff => null()
 
                 pt_u_par => null();     pt_u_perp => null()
+              #endif
+
+              #if defined (RADIATION) || defined (GCA)
+                pt_proc => null();
               #endif
 
               #if defined(RADIATION)
@@ -302,7 +309,7 @@ contains
         end do ! ti
       end if
     end do ! species
-    call printDiag((mpi_rank .eq. 0), "moveParticles()", .true.)
+    call printDiag("moveParticles()", 2)
 
   end subroutine moveParticles
 end module m_mover

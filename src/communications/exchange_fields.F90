@@ -207,6 +207,129 @@ contains
         end do ! ind2
       end do ! ind1
     end do ! global loop
-    call printDiag((mpi_rank .eq. 0), "exchangeFields()", .true.)
+    call printDiag("exchangeFields()", 2)
   end subroutine exchangeFields
+
+  subroutine exchangeFieldSlabInX(rnk1, rnk2, slab)
+    implicit none
+    integer, intent(in)       :: rnk1, rnk2, slab
+    real, allocatable         :: send_slab(:), recv_slab(:)
+    integer                   :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
+    integer                   :: i1_recv, i2_recv, j1_recv, j2_recv, k1_recv, k2_recv
+    integer                   :: rnk_send, rnk_recv
+
+    ! `slab < 0` means `rnk1` is sending
+    ! `slab > 0` means `rnk1` is receiving
+    ! `rnk1` is assumed closer to origin than `rnk2`
+
+    if ((mpi_rank .eq. rnk1) .or. (mpi_rank .eq. rnk2)) then
+      #ifdef DEBUG
+        ! check that sizes along `X` match
+        if ((meshblocks(rnk1 + 1)%sy .ne. meshblocks(rnk2 + 1)%sy) .or.&
+          & (meshblocks(rnk1 + 1)%sz .ne. meshblocks(rnk2 + 1)%sz)) then
+          call throwError('ERROR: sizes in `YZ` not matching: '//trim(STR(rnk1))//' '//trim(STR(rnk2))//'.')
+        end if
+        ! check that `rnk1` and `rnk2` are neighbors
+        if (mpi_rank .eq. rnk1) then
+          if (this_meshblock%ptr%neighbor(1,0,0)%ptr%rnk .ne. rnk2) then
+            call throwError('ERROR: #'//trim(STR(rnk1))//' and #'//trim(STR(rnk2))//' are not neighbors.')
+          end if
+        else if (mpi_rank .eq. rnk2) then
+          if (this_meshblock%ptr%neighbor(-1,0,0)%ptr%rnk .ne. rnk1) then
+            call throwError('ERROR: #'//trim(STR(rnk2))//' and #'//trim(STR(rnk1))//' are not neighbors.')
+          end if
+        end if
+      #endif
+      if (slab .gt. 0) then
+        ! `rnk1` receiving, `rnk2` sending
+        call SendRecvSlabInX(rnk2, rnk1, slab, +1)
+      else if (slab .lt. 0) then
+        ! `rnk1` sending, `rnk2` receiving
+        call SendRecvSlabInX(rnk1, rnk2, abs(slab), -1)
+      else
+        call throwError('ERROR: `slab` cannot be zero in exchangeFieldSlabIn*().')
+      end if
+    end if
+  end subroutine exchangeFieldSlabInX
+
+  subroutine SendRecvSlabInX(rnk_send, rnk_recv, slab, direction)
+    implicit none
+    integer, intent(in)       :: rnk_send, rnk_recv, slab, direction
+    real, allocatable         :: buffer(:,:,:,:)
+    integer                   :: i, j, k
+    integer                   :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
+    integer                   :: i_, dummy_, size_, ierr, mpi_tag
+
+    #ifdef MPI08
+      type(MPI_STATUS)        :: istat
+    #endif
+
+    #ifdef MPI
+      integer                 :: istat(MPI_STATUS_SIZE)
+    #endif
+
+    if ((mpi_rank .eq. rnk_send) .or. (mpi_rank .eq. rnk_recv)) then
+      #ifdef DEBUG
+        ! check that we're not sending too much
+        if (slab .ge. meshblocks(rnk_send + 1)%sx - NGHOST - 1) then
+          call throwError('ERROR: cannot send more than `sx - NGHOST - 1` cells in x.')
+        end if
+      #endif
+
+      i1_send = 0; i2_send = slab - 1
+      j1_send = 0; j2_send = meshblocks(rnk_send + 1)%sy - 1
+      k1_send = 0; k2_send = meshblocks(rnk_send + 1)%sz - 1
+
+      allocate(buffer(i1_send:i2_send, j1_send:j2_send, k1_send:k2_send, 6))
+      size_ = (i2_send - i1_send + 1) * (j2_send - j1_send + 1) * (k2_send - k1_send + 1) * 6
+
+      mpi_tag = 1
+
+      if (mpi_rank .eq. rnk_send) then
+        ! fill the buffer
+        if (direction .lt. 0) then
+          dummy_ = this_meshblock%ptr%sx - slab
+        else
+          dummy_ = 0
+        end if
+        do k = k1_send, k2_send
+          do j = j1_send, j2_send
+            do i = i1_send, i2_send
+              i_ = dummy_ + i
+              buffer(i, j, k, 1) = ex_back(i_, j, k)
+              buffer(i, j, k, 2) = ey_back(i_, j, k)
+              buffer(i, j, k, 3) = ez_back(i_, j, k)
+              buffer(i, j, k, 4) = bx_back(i_, j, k)
+              buffer(i, j, k, 5) = by_back(i_, j, k)
+              buffer(i, j, k, 6) = bz_back(i_, j, k)
+            end do
+          end do
+        end do
+        call MPI_SEND(buffer, size_, MPI_REAL, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
+      else if (mpi_rank .eq. rnk_recv) then
+        call MPI_RECV(buffer, size_, MPI_REAL, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+        ! extract from the buffer
+        if (direction .lt. 0) then
+          dummy_ = 0
+        else
+          dummy_ = this_meshblock%ptr%sx
+        end if
+        do k = k1_send, k2_send
+          do j = j1_send, j2_send
+            do i = i1_send, i2_send
+              i_ = dummy_ + i
+              ex(i_, j, k) = buffer(i, j, k, 1)
+              ey(i_, j, k) = buffer(i, j, k, 2)
+              ez(i_, j, k) = buffer(i, j, k, 3)
+              bx(i_, j, k) = buffer(i, j, k, 4)
+              by(i_, j, k) = buffer(i, j, k, 5)
+              bz(i_, j, k) = buffer(i, j, k, 6)
+            end do
+          end do
+        end do
+      end if
+      deallocate(buffer)
+    end if
+  end subroutine SendRecvSlabInX
+
 end module m_exchangefields

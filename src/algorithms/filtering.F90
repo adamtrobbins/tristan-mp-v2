@@ -42,7 +42,7 @@ contains
         iter = iter + 1
       end if
     end do
-    call printDiag((mpi_rank .eq. 0), "filterCurrents()", .true.)
+    call printDiag("filterCurrents()", 2)
   end subroutine filterCurrents
 
   ! subroutine filterEfield(arr)

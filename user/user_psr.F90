@@ -15,17 +15,18 @@ module m_userfile
   use m_thermalplasma
   use m_particlelogistics
   use m_helpers
+  use m_writeusroutput
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
   integer, private  :: fld_geometry, inj_method, e_par_method
-  real, private     :: xc_g, yc_g, zc_g, psr_spinupT
+  real, private     :: xc_g, yc_g, zc_g, psr_spinupT, psr_bstar, cooling_on
   real, private     :: psr_angle, psr_period, psr_omega, psr_omega0, psr_radius
   real, private     :: inj_mult, e_thr
   real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
   real, private     :: nGJ_limiter, sigGJ_limiter, jdotb_limiter
-  real, private     :: fakepp_density, fakepp_height, fakepp_ppc
+  real, private     :: fakepp_density, fakepp_height, fakepp_ppc, fakepp_rmin
   integer, private  :: fakepp_timestep
   #ifdef GCA
     real, private     :: psr_gca_enforce_rad
@@ -46,6 +47,7 @@ contains
     call getInput('problem', 'psr_angle', psr_angle)
     call getInput('problem', 'psr_period', psr_period)
     call getInput('problem', 'psr_spinupT', psr_spinupT, 0.0)
+    call getInput('problem', 'psr_bstar', psr_bstar, 1.0)
 
     ! remove particles which fall below `radius - rmin_dr`
     call getInput('problem', 'rmin_dr', rmin_dr)
@@ -81,10 +83,13 @@ contains
       call getInput('problem', 'prtl_kick', prtl_kick)
     end if
 
+    call getInput('problem', 'cooling_on', cooling_on, 0.0)
+
     call getInput('problem', 'fakepp_density', fakepp_density, 0.0)
     call getInput('problem', 'fakepp_timestep', fakepp_timestep, 0)
     call getInput('problem', 'fakepp_height', fakepp_height, 50.0)
     call getInput('problem', 'fakepp_ppc', fakepp_ppc, 1.0)
+    call getInput('problem', 'fakepp_rmin', fakepp_rmin, 1.0)
 
     #ifdef GCA
       call getInput('problem', 'gca_radius', psr_gca_enforce_rad)
@@ -106,6 +111,8 @@ contains
     xc_g = 0.5 * global_mesh%sx
     yc_g = 0.5 * global_mesh%sy
     zc_g = 0.5 * global_mesh%sz
+
+    global_usr_variable_1 = psr_radius
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -125,9 +132,9 @@ contains
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real                        :: radius2, psrrad
-    psrrad = dummy1 / 14.0
+    psrrad = global_usr_variable_1
     radius2 = (dummy1 * 0.5 - x_glob)**2 + (dummy2 * 0.5 - y_glob)**2 + (dummy3 * 0.5 - z_glob)**2 + 1.0
-    userSLBload = psrrad**2 / radius2
+    userSLBload = psrrad**2 / radius2 + exp(-(dummy3 * 0.5 - z_glob)**2 / (psrrad * 0.5)**2)
     if (radius2 .lt. psrrad**2) then
       userSLBload = 1.0 / exp((psrrad**2 - radius2) / psrrad**2)
     end if
@@ -138,6 +145,9 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
+
+    species(1)%cool_sp = .false.
+    species(2)%cool_sp = .false.
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -245,7 +255,12 @@ contains
       real                          :: e0_SQR, b0_SQR
     #endif
 
-    nGJ = 2 * psr_omega0 * B_norm / (CC * abs(unit_ch))
+    if (step .gt. cooling_on * psr_period) then
+      species(1)%cool_sp = .true.
+      species(2)%cool_sp = .true.
+    end if
+
+    nGJ = 2 * psr_omega0 * B_norm * psr_bstar / (CC * abs(unit_ch))
     sigma_nGJ = sigma * ppc0 / nGJ
 
     if (inj_method .eq. 1) then
@@ -400,7 +415,7 @@ contains
               v_ = vE_y * dummy_
               w_ = vE_z * dummy_
 
-              dummy_ = sqrt(abs(prtl_kick**2 - dummy_**2))
+              dummy_ = sqrt(prtl_kick**2 - 1.0)
 
               u_ = u_ + nx * dummy_
               v_ = v_ + ny * dummy_
@@ -451,7 +466,7 @@ contains
     end if
 
     rmax = MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) * 0.5 - ds_abs / 2.0
-    rmin = CC / psr_omega0
+    rmin = fakepp_rmin * (CC / psr_omega0)
     ppc = 0.5 * fakepp_ppc
     weight = fakepp_density * inj_mult * nGJ / ppc
     ! n_part = 8 * ppc * fakepp_height * M_PI * rmax**2
@@ -882,9 +897,9 @@ contains
 
     mu_dot_n = mux * nx + muy * ny + muz * nz
 
-    obx = (3.0 * nx * mu_dot_n - mux) * rr
-    oby = (3.0 * ny * mu_dot_n - muy) * rr
-    obz = (3.0 * nz * mu_dot_n - muz) * rr
+    obx = psr_bstar * (3.0 * nx * mu_dot_n - mux) * rr
+    oby = psr_bstar * (3.0 * ny * mu_dot_n - muy) * rr
+    obz = psr_bstar * (3.0 * nz * mu_dot_n - muz) * rr
   end subroutine getDipole
 
   subroutine getMonopole(step, offset, x_g, y_g, z_g,&
@@ -901,9 +916,9 @@ contains
     rr = sqrt(nx**2 + ny**2 + nz**2)
     rr = 1.0 / rr**3
 
-    obx = psr_radius**2 * nx * rr
-    oby = psr_radius**2 * ny * rr
-    obz = psr_radius**2 * nz * rr
+    obx = psr_bstar * psr_radius**2 * nx * rr
+    oby = psr_bstar * psr_radius**2 * ny * rr
+    obz = psr_bstar * psr_radius**2 * nz * rr
   end subroutine getMonopole
 
   real function shape(rad, rad0)
@@ -914,5 +929,66 @@ contains
     shape = 0.5 * (1.0 - tanh((rad - rad0) / del))
   end function shape
 
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    integer                       :: root_rank = 0
+    real, allocatable             :: r_bins(:)
+    real                          :: dr, x_glob, y_glob, z_glob, r_glob
+    real                          :: dummy_x, dummy_y, dummy_z, dummy
+    real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+    integer                       :: ri, rnum = 50, i, j, k, ierr
+
+    allocate(r_bins(rnum))
+    allocate(sum_ExBr_f(rnum), sum_f(rnum))
+    allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
+    sum_ExBr_f(:) = 0.0
+    sum_f(:) = 0.0
+
+    dr = (REAL(global_mesh%sx) * 0.5 - psr_radius) / REAL(rnum)
+    do ri = 1, rnum
+      r_bins(ri) = psr_radius + ri * dr
+    end do
+
+    do i = 0, this_meshblock%ptr%sx - 1
+      x_glob = REAL(i + this_meshblock%ptr%x0)
+      do j = 0, this_meshblock%ptr%sy - 1
+        y_glob = REAL(j + this_meshblock%ptr%y0)
+        do k = 0, this_meshblock%ptr%sz - 1
+          z_glob = REAL(k + this_meshblock%ptr%z0)
+          r_glob = sqrt((x_glob - xc_g)**2 + (y_glob - yc_g)**2 + (z_glob - zc_g)**2)
+          ! compute ExB_r
+          dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
+          dummy_y = ez(i,j,k) * bx(i,j,k) - ex(i,j,k) * bz(i,j,k)
+          dummy_z = -(ey(i,j,k) * bx(i,j,k)) + ex(i,j,k) * by(i,j,k)
+          if (r_glob .gt. psr_radius / 2.0) then
+            dummy = (dummy_x * (x_glob - xc_g) +&
+                   & dummy_y * (y_glob - yc_g) +&
+                   & dummy_z * (z_glob - zc_g)) / r_glob
+          else
+            dummy = 0.0
+          end if
+          do ri = 1, rnum
+            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy * exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+            sum_f(ri) = sum_f(ri) + exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+          end do
+        end do
+      end do
+    end do
+
+    call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+
+    if (mpi_rank .eq. root_rank) then
+      sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
+      call writeUsrOutputTimestep(step)
+      call writeUsrOutputArray('r_bins', r_bins)
+      call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
+      call writeUsrOutputEnd()
+    end if
+  end subroutine userOutput
   !............................................................!
 end module m_userfile

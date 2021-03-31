@@ -201,7 +201,7 @@ contains
           end if
         #else
           if ((P_12 .gt. 1.0)) then
-            print '(1X,A,ES10.3,A)', 'Warning: Compton cross section P_12 = ', P_12, ' > 1 !!'
+            call addWarning(3)
           endif
         #endif
 
