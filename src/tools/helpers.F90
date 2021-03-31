@@ -1243,9 +1243,9 @@ contains
                 call throwError('ERROR: particle in wrong tile.')
               end if
 
-              if ((pt_dx(p) .lt. 0) .or. (pt_dx(p) .ge. 1) .or.&
-                & (pt_dy(p) .lt. 0) .or. (pt_dy(p) .ge. 1) .or.&
-                & (pt_dz(p) .lt. 0) .or. (pt_dz(p) .ge. 1)) then
+              if ((pt_dx(p) .lt. 0) .or. (pt_dx(p) .gt. 1) .or.&
+                & (pt_dy(p) .lt. 0) .or. (pt_dy(p) .gt. 1) .or.&
+                & (pt_dz(p) .lt. 0) .or. (pt_dz(p) .gt. 1)) then
                 call throwError('ERROR: invalid particle coordinate.')
               end if
 
