@@ -42,3 +42,10 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 * `v2.1.1` __Jan 2021__
   * Patched the Compton cross section normalization
   * Minor bug fixes
+
+### To-do (ongoing)
+
+- [ ] Safe mode (with dynamic allocation)
+- [ ] Adaptive load balancing (in progress...)
+- [ ] Particle splitting (in progress...)
+- [ ] Documentation for the python library for visualization
