@@ -613,11 +613,11 @@ contains
       writing_lgarrQ = .true.
       s = STRtoINT(fldname(5:5))
       if (fldname(4:4) .eq. 'X') then
-        call computeMomentum(s, component=0, reset=.true., ds=output_dens_smooth)
-      else if (fldname(4:4) .eq. 'Y') then
         call computeMomentum(s, component=1, reset=.true., ds=output_dens_smooth)
-      else if (fldname(4:4) .eq. 'Z') then
+      else if (fldname(4:4) .eq. 'Y') then
         call computeMomentum(s, component=2, reset=.true., ds=output_dens_smooth)
+      else if (fldname(4:4) .eq. 'Z') then
+        call computeMomentum(s, component=3, reset=.true., ds=output_dens_smooth)
       else
         call throwError('ERROR: unknown component in `mom` output:' // trim(fldname(4:4)) // '.')
       end if
