@@ -250,8 +250,8 @@ else:
 if args['test']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
 
-if args['safe']:
-  makefile_options['PREPROCESSOR_FLAGS'] += '-DSAFE '
+# if args['safe']:
+#   makefile_options['PREPROCESSOR_FLAGS'] += '-DSAFE '
 
 # compiler (+ vectorization etc)
 if args['intel']:
@@ -365,7 +365,7 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                         (' [avx512]' if args['avx512'] else '')
                                       ))
 print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
-print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
+# print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
 print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
