@@ -9,12 +9,14 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
+  use m_writeusroutput
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private    :: nCS_over_nUP, current_width, upstream_T, cs_x
+  real, private    :: nCS_over_nUP, current_width, upstream_T, cs_x, boost_y_Gamma, boost_y_beta
   real, private    :: injector_x1, injector_x2, injector_sx, injector_betax
   integer, private :: injector_reset_interval, open_boundaries
+  integer, private :: cs_lecs, cs_ions, up_lecs, up_ions, measure_x
   logical, private :: perturb
   !...............................................................!
 
@@ -30,9 +32,16 @@ contains
     call getInput('problem', 'current_width', current_width)
     call getInput('problem', 'injector_sx', injector_sx)
     call getInput('problem', 'injector_betax', injector_betax)
+    call getInput('problem', 'boost_y', boost_y_Gamma, 1.0)
+    call getInput('problem', 'cs_lecs', cs_lecs, 1)
+    call getInput('problem', 'cs_ions', cs_ions, 2)
+    call getInput('problem', 'up_lecs', up_lecs, 1)
+    call getInput('problem', 'up_ions', up_ions, 2)
+    call getInput('problem', 'measure_x', measure_x)
     call getInput('problem', 'open_boundaries', open_boundaries, -1)
     call getInput('problem', 'perturb', perturb, .false.)
     cs_x = 0.5
+    boost_y_beta = sqrt(1.0 - boost_y_Gamma**(-2))
   end subroutine userReadInput
 
   function userSLBload(x_glob, y_glob, z_glob,&
@@ -71,6 +80,8 @@ contains
     real                :: nUP, nCS
     type(region)        :: back_region
     real                :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
+    integer             :: s, ti, tj, tk, p
+    real                :: ux, uy, uz, gamma
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
@@ -84,12 +95,12 @@ contains
     back_region%y_min = 0.0
     back_region%x_max = sx_glob * cs_x
     back_region%y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
     back_region%x_min = sx_glob * cs_x
     back_region%y_min = 0.0
     back_region%x_max = sx_glob
     back_region%y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
 
     shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
     if (shift_beta .ge. 1) then
@@ -98,20 +109,35 @@ contains
     shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
     current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
-    back_region%x_min = sx_glob * cs_x - 10 * current_width
-    back_region%x_max = sx_glob * cs_x + 10 * current_width
-    back_region%y_min = 0.0
-    back_region%y_max = sy_glob
-    if (perturb) then
-      call fillRegionWithThermalPlasma(back_region, (/4, 5/), 2, nCS, current_sheet_T,&
-                                     & shift_gamma = shift_gamma, shift_dir = 3,&
-                                     & spat_distr_ptr = spat_distr_ptr,&
-                                     & dummy1 = cs_x * sx_glob, dummy2 = current_width, dummy3 = cs_x * sy_glob)
-    else
-      call fillRegionWithThermalPlasma(back_region, (/4, 5/), 2, nCS, current_sheet_T,&
-                                     & shift_gamma = shift_gamma, shift_dir = 3,&
-                                     & spat_distr_ptr = spat_distr_ptr,&
-                                     & dummy1 = cs_x * sx_glob, dummy2 = current_width)
+    ! back_region%x_min = sx_glob * cs_x - 10 * current_width
+    ! back_region%x_max = sx_glob * cs_x + 10 * current_width
+    ! back_region%y_min = 0.0
+    ! back_region%y_max = sy_glob
+    ! if (perturb) then
+    !   call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
+    !                                  & shift_gamma = shift_gamma, shift_dir = 3,&
+    !                                  & spat_distr_ptr = spat_distr_ptr,&
+    !                                  & dummy1 = cs_x * sx_glob, dummy2 = current_width, dummy3 = cs_x * sy_glob)
+    ! else
+    !   call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
+    !                                  & shift_gamma = shift_gamma, shift_dir = 3,&
+    !                                  & spat_distr_ptr = spat_distr_ptr,&
+    !                                  & dummy1 = cs_x * sx_glob, dummy2 = current_width)
+    ! end if
+
+    if (boost_y_Gamma .ne. 1) then
+      ! boost particles in `y` direction
+      do s = 1, nspec
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                species(s)%prtl_tile(ti, tj, tk)%v(p) = boost_y_Gamma * boost_y_beta
+              end do
+            end do
+          end do
+        end do
+      end do
     end if
   end subroutine userInitParticles
 
@@ -183,6 +209,7 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     real                            :: nUP, old_x1, old_x2, x_glob
+    real                            :: ux, uy, uz, gamma
     integer                         :: s, ti, tj, tk, p, nUP_tot
     integer                         :: injector_i1_glob, injector_i2_glob
     type(region)                    :: back_region
@@ -239,7 +266,7 @@ contains
     back_region%y_min = 0.0
     back_region%y_max = REAL(global_mesh%sy)
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
 
     ! right injector
     back_region%x_min = old_x2
@@ -247,7 +274,36 @@ contains
     back_region%y_min = 0.0
     back_region%y_max = REAL(global_mesh%sy)
 
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
+
+    if (boost_y_Gamma .ne. 1) then
+      if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and.&
+         & (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
+        & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and.&
+         & (injector_i2_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
+
+        if (modulo(step, injector_reset_interval) .eq. 0) then
+          ! remove particles left and right from the injectors every once in a while
+          do s = 1, nspec
+            do ti = 1, species(s)%tile_nx
+              do tj = 1, species(s)%tile_ny
+                do tk = 1, species(s)%tile_nz
+                  do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                    x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                           & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+                    if (((x_glob .le. old_x1) .and. (x_glob .gt. injector_x1)) .or.&
+                      & ((x_glob .gt. old_x2) .and. (x_glob .le. injector_x2))) then
+                      ! boost particles in `y` direction if they're newly injected
+                      species(s)%prtl_tile(ti, tj, tk)%v(p) = boost_y_Gamma * boost_y_beta
+                    end if ! x_glob
+                  end do ! p
+                end do ! tk
+              end do ! tj
+            end do ! ti
+          end do ! s
+        end if
+      end if
+    end if
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
@@ -326,7 +382,45 @@ contains
   subroutine userOutput(step)
     implicit none
     integer, optional, intent(in) :: step
-    ! ...
+    integer                       :: root_rank = 0
+    real, allocatable             :: y_bins(:), ExB_arr(:), ExB_arr_global(:)
+    ! real                          :: dr, x_glob, y_glob, z_glob, r_glob
+    real                          :: dummy_x, dummy_y, dummy_z, dummy
+    ! real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+    ! integer                       :: ri, rnum = 50, i, j, k, ierr
+    integer                       :: x_bin, yi, ynum, i, j, k, ierr
+
+    ynum = INT(global_mesh%sy)
+
+    ! allocate(y_bins(ynum))
+    allocate(ExB_arr(ynum))
+    allocate(ExB_arr_global(ynum))
+    ExB_arr(:) = 0.0
+
+    ! do yi = 0, ynum - 1
+    !   y_bins(yi + 1) = 0.5 + REAL(yi)
+    ! end do
+
+    if (this_meshblock%ptr%x0 .gt. 0) then
+      x_bin = measure_x
+      i = x_bin; k = 0
+      do j = 0, this_meshblock%ptr%sy - 1
+        dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
+        dummy = bx(i,j,k)**2 + by(i,j,k)**2 + bz(i,j,k)**2
+
+        yi = j + this_meshblock%ptr%y0
+        ExB_arr(yi + 1) = dummy_x / dummy
+      end do
+    end if
+
+    call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+
+    if (mpi_rank .eq. root_rank) then
+      call writeUsrOutputTimestep(step)
+      ! call writeUsrOutputArray('y', y_bins)
+      call writeUsrOutputArray('ExB', ExB_arr_global)
+      call writeUsrOutputEnd()
+    end if
   end subroutine userOutput
   !............................................................!
 end module m_userfile
