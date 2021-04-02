@@ -13,10 +13,11 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private    :: nCS_over_nUP, current_width, upstream_T, cs_x, boost_y_Gamma, boost_y_beta
-  real, private    :: injector_x1, injector_x2, injector_sx, injector_betax
+  real, private    :: nCS_over_nUP, current_width, upstream_T, cs_x, cs_x1, cs_x2
+  real, private    :: boost_y_Gamma, boost_y_beta
+  real, private    :: injector_x1, injector_x2, injector_sx, injector_betax, measure_x
   integer, private :: injector_reset_interval, open_boundaries
-  integer, private :: cs_lecs, cs_ions, up_lecs, up_ions, measure_x
+  integer, private :: cs_lecs, cs_ions, up_lecs, up_ions
   logical, private :: perturb
   !...............................................................!
 
@@ -28,20 +29,33 @@ contains
   subroutine userReadInput()
     implicit none
     call getInput('problem', 'upstream_T', upstream_T)
-    call getInput('problem', 'nCS_nUP', nCS_over_nUP)
     call getInput('problem', 'current_width', current_width)
-    call getInput('problem', 'injector_sx', injector_sx)
-    call getInput('problem', 'injector_betax', injector_betax)
-    call getInput('problem', 'boost_y', boost_y_Gamma, 1.0)
+    call getInput('problem', 'nCS_nUP', nCS_over_nUP, 0.0)
+    if (boundary_x .ne. 1) then
+      call getInput('problem', 'injector_sx', injector_sx)
+      call getInput('problem', 'injector_betax', injector_betax)
+    end if
+    call getInput('problem', 'boost_y', boost_y_Gamma, 0.0)
     call getInput('problem', 'cs_lecs', cs_lecs, 1)
     call getInput('problem', 'cs_ions', cs_ions, 2)
     call getInput('problem', 'up_lecs', up_lecs, 1)
     call getInput('problem', 'up_ions', up_ions, 2)
-    call getInput('problem', 'measure_x', measure_x)
+    call getInput('problem', 'measure_x', measure_x, 0.2)
     call getInput('problem', 'open_boundaries', open_boundaries, -1)
     call getInput('problem', 'perturb', perturb, .false.)
-    cs_x = 0.5
-    boost_y_beta = sqrt(1.0 - boost_y_Gamma**(-2))
+    if (boundary_x .eq. 1) then
+      ! double periodic
+      cs_x1 = 0.25; cs_x2 = 0.75
+    else
+      ! single current sheet
+      cs_x = 0.5
+    end if
+    if (boost_y_Gamma .ne. 0) then
+      boost_y_beta = sign(sqrt(1.0 - boost_y_Gamma**(-2)), boost_y_Gamma)
+      boost_y_Gamma = abs(boost_y_Gamma)
+    else
+      boost_y_beta = 0.0
+    end if
   end subroutine userReadInput
 
   function userSLBload(x_glob, y_glob, z_glob,&
@@ -93,39 +107,47 @@ contains
 
     back_region%x_min = 0.0
     back_region%y_min = 0.0
-    back_region%x_max = sx_glob * cs_x
-    back_region%y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
-    back_region%x_min = sx_glob * cs_x
-    back_region%y_min = 0.0
     back_region%x_max = sx_glob
     back_region%y_max = sy_glob
     call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
 
-    shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
-    if (shift_beta .ge. 1) then
-      call throwError('ERROR: `shift_beta` >= 1 in `userInitParticles()`')
+    if (nCS_over_nUP .ne. 0) then
+      shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
+      if (shift_beta .ge. 1) then
+        call throwError('ERROR: `shift_beta` >= 1 in `userInitParticles()`')
+      end if
+      shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
+      current_sheet_T = 0.5 * sigma / nCS_over_nUP
+
+      if (boundary_x .eq. 1) then
+        call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
+                                       & shift_gamma = shift_gamma, shift_dir = 3,&
+                                       & spat_distr_ptr = spat_distr_ptr,&
+                                       & dummy1 = cs_x1 * sx_glob, dummy2 = current_width)
+        call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
+                                       & shift_gamma = shift_gamma, shift_dir = -3,&
+                                       & spat_distr_ptr = spat_distr_ptr,&
+                                       & dummy1 = cs_x2 * sx_glob, dummy2 = current_width)
+      else
+        back_region%x_min = sx_glob * cs_x - 10 * current_width
+        back_region%x_max = sx_glob * cs_x + 10 * current_width
+        back_region%y_min = 0.0
+        back_region%y_max = sy_glob
+        if (perturb) then
+          call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
+                                         & shift_gamma = shift_gamma, shift_dir = 3,&
+                                         & spat_distr_ptr = spat_distr_ptr,&
+                                         & dummy1 = cs_x * sx_glob, dummy2 = current_width, dummy3 = cs_x * sy_glob)
+        else
+          call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
+                                         & shift_gamma = shift_gamma, shift_dir = 3,&
+                                         & spat_distr_ptr = spat_distr_ptr,&
+                                         & dummy1 = cs_x * sx_glob, dummy2 = current_width)
+        end if
+      end if
     end if
-    shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
-    current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
-    ! back_region%x_min = sx_glob * cs_x - 10 * current_width
-    ! back_region%x_max = sx_glob * cs_x + 10 * current_width
-    ! back_region%y_min = 0.0
-    ! back_region%y_max = sy_glob
-    ! if (perturb) then
-    !   call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
-    !                                  & shift_gamma = shift_gamma, shift_dir = 3,&
-    !                                  & spat_distr_ptr = spat_distr_ptr,&
-    !                                  & dummy1 = cs_x * sx_glob, dummy2 = current_width, dummy3 = cs_x * sy_glob)
-    ! else
-    !   call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
-    !                                  & shift_gamma = shift_gamma, shift_dir = 3,&
-    !                                  & spat_distr_ptr = spat_distr_ptr,&
-    !                                  & dummy1 = cs_x * sx_glob, dummy2 = current_width)
-    ! end if
-
-    if (boost_y_Gamma .ne. 1) then
+    if (boost_y_Gamma .ne. 0) then
       ! boost particles in `y` direction
       do s = 1, nspec
         do ti = 1, species(s)%tile_nx
@@ -150,18 +172,23 @@ contains
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
-    injector_x1 = injector_sx - 1.0e-5
-    injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
-    injector_reset_interval = INT(injector_sx / (injector_betax * CC))
+    if (boundary_x .ne. 1) then
+      injector_x1 = injector_sx - 1.0e-5
+      injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
+      injector_reset_interval = INT(injector_sx / (injector_betax * CC))
+    end if
 
     k = 0
     sx_glob = REAL(global_mesh%sx)
     do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
       i_glob = i + this_meshblock%ptr%x0
       x_glob = REAL(i_glob) + 0.5
-      !do j = -NGHOST, this_meshblock%ptr%sy - 1 + NGHOST
-      by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
-      !end do
+      if (boundary_x .eq. 1) then
+        by(i,:,:) = tanh((x_glob - cs_x1 * sx_glob) / current_width) -&
+                  & tanh((x_glob - cs_x2 * sx_glob) / current_width) - 1.0
+      else
+        by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
+      end if
     end do
   end subroutine userInitFields
   !............................................................!
@@ -216,67 +243,24 @@ contains
     integer, optional, intent(in)             :: step
     procedure (spatialDistribution), pointer  :: spat_distr_ptr => null()
 
-    ! reset the injector position every once in a while
-    if ((modulo(step, injector_reset_interval) .eq. 0) .and. (step .gt. 0)) then
-      injector_x1 = injector_x1 +&
-                        & REAL(injector_reset_interval) * CC * injector_betax
-      injector_x2 = injector_x2 -&
-                        & REAL(injector_reset_interval) * CC * injector_betax
-    end if
+    if (boundary_x .ne. 1) then
 
-    ! move the injectors
-    old_x1 = injector_x1; old_x2 = injector_x2
-    injector_x1 = injector_x1 - injector_betax * CC
-    injector_x2 = injector_x2 + injector_betax * CC
-
-    injector_i1_glob = INT(injector_x1)
-    injector_i2_glob = INT(injector_x2)
-
-    if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and.&
-       & (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
-      & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and.&
-       & (injector_i2_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
-
-      if (modulo(step, injector_reset_interval) .eq. 0) then
-        ! remove particles left and right from the injectors every once in a while
-        do s = 1, nspec
-          do ti = 1, species(s)%tile_nx
-            do tj = 1, species(s)%tile_ny
-              do tk = 1, species(s)%tile_nz
-                do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                  x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
-                         & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-                  if ((x_glob .le. old_x1) .or. (x_glob .gt. old_x2)) then
-                    species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
-                  end if
-                end do
-              end do
-            end do
-          end do
-        end do
+      ! reset the injector position every once in a while
+      if ((modulo(step, injector_reset_interval) .eq. 0) .and. (step .gt. 0)) then
+        injector_x1 = injector_x1 +&
+                          & REAL(injector_reset_interval) * CC * injector_betax
+        injector_x2 = injector_x2 -&
+                          & REAL(injector_reset_interval) * CC * injector_betax
       end if
-    end if
 
-    ! inject background particles at the injectors' positions
-    nUP = 0.5 * ppc0
+      ! move the injectors
+      old_x1 = injector_x1; old_x2 = injector_x2
+      injector_x1 = injector_x1 - injector_betax * CC
+      injector_x2 = injector_x2 + injector_betax * CC
 
-    ! left injector
-    back_region%x_min = injector_x1
-    back_region%x_max = old_x1
-    back_region%y_min = 0.0
-    back_region%y_max = REAL(global_mesh%sy)
+      injector_i1_glob = INT(injector_x1)
+      injector_i2_glob = INT(injector_x2)
 
-    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
-
-    ! right injector
-    back_region%x_min = old_x2
-    back_region%x_max = injector_x2
-    back_region%y_min = 0.0
-    back_region%y_max = REAL(global_mesh%sy)
-
-    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
-
-    if (boost_y_Gamma .ne. 1) then
       if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and.&
          & (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
         & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and.&
@@ -291,16 +275,62 @@ contains
                   do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
                     x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
                            & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-                    if (((x_glob .le. old_x1) .and. (x_glob .gt. injector_x1)) .or.&
-                      & ((x_glob .gt. old_x2) .and. (x_glob .le. injector_x2))) then
-                      ! boost particles in `y` direction if they're newly injected
-                      species(s)%prtl_tile(ti, tj, tk)%v(p) = boost_y_Gamma * boost_y_beta
-                    end if ! x_glob
-                  end do ! p
-                end do ! tk
-              end do ! tj
-            end do ! ti
-          end do ! s
+                    if ((x_glob .le. old_x1) .or. (x_glob .gt. old_x2)) then
+                      species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+                    end if
+                  end do
+                end do
+              end do
+            end do
+          end do
+        end if
+      end if
+
+      ! inject background particles at the injectors' positions
+      nUP = 0.5 * ppc0
+
+      ! left injector
+      back_region%x_min = injector_x1
+      back_region%x_max = old_x1
+      back_region%y_min = 0.0
+      back_region%y_max = REAL(global_mesh%sy)
+
+      call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
+
+      ! right injector
+      back_region%x_min = old_x2
+      back_region%x_max = injector_x2
+      back_region%y_min = 0.0
+      back_region%y_max = REAL(global_mesh%sy)
+
+      call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
+
+      if (boost_y_Gamma .gt. 1) then
+        if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and.&
+           & (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
+          & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and.&
+           & (injector_i2_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
+
+          if (modulo(step, injector_reset_interval) .eq. 0) then
+            ! remove particles left and right from the injectors every once in a while
+            do s = 1, nspec
+              do ti = 1, species(s)%tile_nx
+                do tj = 1, species(s)%tile_ny
+                  do tk = 1, species(s)%tile_nz
+                    do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                      x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                             & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+                      if (((x_glob .le. old_x1) .and. (x_glob .gt. injector_x1)) .or.&
+                        & ((x_glob .gt. old_x2) .and. (x_glob .le. injector_x2))) then
+                        ! boost particles in `y` direction if they're newly injected
+                        species(s)%prtl_tile(ti, tj, tk)%v(p) = boost_y_Gamma * boost_y_beta
+                      end if ! x_glob
+                    end do ! p
+                  end do ! tk
+                end do ! tj
+              end do ! ti
+            end do ! s
+          end if
         end if
       end if
     end if
@@ -331,48 +361,51 @@ contains
       boundary_y = 0
     end if
 
-    injector_i1_glob = INT(injector_x1)
-    injector_i2_glob = INT(injector_x2)
+    if (boundary_x .ne. 1) then
 
-    if ((injector_i1_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx) .or.&
-      & (injector_i2_glob .ge. this_meshblock%ptr%x0)) then
-      ! reset fields left and right from the injectors
-      if (updateB_) then
-        sx_glob = REAL(global_mesh%sx)
-        do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
-          i_glob = i + this_meshblock%ptr%x0
-          x_glob = REAL(i_glob) + 0.5
-          if (i_glob .lt. injector_i1_glob) then
-            delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
-            bx(i, :, :) = tanh(delta_x) * bx(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-            bz(i, :, :) = tanh(delta_x) * bz(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-            by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
-                    & tanh(delta_x) * by(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-          else if (i_glob .gt. injector_i2_glob) then
-            delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
-            bx(i, :, :) = tanh(delta_x) * bx(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-            bz(i, :, :) = tanh(delta_x) * bz(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-            by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
-                    & tanh(delta_x) * by(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-          end if
-        end do
-      end if
-      if (updateE_) then
-        sx_glob = REAL(global_mesh%sx)
-        do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
-          i_glob = i + this_meshblock%ptr%x0
-          if (i_glob .lt. injector_i1_glob) then
-            delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
-            ex(i, :, :) = tanh(delta_x) * ex(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-            ey(i, :, :) = tanh(delta_x) * ey(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-            ez(i, :, :) = tanh(delta_x) * ez(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-          else if (i_glob .gt. injector_i2_glob) then
-            delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
-            ex(i, :, :) = tanh(delta_x) * ex(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-            ey(i, :, :) = tanh(delta_x) * ey(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-            ez(i, :, :) = tanh(delta_x) * ez(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-          end if
-        end do
+      injector_i1_glob = INT(injector_x1)
+      injector_i2_glob = INT(injector_x2)
+
+      if ((injector_i1_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx) .or.&
+        & (injector_i2_glob .ge. this_meshblock%ptr%x0)) then
+        ! reset fields left and right from the injectors
+        if (updateB_) then
+          sx_glob = REAL(global_mesh%sx)
+          do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
+            i_glob = i + this_meshblock%ptr%x0
+            x_glob = REAL(i_glob) + 0.5
+            if (i_glob .lt. injector_i1_glob) then
+              delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
+              bx(i, :, :) = tanh(delta_x) * bx(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              bz(i, :, :) = tanh(delta_x) * bz(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
+                      & tanh(delta_x) * by(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+            else if (i_glob .gt. injector_i2_glob) then
+              delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
+              bx(i, :, :) = tanh(delta_x) * bx(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              bz(i, :, :) = tanh(delta_x) * bz(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
+                      & tanh(delta_x) * by(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+            end if
+          end do
+        end if
+        if (updateE_) then
+          sx_glob = REAL(global_mesh%sx)
+          do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
+            i_glob = i + this_meshblock%ptr%x0
+            if (i_glob .lt. injector_i1_glob) then
+              delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
+              ex(i, :, :) = tanh(delta_x) * ex(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              ey(i, :, :) = tanh(delta_x) * ey(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              ez(i, :, :) = tanh(delta_x) * ez(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+            else if (i_glob .gt. injector_i2_glob) then
+              delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
+              ex(i, :, :) = tanh(delta_x) * ex(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              ey(i, :, :) = tanh(delta_x) * ey(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              ez(i, :, :) = tanh(delta_x) * ez(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+            end if
+          end do
+        end if
       end if
     end if
   end subroutine userFieldBoundaryConditions
@@ -401,8 +434,8 @@ contains
     !   y_bins(yi + 1) = 0.5 + REAL(yi)
     ! end do
 
-    if (this_meshblock%ptr%x0 .gt. 0) then
-      x_bin = measure_x
+    if (this_meshblock%ptr%x0 .eq. 0) then
+      x_bin = INT(measure_x * global_mesh%sx)
       i = x_bin; k = 0
       do j = 0, this_meshblock%ptr%sy - 1
         dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
