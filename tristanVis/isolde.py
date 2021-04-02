@@ -194,6 +194,11 @@ def getDomains(fname):
 def parseInput(fname):
   from itertools import groupby
   import re
+  def getFirstNontrivialElement(lst):
+    for i, el in enumerate(lst):
+      if el != '':
+        return (i, el)
+    return (-1, '')
   with open(fname, 'r') as f:
     data = {}
     curr_blockname = None
@@ -204,8 +209,10 @@ def parseInput(fname):
         curr_blockname = blockname
       elif not line.strip().startswith('#') and not line.strip() == '':
         line = re.split('=|#|\t|\n', line)
-        var = line[0].strip()
-        value = np.float(line[1])
+        _, var = getFirstNontrivialElement(line)
+        var = var.strip()
+        _, value = getFirstNontrivialElement(line[_ + 1:])
+        value = float(value)
         data[curr_blockname].update({var: value})
   return data
 
