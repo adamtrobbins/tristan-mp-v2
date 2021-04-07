@@ -56,12 +56,6 @@ contains
       call getInput('output', 'spec_nz', spec_nz, 1)
     #endif
 
-    if (spec_log_bins) then
-      spec_min = log(spec_min)
-      spec_max = log(spec_max)
-    endif
-    spec_bin_size = (spec_max - spec_min) / spec_num
-
     #ifdef RADIATION
       call getInput('output', 'rad_spec_min', rad_spec_min, spec_min)
       call getInput('output', 'rad_spec_max', rad_spec_max, spec_max)
@@ -71,12 +65,18 @@ contains
         rad_spec_max = log(rad_spec_max)
       endif
       rad_spec_bin_size = (rad_spec_max - rad_spec_min) / rad_spec_num
-
+      
       if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, rad_spec_num))
       if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, rad_spec_num))
       rad_spectra(:, :) = 0.0
       glob_rad_spectra(:, :) = 0.0
     #endif
+
+    if (spec_log_bins) then
+      spec_min = log(spec_min)
+      spec_max = log(spec_max)
+    endif
+    spec_bin_size = (spec_max - spec_min) / spec_num
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl_enable, .false.)
     call getInput('output', 'write_xdmf', xdmf_enable, .true.)
@@ -360,6 +360,11 @@ contains
     if (allocated(recv_spec)) deallocate(recv_spec)
     #ifdef GCA
       if (allocated(gca_spectra)) deallocate(gca_spectra)
+    #endif
+
+    #ifdef RADIATION
+      if (allocated(rad_send_spec)) deallocate(rad_send_spec)
+      if (allocated(rad_recv_spec)) deallocate(rad_recv_spec)
     #endif
   end subroutine prepareSpectraForOutput
 
