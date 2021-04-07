@@ -250,6 +250,8 @@ contains
       ny = y_glob / rr
       nz = z_glob / rr
 
+      cos_theta = 3.0 * nz**2 - 1.0
+
       dummy_flag = (((random(dseed) * 2.0) .lt. abs(3.0 * nz**2 - 1.0)) .and. (3.0 * nz**2 - 1.0 .gt. 0.0))
       ! injection in the open zone
       if (dummy_flag) then
