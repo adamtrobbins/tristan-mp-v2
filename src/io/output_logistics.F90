@@ -65,11 +65,8 @@ contains
         rad_spec_max = log(rad_spec_max)
       endif
       rad_spec_bin_size = (rad_spec_max - rad_spec_min) / rad_spec_num
-      
-      if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, rad_spec_num))
-      if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, rad_spec_num))
+      allocate(rad_spectra(nspec, rad_spec_num))
       rad_spectra(:, :) = 0.0
-      glob_rad_spectra(:, :) = 0.0
     #endif
 
     if (spec_log_bins) then
@@ -240,9 +237,16 @@ contains
       if (.not. allocated(glob_spectra)) then
         allocate(glob_spectra(nspec, spec_nx, spec_ny, spec_nz, spec_num))
       end if
+
       #ifdef GCA
         if (.not. allocated(glob_gca_spectra)) then
           allocate(glob_gca_spectra(2 * nspec, spec_nx, spec_ny, spec_nz, spec_num))
+        end if
+      #endif
+
+      #ifdef RADIATION
+        if (.not. allocated(glob_rad_spectra)) then
+          allocate(glob_rad_spectra(nspec, rad_spec_num))
         end if
       #endif
     end if
@@ -345,11 +349,13 @@ contains
 
       #ifdef RADIATION
         ! compute radiation spectra
-        if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+        if (allocated(rad_spectra)) then
           rad_send_spec(:) = rad_spectra(s,:)
           call MPI_REDUCE(rad_send_spec, rad_recv_spec, rad_spec_num, MPI_REAL,&
                         & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
-          glob_rad_spectra(s,:) = rad_recv_spec(:)
+          if (mpi_rank .eq. root_rnk) then
+            glob_rad_spectra(s,:) = rad_recv_spec(:)
+          end if
           rad_spectra(s,:) = 0.0
         end if
       #endif
@@ -394,7 +400,7 @@ contains
       #endif
     end do
 
-    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 15) =&
+    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 15 - 1) =&
                                  & (/'ex   ', 'ey   ', 'ez   ',&
                                    & 'bx   ', 'by   ', 'bz   ',&
                                    & 'jx   ', 'jy   ', 'jz   ',&
@@ -402,7 +408,7 @@ contains
                                    & 'xx   ', 'yy   ', 'zz   '/)
     n_fld_vars = n_fld_vars + 15
     if (derivatives_enable) then
-      fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 4) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
+      fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 4 - 1) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
       n_fld_vars = n_fld_vars + 4
     end if
   end subroutine defineFieldVarsToOutput
