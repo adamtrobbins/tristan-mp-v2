@@ -240,10 +240,11 @@ elif args['mpi08']:
 
 # debug
 if args['debug'] and (not args['intel']):
-  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
+  makefile_options['COMPILER_FLAGS'] += '-fcheck=all -fimplicit-none -fbacktrace '
 elif (args['debug'] and args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 -check all '
 else:
   makefile_options['COMPILER_FLAGS'] += '-Ofast '
 

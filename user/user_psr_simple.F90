@@ -217,11 +217,17 @@ contains
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
+    real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase
     logical                       :: dummy_flag
     #ifdef GCA
       real                          :: dummy_, vE_x, vE_y, vE_z
       real                          :: e0_SQR, b0_SQR
     #endif
+
+    phase = step * psr_omega
+    mu_x = sin(psr_angle) * cos(phase)
+    mu_y = sin(psr_angle) * sin(phase)
+    mu_z = cos(psr_angle)
 
     ! disable cooling until certain point
     if (step .lt. cooling_on * psr_period) then
@@ -250,9 +256,11 @@ contains
       ny = y_glob / rr
       nz = z_glob / rr
 
-      cos_theta = 3.0 * nz**2 - 1.0
+      mu_dot_n = mu_x * nx + mu_y * ny + mu_z * nz
 
-      dummy_flag = (((random(dseed) * 2.0) .lt. abs(3.0 * nz**2 - 1.0)) .and. (3.0 * nz**2 - 1.0 .gt. 0.0))
+      bz_at_surface = (3.0 * nz * mu_dot_n - mu_z)
+
+      dummy_flag = (((random(dseed) * 2.0) .lt. abs(bz_at_surface)) .and. (bz_at_surface .gt. 0.0))
       ! injection in the open zone
       if (dummy_flag) then
         x_glob = x_glob + xc_g
@@ -343,7 +351,7 @@ contains
       end if ! open zone injection
 
       ! injection in the closed zone
-      if (3.0 * nz**2 - 1.0 .le. 0.0) then
+      if (bz_at_surface .le. 0.0) then
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g

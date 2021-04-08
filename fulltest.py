@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 import os
 import glob
@@ -83,7 +82,10 @@ class TwoStream(Simulation):
     ax.set_ylim(1e-4, 1e-1); ax.set_xlim(0, 200); ax.set_yscale('log');
     ax.set_xlabel(r'$t\omega_{\rm p0}$'); ax.set_ylabel(r'$U_E / E_{\rm tot}$')
     ax.axvline(ax.get_xlim()[0], color='black'); ax.axhline(ax.get_ylim()[0], color='black')
-    ax.text(110, 0.6e-3, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.5'))
+    ax.text(110, 0.6e-3, r"""
+            energy conservation
+            by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$
+            """.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000))
     ax.set_title(self.jobid); plt.legend()
 
 class PlasmaOsc(Simulation):
@@ -101,7 +103,10 @@ class PlasmaOsc(Simulation):
     for i in range(4):
       ax.axvline(i, c='gray', lw=1, ls='--')
     hist = isolde.parseHistory(self.path + '/output/history')
-    ax.text(2, -1, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.5'))
+    ax.text(2, -1, r"""
+            energy conservation
+            by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$
+            """.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000))
 
 class Weibel(Simulation):
   jobid = 'weibel'
@@ -113,7 +118,7 @@ class Weibel(Simulation):
     flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % 0)
     xmin = flds['xx'][0].min() / self.params['plasma']['c_omp']; xmax = flds['xx'][0].max() / self.params['plasma']['c_omp']
     ymin = flds['yy'][0].min() / self.params['plasma']['c_omp']; ymax = flds['yy'][0].max() / self.params['plasma']['c_omp']
-    im = ax.imshow(flds['bz'][0], origin='lower', cmap='bipolar', vmin=-0.01, vmax=0.01, extent=(xmin,xmax,ymin,ymax))
+    im = ax.imshow(flds['bz'][0], origin='lower', cmap='RdBu', vmin=-0.01, vmax=0.01, extent=(xmin,xmax,ymin,ymax))
     ax.set_xlabel(r'$x/d_{e0}$'); ax.set_ylabel(r'$y/d_{e0}$')
     txt1 = ax.text(10, 120, r'$B_z$', color='white')
     txt2 = ax.text(90, 120, r'', color='white', zorder=100)
@@ -249,11 +254,7 @@ if (options.d):
   import matplotlib.pyplot as plt
   import numpy as np
   import tristanVis.isolde as isolde
-  try:
-    import tristanVis.snippets as trS
-    trS.loadCustomStyles(style='fivethirtyeight', fs=10)
-  except:
-    pass
+  plt.style.use('fivethirtyeight')
   fig = plt.figure(figsize=(12, 8))
   for ii, simulation in enumerate(simulations):
     if not (ii + 1 in tests):
