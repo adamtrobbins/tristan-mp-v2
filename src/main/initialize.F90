@@ -73,6 +73,8 @@ contains
 
     call initializeCommunications()
 
+    call getInput('particles', 'nspec', nspec, 2)
+
     call initializeOutput()
     call initializeHistory()
     call initializeUsrOutput()

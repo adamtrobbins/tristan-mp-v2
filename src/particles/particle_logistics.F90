@@ -15,8 +15,6 @@ contains
     character(len=STR_MAX)  :: var_name
     integer                 :: maxptl_
 
-    call getInput('particles', 'nspec', nspec, 2)
-
     allocate(species(nspec))
     do s = 1, nspec
       #ifdef oneD

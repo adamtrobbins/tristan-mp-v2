@@ -53,8 +53,8 @@ module m_outputnamespace
   #endif
 
   #ifdef RADIATION
-    real              :: rad_spec_bin_size
-    real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
+    real                                :: rad_spec_bin_size
+    real, allocatable, dimension(:,:)   :: rad_spectra, glob_rad_spectra
   #endif
 
   ! ... for `slice` outputs
