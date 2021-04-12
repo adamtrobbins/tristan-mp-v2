@@ -128,6 +128,9 @@ class Spectra:
   def getTotal(self, s):
     ss = 'n' + str(s)
     return np.sum(self.__data[ss], axis=(0, 1, 2))
+  @property
+  def data(self):
+    return self.__data
   def getBySpatialBin(self, s, ijk, onlyGCA = False, onlyBoris = False):
     i, j, k = ijk
     specname = self.findSpecname(s, onlyGCA, onlyBoris)
