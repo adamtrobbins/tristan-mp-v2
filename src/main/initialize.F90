@@ -17,13 +17,20 @@ module m_initialize
 
   use m_domain
   use m_loadbalancing, only: initializeLB
+  #ifdef SLB
+    use m_staticlb, only: redistributeMeshblocksSLB
+  #endif
 
   use m_fieldlogistics, only: initializeFields
   use m_particlelogistics, only: initializeParticles
   use m_exchangeparts, only: initializePrtlExchange
 
-  use m_userfile, only: userReadInput, userInitParticles,&
-                      & userInitFields, user_slb_load_ptr => userSLBload
+  use m_userfile, only: userReadInput, userInitParticles, userInitFields
+
+  #ifdef SLB
+    use m_userfile, only: user_slb_load_ptr => userSLBload
+  #endif
+
   use m_outputlogistics, only: initializeOutput, initializeSlice
   use m_writehistory, only: initializeHistory
   use m_writeusroutput, only: initializeUsrOutput
