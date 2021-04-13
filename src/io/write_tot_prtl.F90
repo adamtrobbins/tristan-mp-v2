@@ -129,7 +129,7 @@ contains
         do p = 1, n_prtl_vars
           ! dataset name `var_name` + '_' + `species #`
           ln_ = len(trim(prtl_vars(p)))
-          dsetname(1 : ln_ + 3) = trim(prtl_vars(p)) // '_' // trim(STR(s))
+          dsetname(1 : ln_ + 2) = trim(prtl_vars(p)) // '_' // trim(STR(s))
           dsetname(ln_ + 3 : 7) = ' '
           ! creating dataset for a given type
           if (trim(prtl_var_types(p)) .eq. 'int') then
