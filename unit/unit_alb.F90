@@ -55,6 +55,7 @@ contains
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
+    userSLBload = 100.0 / (10.0 + (x_glob)**2)
     return
   end function
 
