@@ -283,10 +283,9 @@ if args['absorb']:
 # extra algorithms
 if args['dwn']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDOWNSAMPLING '
-if args['alb'] and (not args['slb']):
+if args['alb']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
 if args['slb']:
-  args['alb'] = False
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
 if args['gca'] != 'OFF':
@@ -344,7 +343,7 @@ print('SETUP ...................................................................
 print('  Userfile:                ' + makefile_options['USER_FILE'])
 print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d'] else ('3D' if args['3d'] else 'None'))))
 print('  # of ghost zones:        ' + str(args['nghosts']))
-print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+print('  Load balancing:          ' + ('static/adaptive' if (args['alb'] and args['slb']) else ('static' if args['slb'] else ('adaptive' if args['alb'] else 'OFF'))))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
 print('  Particle pusher:         ' + ('Vay' if args['vay'] else 'Boris') + ('/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ''))
 print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
