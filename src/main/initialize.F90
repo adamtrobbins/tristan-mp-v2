@@ -16,7 +16,7 @@ module m_initialize
   use m_readinput, only: getInput, readCommandlineArgs
 
   use m_domain
-  use m_loadbalancing, only: initializeLB, redistributeMeshblocksSLB
+  use m_loadbalancing, only: initializeLB
 
   use m_fieldlogistics, only: initializeFields
   use m_particlelogistics, only: initializeParticles

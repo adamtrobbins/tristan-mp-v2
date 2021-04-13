@@ -198,12 +198,13 @@ contains
     implicit none
     type(mesh), allocatable, target, intent(inout)    :: mblocks(:)
     integer   :: rnk
-    integer   :: ind1, ind2, ind3
+    integer   :: ind1, ind2, ind3, inds(3)
     do rnk = 0, mpi_size - 1
       do ind1 = -1, 1
         do ind2 = -1, 1
           do ind3 = -1, 1
-            call assignNeighbor(rnk, (/ ind1, ind2, ind3/), mblocks)
+            inds(1) = ind1; inds(2) = ind2; inds(3) = ind3
+            call assignNeighbor(rnk, inds, mblocks)
           end do
         end do
       end do
@@ -216,8 +217,12 @@ contains
     type(mesh), allocatable, target, intent(inout)    :: mblocks(:)
     integer, intent(in)                               :: rnk, inds1(3)
     integer                                           :: rnk2, inds0(3)
+    integer                                           :: inds_temp(3), i
     inds0 = rnkToInd(rnk)
-    rnk2 = indToRnk([inds0(1) + inds1(1), inds0(2) + inds1(2), inds0(3) + inds1(3)])
+    do i = 1, 3
+      inds_temp(i) = inds0(i) + inds1(i)
+    end do
+    rnk2 = indToRnk(inds_temp)
     if (rnk2 .eq. -1) then
       mblocks(rnk + 1)%neighbor(inds1(1), inds1(2), inds1(3))%ptr => null()
     else
