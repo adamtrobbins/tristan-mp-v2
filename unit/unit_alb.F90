@@ -9,9 +9,9 @@ module m_userfile
   use m_particles
   use m_fields
   use m_thermalplasma
-
   use m_loadbalancing
   use m_particlelogistics
+  use m_exchangeparts, only: redistributeParticlesBetweenMeshblocks
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -61,20 +61,27 @@ contains
   subroutine userInitParticles()
     implicit none
     type(region)    :: back_region
-    integer :: i
+    integer         :: i, inds(2)
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    ! do i = 1, 10000
-    !   call injectParticleLocally(1, random(dseed) * 16.0, random(dseed) * 10.0, 0.5, 0.0, 0.0, 0.0)
-    !   call injectParticleLocally(2, random(dseed) * 16.0, random(dseed) * 10.0, 0.5, 0.0, 0.0, 0.0)
-    ! end do
-
     back_region%x_min = 0.0
     back_region%x_max = REAL(global_mesh%sx)
-    back_region%y_min = 0.0
-    back_region%y_max = REAL(global_mesh%sy)
-    call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, ppc0, 1e-5, &
+
+    #ifdef twoD
+      back_region%y_min = 0.0
+      back_region%y_max = REAL(global_mesh%sy)
+    #endif
+
+    #ifdef threeD
+      back_region%y_min = 0.0
+      back_region%y_max = REAL(global_mesh%sy)
+      back_region%z_min = 0.0
+      back_region%z_max = REAL(global_mesh%sz)
+    #endif
+
+    inds(1) = 1; inds(2) = 2
+    call fillRegionWithThermalPlasma(back_region, inds, 2, ppc0, 1e-5, &
                                    & spat_distr_ptr = spat_distr_ptr,&
                                    & dummy1 = 0.5 * REAL(global_mesh%sx), dummy2 = 0.5 * REAL(global_mesh%sy))
   end subroutine userInitParticles
@@ -93,8 +100,8 @@ contains
         j_glob = j + this_meshblock%ptr%y0
         do k = 0, this_meshblock%ptr%sz - 1
           k_glob = k + this_meshblock%ptr%z0
-          ey(i,j,k) = i_glob
-          bx(i,j,k) = i_glob**2
+          ez(i,j,k) = j_glob
+          by(i,j,k) = j_glob**2
         end do
       end do
     end do
@@ -122,21 +129,8 @@ contains
         do tj = 1, species(s)%tile_ny
           do tk = 1, species(s)%tile_nz
             do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              species(s)%prtl_tile(ti, tj, tk)%xi(p) = species(s)%prtl_tile(ti, tj, tk)%xi(p) - INT(6, 2)
-            end do
-          end do
-        end do
-      end do
-    end do
-
-    do s = 1, nspec
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .gt. mpi_size) then
-                call throwError('SMTH wrong BEFORE redist')
-              end if
+              species(s)%prtl_tile(ti, tj, tk)%xi(p) = species(s)%prtl_tile(ti, tj, tk)%xi(p) - INT(1, 2)
+              species(s)%prtl_tile(ti, tj, tk)%yi(p) = species(s)%prtl_tile(ti, tj, tk)%yi(p) - INT(1, 2)
             end do
           end do
         end do
@@ -198,19 +192,19 @@ contains
       updateB_ = .true.
     end if
 
-    if ((modulo(step, 15) .eq. 0) .and. (step .gt. 0) .and. updateE .and. updateB) then
-      ! just to make sure this is done once at the very beginning of the timestep
-      shift = -shift
-
-      allocate(left_group(4))
-      allocate(right_group(4))
-      left_group = (/0, 2, 4, 6/)
-      right_group = (/1, 3, 5, 7/)
-
-      call reshapeInX(left_group, right_group, shift)
-
-      call checkEverything()
-    end if
+    ! if ((modulo(step, 15) .eq. 0) .and. (step .gt. 0) .and. updateE .and. updateB) then
+    !   ! just to make sure this is done once at the very beginning of the timestep
+    !   shift = -shift
+    !
+    !   allocate(left_group(4))
+    !   allocate(right_group(4))
+    !   left_group = (/0, 4/)
+    !   right_group = (/1, 5/)
+    !
+    !   call reshapeInX(left_group, right_group, shift)
+    !
+    !   call checkEverything()
+    ! end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
