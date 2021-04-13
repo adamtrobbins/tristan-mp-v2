@@ -109,11 +109,6 @@ contains
         load_x1 = load_x1 + lb_load_glob(lb_group_x1(cnt) + 1)
       end do
 
-      if (mpi_rank .eq. 0) then
-        print *, 'ALB report #1'
-        print *, delta_i, load_x0, load_x1
-      end if
-
       ! Apply balancing driver and checks befor requesting re-allocation
       if (isImbalanced(load_x0, load_x1) .and. &
        & (sx0_old - NGHOST - 1 .gt. alb_slab_x).and. &
@@ -155,14 +150,6 @@ contains
       end if
     end do
 
-    ! HH: debugging
-      ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      ! if (mpi_rank .eq. 0) then
-      !   print *, 'ALB report #2'
-      !   print *, 'fields backed up'
-      ! end if
-    !
-
     ! get new meshblock dimensions
     new_meshblocks(:) = meshblocks(:)
     call reassignNeighborsForAll(new_meshblocks)
@@ -176,15 +163,6 @@ contains
     ! at this point DO NOT CHANGE `meshblocks` ...
     ! ... as the `exchangeFieldSlabIn*` still assumes old dimensions
 
-    ! HH: debugging
-      ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      ! if (mpi_rank .eq. 0) then
-      !   print *, 'ALB report #3'
-      !   print *, 'neighbors reassigned'
-      !   print *, new_meshblocks(1)%sx, new_meshblocks(2)%sx
-      ! end if
-    !
-
     ! reallocate field arrays given the new meshblock dimensions
     do q = 1, nproc_group
       left_rnk = left_group(q)
@@ -195,14 +173,6 @@ contains
         call reallocateFieldBuffers(new_meshblocks(mpi_rank + 1))
       end if
     end do
-
-    ! HH: debugging
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      if (mpi_rank .eq. 0) then
-        print *, 'ALB report #4'
-        print *, 'field arrays reallocated'
-      end if
-    !
 
     ! send/recv missing fields
     ! ... and recover from backup
@@ -260,48 +230,20 @@ contains
     ! resize the meshblocks
     meshblocks(:) = new_meshblocks(:)
 
-    ! HH: debugging
-      ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      ! if (mpi_rank .eq. 0) then
-      !   print *, 'ALB report #5'
-      !   print *, 'field arrays restored & meshblocks rewritten'
-      ! end if
-    !
-
     ! deallocate buffers and redistribute particles
     do q = 1, nproc_group
       left_rnk = left_group(q)
       right_rnk = right_group(q)
       if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
         call deallocateFieldBackups()
-        ! HH: debugging
-          if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-            print *, 'ALB report #6', mpi_rank
-            print *, 'field backups deallocated'
-          end if
-        !
 
         ! shift particles
         if (mpi_rank .eq. right_rnk) then
           call shiftParticlesX(-SHIFT)
         end if
 
-        ! HH: debugging
-          if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-            print *, 'ALB report #7', mpi_rank
-            print *, 'particles shifted'
-          end if
-        !
-
         ! backup particles
         call backupParticles()
-
-        ! HH: debugging
-          if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-            print *, 'ALB report #8', mpi_rank
-            print *, 'particles backed up'
-          end if
-        !
 
         ! reshuffle particle tiles
         call reallocateParticles(this_meshblock%ptr)
@@ -314,24 +256,9 @@ contains
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
-
-    ! HH: debugging
-      if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-        print *, 'ALB report #9', mpi_rank
-        print *, 'particles restored from backups'
-      end if
-    !
-
     ! put particles back on proper meshblocks
     call redistributeParticlesBetweenMeshblocks()
     call clearGhostParticles()
-
-    ! HH: debugging
-      if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-        print *, 'ALB report #10', mpi_rank
-        print *, 'particles put into correct places'
-      end if
-    !
 
     call printDiag("reshapeInX()", 3)
   end subroutine reshapeInX
