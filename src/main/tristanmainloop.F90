@@ -38,15 +38,13 @@ module m_mainloop
 
   implicit none
 
-  integer       :: timestep
-
-  real(kind=8)  :: timers(20), d_timers(20)
-
   !--- PRIVATE functions -----------------------------------------!
-  private :: makeReport
+  private :: makeReport, startTimer, flushTimer
   !...............................................................!
 
   !--- PRIVATE variables -----------------------------------------!
+  integer, private       :: timestep
+  real(kind=8), private  :: timers(20), d_timers(20)
   !...............................................................!
 contains
   subroutine mainloop()
@@ -56,6 +54,20 @@ contains
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call printDiag("Starting mainloop()", 0)
+
+    ! timer numbering ([*] = optional):
+    !  1 = full step
+    !  2 = move substep
+    !  3 = deposit substep
+    !  4 = filtering substep 
+    !  5 = output
+    !  6 = field exchange/communications
+    !  7 = particle exchange/communications
+    !  8 = field solver
+    !  9 = user-specific routines
+    ! 10 = QED routines [*]
+    ! 11 = particle downsampling substep [*]
+    ! 12 = adaptive load balancing substep [*]
 
     do timestep = start_timestep, final_timestep
       call printDiag("", 20)
@@ -69,9 +81,10 @@ contains
       !-------------------------------------------------
       ! Dynamic balancing of processor loads
       #ifdef ALB
-        ! HH: ADD TIMERS HERE
+          call startTimer(12)
         call redistributeMeshblocksALB(timestep)
         call exchangeFields(exchangeE=.true., exchangeB=.true.)
+          call flushTimer(12)
       #endif
 
       !-------------------------------------------------
@@ -346,6 +359,7 @@ contains
     integer                       :: ierr, s, ti, tj, tk
     real                          :: fullstep
     integer(kind=8), allocatable  :: nprt_sp(:), nprt_sp_global(:,:)
+
     real(kind=8)  :: t_fullstep, t_movestep,&
                    & t_depositstep, t_filterstep,&
                    & t_outputstep, t_fldexchstep,&
@@ -357,6 +371,10 @@ contains
 
     #ifdef DOWNSAMPLING
       real(kind=8) :: t_dwnstep
+    #endif
+
+    #ifdef ALB
+      real(kind=8) :: t_albstep
     #endif
 
     real(kind=8), allocatable     :: dt_fullstep(:), dt_movestep(:),&
@@ -371,6 +389,10 @@ contains
 
     #ifdef DOWNSAMPLING
       real(kind=8), allocatable     :: dt_dwnstep(:)
+    #endif
+    
+    #ifdef ALB
+      real(kind=8), allocatable     :: dt_albstep(:)
     #endif
 
     ! full # of particles for each species
@@ -403,6 +425,10 @@ contains
 
     #ifdef DOWNSAMPLING
       t_dwnstep = timers(11)
+    #endif
+
+    #ifdef ALB
+      t_albstep = timers(12)
     #endif
 
     allocate(dt_fullstep(mpi_size), dt_movestep(mpi_size))
@@ -452,6 +478,13 @@ contains
                     & dt_dwnstep, 1, MPI_REAL8,&
                     & 0, MPI_COMM_WORLD, ierr)
     #endif
+    
+    #ifdef ALB
+      allocate(dt_albstep(mpi_size))
+      call MPI_GATHER(t_albstep, 1, MPI_REAL8,&
+                    & dt_albstep, 1, MPI_REAL8,&
+                    & 0, MPI_COMM_WORLD, ierr)
+    #endif
 
     if (mpi_rank .eq. 0) then
       fullstep = SUM(dt_fullstep) * 1000 / mpi_size
@@ -473,6 +506,10 @@ contains
 
       #ifdef DOWNSAMPLING
         call printTime(dt_dwnstep, "  dwn_step: ", fullstep)
+      #endif
+
+      #ifdef ALB
+        call printTime(dt_albstep, "  alb_step: ", fullstep)
       #endif
 
       call printNpartHeader()
@@ -499,6 +536,10 @@ contains
 
     #ifdef DOWNSAMPLING
       deallocate(dt_dwnstep)
+    #endif
+
+    #ifdef DOWNSAMPLING
+      deallocate(dt_albstep)
     #endif
 
   end subroutine makeReport
