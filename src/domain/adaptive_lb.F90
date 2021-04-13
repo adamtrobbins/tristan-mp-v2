@@ -156,11 +156,11 @@ contains
     end do
 
     ! HH: debugging
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      if (mpi_rank .eq. 0) then
-        print *, 'ALB report #2'
-        print *, 'fields backed up'
-      end if
+      ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+      ! if (mpi_rank .eq. 0) then
+      !   print *, 'ALB report #2'
+      !   print *, 'fields backed up'
+      ! end if
     !
 
     ! get new meshblock dimensions
@@ -177,12 +177,12 @@ contains
     ! ... as the `exchangeFieldSlabIn*` still assumes old dimensions
 
     ! HH: debugging
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      if (mpi_rank .eq. 0) then
-        print *, 'ALB report #3'
-        print *, 'neighbors reassigned'
-        print *, new_meshblocks(1)%sx, new_meshblocks(2)%sx
-      end if
+      ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+      ! if (mpi_rank .eq. 0) then
+      !   print *, 'ALB report #3'
+      !   print *, 'neighbors reassigned'
+      !   print *, new_meshblocks(1)%sx, new_meshblocks(2)%sx
+      ! end if
     !
 
     ! reallocate field arrays given the new meshblock dimensions
@@ -261,11 +261,11 @@ contains
     meshblocks(:) = new_meshblocks(:)
 
     ! HH: debugging
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-      if (mpi_rank .eq. 0) then
-        print *, 'ALB report #5'
-        print *, 'field arrays restored & meshblocks rewritten'
-      end if
+      ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+      ! if (mpi_rank .eq. 0) then
+      !   print *, 'ALB report #5'
+      !   print *, 'field arrays restored & meshblocks rewritten'
+      ! end if
     !
 
     ! deallocate buffers and redistribute particles
@@ -309,25 +309,30 @@ contains
         call restoreParticlesFromBackup()
         call deallocateParticleBackup()
 
-        ! HH: debugging
-          if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-            print *, 'ALB report #9', mpi_rank
-            print *, 'particles restored from backups'
-          end if
-        !
-
-        ! put particles back on proper meshblocks
-        call redistributeParticlesBetweenMeshblocks()
-        call clearGhostParticles()
-
-        ! HH: debugging
-          if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
-            print *, 'ALB report #10', mpi_rank
-            print *, 'particles put into correct places'
-          end if
-        !
       end if
     end do
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+
+    ! HH: debugging
+      if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
+        print *, 'ALB report #9', mpi_rank
+        print *, 'particles restored from backups'
+      end if
+    !
+
+    ! put particles back on proper meshblocks
+    call redistributeParticlesBetweenMeshblocks()
+    call clearGhostParticles()
+
+    ! HH: debugging
+      if ((mpi_rank .eq. 0) .or. (mpi_rank .eq. 1)) then
+        print *, 'ALB report #10', mpi_rank
+        print *, 'particles put into correct places'
+      end if
+    !
+
     call printDiag("reshapeInX()", 3)
   end subroutine reshapeInX
 
