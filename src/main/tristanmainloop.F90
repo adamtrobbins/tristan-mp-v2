@@ -32,6 +32,10 @@ module m_mainloop
     use m_particledownsampling
   #endif
 
+  #ifdef ALB
+    use m_adaptivelb, only: redistributeMeshblocksALB
+  #endif
+
   implicit none
 
   integer       :: timestep
@@ -61,6 +65,15 @@ contains
         call startTimer(1)
 
       ! MAINLOOP >
+
+      !-------------------------------------------------
+      ! Dynamic balancing of processor loads
+      #ifdef ALB
+        ! HH: ADD TIMERS HERE
+        call redistributeMeshblocksALB(timestep)
+        call exchangeFields(exchangeE=.true., exchangeB=.true.)
+      #endif
+
       !-------------------------------------------------
       ! User defined boundary conditions for B-field
         call startTimer(9)
