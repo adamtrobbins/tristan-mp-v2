@@ -244,7 +244,7 @@ if args['debug'] and (not args['intel']):
   makefile_options['COMPILER_FLAGS'] += '-fcheck=all -fimplicit-none -fbacktrace '
 elif (args['debug'] and args['intel']):
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 -check all '
+  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 -check all -check noarg_temp_created '
 else:
   makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
