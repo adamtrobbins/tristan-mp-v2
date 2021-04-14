@@ -48,8 +48,16 @@ Gamma_ = sqrt(1.0 + u0**2 + v0**2 + w0**2)
   lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
 #endif
 dx = dx_; dy = dy_; dz = dz_
-include "interp_efield.F"
-include "interp_bfield.F"
+
+#ifndef DEBUG
+  include "interp_efield.F"
+  include "interp_bfield.F"
+#else
+  call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                     & ex, ey, ez, ex0, ey0, ez0)
+  call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                     & bx, by, bz, bx0, by0, bz0)
+#endif
 
 e0_SQR = ex0**2 + ey0**2 + ez0**2
 b0_SQR = bx0**2 + by0**2 + bz0**2
@@ -205,8 +213,15 @@ else
       lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
     #endif
     dx = dx_; dy = dy_; dz = dz_
-    include "interp_efield.F"
-    include "interp_bfield.F"
+    #ifndef DEBUG
+      include "interp_efield.F"
+      include "interp_bfield.F"
+    #else
+      call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                         & ex, ey, ez, ex0, ey0, ez0)
+      call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                         & bx, by, bz, bx0, by0, bz0)
+    #endif
 
     e0_SQR = ex0**2 + ey0**2 + ez0**2
     b0_SQR = bx0**2 + by0**2 + bz0**2
@@ -288,8 +303,15 @@ else
     lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
   #endif
   dx = dx_; dy = dy_; dz = dz_
-  include "interp_efield.F"
-  include "interp_bfield.F"
+  #ifndef DEBUG
+    include "interp_efield.F"
+    include "interp_bfield.F"
+  #else
+    call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                       & ex, ey, ez, ex0, ey0, ez0)
+    call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                       & bx, by, bz, bx0, by0, bz0)
+  #endif
 
   e0_SQR = ex0**2 + ey0**2 + ez0**2
   b0_SQR = bx0**2 + by0**2 + bz0**2
