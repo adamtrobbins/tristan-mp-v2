@@ -27,8 +27,8 @@ contains
     integer :: valueRSS
 
     if (alb_x .and. (step .ge. alb_start_x) .and. (mod(step, alb_int_x) .eq. 0)) call metaRedistInX()
-    ! if (alb_y .and. (step .ge. alb_start_y) .and. (mod(step, alb_int_y) .eq. 0)) call metaRedistInY()
-    ! if (alb_z .and. (step .ge. alb_start_z) .and. (mod(step, alb_int_z) .eq. 0)) call metaRedistInZ()
+    if (alb_y .and. (step .ge. alb_start_y) .and. (mod(step, alb_int_y) .eq. 0)) call metaRedistInY()
+    if (alb_z .and. (step .ge. alb_start_z) .and. (mod(step, alb_int_z) .eq. 0)) call metaRedistInZ()
 
     call printDiag("redistributeMeshblocksALB()", 1)
   end subroutine redistributeMeshblocksALB
