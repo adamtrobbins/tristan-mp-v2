@@ -373,4 +373,276 @@ contains
     call printDiag("reshapeInX()", 3)
   end subroutine reshapeInX
 
+  subroutine reshapeInY(left_group, right_group, SHIFT)
+    integer, allocatable, intent(in)    :: left_group(:), right_group(:)
+    integer, intent(in)                 :: SHIFT
+    integer                       :: nproc_group, q, left_rnk, right_rnk, ierr
+    integer                       :: new_sx, new_sy, new_sz
+    integer                       :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                   & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
+    nproc_group = size(left_group)
+    #ifdef DEBUG
+      if (size(left_group) .ne. size(right_group)) then
+        call throwError('ERROR: wrong groups specified for `reshapeInY`.')
+      end if
+    #endif
+
+    ! backup the fields with current sizes
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call backupEBfields()
+      end if
+    end do
+
+    ! get new meshblock dimensions
+    new_meshblocks(:) = meshblocks(:)
+    call reassignNeighborsForAll(new_meshblocks)
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      new_meshblocks(left_rnk + 1)%sy = new_meshblocks(left_rnk + 1)%sy + SHIFT
+      new_meshblocks(right_rnk + 1)%sy = new_meshblocks(right_rnk + 1)%sy - SHIFT
+      new_meshblocks(right_rnk + 1)%y0 = new_meshblocks(right_rnk + 1)%y0 + SHIFT
+    end do
+    ! at this point DO NOT CHANGE `meshblocks` ...
+    ! ... as the `exchangeFieldSlabIn*` still assumes old dimensions
+
+    ! reallocate field arrays given the new meshblock dimensions
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call deallocateFields()
+        call reallocateFields(new_meshblocks(mpi_rank + 1))
+        call reallocateFieldBuffers(new_meshblocks(mpi_rank + 1))
+      end if
+    end do
+
+    ! send/recv missing fields
+    ! ... and recover from backup
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        ! exchange slab
+        call exchangeFieldSlabInY(left_rnk, right_rnk, SHIFT)
+
+        ! recover from backup
+        if (SHIFT .gt. 0) then
+          ! `left_rnk` inflates
+          ! `right_rnk` shrinks
+          if (mpi_rank .eq. left_rnk) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (mpi_rank .eq. right_rnk) then
+            i1_to = 0; i2_to = new_meshblocks(right_rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(right_rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(right_rnk + 1)%sz - 1
+            i1_from = 0; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = SHIFT; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        else
+          ! `left_rnk` shrinks
+          ! `right_rnk` inflates
+          if (mpi_rank .eq. left_rnk) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1 - abs(SHIFT)
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (mpi_rank .eq. right_rnk) then
+            i1_to = 0; i2_to = new_meshblocks(right_rnk + 1)%sx - 1
+            j1_to = abs(SHIFT); j2_to = new_meshblocks(right_rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(right_rnk + 1)%sz - 1
+            i1_from = 0; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        end if
+
+        call restoreFieldsFromBackups(i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                    & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to)
+      end if
+    end do
+
+    ! resize the meshblocks
+    meshblocks(:) = new_meshblocks(:)
+
+    ! deallocate buffers and redistribute particles
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call deallocateFieldBackups()
+
+        ! shift particles
+        if (mpi_rank .eq. right_rnk) then
+          call shiftParticlesY(-SHIFT)
+        end if
+
+        ! backup particles
+        call backupParticles()
+
+        ! reshuffle particle tiles
+        call reallocateParticles(this_meshblock%ptr)
+        ! restore particles from backup
+        call restoreParticlesFromBackup()
+        call deallocateParticleBackup()
+
+      end if
+    end do
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    ! put particles back on proper meshblocks
+    call redistributeParticlesBetweenMeshblocks()
+    call clearGhostParticles()
+
+    call printDiag("reshapeInY()", 3)
+  end subroutine reshapeInY
+
+  subroutine reshapeInZ(left_group, right_group, SHIFT)
+    integer, allocatable, intent(in)    :: left_group(:), right_group(:)
+    integer, intent(in)                 :: SHIFT
+    integer                       :: nproc_group, q, left_rnk, right_rnk, ierr
+    integer                       :: new_sx, new_sy, new_sz
+    integer                       :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                   & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
+    nproc_group = size(left_group)
+    #ifdef DEBUG
+      if (size(left_group) .ne. size(right_group)) then
+        call throwError('ERROR: wrong groups specified for `reshapeInZ`.')
+      end if
+    #endif
+
+    ! backup the fields with current sizes
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call backupEBfields()
+      end if
+    end do
+
+    ! get new meshblock dimensions
+    new_meshblocks(:) = meshblocks(:)
+    call reassignNeighborsForAll(new_meshblocks)
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      new_meshblocks(left_rnk + 1)%sz = new_meshblocks(left_rnk + 1)%sz + SHIFT
+      new_meshblocks(right_rnk + 1)%sz = new_meshblocks(right_rnk + 1)%sz - SHIFT
+      new_meshblocks(right_rnk + 1)%z0 = new_meshblocks(right_rnk + 1)%z0 + SHIFT
+    end do
+    ! at this point DO NOT CHANGE `meshblocks` ...
+    ! ... as the `exchangeFieldSlabIn*` still assumes old dimensions
+
+    ! reallocate field arrays given the new meshblock dimensions
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call deallocateFields()
+        call reallocateFields(new_meshblocks(mpi_rank + 1))
+        call reallocateFieldBuffers(new_meshblocks(mpi_rank + 1))
+      end if
+    end do
+
+    ! send/recv missing fields
+    ! ... and recover from backup
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        ! exchange slab
+        call exchangeFieldSlabInZ(left_rnk, right_rnk, SHIFT)
+
+        ! recover from backup
+        if (SHIFT .gt. 0) then
+          ! `left_rnk` inflates
+          ! `right_rnk` shrinks
+          if (mpi_rank .eq. left_rnk) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (mpi_rank .eq. right_rnk) then
+            i1_to = 0; i2_to = new_meshblocks(right_rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(right_rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(right_rnk + 1)%sz - 1
+            i1_from = 0; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = SHIFT; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        else
+          ! `left_rnk` shrinks
+          ! `right_rnk` inflates
+          if (mpi_rank .eq. left_rnk) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1 - abs(SHIFT)
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (mpi_rank .eq. right_rnk) then
+            i1_to = 0; i2_to = new_meshblocks(right_rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(right_rnk + 1)%sy - 1
+            k1_to = abs(SHIFT); k2_to = new_meshblocks(right_rnk + 1)%sz - 1
+            i1_from = 0; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        end if
+
+        call restoreFieldsFromBackups(i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                    & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to)
+      end if
+    end do
+
+    ! resize the meshblocks
+    meshblocks(:) = new_meshblocks(:)
+
+    ! deallocate buffers and redistribute particles
+    do q = 1, nproc_group
+      left_rnk = left_group(q)
+      right_rnk = right_group(q)
+      if ((mpi_rank .eq. left_rnk) .or. (mpi_rank .eq. right_rnk)) then
+        call deallocateFieldBackups()
+
+        ! shift particles
+        if (mpi_rank .eq. right_rnk) then
+          call shiftParticlesZ(-SHIFT)
+        end if
+
+        ! backup particles
+        call backupParticles()
+
+        ! reshuffle particle tiles
+        call reallocateParticles(this_meshblock%ptr)
+        ! restore particles from backup
+        call restoreParticlesFromBackup()
+        call deallocateParticleBackup()
+
+      end if
+    end do
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    ! put particles back on proper meshblocks
+    call redistributeParticlesBetweenMeshblocks()
+    call clearGhostParticles()
+
+    call printDiag("reshapeInZ()", 3)
+  end subroutine reshapeInZ
+
 end module m_adaptivelb
