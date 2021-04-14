@@ -17,7 +17,7 @@ module m_adaptivelb
                                & reallocateParticles, restoreParticlesFromBackup,&
                                & deallocateParticleBackup, clearGhostParticles
   use m_exchangeparts, only: redistributeParticlesBetweenMeshblocks
-  use m_exchangefields, only: exchangeFieldSlabInX
+  use m_exchangefields, only: exchangeFieldSlabInX, exchangeFieldSlabInY, exchangeFieldSlabInZ
 
   implicit none
 contains

@@ -252,6 +252,90 @@ contains
     end if
   end subroutine exchangeFieldSlabInX
 
+  subroutine exchangeFieldSlabInY(rnk1, rnk2, slab)
+    implicit none
+    integer, intent(in)       :: rnk1, rnk2, slab
+    real, allocatable         :: send_slab(:), recv_slab(:)
+    integer                   :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
+    integer                   :: i1_recv, i2_recv, j1_recv, j2_recv, k1_recv, k2_recv
+    integer                   :: rnk_send, rnk_recv
+
+    ! `slab < 0` means `rnk1` is sending
+    ! `slab > 0` means `rnk1` is receiving
+    ! `rnk1` is assumed closer to origin than `rnk2`
+
+    if ((mpi_rank .eq. rnk1) .or. (mpi_rank .eq. rnk2)) then
+      #ifdef DEBUG
+        ! check that sizes along `X` match
+        if ((meshblocks(rnk1 + 1)%sx .ne. meshblocks(rnk2 + 1)%sx) .or.&
+          & (meshblocks(rnk1 + 1)%sz .ne. meshblocks(rnk2 + 1)%sz)) then
+          call throwError('ERROR: sizes in `XZ` not matching: '//trim(STR(rnk1))//' '//trim(STR(rnk2))//'.')
+        end if
+        ! check that `rnk1` and `rnk2` are neighbors
+        if (mpi_rank .eq. rnk1) then
+          if (this_meshblock%ptr%neighbor(0,1,0)%ptr%rnk .ne. rnk2) then
+            call throwError('ERROR: #'//trim(STR(rnk1))//' and #'//trim(STR(rnk2))//' are not neighbors.')
+          end if
+        else if (mpi_rank .eq. rnk2) then
+          if (this_meshblock%ptr%neighbor(0,-1,0)%ptr%rnk .ne. rnk1) then
+            call throwError('ERROR: #'//trim(STR(rnk2))//' and #'//trim(STR(rnk1))//' are not neighbors.')
+          end if
+        end if
+      #endif
+      if (slab .gt. 0) then
+        ! `rnk1` receiving, `rnk2` sending
+        call SendRecvSlabInY(rnk2, rnk1, slab, +1)
+      else if (slab .lt. 0) then
+        ! `rnk1` sending, `rnk2` receiving
+        call SendRecvSlabInY(rnk1, rnk2, abs(slab), -1)
+      else
+        call throwError('ERROR: `slab` cannot be zero in exchangeFieldSlabIn*().')
+      end if
+    end if
+  end subroutine exchangeFieldSlabInY
+
+  subroutine exchangeFieldSlabInZ(rnk1, rnk2, slab)
+    implicit none
+    integer, intent(in)       :: rnk1, rnk2, slab
+    real, allocatable         :: send_slab(:), recv_slab(:)
+    integer                   :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
+    integer                   :: i1_recv, i2_recv, j1_recv, j2_recv, k1_recv, k2_recv
+    integer                   :: rnk_send, rnk_recv
+
+    ! `slab < 0` means `rnk1` is sending
+    ! `slab > 0` means `rnk1` is receiving
+    ! `rnk1` is assumed closer to origin than `rnk2`
+
+    if ((mpi_rank .eq. rnk1) .or. (mpi_rank .eq. rnk2)) then
+      #ifdef DEBUG
+        ! check that sizes along `X` match
+        if ((meshblocks(rnk1 + 1)%sx .ne. meshblocks(rnk2 + 1)%sx) .or.&
+          & (meshblocks(rnk1 + 1)%sy .ne. meshblocks(rnk2 + 1)%sy)) then
+          call throwError('ERROR: sizes in `XY` not matching: '//trim(STR(rnk1))//' '//trim(STR(rnk2))//'.')
+        end if
+        ! check that `rnk1` and `rnk2` are neighbors
+        if (mpi_rank .eq. rnk1) then
+          if (this_meshblock%ptr%neighbor(0,0,1)%ptr%rnk .ne. rnk2) then
+            call throwError('ERROR: #'//trim(STR(rnk1))//' and #'//trim(STR(rnk2))//' are not neighbors.')
+          end if
+        else if (mpi_rank .eq. rnk2) then
+          if (this_meshblock%ptr%neighbor(0,0,-1)%ptr%rnk .ne. rnk1) then
+            call throwError('ERROR: #'//trim(STR(rnk2))//' and #'//trim(STR(rnk1))//' are not neighbors.')
+          end if
+        end if
+      #endif
+      if (slab .gt. 0) then
+        ! `rnk1` receiving, `rnk2` sending
+        call SendRecvSlabInZ(rnk2, rnk1, slab, +1)
+      else if (slab .lt. 0) then
+        ! `rnk1` sending, `rnk2` receiving
+        call SendRecvSlabInZ(rnk1, rnk2, abs(slab), -1)
+      else
+        call throwError('ERROR: `slab` cannot be zero in exchangeFieldSlabIn*().')
+      end if
+    end if
+  end subroutine exchangeFieldSlabInZ
+
   subroutine SendRecvSlabInX(rnk_send, rnk_recv, slab, direction)
     implicit none
     integer, intent(in)       :: rnk_send, rnk_recv, slab, direction
