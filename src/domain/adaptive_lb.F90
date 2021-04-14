@@ -127,6 +127,116 @@ contains
     call printDiag("metaRedistInX()", 2)
   end subroutine metaRedistInX
 
+  subroutine metaRedistInY()
+    implicit none
+    integer               :: delta_j, i, j, k, cnt, ierr
+    integer               :: load_y0, load_y1, sy0_old, sy1_old, inds(3)
+
+    if (.not. allocated(lb_group_y0)) allocate(lb_group_y0(sizex * sizez))
+    if (.not. allocated(lb_group_y1)) allocate(lb_group_y1(sizex * sizez))
+
+    do delta_j = 0, sizey - 2
+      ! select the left and right domain slabs
+      cnt = 1
+      do k = 0, sizez - 1
+        do i = 0, sizex - 1
+          inds(1) = i; inds(2) = delta_j; inds(3) = k
+          lb_group_y0(cnt) = indToRnk(inds)
+          inds(2) = delta_j + 1;
+          lb_group_y1(cnt) = indToRnk(inds)
+          cnt = cnt + 1
+        end do
+      end do
+      ! now all the actions are between these two slabs
+
+      ! old dimensions
+      sy0_old = meshblocks(lb_group_y0(1) + 1)%sy
+      sy1_old = meshblocks(lb_group_y1(1) + 1)%sy
+
+      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+      call computeLoadALB(lb_load)
+      call accumulateLoads()
+
+      ! cumulative loads for each slab
+      load_y0 = 0; load_y1 = 0
+      do cnt = 1, sizex * sizez
+        load_y0 = load_y0 + lb_load_glob(lb_group_y0(cnt) + 1)
+        load_y1 = load_y1 + lb_load_glob(lb_group_y1(cnt) + 1)
+      end do
+
+      ! Apply balancing driver and checks befor requesting re-allocation
+      if (isImbalanced(load_y0, load_y1) .and. &
+       & (sy0_old - NGHOST - 1 .gt. alb_slab_y).and. &
+       & (sy0_old - alb_slab_y .gt. alb_symin)) then
+        call reshapeInY(lb_group_y0, lb_group_y1, -alb_slab_y)
+      else if (isImbalanced(load_y1, load_y0) .and. &
+            & (sy1_old - NGHOST - 1 .gt. alb_slab_y) .and. &
+            & (sy1_old - alb_slab_y .gt. alb_symin)) then
+        call reshapeInY(lb_group_y0, lb_group_y1, alb_slab_y)
+      end if
+    end do
+
+    if (allocated(lb_group_y0)) deallocate(lb_group_y0)
+    if (allocated(lb_group_y1)) deallocate(lb_group_y1)
+
+    call printDiag("metaRedistInY()", 2)
+  end subroutine metaRedistInY
+
+  subroutine metaRedistInZ()
+    implicit none
+    integer               :: delta_k, i, j, k, cnt, ierr
+    integer               :: load_z0, load_z1, sz0_old, sz1_old, inds(3)
+
+    if (.not. allocated(lb_group_z0)) allocate(lb_group_z0(sizex * sizey))
+    if (.not. allocated(lb_group_z1)) allocate(lb_group_z1(sizex * sizey))
+
+    do delta_k = 0, sizez - 2
+      ! select the left and right domain slabs
+      cnt = 1
+      do j = 0, sizey - 1
+        do i = 0, sizex - 1
+          inds(1) = i; inds(2) = j; inds(3) = delta_k
+          lb_group_z0(cnt) = indToRnk(inds)
+          inds(3) = delta_k + 1;
+          lb_group_z1(cnt) = indToRnk(inds)
+          cnt = cnt + 1
+        end do
+      end do
+      ! now all the actions are between these two slabs
+
+      ! old dimensions
+      sz0_old = meshblocks(lb_group_z0(1) + 1)%sz
+      sz1_old = meshblocks(lb_group_z1(1) + 1)%sz
+
+      call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+      call computeLoadALB(lb_load)
+      call accumulateLoads()
+
+      ! cumulative loads for each slab
+      load_z0 = 0; load_z1 = 0
+      do cnt = 1, sizex * sizez
+        load_z0 = load_z0 + lb_load_glob(lb_group_z0(cnt) + 1)
+        load_z1 = load_z1 + lb_load_glob(lb_group_z1(cnt) + 1)
+      end do
+
+      ! Apply balancing driver and checks befor requesting re-allocation
+      if (isImbalanced(load_z0, load_z1) .and. &
+       & (sz0_old - NGHOST - 1 .gt. alb_slab_z).and. &
+       & (sz0_old - alb_slab_z .gt. alb_szmin)) then
+        call reshapeInZ(lb_group_z0, lb_group_z1, -alb_slab_z)
+      else if (isImbalanced(load_z1, load_z0) .and. &
+            & (sz1_old - NGHOST - 1 .gt. alb_slab_z) .and. &
+            & (sz1_old - alb_slab_z .gt. alb_szmin)) then
+        call reshapeInZ(lb_group_z0, lb_group_z1, alb_slab_z)
+      end if
+    end do
+
+    if (allocated(lb_group_z0)) deallocate(lb_group_z0)
+    if (allocated(lb_group_z1)) deallocate(lb_group_z1)
+
+    call printDiag("metaRedistInZ()", 2)
+  end subroutine metaRedistInZ
+
   subroutine reshapeInX(left_group, right_group, SHIFT)
     integer, allocatable, intent(in)    :: left_group(:), right_group(:)
     integer, intent(in)                 :: SHIFT
