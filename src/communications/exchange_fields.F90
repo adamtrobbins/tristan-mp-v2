@@ -416,4 +416,164 @@ contains
     end if
   end subroutine SendRecvSlabInX
 
+  subroutine SendRecvSlabInY(rnk_send, rnk_recv, slab, direction)
+    implicit none
+    integer, intent(in)       :: rnk_send, rnk_recv, slab, direction
+    real, allocatable         :: buffer(:,:,:,:)
+    integer                   :: i, j, k
+    integer                   :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
+    integer                   :: j_, dummy_, size_, ierr, mpi_tag
+
+    #ifdef MPI08
+      type(MPI_STATUS)        :: istat
+    #endif
+
+    #ifdef MPI
+      integer                 :: istat(MPI_STATUS_SIZE)
+    #endif
+
+    if ((mpi_rank .eq. rnk_send) .or. (mpi_rank .eq. rnk_recv)) then
+      #ifdef DEBUG
+        ! check that we're not sending too much
+        if (slab .ge. meshblocks(rnk_send + 1)%sy - NGHOST - 1) then
+          call throwError('ERROR: cannot send more than `sy - NGHOST - 1` cells in y.')
+        end if
+      #endif
+
+      i1_send = 0; i2_send = meshblocks(rnk_send + 1)%sx - 1
+      j1_send = 0; j2_send = slab - 1
+      k1_send = 0; k2_send = meshblocks(rnk_send + 1)%sz - 1
+
+      allocate(buffer(i1_send:i2_send, j1_send:j2_send, k1_send:k2_send, 6))
+      size_ = (i2_send - i1_send + 1) * (j2_send - j1_send + 1) * (k2_send - k1_send + 1) * 6
+
+      mpi_tag = 1
+
+      if (mpi_rank .eq. rnk_send) then
+        ! fill the buffer
+        if (direction .lt. 0) then
+          dummy_ = this_meshblock%ptr%sy - slab
+        else
+          dummy_ = 0
+        end if
+        do k = k1_send, k2_send
+          do j = j1_send, j2_send
+            do i = i1_send, i2_send
+              j_ = dummy_ + j
+              buffer(i, j, k, 1) = ex_back(i, j_, k)
+              buffer(i, j, k, 2) = ey_back(i, j_, k)
+              buffer(i, j, k, 3) = ez_back(i, j_, k)
+              buffer(i, j, k, 4) = bx_back(i, j_, k)
+              buffer(i, j, k, 5) = by_back(i, j_, k)
+              buffer(i, j, k, 6) = bz_back(i, j_, k)
+            end do
+          end do
+        end do
+        call MPI_SEND(buffer, size_, MPI_REAL, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
+      else if (mpi_rank .eq. rnk_recv) then
+        call MPI_RECV(buffer, size_, MPI_REAL, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+        ! extract from the buffer
+        if (direction .lt. 0) then
+          dummy_ = 0
+        else
+          dummy_ = this_meshblock%ptr%sy
+        end if
+        do k = k1_send, k2_send
+          do j = j1_send, j2_send
+            do i = i1_send, i2_send
+              j_ = dummy_ + j
+              ex(i, j_, k) = buffer(i, j, k, 1)
+              ey(i, j_, k) = buffer(i, j, k, 2)
+              ez(i, j_, k) = buffer(i, j, k, 3)
+              bx(i, j_, k) = buffer(i, j, k, 4)
+              by(i, j_, k) = buffer(i, j, k, 5)
+              bz(i, j_, k) = buffer(i, j, k, 6)
+            end do
+          end do
+        end do
+      end if
+      deallocate(buffer)
+    end if
+  end subroutine SendRecvSlabInY
+
+  subroutine SendRecvSlabInZ(rnk_send, rnk_recv, slab, direction)
+    implicit none
+    integer, intent(in)       :: rnk_send, rnk_recv, slab, direction
+    real, allocatable         :: buffer(:,:,:,:)
+    integer                   :: i, j, k
+    integer                   :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
+    integer                   :: k_, dummy_, size_, ierr, mpi_tag
+
+    #ifdef MPI08
+      type(MPI_STATUS)        :: istat
+    #endif
+
+    #ifdef MPI
+      integer                 :: istat(MPI_STATUS_SIZE)
+    #endif
+
+    if ((mpi_rank .eq. rnk_send) .or. (mpi_rank .eq. rnk_recv)) then
+      #ifdef DEBUG
+        ! check that we're not sending too much
+        if (slab .ge. meshblocks(rnk_send + 1)%sz - NGHOST - 1) then
+          call throwError('ERROR: cannot send more than `sz - NGHOST - 1` cells in z.')
+        end if
+      #endif
+
+      i1_send = 0; i2_send = meshblocks(rnk_send + 1)%sx - 1
+      j1_send = 0; j2_send = meshblocks(rnk_send + 1)%sy - 1
+      k1_send = 0; k2_send = slab - 1
+
+      allocate(buffer(i1_send:i2_send, j1_send:j2_send, k1_send:k2_send, 6))
+      size_ = (i2_send - i1_send + 1) * (j2_send - j1_send + 1) * (k2_send - k1_send + 1) * 6
+
+      mpi_tag = 1
+
+      if (mpi_rank .eq. rnk_send) then
+        ! fill the buffer
+        if (direction .lt. 0) then
+          dummy_ = this_meshblock%ptr%sz - slab
+        else
+          dummy_ = 0
+        end if
+        do k = k1_send, k2_send
+          do j = j1_send, j2_send
+            do i = i1_send, i2_send
+              k_ = dummy_ + k
+              buffer(i, j, k, 1) = ex_back(i, j, k_)
+              buffer(i, j, k, 2) = ey_back(i, j, k_)
+              buffer(i, j, k, 3) = ez_back(i, j, k_)
+              buffer(i, j, k, 4) = bx_back(i, j, k_)
+              buffer(i, j, k, 5) = by_back(i, j, k_)
+              buffer(i, j, k, 6) = bz_back(i, j, k_)
+            end do
+          end do
+        end do
+        call MPI_SEND(buffer, size_, MPI_REAL, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
+      else if (mpi_rank .eq. rnk_recv) then
+        call MPI_RECV(buffer, size_, MPI_REAL, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+        ! extract from the buffer
+        if (direction .lt. 0) then
+          dummy_ = 0
+        else
+          dummy_ = this_meshblock%ptr%sz
+        end if
+        do k = k1_send, k2_send
+          do j = j1_send, j2_send
+            do i = i1_send, i2_send
+              k_ = dummy_ + k
+              ex(i, j, k_) = buffer(i, j, k, 1)
+              ey(i, j, k_) = buffer(i, j, k, 2)
+              ez(i, j, k_) = buffer(i, j, k, 3)
+              bx(i, j, k_) = buffer(i, j, k, 4)
+              by(i, j, k_) = buffer(i, j, k, 5)
+              bz(i, j, k_) = buffer(i, j, k, 6)
+            end do
+          end do
+        end do
+      end if
+      deallocate(buffer)
+    end if
+  end subroutine SendRecvSlabInZ
+
 end module m_exchangefields
