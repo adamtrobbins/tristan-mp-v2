@@ -771,14 +771,17 @@ contains
     integer, optional, intent(in) :: step
     integer                       :: root_rank = 0
     real, allocatable             :: r_bins(:)
-    real                          :: dr, x_glob, y_glob, z_glob, r_glob
-    real                          :: dummy_x, dummy_y, dummy_z, dummy
+    real                          :: dr, x_glob, y_glob, z_glob, r_glob, fr_factor
+    real                          :: dummy_x, dummy_y, dummy_z, dummy1, dummy2
     real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+    real, allocatable             :: sum_jE_f(:), sum_jE_f_global(:)
     integer                       :: ri, rnum = 50, i, j, k, ierr
 
     allocate(r_bins(rnum))
     allocate(sum_ExBr_f(rnum), sum_f(rnum))
     allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
+    allocate(sum_jE_f_global(rnum), sum_jE_f(rnum))
+    sum_jE_f(:) = 0.0
     sum_ExBr_f(:) = 0.0
     sum_f(:) = 0.0
 
@@ -799,28 +802,39 @@ contains
           dummy_y = ez(i,j,k) * bx(i,j,k) - ex(i,j,k) * bz(i,j,k)
           dummy_z = -(ey(i,j,k) * bx(i,j,k)) + ex(i,j,k) * by(i,j,k)
           if (r_glob .gt. psr_radius / 2.0) then
-            dummy = (dummy_x * (x_glob - xc_g) +&
+            dummy1 = (dummy_x * (x_glob - xc_g) +&
                    & dummy_y * (y_glob - yc_g) +&
                    & dummy_z * (z_glob - zc_g)) / r_glob
+            dummy2 = jx(i, j, k) * ex(i,j,k) + jy(i,j,k) * ey(i,j,k) + jz(i,j,k) * ez(i,j,k)
           else
-            dummy = 0.0
+            dummy1 = 0.0
+            dummy2 = 0.0
           end if
           do ri = 1, rnum
-            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy * exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
-            sum_f(ri) = sum_f(ri) + exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+            fr_factor = exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor 
+            sum_jE_f(ri) = sum_jE_f(ri) + dummy2 * fr_factor
+            sum_f(ri) = sum_f(ri) + fr_factor
           end do
         end do
       end do
     end do
 
     call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(sum_jE_f, sum_jE_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
     call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. root_rank) then
+      ! normalizations
+      sum_jE_f_global(:) = sum_jE_f_global(:) * r_bins(:)**2 * B_norm**2 / sum_f_global(:)
+      do ri = 2, rnum
+        sum_jE_f_global(ri) = sum_jE_f_global(ri) + sum_jE_f_global(ri - 1)
+      end do
       sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
       call writeUsrOutputTimestep(step)
       call writeUsrOutputArray('r_bins', r_bins)
       call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
+      call writeUsrOutputArray('j.E_vol', sum_jE_f_global)
       call writeUsrOutputEnd()
     end if
   end subroutine userOutput
