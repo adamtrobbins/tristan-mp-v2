@@ -13,7 +13,7 @@ module m_adaptivelb
                             & deallocateFields, reallocateFields, reallocateFieldBuffers,&
                             & backupEBfields
 
-  use m_particlelogistics, only: shiftParticlesX, backupParticles,&
+  use m_particlelogistics, only: shiftParticlesX, shiftParticlesY, shiftParticlesZ, backupParticles,&
                                & reallocateParticles, restoreParticlesFromBackup,&
                                & deallocateParticleBackup, clearGhostParticles
   use m_exchangeparts, only: redistributeParticlesBetweenMeshblocks
