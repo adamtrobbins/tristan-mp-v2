@@ -43,6 +43,9 @@ contains
     call getInput('problem', 'measure_x', measure_x, 0.2)
     call getInput('problem', 'open_boundaries', open_boundaries, -1)
     call getInput('problem', 'perturb', perturb, .false.)
+    if (current_width .lt. 0.0) then
+      call throwError("ERROR: `current_width` has to be > 0.")
+    end if
     if (boundary_x .eq. 1) then
       ! double periodic
       cs_x1 = 0.25; cs_x2 = 0.75
@@ -50,7 +53,7 @@ contains
       ! single current sheet
       cs_x = 0.5
     end if
-    if (boost_y_Gamma .ne. 0) then
+    if (abs(boost_y_Gamma) .gt. 1) then
       boost_y_beta = sign(sqrt(1.0 - boost_y_Gamma**(-2)), boost_y_Gamma)
       boost_y_Gamma = abs(boost_y_Gamma)
     else
@@ -75,8 +78,8 @@ contains
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real                        :: rad2
     if (present(x_glob) .and. present(y_glob) .and.&
-      & present(dummy1) .and. present(dummy2) .and. present(dummy3)) then
-      if (dummy3 .ne. 0.0) then
+      & present(dummy1) .and. present(dummy2)) then
+      if (present(dummy3) .and. (dummy3 .ne. 0.0)) then
         rad2 = (x_glob - dummy1)**2 + (y_glob - dummy3)**2
         userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2 *&
                                 & (1.0 - exp(-rad2 / (5.0 * dummy2)**2))
@@ -120,10 +123,16 @@ contains
       current_sheet_T = 0.5 * sigma / nCS_over_nUP
 
       if (boundary_x .eq. 1) then
+        back_region%x_min = sx_glob * cs_x1 - 10 * current_width
+        back_region%x_max = sx_glob * cs_x1 + 10 * current_width
+        back_region%y_min = 0.0
+        back_region%y_max = sy_glob
         call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
                                        & shift_gamma = shift_gamma, shift_dir = 3,&
                                        & spat_distr_ptr = spat_distr_ptr,&
                                        & dummy1 = cs_x1 * sx_glob, dummy2 = current_width)
+        back_region%x_min = sx_glob * cs_x2 - 10 * current_width
+        back_region%x_max = sx_glob * cs_x2 + 10 * current_width
         call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
                                        & shift_gamma = shift_gamma, shift_dir = -3,&
                                        & spat_distr_ptr = spat_distr_ptr,&
@@ -147,7 +156,7 @@ contains
       end if
     end if
 
-    if (boost_y_Gamma .ne. 0) then
+    if (boost_y_Gamma .gt. 1) then
       ! boost particles in `y` direction
       do s = 1, nspec
         do ti = 1, species(s)%tile_nx

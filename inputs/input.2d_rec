@@ -47,6 +47,10 @@
   spec_max      = 1e4            # `g - 1` for massive and `e` for massless
   spec_num      = 300            # number of energy bins
 
+	# user-specific output
+	usr_enable    = 0							 # enable/disable usr-output [0]
+	usr_interval  = 100						 # interval between usr-output steps [100]
+
 <plasma>
 
   ppc0          = 50
@@ -108,7 +112,8 @@
 	up_lecs					= 1						# [1]
 	up_ions					= 2						# [2]
 
-	# measure ExB along y with x = fraction of global sx (from left wall)
+	# measure ExB along y with x = fraction of global sx (from left wall) ...
+	# ... used when `usr_enable` is set to `.true.`
 	measure_x				= 0.1 				# fraction of sx [0.2]
 
 	open_boundaries = -1          # timestep to open y-boundaries (-1 = keep periodic) [-1]
