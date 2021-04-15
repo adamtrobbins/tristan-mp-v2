@@ -389,12 +389,12 @@ contains
               if (&
                 & (r_g .lt. (psr_radius - rmin_dr)) .or.&
                 & ((boundary_x .eq. 2) .and. (r_g .gt. rr)) .or.&
-                & ((boundary_x .eq. 0) .and. ((x_g .lt. ds_abs / 2.0) .or.&
-                                            & (x_g .gt. global_mesh%sx - ds_abs / 2.0) .or.&
-                                            & (y_g .lt. ds_abs / 2.0) .or.&
-                                            & (y_g .gt. global_mesh%sy - ds_abs / 2.0) .or.&
-                                            & (z_g .lt. ds_abs / 2.0) .or.&
-                                            & (z_g .gt. global_mesh%sz - ds_abs / 2.0))&
+                & ((boundary_x .eq. 0) .and. ((x_g .lt. ds_abs / 4.0) .or.&
+                                            & (x_g .gt. global_mesh%sx - ds_abs / 4.0) .or.&
+                                            & (y_g .lt. ds_abs / 4.0) .or.&
+                                            & (y_g .gt. global_mesh%sy - ds_abs / 4.0) .or.&
+                                            & (z_g .lt. ds_abs / 4.0) .or.&
+                                            & (z_g .gt. global_mesh%sz - ds_abs / 4.0))&
                   & )&
                 & ) then
                 species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
