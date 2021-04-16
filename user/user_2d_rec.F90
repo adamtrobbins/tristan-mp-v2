@@ -35,7 +35,6 @@ contains
       call getInput('problem', 'injector_sx', injector_sx)
       call getInput('problem', 'injector_betax', injector_betax)
     end if
-    call getInput('problem', 'boost_y', boost_y_Gamma, 0.0)
     call getInput('problem', 'cs_lecs', cs_lecs, 1)
     call getInput('problem', 'cs_ions', cs_ions, 2)
     call getInput('problem', 'up_lecs', up_lecs, 1)
@@ -52,12 +51,6 @@ contains
     else
       ! single current sheet
       cs_x = 0.5
-    end if
-    if (abs(boost_y_Gamma) .gt. 1) then
-      boost_y_beta = sign(sqrt(1.0 - boost_y_Gamma**(-2)), boost_y_Gamma)
-      boost_y_Gamma = abs(boost_y_Gamma)
-    else
-      boost_y_beta = 0.0
     end if
   end subroutine userReadInput
 
@@ -154,21 +147,6 @@ contains
                                          & dummy1 = cs_x * sx_glob, dummy2 = current_width)
         end if
       end if
-    end if
-
-    if (boost_y_Gamma .gt. 1) then
-      ! boost particles in `y` direction
-      do s = 1, nspec
-        do ti = 1, species(s)%tile_nx
-          do tj = 1, species(s)%tile_ny
-            do tk = 1, species(s)%tile_nz
-              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                species(s)%prtl_tile(ti, tj, tk)%v(p) = boost_y_Gamma * boost_y_beta
-              end do
-            end do
-          end do
-        end do
-      end do
     end if
   end subroutine userInitParticles
 
@@ -270,29 +248,23 @@ contains
       injector_i1_glob = INT(injector_x1)
       injector_i2_glob = INT(injector_x2)
 
-      if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and.&
-         & (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
-        & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and.&
-         & (injector_i2_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
-
-        if (modulo(step, injector_reset_interval) .eq. 0) then
-          ! remove particles left and right from the injectors every once in a while
-          do s = 1, nspec
-            do ti = 1, species(s)%tile_nx
-              do tj = 1, species(s)%tile_ny
-                do tk = 1, species(s)%tile_nz
-                  do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                    x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
-                           & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-                    if ((x_glob .le. old_x1) .or. (x_glob .gt. old_x2)) then
-                      species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
-                    end if
-                  end do
+      if (modulo(step, injector_reset_interval) .eq. 0) then
+        ! remove particles left and right from the injectors every once in a while
+        do s = 1, nspec
+          do ti = 1, species(s)%tile_nx
+            do tj = 1, species(s)%tile_ny
+              do tk = 1, species(s)%tile_nz
+                do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                  x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                         & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+                  if ((x_glob .le. old_x1) .or. (x_glob .gt. old_x2)) then
+                    species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+                  end if
                 end do
               end do
             end do
           end do
-        end if
+        end do
       end if
 
       ! inject background particles at the injectors' positions
@@ -313,35 +285,6 @@ contains
       back_region%y_max = REAL(global_mesh%sy)
 
       call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, upstream_T)
-
-      if (boost_y_Gamma .gt. 1) then
-        if (((injector_i1_glob .ge. this_meshblock%ptr%x0) .and.&
-           & (injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx)) .or.&
-          & ((injector_i2_glob .ge. this_meshblock%ptr%x0) .and.&
-           & (injector_i2_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx))) then
-
-          if (modulo(step, injector_reset_interval) .eq. 0) then
-            ! remove particles left and right from the injectors every once in a while
-            do s = 1, nspec
-              do ti = 1, species(s)%tile_nx
-                do tj = 1, species(s)%tile_ny
-                  do tk = 1, species(s)%tile_nz
-                    do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                      x_glob = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
-                             & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-                      if (((x_glob .le. old_x1) .and. (x_glob .gt. injector_x1)) .or.&
-                        & ((x_glob .gt. old_x2) .and. (x_glob .le. injector_x2))) then
-                        ! boost particles in `y` direction if they're newly injected
-                        species(s)%prtl_tile(ti, tj, tk)%v(p) = boost_y_Gamma * boost_y_beta
-                      end if ! x_glob
-                    end do ! p
-                  end do ! tk
-                end do ! tj
-              end do ! ti
-            end do ! s
-          end if
-        end if
-      end if
     end if
   end subroutine userParticleBoundaryConditions
 
