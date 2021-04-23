@@ -94,6 +94,8 @@ contains
     implicit none
     integer                 :: i
     character(len=STR_MAX)  :: var_name
+    real :: slice_tmp
+
     call getInput('slice_output', 'enable', slice_output_enable, .false.)
     call getInput('slice_output', 'start', slice_output_start, 0)
     call getInput('slice_output', 'interval', slice_output_interval, 10)
@@ -105,36 +107,54 @@ contains
     slice_axes(:) = -1
     slice_pos(:) = -1
 
-    do i = 1, 100
+    do i = 1, 9
       write (var_name, "(A7,I1)") "sliceX_", i
-      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
-      if (slice_pos(nslices + 1) .ne. -1) then
-        nslices = nslices + 1
-        slice_axes(nslices) = 1
+      call getInput('slice_output', var_name, slice_tmp, -1.0)
+      if ((slice_tmp .gt. 0.0) .and. (slice_tmp .lt. 1.0)) then
+        slice_pos(nslices + 1) = INT(global_mesh%sx * slice_tmp) 
+      else if (slice_tmp .ge. 0.0) then
+        slice_pos(nslices + 1) = INT(slice_tmp) 
       else
         exit
       end if
+      nslices = nslices + 1
+      slice_axes(nslices) = 1
+      if ((slice_pos(nslices) .lt. 0) .or. (slice_pos(nslices) .ge. global_mesh%sx)) then
+        call throwError("ERROR: slice x position specified wrong.")
+      end if
     end do
 
-    do i = 1, 100
+    do i = 1, 9
       write (var_name, "(A7,I1)") "sliceY_", i
-      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
-      if (slice_pos(nslices + 1) .ne. -1) then
-        nslices = nslices + 1
-        slice_axes(nslices) = 2
+      call getInput('slice_output', var_name, slice_tmp, -1.0)
+      if ((slice_tmp .gt. 0.0) .and. (slice_tmp .lt. 1.0)) then
+        slice_pos(nslices + 1) = INT(global_mesh%sy * slice_tmp) 
+      else if (slice_tmp .ge. 0.0) then
+        slice_pos(nslices + 1) = INT(slice_tmp) 
       else
         exit
       end if
+      nslices = nslices + 1
+      slice_axes(nslices) = 2
+      if ((slice_pos(nslices) .lt. 0) .or. (slice_pos(nslices) .ge. global_mesh%sy)) then
+        call throwError("ERROR: slice y position specified wrong.")
+      end if
     end do
 
-    do i = 1, 100
+    do i = 1, 9
       write (var_name, "(A7,I1)") "sliceZ_", i
-      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
-      if (slice_pos(nslices + 1) .ne. -1) then
-        nslices = nslices + 1
-        slice_axes(nslices) = 3
+      call getInput('slice_output', var_name, slice_tmp, -1.0)
+      if ((slice_tmp .gt. 0.0) .and. (slice_tmp .lt. 1.0)) then
+        slice_pos(nslices + 1) = INT(global_mesh%sz * slice_tmp) 
+      else if (slice_tmp .ge. 0.0) then
+        slice_pos(nslices + 1) = INT(slice_tmp) 
       else
         exit
+      end if
+      nslices = nslices + 1
+      slice_axes(nslices) = 3
+      if ((slice_pos(nslices) .lt. 0) .or. (slice_pos(nslices) .ge. global_mesh%sz)) then
+        call throwError("ERROR: slice z position specified wrong.")
       end if
     end do
   end subroutine initializeSlice
