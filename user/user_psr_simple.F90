@@ -215,7 +215,7 @@ contains
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig, rmax, rmin
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
-    real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
+    real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma, rmax_sph, smax_car
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
     real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase
     logical                       :: dummy_flag
@@ -371,8 +371,10 @@ contains
         end if ! current MPI block
       end if ! closed zone
     end do
-
-    rr = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs / 2.0
+  
+    ! max radius for spherical absorption and absorbing layer size in cartesian absorption
+    rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
+    smax_car = ds_abs - 4.0
     ! remove particles falling into the star
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
@@ -388,13 +390,13 @@ contains
               r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
               if (&
                 & (r_g .lt. (psr_radius - rmin_dr)) .or.&
-                & ((boundary_x .eq. 2) .and. (r_g .gt. rr)) .or.&
-                & ((boundary_x .eq. 0) .and. ((x_g .lt. ds_abs / 4.0) .or.&
-                                            & (x_g .gt. global_mesh%sx - ds_abs / 4.0) .or.&
-                                            & (y_g .lt. ds_abs / 4.0) .or.&
-                                            & (y_g .gt. global_mesh%sy - ds_abs / 4.0) .or.&
-                                            & (z_g .lt. ds_abs / 4.0) .or.&
-                                            & (z_g .gt. global_mesh%sz - ds_abs / 4.0))&
+                & ((boundary_x .eq. 2) .and. (r_g .gt. rmax_sph)) .or.&
+                & ((boundary_x .eq. 0) .and. ((x_g .lt. smax_car) .or.&
+                                            & (x_g .gt. global_mesh%sx - smax_car) .or.&
+                                            & (y_g .lt. smax_car) .or.&
+                                            & (y_g .gt. global_mesh%sy - smax_car) .or.&
+                                            & (z_g .lt. smax_car) .or.&
+                                            & (z_g .gt. global_mesh%sz - smax_car))&
                   & )&
                 & ) then
                 species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
@@ -404,8 +406,6 @@ contains
         end do
       end do
     end do
-
-
   end subroutine userParticleBoundaryConditions
 
   subroutine randomPointInSphericalShell(rmin, rmax, x, y, z)
