@@ -18,7 +18,7 @@ module m_userfile
   real, private    :: injector_x1, injector_x2, injector_sx, injector_betax, measure_x
   integer, private :: injector_reset_interval, open_boundaries
   integer, private :: cs_lecs, cs_ions, up_lecs, up_ions
-  logical, private :: perturb
+  logical, private :: perturb, simple_bc
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -42,6 +42,7 @@ contains
     call getInput('problem', 'measure_x', measure_x, 0.2)
     call getInput('problem', 'open_boundaries', open_boundaries, -1)
     call getInput('problem', 'perturb', perturb, .false.)
+    call getInput('problem', 'simple_bc', simple_bc, .true.)
     if (current_width .lt. 0.0) then
       call throwError("ERROR: `current_width` has to be > 0.")
     end if
@@ -315,10 +316,10 @@ contains
 
     if (boundary_x .ne. 1) then
 
-      injector_i1_glob = INT(injector_x1)
+      injector_i1_glob = INT(injector_x1) + 1
       injector_i2_glob = INT(injector_x2)
 
-      if ((injector_i1_glob .le. this_meshblock%ptr%x0 + this_meshblock%ptr%sx) .or.&
+      if ((injector_i1_glob .lt. this_meshblock%ptr%x0 + this_meshblock%ptr%sx) .or.&
         & (injector_i2_glob .ge. this_meshblock%ptr%x0)) then
         ! reset fields left and right from the injectors
         if (updateB_) then
@@ -326,18 +327,30 @@ contains
           do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
             i_glob = i + this_meshblock%ptr%x0
             x_glob = REAL(i_glob) + 0.5
-            if (i_glob .lt. injector_i1_glob) then
-              delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
-              bx(i, :, :) = tanh(delta_x) * bx(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-              bz(i, :, :) = tanh(delta_x) * bz(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-              by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
-                      & tanh(delta_x) * by(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-            else if (i_glob .gt. injector_i2_glob) then
+            if (i_glob .le. injector_i1_glob) then
+              if (simple_bc) then
+                bx(i,:,:) = 0.0
+                bz(i,:,:) = 0.0
+                by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
+              else
+                delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
+                bx(i, :, :) = tanh(delta_x) * bx(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+                bz(i, :, :) = tanh(delta_x) * bz(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+                by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
+                        & tanh(delta_x) * by(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              end if
+            else if (i_glob .ge. injector_i2_glob) then
+              if (simple_bc) then
+                bx(i,:,:) = 0.0
+                bz(i,:,:) = 0.0
+                by(i,:,:) = tanh((x_glob - cs_x * sx_glob) / current_width)
+              else
               delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
               bx(i, :, :) = tanh(delta_x) * bx(injector_i2_glob - this_meshblock%ptr%x0, :, :)
               bz(i, :, :) = tanh(delta_x) * bz(injector_i2_glob - this_meshblock%ptr%x0, :, :)
               by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) +&
                       & tanh(delta_x) * by(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              end if
             end if
           end do
         end if
@@ -346,15 +359,27 @@ contains
           do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
             i_glob = i + this_meshblock%ptr%x0
             if (i_glob .lt. injector_i1_glob) then
-              delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
-              ex(i, :, :) = tanh(delta_x) * ex(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-              ey(i, :, :) = tanh(delta_x) * ey(injector_i1_glob - this_meshblock%ptr%x0, :, :)
-              ez(i, :, :) = tanh(delta_x) * ez(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              if (simple_bc) then
+                ex(i,:,:) = 0.0
+                ey(i,:,:) = 0.0
+                ez(i,:,:) = 0.0
+              else
+                delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
+                ex(i, :, :) = tanh(delta_x) * ex(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+                ey(i, :, :) = tanh(delta_x) * ey(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+                ez(i, :, :) = tanh(delta_x) * ez(injector_i1_glob - this_meshblock%ptr%x0, :, :)
+              end if
             else if (i_glob .gt. injector_i2_glob) then
-              delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
-              ex(i, :, :) = tanh(delta_x) * ex(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-              ey(i, :, :) = tanh(delta_x) * ey(injector_i2_glob - this_meshblock%ptr%x0, :, :)
-              ez(i, :, :) = tanh(delta_x) * ez(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              if (simple_bc) then
+                ex(i,:,:) = 0.0
+                ey(i,:,:) = 0.0
+                ez(i,:,:) = 0.0
+              else
+                delta_x = 4.0 * REAL(global_mesh%sx - 1 - i_glob) / MAX(REAL(global_mesh%sx - 1 - injector_i2_glob), 0.1)
+                ex(i, :, :) = tanh(delta_x) * ex(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+                ey(i, :, :) = tanh(delta_x) * ey(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+                ez(i, :, :) = tanh(delta_x) * ez(injector_i2_glob - this_meshblock%ptr%x0, :, :)
+              end if
             end if
           end do
         end if
