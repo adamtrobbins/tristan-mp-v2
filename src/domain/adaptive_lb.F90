@@ -237,22 +237,29 @@ contains
     call printDiag("metaRedistInZ()", 2)
   end subroutine metaRedistInZ
 
-  subroutine reshapeGlobalInX(proc_group, SHIFT)
+  subroutine reshapeGlobalInX(proc_group, INJECT)
     integer, allocatable, intent(in)    :: proc_group(:)
-    integer, intent(in)                 :: SHIFT
-    integer                             :: nproc_group, q, rnk
+    integer, intent(in)                 :: INJECT
+    integer                             :: i, j, k, q, nproc_group, rnk, inds(3), ierr
+    integer                             :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                            & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
     logical                             :: leftmost, rightmost
-
 
     nproc_group = size(proc_group)
 
-    leftmost =
-    rightmost =
+    leftmost = .true.
+    rightmost = .true.
     do q = 1, nproc_group
-
       rnk = proc_group(q)
-
+      if ((global_mesh%sx).ne.(meshblocks(rnk + 1)%x0 + meshblocks(rnk + 1)%sx)) rightmost = .false.
+      if ((0).ne.(meshblocks(rnk + 1)%x0)) leftmost = .false.
     end do
+
+    if ((.not. leftmost) .and. (.not. rightmost)) then
+      call throwError('ERROR: Wrong ranks in reshapeGlobalInX')
+    else if ((leftmost) .and. (rightmost)) then
+      leftmost = .false.
+    end if
 
     ! backup the fields with current sizes
     do q = 1, nproc_group
@@ -267,16 +274,120 @@ contains
     call reassignNeighborsForAll(new_meshblocks)
     do q = 1, nproc_group
       rnk = proc_group(q)
-      new_meshblocks(rnk + 1)%sx = new_meshblocks(rnk + 1)%sx + SHIFT
-
-
-
-      new_meshblocks(right_rnk + 1)%sx = new_meshblocks(right_rnk + 1)%sx - SHIFT
-      new_meshblocks(right_rnk + 1)%x0 = new_meshblocks(right_rnk + 1)%x0 + SHIFT
+      new_meshblocks(rnk + 1)%sx = new_meshblocks(rnk + 1)%sx + INJECT
     end do
 
-  end subroutine reshapeGlobalInX
+    if (leftmost) then
+      do k = 0, sizez - 1
+        do j = 0, sizey - 1
+          do i = 1, sizex - 1
+            inds(1) = i; inds(2) = j; inds(3) = k
+            rnk = indToRnk(inds)
+            new_meshblocks(rnk + 1)%x0 = new_meshblocks(rnk + 1)%x0 + INJECT
+          end do
+        end do
+      end do
+    end if
 
+    if (leftmost) then
+      call shiftParticlesX(-INJECT)
+    else
+      call shiftParticlesX(INJECT)
+    end if
+
+    ! reallocate field arrays given the new meshblock dimensions
+    do q = 1, nproc_group
+      rnk = proc_group(q)
+      if (mpi_rank .eq. rnk) then
+        call deallocateFields()
+        call reallocateFields(new_meshblocks(mpi_rank + 1))
+        call reallocateFieldBuffers(new_meshblocks(mpi_rank + 1))
+      end if
+    end do
+
+    ! ... and recover fields from backup
+    do q = 1, nproc_group
+      rnk = proc_group(q)
+      if ((mpi_rank .eq. rnk)) then
+        ! recover from backup
+        if (INJECT .gt. 0) then
+          if (rightmost) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1 - abs(INJECT)
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (leftmost) then
+            i1_to = abs(INJECT); i2_to = new_meshblocks(rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(rnk + 1)%sz - 1
+            i1_from = 0; i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        else
+          ! `left_rnk` shrinks
+          ! `right_rnk` inflates
+          if (rightmost) then
+            i1_to = 0; i2_to = this_meshblock%ptr%sx - 1
+            j1_to = 0; j2_to = this_meshblock%ptr%sy - 1
+            k1_to = 0; k2_to = this_meshblock%ptr%sz - 1
+            i1_from = i1_to; i2_from = i2_to
+            j1_from = j1_to; j2_from = j2_to
+            k1_from = k1_to; k2_from = k2_to
+          else if (leftmost) then
+            i1_to = 0; i2_to = new_meshblocks(rnk + 1)%sx - 1
+            j1_to = 0; j2_to = new_meshblocks(rnk + 1)%sy - 1
+            k1_to = 0; k2_to = new_meshblocks(rnk + 1)%sz - 1
+            i1_from = abs(INJECT); i2_from = this_meshblock%ptr%sx - 1
+            j1_from = 0; j2_from = this_meshblock%ptr%sy - 1
+            k1_from = 0; k2_from = this_meshblock%ptr%sz - 1
+          end if
+        end if
+
+        call restoreFieldsFromBackups(i1_from, i2_from, j1_from, j2_from, k1_from, k2_from,&
+                                    & i1_to, i2_to, j1_to, j2_to, k1_to, k2_to)
+      end if
+    end do
+
+    ! resize the meshblocks
+    meshblocks(:) = new_meshblocks(:)
+
+    ! deallocate buffers and redistribute particles
+    do q = 1, nproc_group
+      rnk = proc_group(q)
+      if ((mpi_rank .eq. rnk)) then
+        call deallocateFieldBackups()
+
+        if (leftmost) then
+          ! INJECT particles
+          call shiftParticlesX(INJECT)
+        end if
+
+        ! backup particles
+        call backupParticles()
+
+        ! reshuffle particle tiles
+        call reallocateParticles(this_meshblock%ptr)
+        ! restore particles from backup
+        call restoreParticlesFromBackup()
+        call deallocateParticleBackup()
+
+      end if
+    end do
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+    ! put particles back on proper meshblocks
+    call redistributeParticlesBetweenMeshblocks()
+    call clearGhostParticles()
+
+    call printDiag("reshapeGlobalInX()", 3)
+
+    global_mesh%sx = global_mesh%sx + INJECT
+
+  end subroutine reshapeGlobalInX
 
   subroutine reshapeInX(left_group, right_group, SHIFT)
     integer, allocatable, intent(in)    :: left_group(:), right_group(:)
