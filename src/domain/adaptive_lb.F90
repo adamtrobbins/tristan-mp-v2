@@ -289,12 +289,6 @@ contains
       end do
     end if
 
-    if (leftmost) then
-      call shiftParticlesX(-INJECT)
-    else
-      call shiftParticlesX(INJECT)
-    end if
-
     ! reallocate field arrays given the new meshblock dimensions
     do q = 1, nproc_group
       rnk = proc_group(q)
