@@ -237,6 +237,47 @@ contains
     call printDiag("metaRedistInZ()", 2)
   end subroutine metaRedistInZ
 
+  subroutine reshapeGlobalInX(proc_group, SHIFT)
+    integer, allocatable, intent(in)    :: proc_group(:)
+    integer, intent(in)                 :: SHIFT
+    integer                             :: nproc_group, q, rnk
+    logical                             :: leftmost, rightmost
+
+
+    nproc_group = size(proc_group)
+
+    leftmost =
+    rightmost =
+    do q = 1, nproc_group
+
+      rnk = proc_group(q)
+
+    end do
+
+    ! backup the fields with current sizes
+    do q = 1, nproc_group
+      rnk = proc_group(q)
+      if (mpi_rank .eq. rnk) then
+        call backupEBfields()
+      end if
+    end do
+
+    ! get new meshblock dimensions
+    new_meshblocks(:) = meshblocks(:)
+    call reassignNeighborsForAll(new_meshblocks)
+    do q = 1, nproc_group
+      rnk = proc_group(q)
+      new_meshblocks(rnk + 1)%sx = new_meshblocks(rnk + 1)%sx + SHIFT
+
+
+
+      new_meshblocks(right_rnk + 1)%sx = new_meshblocks(right_rnk + 1)%sx - SHIFT
+      new_meshblocks(right_rnk + 1)%x0 = new_meshblocks(right_rnk + 1)%x0 + SHIFT
+    end do
+
+  end subroutine reshapeGlobalInX
+
+
   subroutine reshapeInX(left_group, right_group, SHIFT)
     integer, allocatable, intent(in)    :: left_group(:), right_group(:)
     integer, intent(in)                 :: SHIFT
