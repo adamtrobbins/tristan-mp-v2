@@ -25,7 +25,7 @@ module m_userfile
   real, private     :: inj_mult
   real, private     :: shell_width, prtl_kick, rmin_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
-  real, private     :: sigGJ_limiter
+  real, private     :: sigGJ_limiter, edotb_thr_closed
   #ifdef GCA
     real, private     :: psr_gca_enforce_rad
   #endif
@@ -53,6 +53,7 @@ contains
 
     call getInput('problem', 'inj_mult', inj_mult, 1.0)
     call getInput('problem', 'sigGJ_limiter', sigGJ_limiter, 0.1)
+    call getInput('problem', 'edotb_thr_closed', edotb_thr_closed, 0.002)
 
     call getInput('problem', 'cooling_on', cooling_on, 0.0)
 
@@ -72,7 +73,7 @@ contains
     gammac_dummy = 0.5 * eph_at_LC**(-0.5) * psr_bstar**1.5 * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**(3.5)
 
     rmin_dr = 1.0
-    shell_width = 2.0
+    call getInput('problem', 'shell_width', shell_width, 2.0)
     inj_dr = 1.0
 
     xc_g = 0.5 * global_mesh%sx
@@ -363,7 +364,7 @@ contains
           call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
           call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
           dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
-          if (dummy_ .gt. 0.01) then
+          if (dummy_ .gt. edotb_thr_closed) then
             weight = dummy_ * nGJ / ppc
             call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
             call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
