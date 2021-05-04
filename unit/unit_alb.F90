@@ -15,7 +15,8 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  integer, private :: shift
+  real, private :: sph_radius
+  real, private :: fly_x, fly_y, fly_z, velocity
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -25,7 +26,8 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    shift = 5
+    call getInput("problem", "radius", sph_radius, 5.0)
+    velocity = 2.0
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -34,10 +36,10 @@ contains
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     real, intent(in), optional  :: dummy1, dummy2, dummy3
     real :: r
-    if (present(x_glob) .and. present(y_glob) .and.&
-      & present(dummy1) .and. present(dummy2)) then
-      r = sqrt((x_glob - dummy1)**2 + (y_glob - dummy2)**2)
-      if (r .lt. 10.0) then
+    if (present(x_glob) .and. present(y_glob) .and. present(z_glob) .and.&
+      & present(dummy1) .and. present(dummy2) .and. present(dummy3)) then
+      r = sqrt((x_glob - dummy1)**2 + (y_glob - dummy2)**2 + (z_glob - dummy3)**2)
+      if (r .lt. sph_radius) then
         userSpatialDistribution = 1.0
       else
         userSpatialDistribution = 0.0
@@ -82,9 +84,11 @@ contains
     #endif
 
     inds(1) = 1; inds(2) = 2
-    call fillRegionWithThermalPlasma(back_region, inds, 2, ppc0, 1e-5, &
+    call fillRegionWithThermalPlasma(back_region, inds, 2, ppc0, 0.0, &
                                    & spat_distr_ptr = spat_distr_ptr,&
-                                   & dummy1 = 0.5 * REAL(global_mesh%sx), dummy2 = 0.5 * REAL(global_mesh%sy))
+                                   & dummy1 = 0.5 * REAL(global_mesh%sx),&
+                                   & dummy2 = 0.5 * REAL(global_mesh%sy),&
+                                   & dummy3 = 0.5 * REAL(global_mesh%sz))
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -95,17 +99,6 @@ contains
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
     ! ... dummy loop ...
-    do i = 0, this_meshblock%ptr%sx - 1
-      i_glob = i + this_meshblock%ptr%x0
-      do j = 0, this_meshblock%ptr%sy - 1
-        j_glob = j + this_meshblock%ptr%y0
-        do k = 0, this_meshblock%ptr%sz - 1
-          k_glob = k + this_meshblock%ptr%z0
-          ez(i,j,k) = j_glob
-          by(i,j,k) = j_glob**2
-        end do
-      end do
-    end do
   end subroutine userInitFields
   !............................................................!
 
@@ -120,28 +113,32 @@ contains
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
-    integer :: nprt, ierr
-    type(enroute_array)   :: recv_enroute_temp
-
-    ! ... dummy loop ...
     integer :: s, ti, tj, tk, p
-    do s = 1, nspec
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              species(s)%prtl_tile(ti, tj, tk)%xi(p) = species(s)%prtl_tile(ti, tj, tk)%xi(p) - INT(1, 2)
-              species(s)%prtl_tile(ti, tj, tk)%yi(p) = species(s)%prtl_tile(ti, tj, tk)%yi(p) - INT(1, 2)
+    if (step .eq. 0) then
+      fly_x = 0.5; fly_y = 0.0; fly_z = 0.87
+    else if (step .eq. 100) then
+      fly_x = 0.87; fly_y = 0.5; fly_z = 0.0
+    else if (step .eq. 200) then
+      fly_x = 0.25; fly_y = 0.76; fly_z = 0.6
+    else if (step .ge. 300) then
+      fly_x = 0.0; fly_y = 0.0; fly_z = 0.0
+    end if
+
+    if ((step .le. 400) .and. modulo(step, 100) .eq. 0) then
+      do s = 1, nspec
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                species(s)%prtl_tile(ti, tj, tk)%u(p) = fly_x * velocity
+                species(s)%prtl_tile(ti, tj, tk)%v(p) = fly_y * velocity
+                species(s)%prtl_tile(ti, tj, tk)%w(p) = fly_z * velocity
+              end do
             end do
           end do
         end do
       end do
-    end do
-
-    ! this is necessary because we move over a cell
-    call redistributeParticlesBetweenMeshblocks()
-    call clearGhostParticles()
-    call checkEverything()
+    end if
   end subroutine userDriveParticles
 
   subroutine userExternalFields(xp, yp, zp,&
@@ -193,19 +190,6 @@ contains
       updateB_ = .true.
     end if
 
-    ! if ((modulo(step, 15) .eq. 0) .and. (step .gt. 0) .and. updateE .and. updateB) then
-    !   ! just to make sure this is done once at the very beginning of the timestep
-    !   shift = -shift
-    !
-    !   allocate(left_group(4))
-    !   allocate(right_group(4))
-    !   left_group = (/0, 4/)
-    !   right_group = (/1, 5/)
-    !
-    !   call reshapeInX(left_group, right_group, shift)
-    !
-    !   call checkEverything()
-    ! end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
