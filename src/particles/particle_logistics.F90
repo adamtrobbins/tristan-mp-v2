@@ -883,9 +883,10 @@ contains
   subroutine reallocateParticles(meshblock)
     implicit none
     type(mesh), intent(in)      :: meshblock
-    integer                     :: s, ti, tj, tk
+    integer                     :: s, p, ti, tj, tk, ti_, tj_, tk_
     character(len=STR_MAX)      :: var_name
-    integer                     :: maxptl_
+    integer(kind=8)             :: maxptl_
+    integer, dimension (:,:,:), allocatable :: maxptl_tmpar
 
     call deallocateParticles()
 
@@ -897,15 +898,61 @@ contains
                                   & species(s)%tile_ny,&
                                   & species(s)%tile_nz))
 
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            call createEmptyTile(s, ti, tj, tk, maxptl_array(s), meshblock)
+      if(resize_tiles) then
+
+        allocate(maxptl_tmpar(1:species(s)%tile_nx,1:species(s)%tile_ny,1:species(s)%tile_nz))
+
+        maxptl_tmpar = 0
+
+        do p = 1, prtl_backup(s)%cnt
+          ti_ = 1; tj_ = 1; tk_ = 1
+          #if defined(oneD) || defined (twoD) || defined (threeD)
+            ti_ = FLOOR(REAL(prtl_backup(s)%enroute(p)%xi) / REAL(species(s)%tile_sx)) + 1
+          #endif
+          #if defined (twoD) || defined (threeD)
+            tj_ = FLOOR(REAL(prtl_backup(s)%enroute(p)%yi) / REAL(species(s)%tile_sy)) + 1
+          #endif
+          #if defined (threeD)
+            tk_ = FLOOR(REAL(prtl_backup(s)%enroute(p)%zi) / REAL(species(s)%tile_sz)) + 1
+          #endif
+          ti_ = MIN(MAX(ti_, 1), species(s)%tile_nx)
+          tj_ = MIN(MAX(tj_, 1), species(s)%tile_ny)
+          tk_ = MIN(MAX(tk_, 1), species(s)%tile_nz)
+          maxptl_tmpar(ti_, tj_, tk_) = maxptl_tmpar(ti_, tj_, tk_) + 1
+        end do
+
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+
+              maxptl_ = max(maxptl_tmpar(ti, tj, tk), min_tile_nprt)
+              maxptl_ = maxptl_ * (species(s)%tile_nx * species(s)%tile_ny * species(s)%tile_nz)
+
+              call createEmptyTile(s, ti, tj, tk, maxptl_, meshblock)
+
+            end do
           end do
         end do
-      end do
+
+        deallocate(maxptl_tmpar)
+
+      else
+
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+
+              call createEmptyTile(s, ti, tj, tk, maxptl_array(s), meshblock)
+
+            end do
+          end do
+        end do
+
+      end if
+
       species(s)%cntr_sp = 0
     end do
+
 
     call reallocateEnrouteArray(meshblock)
   end subroutine reallocateParticles

@@ -194,19 +194,27 @@ contains
               !dir$ vector aligned
               #endif
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                #ifdef oneD
-                  lind = pt_xi(p)
-                #elif twoD
-                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
-                #elif threeD
-                  lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
+                #ifndef DEBUG
+                  ! use "fast" interpolation
+                  #ifdef oneD
+                    lind = pt_xi(p)
+                  #elif twoD
+                    lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
+                  #elif threeD
+                    lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
+                  #endif
+                  dx = pt_dx(p); dy = pt_dy(p); dz = pt_dz(p)
+                  ! these "functions" take
+                  ! ... coordinates and linear index: `dx`, `dy`, `dz` and `lind` ...
+                  ! ... and "return" `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0`
+                  include "interp_efield.F"
+                  include "interp_bfield.F"
+                #else
+                  call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                                     & ex, ey, ez, ex0, ey0, ez0)
+                  call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
+                                     & bx, by, bz, bx0, by0, bz0)
                 #endif
-                dx = pt_dx(p); dy = pt_dy(p); dz = pt_dz(p)
-                ! these "functions" take
-                ! ... coordinates and linear index: `dx`, `dy`, `dz` and `lind` ...
-                ! ... and "return" `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0`
-                include "interp_efield.F"
-                include "interp_bfield.F"
 
                 #if defined (EXTERNALFIELDS) && !defined (GCA)
                   call userExternalFields(REAL(pt_xi(p)) + pt_dx(p),&

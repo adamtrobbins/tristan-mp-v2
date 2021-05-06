@@ -538,7 +538,7 @@ contains
       deallocate(dt_dwnstep)
     #endif
 
-    #ifdef DOWNSAMPLING
+    #ifdef ALB
       deallocate(dt_albstep)
     #endif
 
