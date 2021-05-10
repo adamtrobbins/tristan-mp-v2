@@ -2,7 +2,7 @@
 
 ! Configuration for this userfile:
 ! ```
-!   $ python configure.py -3d --user=user_psr -slb --gca=2 --radiation=sync -debug -absorb
+!   $ python configure.py -3d --user=user_psr_simple -slb --gca=2 --radiation=sync -absorb
 ! ```
 
 module m_userfile
@@ -35,7 +35,7 @@ module m_userfile
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution, getEparAt, randomPointInSphericalShell, distance3D_sq
+  private :: userSpatialDistribution, randomPointInSphericalShell, distance3D_sq
   !...............................................................!
 contains
   !--- initialization -----------------------------------------!
@@ -49,10 +49,10 @@ contains
     call getInput('problem', 'psr_period', psr_period)
     psr_omega = 2.0 * M_PI / psr_period
     call getInput('problem', 'psr_bstar', psr_bstar)
-    call getInput('problem', 'prtl_kick', prtl_kick)
+    call getInput('problem', 'prtl_kick', prtl_kick, 0.0)
 
     call getInput('problem', 'inj_mult', inj_mult, 1.0)
-    call getInput('problem', 'sigGJ_limiter', sigGJ_limiter, 0.1)
+    call getInput('problem', 'sigGJ_limiter', sigGJ_limiter, 1000.0)
     call getInput('problem', 'edotb_thr_closed', edotb_thr_closed, 0.002)
 
     call getInput('problem', 'cooling_on', cooling_on, 0.0)
@@ -64,17 +64,19 @@ contains
     psr_rlc = CC / psr_omega
     omegaB0 = sqrt(sigma) * CC / c_omp
 
-    ! gamma_rad / sigma_LC for the field near LC
-    call getInput('problem', 'grad_sigma_LC', gammarad_over_sigma_LC, 0.5)
-    gammarad_dummy = 0.5 * gammarad_over_sigma_LC * (omegaB0 * psr_radius / CC) * sqrt(psr_radius / psr_rlc) * psr_bstar
+    #ifdef RADIATION
+      ! gamma_rad / sigma_LC for the field near LC
+      call getInput('problem', 'grad_sigma_LC', gammarad_over_sigma_LC, 0.5)
+      gammarad_dummy = 0.5 * gammarad_over_sigma_LC * (omegaB0 * psr_radius / CC) * sqrt(psr_radius / psr_rlc) * psr_bstar
 
-    ! energy of the photon (in me c^2) radiated in the field of LC by a particle with gamma ~ sigmaLC
-    call getInput('problem', 'eph_at_LC', eph_at_LC, 100.0)
-    gammac_dummy = 0.5 * eph_at_LC**(-0.5) * psr_bstar**1.5 * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**(3.5)
+      ! energy of the photon (in me c^2) radiated in the field of LC by a particle with gamma ~ sigmaLC
+      call getInput('problem', 'eph_at_LC', eph_at_LC, 100.0)
+      gammac_dummy = 0.5 * eph_at_LC**(-0.5) * psr_bstar**1.5 * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**(3.5)
+    #endif
 
-    rmin_dr = 1.0
+    call getInput('problem', 'rmin_dr', rmin_dr, 1.0)
     call getInput('problem', 'shell_width', shell_width, 2.0)
-    inj_dr = 1.0
+    call getInput('problem', 'inj_dr', inj_dr, 1.0)
 
     xc_g = 0.5 * global_mesh%sx
     yc_g = 0.5 * global_mesh%sy
@@ -113,10 +115,11 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-
-    ! redefine `gamma_syn`, `emit_gamma_syn`
-    cool_gamma_syn = gammarad_dummy
-    emit_gamma_syn = gammac_dummy
+    #ifdef RADIATION
+      ! redefine `gamma_syn`, `emit_gamma_syn`
+      cool_gamma_syn = gammarad_dummy
+      emit_gamma_syn = gammac_dummy
+    #endif
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -206,6 +209,186 @@ contains
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
+  !subroutine userParticleBoundaryConditions(step)
+    !implicit none
+    !integer, optional, intent(in) :: step
+    !integer                       :: s, ti, tj, tk, p
+    !real                          :: x_g, y_g, z_g, r_g
+    !integer                       :: n_part, n, sign
+    !real                          :: x_loc, y_loc, z_loc, dx, dy, dz
+    !integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
+    !real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig, rmax, rmin
+    !real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
+    !real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma, rmax_sph, smax_car
+    !real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
+    !real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase, dummy_
+    !logical                       :: dummy_flag
+    !#ifdef GCA
+      !real                          :: vE_x, vE_y, vE_z
+      !real                          :: e0_SQR, b0_SQR
+    !#endif
+
+    !phase = step * psr_omega
+    !mu_x = sin(psr_angle) * cos(phase)
+    !mu_y = sin(psr_angle) * sin(phase)
+    !mu_z = cos(psr_angle)
+
+    !#ifdef RADIATION
+      !! disable cooling until certain point
+      !if (step .lt. cooling_on * psr_period) then
+        !species(1)%cool_sp = .false.
+        !species(2)%cool_sp = .false.
+      !else
+        !species(1)%cool_sp = .true.
+        !species(2)%cool_sp = .true.
+      !end if
+    !#endif
+
+    !nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
+
+    !ppc = 0.5 * ppc0
+    !if (sigGJ_limiter .ne. 0) then
+      !! compute number density and write to `lg_arr`
+      !call computeDensity(1, reset=.true., ds=0, charge=.false.)
+      !call computeDensity(2, reset=.false., ds=0, charge=.false.)
+    !end if
+    !n_part = INT(2.0 * (4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
+    !do n = 1, n_part
+      !call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
+      !rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+      !nx = x_glob / rr
+      !ny = y_glob / rr
+      !nz = z_glob / rr
+
+      !mu_dot_n = mu_x * nx + mu_y * ny + mu_z * nz
+
+      !x_glob = x_glob + xc_g
+      !y_glob = y_glob + yc_g
+      !z_glob = z_glob + zc_g
+      !call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+      !! if particle is within the current MPI meshblock
+      !if (dummy_flag) then
+        !call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+        !! limiter on sigma
+        !dummy_flag = .true.
+        !if (sigGJ_limiter .ne. 0) then
+          !density = lg_arr(xi, yi, zi)
+          !b_sqr = bx(xi, yi, zi)**2 + by(xi, yi, zi)**2 + bz(xi, yi, zi)**2
+          !if (density .gt. 0) then
+            !sig = b_sqr * sigma * ppc0 / density
+          !else
+            !sig = sigma
+          !end if
+          !dummy_flag = (sig .gt. sigGJ_limiter * (psr_radius / rr)**3)
+        !end if ! sigma limiter enabled
+        !if (dummy_flag) then
+          !! initialize at rest
+          !call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+          !call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+          !b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
+          !sign = 1
+          !if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
+            !sign = -1
+            !bx0 = -bx0; by0 = -by0; bz0 = -bz0
+          !end if
+          !nx = bx0 / b_sqr
+          !ny = by0 / b_sqr
+          !nz = bz0 / b_sqr
+          !dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
+          !if (dummy_ .gt. edotb_thr_closed) then
+            !weight = inj_mult * dummy_ * nGJ / ppc
+            !if (prtl_kick .eq. 0) then
+              !call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+              !call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+            !else
+              !#ifndef GCA
+                !u_ = nx * prtl_kick
+                !v_ = ny * prtl_kick
+                !w_ = nz * prtl_kick
+                !call createParticle(1, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+                !call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
+              !#else
+                !! kick along ExB:
+                !ex0 = ex(xi, yi, zi); ey0 = ey(xi, yi, zi); ez0 = ez(xi, yi, zi)
+                !bx0 = bx(xi, yi, zi); by0 = by(xi, yi, zi); bz0 = bz(xi, yi, zi)
+                !b0_SQR = bx0**2 + by0**2 + bz0**2
+                !e0_SQR = ex0**2 + ey0**2 + ez0**2
+
+                !dummy_ = 1.0 / (b0_SQR + TINYFLD)
+
+                !vE_x = (bz0 * ey0 - by0 * ez0) * dummy_
+                !vE_y = (-bz0 * ex0 + bx0 * ez0) * dummy_
+                !vE_z = (by0 * ex0 - bx0 * ey0) * dummy_
+
+                !dummy_ = 1.0 / sqrt(abs(1.0 - vE_x**2 - vE_y**2 - vE_z**2) + TINYFLD)
+
+                !u_ = vE_x * dummy_
+                !v_ = vE_y * dummy_
+                !w_ = vE_z * dummy_
+
+                !dummy_ = sqrt(prtl_kick**2 - 1.0)
+
+                !u_ = u_ + nx * dummy_
+                !v_ = v_ + ny * dummy_
+                !w_ = w_ + nz * dummy_
+
+                !call createParticleFromAttributes(1, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                  !& xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                  !& dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                  !& u=u_, v=v_, w=w_,&
+                                                  !& u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
+                                                  !& ind=species(1)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+                !species(1)%cntr_sp = species(1)%cntr_sp + 1
+                !call createParticleFromAttributes(2, xi=xi, yi=yi, zi=zi, dx=dx, dy=dy, dz=dz,&
+                                                  !& xi_past=xi, yi_past=yi, zi_past=zi,&
+                                                  !& dx_past=dx, dy_past=dy, dz_past=dz,&
+                                                  !& u=u_, v=v_, w=w_,&
+                                                  !& u_eff=u_, v_eff=v_, w_eff=w_, u_par=sign*dummy_, u_perp=0.0,&
+                                                  !& ind=species(2)%cntr_sp, proc=mpi_rank + 2 * mpi_size, weight=weight)
+                !species(2)%cntr_sp = species(2)%cntr_sp + 1
+              !#endif
+            !end if
+          !end if ! E.B limiter
+        !end if ! SIGMA limiter
+      !end if ! current MPI block
+    !end do
+  
+    !! max radius for spherical absorption and absorbing layer size in cartesian absorption
+    !rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
+    !smax_car = ds_abs / 4.0
+    !! remove particles falling into the star
+    !do s = 1, nspec
+      !do ti = 1, species(s)%tile_nx
+        !do tj = 1, species(s)%tile_ny
+          !do tk = 1, species(s)%tile_nz
+            !do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              !x_g = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                  !& + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+              !y_g = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(p) + this_meshblock%ptr%y0)&
+                  !& + species(s)%prtl_tile(ti, tj, tk)%dy(p)
+              !z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
+                  !& + species(s)%prtl_tile(ti, tj, tk)%dz(p)
+              !r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
+              !if (&
+                !& (r_g .lt. (psr_radius - rmin_dr)) .or.&
+                !& ((boundary_x .eq. 2) .and. (r_g .gt. rmax_sph)) .or.&
+                !& ((boundary_x .eq. 0) .and. ((x_g .lt. smax_car) .or.&
+                                            !& (x_g .gt. global_mesh%sx - smax_car) .or.&
+                                            !& (y_g .lt. smax_car) .or.&
+                                            !& (y_g .gt. global_mesh%sy - smax_car) .or.&
+                                            !& (z_g .lt. smax_car) .or.&
+                                            !& (z_g .gt. global_mesh%sz - smax_car))&
+                  !& )&
+                !& ) then
+                !species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+              !end if
+            !end do
+          !end do
+        !end do
+      !end do
+    !end do
+  !end subroutine userParticleBoundaryConditions
+
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
@@ -218,10 +401,10 @@ contains
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
     real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma, rmax_sph, smax_car
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
-    real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase
+    real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase, dummy_
     logical                       :: dummy_flag
     #ifdef GCA
-      real                          :: dummy_, vE_x, vE_y, vE_z
+      real                          :: vE_x, vE_y, vE_z
       real                          :: e0_SQR, b0_SQR
     #endif
 
@@ -230,17 +413,18 @@ contains
     mu_y = sin(psr_angle) * sin(phase)
     mu_z = cos(psr_angle)
 
-    ! disable cooling until certain point
-    if (step .lt. cooling_on * psr_period) then
-      species(1)%cool_sp = .false.
-      species(2)%cool_sp = .false.
-    else
-      species(1)%cool_sp = .true.
-      species(2)%cool_sp = .true.
-    end if
+    #ifdef RADIATION
+      ! disable cooling until certain point
+      if (step .lt. cooling_on * psr_period) then
+        species(1)%cool_sp = .false.
+        species(2)%cool_sp = .false.
+      else
+        species(1)%cool_sp = .true.
+        species(2)%cool_sp = .true.
+      end if
+    #endif
 
     nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
-    sigma_nGJ = sigma * (ppc0 / nGJ) * (psr_bstar)
 
     ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     ppc = 0.5 * ppc0
@@ -274,21 +458,20 @@ contains
           dummy_flag = .true.
 
           ! limiter on sigma
-          if ((sigGJ_limiter .ne. 0) .and. dummy_flag) then
-            call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+          if (sigGJ_limiter .ne. 0) then
             density = lg_arr(xi, yi, zi)
-            b_sqr = bx0**2 + by0**2 + bz0**2
+            b_sqr = bx(xi, yi, zi)**2 + by(xi, yi, zi)**2 + bz(xi, yi, zi)**2
             if (density .gt. 0) then
               sig = b_sqr * sigma * ppc0 / density
             else
               sig = sigma
             end if
-            dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter)
+            dummy_flag = (sig .gt. sigGJ_limiter * (psr_radius / rr)**3)
           end if
 
           if (dummy_flag) then
             ! kick along local b-field:
-            call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+            bx0 = bx(xi, yi, zi); by0 = by(xi, yi, zi); bz0 = bz(xi, yi, zi)
             b_sqr = sqrt(bx0**2 + by0**2 + bz0**2)
             sign = 1
             if (bx0 * nx + by0 * ny + bz0 * nz .lt. 0) then
@@ -309,8 +492,8 @@ contains
               call createParticle(2, xi, yi, zi, dx, dy, dz, u_, v_, w_, weight=weight)
             #else
               ! kick along ExB:
-              call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-              call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+              ex0 = ex(xi, yi, zi); ey0 = ey(xi, yi, zi); ez0 = ez(xi, yi, zi)
+              bx0 = bx(xi, yi, zi); by0 = by(xi, yi, zi); bz0 = bz(xi, yi, zi)
               b0_SQR = bx0**2 + by0**2 + bz0**2
               e0_SQR = ex0**2 + ey0**2 + ez0**2
 
@@ -375,7 +558,7 @@ contains
   
     ! max radius for spherical absorption and absorbing layer size in cartesian absorption
     rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
-    smax_car = ds_abs - 4.0
+    smax_car = ds_abs / 4.0
     ! remove particles falling into the star
     do s = 1, nspec
       do ti = 1, species(s)%tile_nx
@@ -408,6 +591,88 @@ contains
       end do
     end do
   end subroutine userParticleBoundaryConditions
+  
+  !subroutine userParticleBoundaryConditions(step)
+    !implicit none
+    !integer, optional, intent(in) :: step
+    !integer                       :: s, ti, tj, tk, p
+    !real                          :: x_g, y_g, z_g, r_g
+    !integer                       :: n_part, n, sign
+    !real                          :: x_loc, y_loc, z_loc, dx, dy, dz
+    !integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
+    !real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig, rmax, rmin
+    !real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
+    !real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma, rmax_sph, smax_car
+    !real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
+    !real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase
+    !logical                       :: dummy_flag
+    !real                          :: dummy_
+
+    !phase = step * psr_omega
+    !mu_x = sin(psr_angle) * cos(phase)
+    !mu_y = sin(psr_angle) * sin(phase)
+    !mu_z = cos(psr_angle)
+    !nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
+
+    !! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    !ppc = 0.5 * ppc0
+    !n_part = INT(2.0 * (4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
+    !do n = 1, n_part
+      !call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
+      !x_glob = x_glob + xc_g
+      !y_glob = y_glob + yc_g
+      !z_glob = z_glob + zc_g
+      !call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+      !! if particle is within the current MPI meshblock
+      !if (dummy_flag) then
+        !call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+        !! initialize at rest
+        !call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+        !call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+        !dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
+        !if (dummy_ .gt. edotb_thr_closed) then
+          !weight = dummy_ * nGJ / ppc
+          !call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+          !call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+        !end if ! E.B limiter
+      !end if ! current MPI block
+    !end do
+  
+    !! max radius for spherical absorption and absorbing layer size in cartesian absorption
+    !rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
+    !smax_car = ds_abs / 4.0
+    !! remove particles falling into the star
+    !do s = 1, nspec
+      !do ti = 1, species(s)%tile_nx
+        !do tj = 1, species(s)%tile_ny
+          !do tk = 1, species(s)%tile_nz
+            !do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              !x_g = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                  !& + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+              !y_g = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(p) + this_meshblock%ptr%y0)&
+                  !& + species(s)%prtl_tile(ti, tj, tk)%dy(p)
+              !z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
+                  !& + species(s)%prtl_tile(ti, tj, tk)%dz(p)
+              !r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
+              !if (&
+                !& (r_g .lt. (psr_radius - rmin_dr)) .or.&
+                !& ((boundary_x .eq. 2) .and. (r_g .gt. rmax_sph)) .or.&
+                !& ((boundary_x .eq. 0) .and. ((x_g .lt. smax_car) .or.&
+                                            !& (x_g .gt. global_mesh%sx - smax_car) .or.&
+                                            !& (y_g .lt. smax_car) .or.&
+                                            !& (y_g .gt. global_mesh%sy - smax_car) .or.&
+                                            !& (z_g .lt. smax_car) .or.&
+                                            !& (z_g .gt. global_mesh%sz - smax_car))&
+                  !& )&
+                !& ) then
+                !species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+              !end if
+            !end do
+          !end do
+        !end do
+      !end do
+    !end do
+  !end subroutine userParticleBoundaryConditions
 
   subroutine randomPointInSphericalShell(rmin, rmax, x, y, z)
     implicit none
@@ -424,31 +689,6 @@ contains
     y = Y0 * R
     z = Z0 * R
   end subroutine randomPointInSphericalShell
-
-  subroutine getEparAt(E_dot_B, B_sqr, x0, y0, z0, contained_flag)
-    implicit none
-    real, intent(out)     :: E_dot_B, B_sqr
-    real, intent(in)      :: x0, y0, z0
-    logical, intent(out)  :: contained_flag
-    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
-    integer(kind=2)       :: xi, yi, zi
-    real                  :: ex0, ey0, ez0, bx0, by0, bz0
-    real                  :: nx, ny, nz, rr
-    nx = x0 - xc_g
-    ny = y0 - yc_g
-    nz = z0 - zc_g
-    rr = sqrt(nx**2 + ny**2 + nz**2)
-    nx = nx / rr; ny = ny / rr; nz = nz / rr
-    call globalToLocalCoords(x0, y0, z0, x_loc, y_loc, z_loc, containedQ=contained_flag)
-    if (contained_flag) then
-      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-      ! interpolate fields on particle position + dr
-      call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-      call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-      B_sqr = bx0**2 + by0**2 + bz0**2
-      E_dot_B = (ex0 * bx0 + ey0 * by0 + ez0 * bz0)
-    end if
-  end subroutine getEparAt
 
   real function distance3D_sq(xA, yA, zA, xB, yB, zB)
     real, intent(in) :: xA, yA, zA, xB, yB, zB
@@ -738,12 +978,11 @@ contains
     ny = y_g - yc_g
     nz = z_g - zc_g
 
-    rr = sqrt(nx**2 + ny**2 + nz**2)
-    nx = nx / rr
-    ny = ny / rr
-    nz = nz / rr
-
-    rr = 1.0 / rr**3
+    rr = 1.0 / sqrt(nx**2 + ny**2 + nz**2)
+    nx = nx * rr
+    ny = ny * rr
+    nz = nz * rr
+    rr = rr**3
 
     mux = psr_radius**3 * sin(psr_angle) * cos(phase + offset)
     muy = psr_radius**3 * sin(psr_angle) * sin(phase + offset)
@@ -775,14 +1014,11 @@ contains
     real                          :: dr, x_glob, y_glob, z_glob, r_glob, fr_factor
     real                          :: dummy_x, dummy_y, dummy_z, dummy1, dummy2
     real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
-    real, allocatable             :: sum_jE_f(:), sum_jE_f_global(:)
     integer                       :: ri, rnum = 50, i, j, k, ierr
 
     allocate(r_bins(rnum))
     allocate(sum_ExBr_f(rnum), sum_f(rnum))
     allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
-    allocate(sum_jE_f_global(rnum), sum_jE_f(rnum))
-    sum_jE_f(:) = 0.0
     sum_ExBr_f(:) = 0.0
     sum_f(:) = 0.0
 
@@ -806,15 +1042,12 @@ contains
             dummy1 = (dummy_x * (x_glob - xc_g) +&
                    & dummy_y * (y_glob - yc_g) +&
                    & dummy_z * (z_glob - zc_g)) / r_glob
-            dummy2 = jx(i, j, k) * ex(i,j,k) + jy(i,j,k) * ey(i,j,k) + jz(i,j,k) * ez(i,j,k)
           else
             dummy1 = 0.0
-            dummy2 = 0.0
           end if
           do ri = 1, rnum
             fr_factor = exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
             sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor 
-            sum_jE_f(ri) = sum_jE_f(ri) + dummy2 * fr_factor
             sum_f(ri) = sum_f(ri) + fr_factor
           end do
         end do
@@ -822,20 +1055,14 @@ contains
     end do
 
     call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(sum_jE_f, sum_jE_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
     call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. root_rank) then
       ! normalizations
-      sum_jE_f_global(:) = sum_jE_f_global(:) * r_bins(:)**2 * B_norm**2 / sum_f_global(:)
-      do ri = 2, rnum
-        sum_jE_f_global(ri) = sum_jE_f_global(ri) + sum_jE_f_global(ri - 1)
-      end do
       sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
       call writeUsrOutputTimestep(step)
       call writeUsrOutputArray('r_bins', r_bins)
       call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
-      call writeUsrOutputArray('j.E_vol', sum_jE_f_global)
       call writeUsrOutputEnd()
     end if
   end subroutine userOutput

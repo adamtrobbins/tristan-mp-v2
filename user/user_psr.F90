@@ -7,6 +7,7 @@
 
 module m_userfile
   use m_globalnamespace
+  use m_qednamespace
   use m_aux
   use m_readinput
   use m_domain
@@ -19,100 +20,67 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  integer, private  :: fld_geometry, inj_method, e_par_method
-  real, private     :: xc_g, yc_g, zc_g, psr_spinupT, psr_bstar, cooling_on
-  real, private     :: psr_angle, psr_period, psr_omega, psr_omega0, psr_radius
-  real, private     :: inj_mult, e_thr
-  real, private     :: shell_width, prtl_kick, rmin_dr, e_dr
+  real, private     :: xc_g, yc_g, zc_g, psr_bstar, cooling_on
+  real, private     :: psr_angle, psr_period, psr_omega, psr_radius
+  real, private     :: inj_mult
+  real, private     :: shell_width, prtl_kick, rmin_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
-  real, private     :: nGJ_limiter, sigGJ_limiter, jdotb_limiter
-  real, private     :: fakepp_density, fakepp_height, fakepp_ppc, fakepp_rmin
-  integer, private  :: fakepp_timestep
+  real, private     :: sigGJ_limiter, edotb_thr_closed
   #ifdef GCA
     real, private     :: psr_gca_enforce_rad
   #endif
+
+  real, private     :: gammarad_over_sigma_LC, gammarad_dummy
+  real, private     :: eph_at_LC, gammac_dummy
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution, getEparAt, randomPointInSphericalShell,&
-           & getDeltaErAt
+  private :: userSpatialDistribution, getEparAt, randomPointInSphericalShell, distance3D_sq
   !...............................................................!
 contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    ! B-field geometry: 1 = monopole, 2 = dipole
-    call getInput('problem', 'fld_geometry', fld_geometry)
+    real :: omegaB0, psr_rlc
+
     call getInput('problem', 'psr_radius', psr_radius)
     call getInput('problem', 'psr_angle', psr_angle)
+    psr_angle = psr_angle * M_PI / 180.0
     call getInput('problem', 'psr_period', psr_period)
-    call getInput('problem', 'psr_spinupT', psr_spinupT, 0.0)
-    call getInput('problem', 'psr_bstar', psr_bstar, 1.0)
+    psr_omega = 2.0 * M_PI / psr_period
+    call getInput('problem', 'psr_bstar', psr_bstar)
+    call getInput('problem', 'prtl_kick', prtl_kick)
 
-    ! remove particles which fall below `radius - rmin_dr`
-    call getInput('problem', 'rmin_dr', rmin_dr)
-
-    ! injection method:
-    !     0 = no injection at all
-    !     1 = inject with 0 velocity in the shell with weight ~ E.B
-    !     2 = inject with a kick and constant weight
-    call getInput('problem', 'inj_method', inj_method)
-    call getInput('problem', 'inj_shell', shell_width)
-
-    ! for method #1/#2
-    if (inj_method .ge. 1) then
-      ! probe slightl above the injection point
-      call getInput('problem', 'e_dr', e_dr)
-      ! inject slightly above the star
-      call getInput('problem', 'inj_dr', inj_dr)
-      call getInput('problem', 'inj_mult', inj_mult)
-
-      call getInput('problem', 'nGJ_limiter', nGJ_limiter)
-    end if
-
-    ! for method #1
-    if (inj_method .eq. 1) then
-      call getInput('problem', 'e_thr', e_thr)
-      call getInput('problem', 'e_par_method', e_par_method)
-    end if
-
-    ! for method #2
-    if (inj_method .eq. 2) then
-      call getInput('problem', 'sigGJ_limiter', sigGJ_limiter)
-      call getInput('problem', 'jdotb_limiter', jdotb_limiter)
-      call getInput('problem', 'prtl_kick', prtl_kick)
-    end if
+    call getInput('problem', 'inj_mult', inj_mult, 1.0)
+    call getInput('problem', 'sigGJ_limiter', sigGJ_limiter, 0.1)
+    call getInput('problem', 'edotb_thr_closed', edotb_thr_closed, 0.002)
 
     call getInput('problem', 'cooling_on', cooling_on, 0.0)
-
-    call getInput('problem', 'fakepp_density', fakepp_density, 0.0)
-    call getInput('problem', 'fakepp_timestep', fakepp_timestep, 0)
-    call getInput('problem', 'fakepp_height', fakepp_height, 50.0)
-    call getInput('problem', 'fakepp_ppc', fakepp_ppc, 1.0)
-    call getInput('problem', 'fakepp_rmin', fakepp_rmin, 1.0)
 
     #ifdef GCA
       call getInput('problem', 'gca_radius', psr_gca_enforce_rad)
     #endif
 
-    ! safety check
-    if ((psr_angle .le. 1e-2) .or. (psr_angle .ge. 1.0)) then
-      psr_angle = psr_angle * M_PI / 180.0
-    end if
+    psr_rlc = CC / psr_omega
+    omegaB0 = sqrt(sigma) * CC / c_omp
 
-    psr_omega0 = 2.0 * M_PI / psr_period
+    ! gamma_rad / sigma_LC for the field near LC
+    call getInput('problem', 'grad_sigma_LC', gammarad_over_sigma_LC, 0.5)
+    gammarad_dummy = 0.5 * gammarad_over_sigma_LC * (omegaB0 * psr_radius / CC) * sqrt(psr_radius / psr_rlc) * psr_bstar
 
-    if (psr_spinupT .eq. 0.0) then
-      psr_omega = psr_omega0
-    else
-      psr_omega = 0.0
-    end if
+    ! energy of the photon (in me c^2) radiated in the field of LC by a particle with gamma ~ sigmaLC
+    call getInput('problem', 'eph_at_LC', eph_at_LC, 100.0)
+    gammac_dummy = 0.5 * eph_at_LC**(-0.5) * psr_bstar**1.5 * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**(3.5)
+
+    rmin_dr = 1.0
+    call getInput('problem', 'shell_width', shell_width, 2.0)
+    inj_dr = 1.0
 
     xc_g = 0.5 * global_mesh%sx
     yc_g = 0.5 * global_mesh%sy
     zc_g = 0.5 * global_mesh%sz
 
-    global_usr_variable_1 = psr_radius
+    global_usr_variable_1 = min(psr_radius, 40.0)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -146,8 +114,9 @@ contains
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    species(1)%cool_sp = .false.
-    species(2)%cool_sp = .false.
+    ! redefine `gamma_syn`, `emit_gamma_syn`
+    cool_gamma_syn = gammarad_dummy
+    emit_gamma_syn = gammac_dummy
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -231,7 +200,7 @@ contains
       rr = sqrt((real(xi + this_meshblock%ptr%x0) + dx - xc_g)**2 +&
               & (real(yi + this_meshblock%ptr%y0) + dy - yc_g)**2 +&
               & (real(zi + this_meshblock%ptr%z0) + dz - zc_g)**2)
-      userEnforceGCA = (rr .lt. psr_radius + psr_gca_enforce_rad)
+      userEnforceGCA = ((rr .lt. psr_radius + psr_gca_enforce_rad) .and. (psr_gca_enforce_rad .ne. 0))
     end function userEnforceGCA
   #endif
   !............................................................!
@@ -247,97 +216,57 @@ contains
     integer(kind=2)               :: xi, yi, zi, xi_eb, yi_eb, zi_eb
     real                          :: x_glob, y_glob, z_glob, weight, ppc, dens, sig, rmax, rmin
     real                          :: e_dot_b, b_sqr, delta_er, bx0, by0, bz0, ex0, ey0, ez0
-    real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma
+    real                          :: u_, v_, w_, nx, ny, nz, rr, vx, vy, vz, gamma, rmax_sph, smax_car
     real                          :: dens_GJ, e_b_scale, j_dot_b, density, jx0, jy0, jz0
+    real                          :: bz_at_surface, mu_x, mu_y, mu_z, mu_dot_n, phase
     logical                       :: dummy_flag
     #ifdef GCA
       real                          :: dummy_, vE_x, vE_y, vE_z
       real                          :: e0_SQR, b0_SQR
     #endif
 
-    if (step .gt. cooling_on * psr_period) then
+    phase = step * psr_omega
+    mu_x = sin(psr_angle) * cos(phase)
+    mu_y = sin(psr_angle) * sin(phase)
+    mu_z = cos(psr_angle)
+
+    ! disable cooling until certain point
+    if (step .lt. cooling_on * psr_period) then
+      species(1)%cool_sp = .false.
+      species(2)%cool_sp = .false.
+    else
       species(1)%cool_sp = .true.
       species(2)%cool_sp = .true.
     end if
 
-    nGJ = 2 * psr_omega0 * B_norm * psr_bstar / (CC * abs(unit_ch))
-    sigma_nGJ = sigma * ppc0 / nGJ
+    nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
+    sigma_nGJ = sigma * (ppc0 / nGJ) * (psr_bstar)
 
-    if (inj_method .eq. 1) then
-      ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-      ! inject particles with `w ~ E.B` at rest
-      ppc = 0.5 * ppc0
-      if (nGJ_limiter .ne. 0) then
-        ! compute charge density and write to `lg_arr`
-        call computeDensity(1, reset=.true., ds=0, charge=.true.)
-        call computeDensity(2, reset=.false., ds=0, charge=.true.)
-      end if
-      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
-      do n = 1, n_part
-        ! inject slightly above the star
-        call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
-        rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
-        nx = x_glob / rr
-        ny = y_glob / rr
-        nz = z_glob / rr
+    ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    ppc = 0.5 * ppc0
+    if (sigGJ_limiter .ne. 0) then
+      ! compute number density and write to `lg_arr`
+      call computeDensity(1, reset=.true., ds=0, charge=.false.)
+      call computeDensity(2, reset=.false., ds=0, charge=.false.)
+    end if
+    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
+    do n = 1, n_part
+      call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
+      rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+      nx = x_glob / rr
+      ny = y_glob / rr
+      nz = z_glob / rr
+
+      mu_dot_n = mu_x * nx + mu_y * ny + mu_z * nz
+
+      bz_at_surface = (3.0 * nz * mu_dot_n - mu_z)
+
+      dummy_flag = (((random(dseed) * 2.0) .lt. abs(bz_at_surface)) .and. (bz_at_surface .gt. 0.0))
+      ! injection in the open zone
+      if (dummy_flag) then
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g
-        ! screen E-parallel
-        if (e_par_method .eq. 1) then
-          ! ... measured `e_dr` cells above the injection point
-          call getEparAt(e_dot_b, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
-          b_sqr = b_sqr + TINYFLD
-          e_b_scale = abs(e_dot_b) / b_sqr
-          weight = inj_mult * (B_norm * abs(e_dot_b) / sqrt(b_sqr)) / (unit_ch * ppc * shell_width)
-        else if (e_par_method .eq. 2) then
-          ! ... measured `e_dr` cells above the injection point
-          call getDeltaErAt(delta_er, b_sqr, x_glob, y_glob, z_glob, dummy_flag)
-          e_b_scale = abs(delta_er) / sqrt(b_sqr)
-          weight = inj_mult * (B_norm * abs(delta_er)) / (unit_ch * ppc * shell_width)
-        end if
-
-        ! if point is contained in MPI block
-        if (dummy_flag) then
-          if (e_b_scale .gt. e_thr) then
-            if (nGJ_limiter .ne. 0) then
-              call globalToLocalCoords(x_glob, y_glob, z_glob,&
-                                     & x_loc, y_loc, z_loc, .true.)
-              call localToCellBasedCoords(x_loc, y_loc, z_loc,&
-                                        & xi, yi, zi, dx, dy, dz)
-              dens = lg_arr(xi, yi, zi)
-              dens_GJ = 2.0 * psr_omega * bz(xi, yi, zi) * B_norm / (CC * unit_ch)
-              u_ = 0.0; v_ = 0.0; w_ = 0.0
-            end if
-            if ((nGJ_limiter .eq. 0) .or.&
-              & ((dens_GJ .lt. 0) .and. (dens .gt. dens_GJ)) .or.&
-              & ((dens_GJ .gt. 0) .and. (dens .lt. dens_GJ))) then
-              call injectParticleGlobally(1, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-              call injectParticleGlobally(2, x_glob, y_glob, z_glob, u_, v_, w_, weight)
-            end if
-          end if
-        end if
-      end do
-    else if (inj_method .eq. 2) then
-      ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-      ! second injection option: fraction of polar GJ
-      ppc = 0.5 * ppc0
-      if ((nGJ_limiter .ne. 0) .or. (sigGJ_limiter .ne. 0)) then
-        ! compute number density and write to `lg_arr`
-        call computeDensity(1, reset=.true., ds=0, charge=.false.)
-        call computeDensity(2, reset=.false., ds=0, charge=.false.)
-      end if
-      n_part = INT((4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
-      do n = 1, n_part
-        call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
-        rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
-        nx = x_glob / rr
-        ny = y_glob / rr
-        nz = z_glob / rr
-        x_glob = x_glob + xc_g
-        y_glob = y_glob + yc_g
-        z_glob = z_glob + zc_g
-
         call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
         ! if particle is within the current MPI meshblock
         if (dummy_flag) then
@@ -355,24 +284,6 @@ contains
               sig = sigma
             end if
             dummy_flag = (sig .gt. sigma_nGJ * sigGJ_limiter)
-          end if
-
-          ! limiter on density
-          if ((nGJ_limiter .ne. 0) .and. dummy_flag) then
-            density = lg_arr(xi, yi, zi)
-            dummy_flag = (density .lt. nGJ * nGJ_limiter)
-          end if
-
-          ! limiter on j_||
-          if ((jdotb_limiter .ne. 0) .and. dummy_flag) then
-            call interpFromEdges(dx, dy, dz, xi, yi, zi, jx, jy, jz, jx0, jy0, jz0)
-            call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-            j_dot_b = B_norm * (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
-            ! local GJ density
-            density = 2 * psr_omega0 * B_norm * bz0 / CC
-            dummy_flag = ((abs(j_dot_b) .gt. jdotb_limiter * abs(density) * CC) .or. (step .lt. 50))
-            ! j_dot_b = (jx0 * bx0 + jy0 * by0 + jz0 * bz0) / sqrt(bx0**2 + by0**2 + bz0**2)
-            ! dummy_flag = ((abs(j_dot_b) * B_norm .gt. jdotb_limiter * nGJ * CC * unit_ch) .or. (step .lt. 0.1 * psr_period))
           end if
 
           if (dummy_flag) then
@@ -438,57 +349,64 @@ contains
             #endif
           end if
         end if
-      end do
-    end if
-    if (inj_method .gt. 0) then
-      rr = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs / 2.0
-      ! remove particles falling into the star
-      do s = 1, nspec
-        do ti = 1, species(s)%tile_nx
-          do tj = 1, species(s)%tile_ny
-            do tk = 1, species(s)%tile_nz
-              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                x_g = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
-                    & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
-                y_g = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(p) + this_meshblock%ptr%y0)&
-                    & + species(s)%prtl_tile(ti, tj, tk)%dy(p)
-                z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
-                    & + species(s)%prtl_tile(ti, tj, tk)%dz(p)
-                r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
-                if ((r_g .lt. (psr_radius - rmin_dr)) .or. (r_g .gt. rr)) then
-                  species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
-                end if
-              end do
+      end if ! open zone injection
+
+      ! injection in the closed zone
+      if (bz_at_surface .le. 0.0) then
+        x_glob = x_glob + xc_g
+        y_glob = y_glob + yc_g
+        z_glob = z_glob + zc_g
+        call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+        ! if particle is within the current MPI meshblock
+        if (dummy_flag) then
+          call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+          ! initialize at rest
+          call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+          call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+          dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
+          if (dummy_ .gt. edotb_thr_closed) then
+            weight = dummy_ * nGJ / ppc
+            call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+            call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+          end if ! E.B limiter
+        end if ! current MPI block
+      end if ! closed zone
+    end do
+  
+    ! max radius for spherical absorption and absorbing layer size in cartesian absorption
+    rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
+    smax_car = ds_abs - 4.0
+    ! remove particles falling into the star
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              x_g = REAL(species(s)%prtl_tile(ti, tj, tk)%xi(p) + this_meshblock%ptr%x0)&
+                  & + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+              y_g = REAL(species(s)%prtl_tile(ti, tj, tk)%yi(p) + this_meshblock%ptr%y0)&
+                  & + species(s)%prtl_tile(ti, tj, tk)%dy(p)
+              z_g = REAL(species(s)%prtl_tile(ti, tj, tk)%zi(p) + this_meshblock%ptr%z0)&
+                  & + species(s)%prtl_tile(ti, tj, tk)%dz(p)
+              r_g = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2 + (z_g - zc_g)**2)
+              if (&
+                & (r_g .lt. (psr_radius - rmin_dr)) .or.&
+                & ((boundary_x .eq. 2) .and. (r_g .gt. rmax_sph)) .or.&
+                & ((boundary_x .eq. 0) .and. ((x_g .lt. smax_car) .or.&
+                                            & (x_g .gt. global_mesh%sx - smax_car) .or.&
+                                            & (y_g .lt. smax_car) .or.&
+                                            & (y_g .gt. global_mesh%sy - smax_car) .or.&
+                                            & (z_g .lt. smax_car) .or.&
+                                            & (z_g .gt. global_mesh%sz - smax_car))&
+                  & )&
+                & ) then
+                species(s)%prtl_tile(ti, tj, tk)%proc(p) = -1
+              end if
             end do
           end do
         end do
       end do
-    end if
-
-    rmax = MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) * 0.5 - ds_abs / 2.0
-    rmin = fakepp_rmin * (CC / psr_omega0)
-    ppc = 0.5 * fakepp_ppc
-    weight = fakepp_density * inj_mult * nGJ / ppc
-    ! n_part = 8 * ppc * fakepp_height * M_PI * rmax**2
-    n_part = this_meshblock%ptr%sx * this_meshblock%ptr%sy * this_meshblock%ptr%sz * ppc
-
-    if ((fakepp_density .gt. 0) .and. (step .gt. fakepp_timestep)) then
-      do n = 1, n_part
-        z_loc = random(dseed) * this_meshblock%ptr%sz
-        z_g = z_loc + this_meshblock%ptr%z0 - zc_g
-        if (random(dseed) .lt. exp(-0.5 * (z_g / fakepp_height)**2) * (z_g / fakepp_height)**2) then
-          x_loc = random(dseed) * this_meshblock%ptr%sx
-          y_loc = random(dseed) * this_meshblock%ptr%sy
-          x_g = x_loc + this_meshblock%ptr%x0
-          y_g = y_loc + this_meshblock%ptr%y0
-          rr = sqrt((x_g - xc_g)**2 + (y_g - yc_g)**2)
-          if ((rr .gt. rmin) .and. (rr .lt. rmax)) then
-            call injectParticleLocally(4, x_loc, y_loc, z_loc, 0.0, 0.0, 0.0, weight=weight)
-            call injectParticleLocally(5, x_loc, y_loc, z_loc, 0.0, 0.0, 0.0, weight=weight)
-          end if
-        end if
-      end do
-    end if
+    end do
   end subroutine userParticleBoundaryConditions
 
   subroutine randomPointInSphericalShell(rmin, rmax, x, y, z)
@@ -521,11 +439,7 @@ contains
     nz = z0 - zc_g
     rr = sqrt(nx**2 + ny**2 + nz**2)
     nx = nx / rr; ny = ny / rr; nz = nz / rr
-    ! ... measure `e_dr` cells above the injection point
-    call globalToLocalCoords(x0 + nx * e_dr,&
-                           & y0 + ny * e_dr,&
-                           & z0 + nz * e_dr,&
-                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
+    call globalToLocalCoords(x0, y0, z0, x_loc, y_loc, z_loc, containedQ=contained_flag)
     if (contained_flag) then
       call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
       ! interpolate fields on particle position + dr
@@ -536,41 +450,10 @@ contains
     end if
   end subroutine getEparAt
 
-  subroutine getDeltaErAt(delta_Er, B_sqr, x0, y0, z0, contained_flag)
-    implicit none
-    real, intent(out)     :: delta_Er, B_sqr
-    real, intent(in)      :: x0, y0, z0
-    logical, intent(out)  :: contained_flag
-    real                  :: x_loc, y_loc, z_loc, dx, dy, dz
-    integer(kind=2)       :: xi, yi, zi
-    real                  :: ex0, ey0, ez0, bx0, by0, bz0, vx, vy, vz
-    real                  :: nx, ny, nz, rr, ex_cor, ey_cor, ez_cor, er_cor, er
-    nx = x0 - xc_g
-    ny = y0 - yc_g
-    nz = z0 - zc_g
-    rr = sqrt(nx**2 + ny**2 + nz**2)
-    nx = nx / rr; ny = ny / rr; nz = nz / rr
-    ! ... measure `e_dr` cells above the injection point
-    call globalToLocalCoords(x0 + nx * e_dr,&
-                           & y0 + ny * e_dr,&
-                           & z0 + nz * e_dr,&
-                           & x_loc, y_loc, z_loc, containedQ=contained_flag)
-    if (contained_flag) then
-      call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-      ! interpolate fields on particle position + dr
-      call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-      call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-      vx = -psr_omega * ny * rr
-      vy = psr_omega * nx * rr
-      ex_cor = -vy * bz0 * CCINV
-      ey_cor = vx * bz0 * CCINV
-      ez_cor = -(vx * by0 - vy * bx0) * CCINV
-      er_cor = ex_cor * nx + ey_cor * ny + ez_cor * nz
-      er = ex0 * nx + ey0 * ny + ez0 * nz
-      delta_Er = er - er_cor
-      B_sqr = bx0**2 + by0**2 + bz0**2
-    end if
-  end subroutine getDeltaErAt
+  real function distance3D_sq(xA, yA, zA, xB, yB, zB)
+    real, intent(in) :: xA, yA, zA, xB, yB, zB
+    distance3D_sq = (xA - xB)**2 + (yA - yB)**2 + (zA - zB)**2
+  end function distance3D_sq
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
@@ -587,271 +470,249 @@ contains
     real                          :: vx, vy, vz, ex_dip, ey_dip, ez_dip
     real                          :: shift_E, e_int_dot_r, e_dip_dot_r
     real                          :: rr, x_, y_, z_, rlimit
-
-    ! rlimit = step * CC + psr_radius + shell_width + inj_dr
-    ! if (rlimit .lt. 0.6 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz)) then
-    !   ! check if the sphere with radius `rlimit` intersects the current meshblock ...
-    !   ! ... this additional step should speed things up a bit
-    !   x_ = max(REAL(this_meshblock%ptr%x0), min(xc_g, REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx - 1)))
-    !   y_ = max(REAL(this_meshblock%ptr%y0), min(yc_g, REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy - 1)))
-    !   z_ = max(REAL(this_meshblock%ptr%z0), min(zc_g, REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz - 1)))
-    !   rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
-    !   if (rr .le. rlimit + 2) then
-    !     ! damp E-field inside a sphere
-    !     do i = 0, this_meshblock%ptr%sx - 1
-    !       i_glob = i + this_meshblock%ptr%x0
-    !       do j = 0, this_meshblock%ptr%sy - 1
-    !         j_glob = j + this_meshblock%ptr%y0
-    !         do k = 0, this_meshblock%ptr%sz - 1
-    !           k_glob = k + this_meshblock%ptr%z0
-    !           x_ = REAL(i_glob);  y_ = REAL(j_glob);  z_ = REAL(k_glob)
-    !           rr = sqrt(REAL(x_ - xc_g)**2 + REAL(y_ - yc_g)**2 + REAL(z_ - zc_g)**2)
-    !           if (rr .gt. rlimit) then
-    !             ex(i, j, k) = 0;  ey(i, j, k) = 0;  ez(i, j, k) = 0
-    !           end if
-    !         end do
-    !       end do
-    !     end do
-    !   end if
-    ! end if
-
-    if (present(updateE)) then
-      updateE_ = updateE
-    else
-      updateE_ = .true.
-    end if
-
-    if (present(updateB)) then
-      updateB_ = updateB
-    else
-      updateB_ = .true.
-    end if
-
-    if ((psr_spinupT .eq. 0.0) .or. (step .gt. 4 * psr_spinupT)) then
-      psr_omega = psr_omega0
-    else
-      psr_omega = psr_omega0 * tanh(REAL(step) / psr_spinupT)
-    end if
-
-    if (updateE_) then
-      allocate(ex_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
-      allocate(ey_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
-      allocate(ez_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
-    end if
-    if (updateB_) then
-      allocate(bx_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
-      allocate(by_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
-      allocate(bz_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
-                    & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
-    end if
+    logical                       :: dummy_log
 
     ! update only within this "supersphere"
     supersph_radius_sq = (psr_radius * 2)**2
-    ! B fields are set few cells below the E fields
-    shift_B = 4.0
-    shift_E = 0.0
+    ! test if meshblock "touches" the supersphere
+    x_ = max(REAL(this_meshblock%ptr%x0 - NGHOST), min(REAL(this_meshblock%ptr%x0 + this_meshblock%ptr%sx - 1 + NGHOST), xc_g))
+    y_ = max(REAL(this_meshblock%ptr%y0 - NGHOST), min(REAL(this_meshblock%ptr%y0 + this_meshblock%ptr%sy - 1 + NGHOST), yc_g))
+    z_ = max(REAL(this_meshblock%ptr%z0 - NGHOST), min(REAL(this_meshblock%ptr%z0 + this_meshblock%ptr%sz - 1 + NGHOST), zc_g))
+    dummy_log = (distance3D_sq(x_, y_, z_, xc_g, yc_g, zc_g) .lt. supersph_radius_sq)
 
-    scaleEpar = 0.5
-    scaleEperp = 0.25
-    scaleBperp = 0.5
-    scaleBpar = 0.25
+    if (dummy_log) then
 
-    if (updateE_ .or. updateB_) then
-      ! saving boundaries into `e/b_new` arrays
-      do i = 0, this_meshblock%ptr%sx - 1
-        i_glob = i + this_meshblock%ptr%x0
-        do j = 0, this_meshblock%ptr%sy - 1
-          j_glob = j + this_meshblock%ptr%y0
-          do k = 0, this_meshblock%ptr%sz - 1
-            k_glob = k + this_meshblock%ptr%z0
-            if ((i_glob - xc_g)**2 + (j_glob - yc_g)**2 + (k_glob - zc_g)**2 .lt. supersph_radius_sq) then
-              ! ... setting B-field
-              if (updateB_) then
-                ! setting `B_x`
-                rx = REAL(i_glob) - xc_g
-                ry = REAL(j_glob) + 0.5 - yc_g
-                rz = REAL(k_glob) + 0.5 - zc_g
-                rr_sqr = rx**2 + ry**2 + rz**2
-                b_int_dot_r = bx(i,j,k) * rx +&
-                            & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i-1,j,k) + by(i-1,j+1,k)) * ry +&
-                            & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i-1,j,k) + bz(i-1,j,k+1)) * rz
-                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
-                b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
+      if (present(updateE)) then
+        updateE_ = updateE
+      else
+        updateE_ = .true.
+      end if
 
-                scale = scaleBperp
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bx_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
-                scale = scaleBpar
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bx_new(i, j, k) = bx_new(i, j, k) + bx_dip +&
-                                & ((bx(i, j, k) - b_int_dot_r * rx / rr_sqr) -&
-                                & (bx_dip - b_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
+      if (present(updateB)) then
+        updateB_ = updateB
+      else
+        updateB_ = .true.
+      end if
+
+      if (updateE_) then
+        allocate(ex_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+        allocate(ey_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+        allocate(ez_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      end if
+      if (updateB_) then
+        allocate(bx_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+        allocate(by_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+        allocate(bz_new(-NGHOST : this_meshblock%ptr%sx - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sy - 1 + NGHOST,&
+                      & -NGHOST : this_meshblock%ptr%sz - 1 + NGHOST))
+      end if
+
+      ! B fields are set few cells below the E fields
+      shift_B = 4.0
+      shift_E = 0.0
+
+      scaleEpar = 0.5
+      scaleEperp = 0.25
+      scaleBperp = 0.5
+      scaleBpar = 0.25
+
+      if (updateE_ .or. updateB_) then
+        ! saving boundaries into `e/b_new` arrays
+        do i = 0, this_meshblock%ptr%sx - 1
+          i_glob = i + this_meshblock%ptr%x0
+          do j = 0, this_meshblock%ptr%sy - 1
+            j_glob = j + this_meshblock%ptr%y0
+            do k = 0, this_meshblock%ptr%sz - 1
+              k_glob = k + this_meshblock%ptr%z0
+              if ((i_glob - xc_g)**2 + (j_glob - yc_g)**2 + (k_glob - zc_g)**2 .lt. supersph_radius_sq) then
+                ! ... setting B-field
+                if (updateB_) then
+                  ! setting `B_x`
+                  rx = REAL(i_glob) - xc_g
+                  ry = REAL(j_glob) + 0.5 - yc_g
+                  rz = REAL(k_glob) + 0.5 - zc_g
+                  rr_sqr = rx**2 + ry**2 + rz**2
+                  b_int_dot_r = bx(i,j,k) * rx +&
+                              & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i-1,j,k) + by(i-1,j+1,k)) * ry +&
+                              & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i-1,j,k) + bz(i-1,j,k+1)) * rz
+                  call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                  b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
+
+                  scale = scaleBperp
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                  bx_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
+                  scale = scaleBpar
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                  bx_new(i, j, k) = bx_new(i, j, k) + bx_dip +&
+                                  & ((bx(i, j, k) - b_int_dot_r * rx / rr_sqr) -&
+                                  & (bx_dip - b_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
 
 
-                ! setting `B_y`
-                rx = REAL(i_glob) + 0.5 - xc_g
-                ry = REAL(j_glob) - yc_g
-                rz = REAL(k_glob) + 0.5 - zc_g
-                rr_sqr = rx**2 + ry**2 + rz**2
-                b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j-1,k) + bx(i+1,j-1,k)) * rx +&
-                            & by(i,j,k) * ry +&
-                            & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i,j-1,k) + bz(i,j-1,k+1)) * rz
-                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
-                b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
+                  ! setting `B_y`
+                  rx = REAL(i_glob) + 0.5 - xc_g
+                  ry = REAL(j_glob) - yc_g
+                  rz = REAL(k_glob) + 0.5 - zc_g
+                  rr_sqr = rx**2 + ry**2 + rz**2
+                  b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j-1,k) + bx(i+1,j-1,k)) * rx +&
+                              & by(i,j,k) * ry +&
+                              & 0.25 * (bz(i,j,k) + bz(i,j,k+1) + bz(i,j-1,k) + bz(i,j-1,k+1)) * rz
+                  call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                  b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
-                scale = scaleBperp
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                by_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
-                scale = scaleBpar
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                by_new(i, j, k) = by_new(i, j, k) + by_dip +&
-                                & ((by(i, j, k) - b_int_dot_r * ry / rr_sqr) -&
-                                & (by_dip - b_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
+                  scale = scaleBperp
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                  by_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
+                  scale = scaleBpar
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                  by_new(i, j, k) = by_new(i, j, k) + by_dip +&
+                                  & ((by(i, j, k) - b_int_dot_r * ry / rr_sqr) -&
+                                  & (by_dip - b_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
 
-                ! setting `B_z`
-                rx = REAL(i_glob) + 0.5 - xc_g
-                ry = REAL(j_glob) + 0.5 - yc_g
-                rz = REAL(k_glob) - zc_g
-                rr_sqr = rx**2 + ry**2 + rz**2
-                b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j,k-1) + bx(i+1,j,k-1)) * rx +&
-                            & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i,j,k-1) + by(i,j+1,k-1)) * ry +&
-                            & bz(i,j,k) * rz
-                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
-                b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
+                  ! setting `B_z`
+                  rx = REAL(i_glob) + 0.5 - xc_g
+                  ry = REAL(j_glob) + 0.5 - yc_g
+                  rz = REAL(k_glob) - zc_g
+                  rr_sqr = rx**2 + ry**2 + rz**2
+                  b_int_dot_r = 0.25 * (bx(i,j,k) + bx(i+1,j,k) + bx(i,j,k-1) + bx(i+1,j,k-1)) * rx +&
+                              & 0.25 * (by(i,j,k) + by(i,j+1,k) + by(i,j,k-1) + by(i,j+1,k-1)) * ry +&
+                              & bz(i,j,k) * rz
+                  call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                  b_dip_dot_r = bx_dip * rx + by_dip * ry + bz_dip * rz
 
-                scale = scaleBperp
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bz_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
-                scale = scaleBpar
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
-                bz_new(i, j, k) = bz_new(i, j, k) + bz_dip +&
-                                & ((bz(i, j, k) - b_int_dot_r * rz / rr_sqr) -&
-                                & (bz_dip - b_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
+                  scale = scaleBperp
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                  bz_new(i, j, k) = (b_int_dot_r - b_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
+                  scale = scaleBpar
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_B) / scale)
+                  bz_new(i, j, k) = bz_new(i, j, k) + bz_dip +&
+                                  & ((bz(i, j, k) - b_int_dot_r * rz / rr_sqr) -&
+                                  & (bz_dip - b_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
+                end if
+                ! ... setting E-field
+                if (updateE_) then
+                  ! setting `E_x`
+                  rx = REAL(i_glob) + 0.5 - xc_g
+                  ry = REAL(j_glob) - yc_g
+                  rz = REAL(k_glob) - zc_g
+                  rr_sqr = rx**2 + ry**2 + rz**2
+                  e_int_dot_r = ex(i,j,k) * rx +&
+                              & 0.25 * (ey(i,j,k) + ey(i+1,j,k) + ey(i,j-1,k) + ey(i+1,j-1,k)) * ry +&
+                              & 0.25 * (ez(i,j,k) + ez(i+1,j,k) + ez(i,j,k-1) + ez(i+1,j,k-1)) * rz
+                  call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                  vx = -psr_omega * ry
+                  vy = psr_omega * rx
+                  vz = 0.0
+                  ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                  ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                  ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
+                  e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
+
+                  scale = scaleEpar
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                  ex_new(i, j, k) = ex_dip +&
+                                  & ((ex(i, j, k) - e_int_dot_r * rx / rr_sqr) -&
+                                  & (ex_dip - e_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
+                  scale = scaleEperp
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                  ex_new(i, j, k) = ex_new(i, j, k) +&
+                                  & (e_int_dot_r - e_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
+
+                  ! setting `E_y`
+                  rx = REAL(i_glob) - xc_g
+                  ry = REAL(j_glob) + 0.5 - yc_g
+                  rz = REAL(k_glob) - zc_g
+                  rr_sqr = rx**2 + ry**2 + rz**2
+                  e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j+1,k) + ex(i-1,j,k) + ex(i-1,j+1,k)) * rx +&
+                              & ey(i,j,k) * ry +&
+                              & 0.25 * (ez(i,j,k) + ez(i,j+1,k) + ez(i,j,k-1) + ez(i,j+1,k-1)) * rz
+                  call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                  vx = -psr_omega * ry
+                  vy = psr_omega * rx
+                  vz = 0.0
+                  ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                  ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                  ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
+                  e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
+
+                  scale = scaleEpar
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                  ey_new(i, j, k) = ey_dip +&
+                                  & ((ey(i, j, k) - e_int_dot_r * ry / rr_sqr) -&
+                                  & (ey_dip - e_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
+                  scale = scaleEperp
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                  ey_new(i, j, k) = ey_new(i, j, k) +&
+                                  & (e_int_dot_r - e_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
+
+                  ! setting `E_z`
+                  rx = REAL(i_glob) - xc_g
+                  ry = REAL(j_glob) - yc_g
+                  rz = REAL(k_glob) + 0.5 - zc_g
+                  rr_sqr = rx**2 + ry**2 + rz**2
+                  e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j,k+1) + ex(i-1,j,k) + ex(i-1,j,k+1)) * rx +&
+                              & 0.25 * (ey(i,j,k) + ey(i,j-1,k) + ey(i,j,k+1) + ey(i,j-1,k+1)) * ry +&
+                              & ez(i,j,k) * rz
+                  call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
+                  vx = -psr_omega * ry
+                  vy = psr_omega * rx
+                  vz = 0.0
+                  ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
+                  ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
+                  ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
+                  e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
+
+                  scale = scaleEpar
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                  ez_new(i, j, k) = ez_dip +&
+                                  & ((ez(i, j, k) - e_int_dot_r * rz / rr_sqr) -&
+                                  & (ez_dip - e_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
+                  scale = scaleEperp
+                  s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
+                  ez_new(i, j, k) = ez_new(i, j, k) +&
+                                  & (e_int_dot_r - e_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
+                end if
               end if
-              ! ... setting E-field
-              if (updateE_) then
-                ! setting `E_x`
-                rx = REAL(i_glob) + 0.5 - xc_g
-                ry = REAL(j_glob) - yc_g
-                rz = REAL(k_glob) - zc_g
-                rr_sqr = rx**2 + ry**2 + rz**2
-                e_int_dot_r = ex(i,j,k) * rx +&
-                            & 0.25 * (ey(i,j,k) + ey(i+1,j,k) + ey(i,j-1,k) + ey(i+1,j-1,k)) * ry +&
-                            & 0.25 * (ez(i,j,k) + ez(i+1,j,k) + ez(i,j,k-1) + ez(i+1,j,k-1)) * rz
-                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
-                vx = -psr_omega * ry
-                vy = psr_omega * rx
-                vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
-                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
-                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
-                e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
-
-                scale = scaleEpar
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ex_new(i, j, k) = ex_dip +&
-                                & ((ex(i, j, k) - e_int_dot_r * rx / rr_sqr) -&
-                                & (ex_dip - e_dip_dot_r * rx / rr_sqr)) * (1.0 - s)
-                scale = scaleEperp
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ex_new(i, j, k) = ex_new(i, j, k) +&
-                                & (e_int_dot_r - e_dip_dot_r) * (rx / rr_sqr) * (1.0 - s)
-
-                ! setting `E_y`
-                rx = REAL(i_glob) - xc_g
-                ry = REAL(j_glob) + 0.5 - yc_g
-                rz = REAL(k_glob) - zc_g
-                rr_sqr = rx**2 + ry**2 + rz**2
-                e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j+1,k) + ex(i-1,j,k) + ex(i-1,j+1,k)) * rx +&
-                            & ey(i,j,k) * ry +&
-                            & 0.25 * (ez(i,j,k) + ez(i,j+1,k) + ez(i,j,k-1) + ez(i,j+1,k-1)) * rz
-                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
-                vx = -psr_omega * ry
-                vy = psr_omega * rx
-                vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
-                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
-                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
-                e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
-
-                scale = scaleEpar
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ey_new(i, j, k) = ey_dip +&
-                                & ((ey(i, j, k) - e_int_dot_r * ry / rr_sqr) -&
-                                & (ey_dip - e_dip_dot_r * ry / rr_sqr)) * (1.0 - s)
-                scale = scaleEperp
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ey_new(i, j, k) = ey_new(i, j, k) +&
-                                & (e_int_dot_r - e_dip_dot_r) * (ry / rr_sqr) * (1.0 - s)
-
-                ! setting `E_z`
-                rx = REAL(i_glob) - xc_g
-                ry = REAL(j_glob) - yc_g
-                rz = REAL(k_glob) + 0.5 - zc_g
-                rr_sqr = rx**2 + ry**2 + rz**2
-                e_int_dot_r = 0.25 * (ex(i,j,k) + ex(i,j,k+1) + ex(i-1,j,k) + ex(i-1,j,k+1)) * rx +&
-                            & 0.25 * (ey(i,j,k) + ey(i,j-1,k) + ey(i,j,k+1) + ey(i,j-1,k+1)) * ry +&
-                            & ez(i,j,k) * rz
-                call getBfield(step, 0.0, rx + xc_g, ry + yc_g, rz + zc_g, bx_dip, by_dip, bz_dip)
-                vx = -psr_omega * ry
-                vy = psr_omega * rx
-                vz = 0.0
-                ex_dip = -(vy * bz_dip - vz * by_dip) * CCINV
-                ey_dip = (vx * bz_dip - vz * bx_dip) * CCINV
-                ez_dip = -(vx * by_dip - vy * bx_dip) * CCINV
-                e_dip_dot_r = ex_dip * rx + ey_dip * ry + ez_dip * rz
-
-                scale = scaleEpar
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ez_new(i, j, k) = ez_dip +&
-                                & ((ez(i, j, k) - e_int_dot_r * rz / rr_sqr) -&
-                                & (ez_dip - e_dip_dot_r * rz / rr_sqr)) * (1.0 - s)
-                scale = scaleEperp
-                s = shape(sqrt(rr_sqr) / scale, (psr_radius - shift_E) / scale)
-                ez_new(i, j, k) = ez_new(i, j, k) +&
-                                & (e_int_dot_r - e_dip_dot_r) * (rz / rr_sqr) * (1.0 - s)
-              end if
-            end if
+            end do
           end do
         end do
-      end do
-      ! copying to real array
-      do i = 0, this_meshblock%ptr%sx - 1
-        i_glob = i + this_meshblock%ptr%x0
-        do j = 0, this_meshblock%ptr%sy - 1
-          j_glob = j + this_meshblock%ptr%y0
-          do k = 0, this_meshblock%ptr%sz - 1
-            k_glob = k + this_meshblock%ptr%z0
-            if ((i_glob - xc_g)**2 + (j_glob - yc_g)**2 + (k_glob - zc_g)**2 .lt. supersph_radius_sq) then
-              if (updateE_) then
-                ex(i, j, k) = ex_new(i, j, k)
-                ey(i, j, k) = ey_new(i, j, k)
-                ez(i, j, k) = ez_new(i, j, k)
+        ! copying to real array
+        do i = 0, this_meshblock%ptr%sx - 1
+          i_glob = i + this_meshblock%ptr%x0
+          do j = 0, this_meshblock%ptr%sy - 1
+            j_glob = j + this_meshblock%ptr%y0
+            do k = 0, this_meshblock%ptr%sz - 1
+              k_glob = k + this_meshblock%ptr%z0
+              if ((i_glob - xc_g)**2 + (j_glob - yc_g)**2 + (k_glob - zc_g)**2 .lt. supersph_radius_sq) then
+                if (updateE_) then
+                  ex(i, j, k) = ex_new(i, j, k)
+                  ey(i, j, k) = ey_new(i, j, k)
+                  ez(i, j, k) = ez_new(i, j, k)
+                end if
+                if (updateB_) then
+                  bx(i, j, k) = bx_new(i, j, k)
+                  by(i, j, k) = by_new(i, j, k)
+                  bz(i, j, k) = bz_new(i, j, k)
+                end if
               end if
-              if (updateB_) then
-                bx(i, j, k) = bx_new(i, j, k)
-                by(i, j, k) = by_new(i, j, k)
-                bz(i, j, k) = bz_new(i, j, k)
-              end if
-            end if
+            end do
           end do
         end do
-      end do
+      end if
+
+      if (updateE_) deallocate(ex_new, ey_new, ez_new)
+      if (updateB_) deallocate(bx_new, by_new, bz_new)
+
     end if
-
-    if (updateE_) deallocate(ex_new, ey_new, ez_new)
-    if (updateB_) deallocate(bx_new, by_new, bz_new)
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
@@ -861,14 +722,7 @@ contains
     integer, intent(in) :: step
     real, intent(in)    :: x_g, y_g, z_g, offset
     real, intent(out)   :: obx, oby, obz
-    if (fld_geometry .eq. 1) then
-      call getMonopole(step, offset, x_g, y_g, z_g, obx, oby, obz)
-    else if (fld_geometry .eq. 2) then
-      call getDipole(step, offset, x_g, y_g, z_g, obx, oby, obz)
-    else
-      print *, "Something went wrong in `usr_psr`."
-      stop
-    end if
+    call getDipole(step, offset, x_g, y_g, z_g, obx, oby, obz)
   end subroutine getBfield
 
   subroutine getDipole(step, offset, x_g, y_g, z_g,&
@@ -902,25 +756,6 @@ contains
     obz = psr_bstar * (3.0 * nz * mu_dot_n - muz) * rr
   end subroutine getDipole
 
-  subroutine getMonopole(step, offset, x_g, y_g, z_g,&
-                       & obx, oby, obz)
-    implicit none
-    integer, intent(in) :: step
-    real, intent(in)    :: x_g, y_g, z_g, offset
-    real, intent(out)   :: obx, oby, obz
-    real                :: nx, ny, nz, rr
-    nx = x_g - xc_g
-    ny = y_g - yc_g
-    nz = z_g - zc_g
-
-    rr = sqrt(nx**2 + ny**2 + nz**2)
-    rr = 1.0 / rr**3
-
-    obx = psr_bstar * psr_radius**2 * nx * rr
-    oby = psr_bstar * psr_radius**2 * ny * rr
-    obz = psr_bstar * psr_radius**2 * nz * rr
-  end subroutine getMonopole
-
   real function shape(rad, rad0)
     implicit none
     real, intent(in)  :: rad, rad0
@@ -937,14 +772,17 @@ contains
     integer, optional, intent(in) :: step
     integer                       :: root_rank = 0
     real, allocatable             :: r_bins(:)
-    real                          :: dr, x_glob, y_glob, z_glob, r_glob
-    real                          :: dummy_x, dummy_y, dummy_z, dummy
+    real                          :: dr, x_glob, y_glob, z_glob, r_glob, fr_factor
+    real                          :: dummy_x, dummy_y, dummy_z, dummy1, dummy2
     real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+    real, allocatable             :: sum_jE_f(:), sum_jE_f_global(:)
     integer                       :: ri, rnum = 50, i, j, k, ierr
 
     allocate(r_bins(rnum))
     allocate(sum_ExBr_f(rnum), sum_f(rnum))
     allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
+    allocate(sum_jE_f_global(rnum), sum_jE_f(rnum))
+    sum_jE_f(:) = 0.0
     sum_ExBr_f(:) = 0.0
     sum_f(:) = 0.0
 
@@ -965,28 +803,39 @@ contains
           dummy_y = ez(i,j,k) * bx(i,j,k) - ex(i,j,k) * bz(i,j,k)
           dummy_z = -(ey(i,j,k) * bx(i,j,k)) + ex(i,j,k) * by(i,j,k)
           if (r_glob .gt. psr_radius / 2.0) then
-            dummy = (dummy_x * (x_glob - xc_g) +&
+            dummy1 = (dummy_x * (x_glob - xc_g) +&
                    & dummy_y * (y_glob - yc_g) +&
                    & dummy_z * (z_glob - zc_g)) / r_glob
+            dummy2 = jx(i, j, k) * ex(i,j,k) + jy(i,j,k) * ey(i,j,k) + jz(i,j,k) * ez(i,j,k)
           else
-            dummy = 0.0
+            dummy1 = 0.0
+            dummy2 = 0.0
           end if
           do ri = 1, rnum
-            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy * exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
-            sum_f(ri) = sum_f(ri) + exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+            fr_factor = exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor 
+            sum_jE_f(ri) = sum_jE_f(ri) + dummy2 * fr_factor
+            sum_f(ri) = sum_f(ri) + fr_factor
           end do
         end do
       end do
     end do
 
     call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(sum_jE_f, sum_jE_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
     call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. root_rank) then
+      ! normalizations
+      sum_jE_f_global(:) = sum_jE_f_global(:) * r_bins(:)**2 * B_norm**2 / sum_f_global(:)
+      do ri = 2, rnum
+        sum_jE_f_global(ri) = sum_jE_f_global(ri) + sum_jE_f_global(ri - 1)
+      end do
       sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
       call writeUsrOutputTimestep(step)
       call writeUsrOutputArray('r_bins', r_bins)
       call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
+      call writeUsrOutputArray('j.E_vol', sum_jE_f_global)
       call writeUsrOutputEnd()
     end if
   end subroutine userOutput
