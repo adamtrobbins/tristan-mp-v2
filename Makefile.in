@@ -49,6 +49,12 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)communications/exchange_currents.F90 \
 						$(SRC_DIR)communications/exchange_array.F90 \
 						$(SRC_DIR)io/output_logistics.F90 \
+						$(SRC_DIR)io/write_usroutput.F90 \
+						$(SRC_DIR)restart/restart.F90 \
+						$(SRC_DIR)domain/static_lb.F90 \
+						$(SRC_DIR)domain/adaptive_lb.F90 \
+						$(SRC_DIR)domain/loadbalancing.F90 \
+						$(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						$(SRC_DIR)io/write_slice.F90 \
 						$(SRC_DIR)io/write_params.F90 \
 						$(SRC_DIR)io/write_tot_flds.F90 \
@@ -57,12 +63,6 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)io/write_diagnostics.F90 \
 						$(SRC_DIR)io/write_tot.F90 \
 						$(SRC_DIR)io/write_history.F90 \
-						$(SRC_DIR)io/write_usroutput.F90 \
-						$(SRC_DIR)restart/restart.F90 \
-						$(SRC_DIR)domain/static_lb.F90 \
-						$(SRC_DIR)domain/adaptive_lb.F90 \
-						$(SRC_DIR)domain/loadbalancing.F90 \
-						$(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						$(SRC_DIR)algorithms/particle_mover.F90 \
 						$(SRC_DIR)algorithms/field_solver.F90 \
 						$(SRC_DIR)algorithms/current_deposit.F90 \
