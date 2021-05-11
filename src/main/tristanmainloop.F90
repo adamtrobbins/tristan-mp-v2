@@ -20,7 +20,10 @@ module m_mainloop
   use m_particlelogistics
   use m_filtering
   use m_userfile, only: userDriveParticles, userParticleBoundaryConditions,&
-                      & userFieldBoundaryConditions, userCurrentDeposit, userOutput
+                      & userFieldBoundaryConditions, userCurrentDeposit
+  #ifdef USROUTPUT
+    use m_userfile, only: userOutput
+  #endif
   use m_errors
 
   ! extra physics
@@ -294,12 +297,14 @@ contains
 
       !-------------------------------------------------
       ! User-defined output
-      if ((usrout_enable) .and.&
-        & (modulo(timestep, usrout_interval) .eq. 0)) then
-          call startTimer(9)
-        call userOutput(timestep)
-          call flushTimer(9)
-      end if
+      #ifdef USROUTPUT
+        if ((usrout_enable) .and.&
+          & (modulo(timestep, usrout_interval) .eq. 0)) then
+            call startTimer(9)
+          call userOutput(timestep)
+            call flushTimer(9)
+        end if
+      #endif
       !.................................................
 
       !-------------------------------------------------
