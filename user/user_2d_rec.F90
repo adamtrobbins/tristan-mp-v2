@@ -9,7 +9,9 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
-  use m_writeusroutput
+  #ifdef USROUTPUT
+    use m_writeusroutput
+  #endif
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -389,48 +391,56 @@ contains
   !............................................................!
 
   !--- user-specific output -----------------------------------!
-  subroutine userOutput(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    integer                       :: root_rank = 0
-    real, allocatable             :: y_bins(:), ExB_arr(:), ExB_arr_global(:)
-    ! real                          :: dr, x_glob, y_glob, z_glob, r_glob
-    real                          :: dummy_x, dummy_y, dummy_z, dummy
-    ! real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
-    ! integer                       :: ri, rnum = 50, i, j, k, ierr
-    integer                       :: x_bin, yi, ynum, i, j, k, ierr
+  #ifdef USROUTPUT
+    subroutine userOutput(step)
+      implicit none
+      integer, optional, intent(in) :: step
+      integer                       :: root_rank = 0
+      real, allocatable             :: y_bins(:), ExB_arr(:), ExB_arr_global(:)
+      ! real                          :: dr, x_glob, y_glob, z_glob, r_glob
+      real                          :: dummy_x, dummy_y, dummy_z, dummy
+      ! real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+      ! integer                       :: ri, rnum = 50, i, j, k, ierr
+      integer                       :: x_bin, yi, ynum, i, j, k, ierr
 
-    ynum = INT(global_mesh%sy)
+      ynum = INT(global_mesh%sy)
 
-    ! allocate(y_bins(ynum))
-    allocate(ExB_arr(ynum))
-    allocate(ExB_arr_global(ynum))
-    ExB_arr(:) = 0.0
+      ! allocate(y_bins(ynum))
+      allocate(ExB_arr(ynum))
+      allocate(ExB_arr_global(ynum))
+      ExB_arr(:) = 0.0
 
-    ! do yi = 0, ynum - 1
-    !   y_bins(yi + 1) = 0.5 + REAL(yi)
-    ! end do
+      ! do yi = 0, ynum - 1
+      !   y_bins(yi + 1) = 0.5 + REAL(yi)
+      ! end do
 
-    if (this_meshblock%ptr%x0 .eq. 0) then
-      x_bin = INT(measure_x * global_mesh%sx)
-      i = x_bin; k = 0
-      do j = 0, this_meshblock%ptr%sy - 1
-        dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
-        dummy = bx(i,j,k)**2 + by(i,j,k)**2 + bz(i,j,k)**2
+      if (this_meshblock%ptr%x0 .eq. 0) then
+        x_bin = INT(measure_x * global_mesh%sx)
+        i = x_bin; k = 0
+        do j = 0, this_meshblock%ptr%sy - 1
+          dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
+          dummy = bx(i,j,k)**2 + by(i,j,k)**2 + bz(i,j,k)**2
 
-        yi = j + this_meshblock%ptr%y0
-        ExB_arr(yi + 1) = dummy_x / dummy
-      end do
-    end if
+          yi = j + this_meshblock%ptr%y0
+          ExB_arr(yi + 1) = dummy_x / dummy
+        end do
+      end if
 
-    call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+      call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
-    if (mpi_rank .eq. root_rank) then
-      call writeUsrOutputTimestep(step)
-      ! call writeUsrOutputArray('y', y_bins)
-      call writeUsrOutputArray('ExB', ExB_arr_global)
-      call writeUsrOutputEnd()
-    end if
-  end subroutine userOutput
+      if (mpi_rank .eq. root_rank) then
+        call writeUsrOutputTimestep(step)
+        ! call writeUsrOutputArray('y', y_bins)
+        call writeUsrOutputArray('ExB', ExB_arr_global)
+        call writeUsrOutputEnd()
+      end if
+    end subroutine userOutput
+
+    logical function userExcludeParticles(s, ti, tj, tk, p)
+      implicit none
+      integer, intent(in)       :: s, ti, tj, tk, p
+      userExcludeParticles = .true.
+    end function userExcludeParticles
+  #endif
   !............................................................!
 end module m_userfile

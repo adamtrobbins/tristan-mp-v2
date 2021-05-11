@@ -327,12 +327,4 @@ contains
     shape = 0.5 * (1.0 - tanh((rad - rad0) / del))
   end function shape
   !............................................................!
-
-  !--- user-specific output -----------------------------------!
-  subroutine userOutput(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    ! ...
-  end subroutine userOutput
-  !............................................................!
 end module m_userfile

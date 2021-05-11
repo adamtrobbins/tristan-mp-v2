@@ -16,7 +16,9 @@ module m_userfile
   use m_thermalplasma
   use m_particlelogistics
   use m_helpers
-  use m_writeusroutput
+  #ifdef USROUTPUT
+    use m_writeusroutput
+  #endif
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -82,7 +84,7 @@ contains
     yc_g = 0.5 * global_mesh%sy
     zc_g = 0.5 * global_mesh%sz
 
-    global_usr_variable_1 = min(psr_radius, 40.0)
+    global_usr_variable_1 = psr_radius
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -1006,65 +1008,89 @@ contains
   !............................................................!
 
   !--- user-specific output -----------------------------------!
-  subroutine userOutput(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    integer                       :: root_rank = 0
-    real, allocatable             :: r_bins(:)
-    real                          :: dr, x_glob, y_glob, z_glob, r_glob, fr_factor
-    real                          :: dummy_x, dummy_y, dummy_z, dummy1, dummy2
-    real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
-    integer                       :: ri, rnum = 50, i, j, k, ierr
+  #ifdef USROUTPUT
+    subroutine userOutput(step)
+      implicit none
+      integer, optional, intent(in) :: step
+      integer                       :: root_rank = 0
+      real, allocatable             :: r_bins(:)
+      real                          :: dr, x_glob, y_glob, z_glob, r_glob, fr_factor
+      real                          :: dummy_x, dummy_y, dummy_z, dummy1, dummy2
+      real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+      integer                       :: ri, rnum = 50, i, j, k, ierr
 
-    allocate(r_bins(rnum))
-    allocate(sum_ExBr_f(rnum), sum_f(rnum))
-    allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
-    sum_ExBr_f(:) = 0.0
-    sum_f(:) = 0.0
+      allocate(r_bins(rnum))
+      allocate(sum_ExBr_f(rnum), sum_f(rnum))
+      allocate(sum_ExBr_f_global(rnum), sum_f_global(rnum))
+      sum_ExBr_f(:) = 0.0
+      sum_f(:) = 0.0
 
-    dr = (REAL(global_mesh%sx) * 0.5 - psr_radius) / REAL(rnum)
-    do ri = 1, rnum
-      r_bins(ri) = psr_radius + ri * dr
-    end do
+      dr = (REAL(global_mesh%sx) * 0.5 - psr_radius) / REAL(rnum)
+      do ri = 1, rnum
+        r_bins(ri) = psr_radius + ri * dr
+      end do
 
-    do i = 0, this_meshblock%ptr%sx - 1
-      x_glob = REAL(i + this_meshblock%ptr%x0)
-      do j = 0, this_meshblock%ptr%sy - 1
-        y_glob = REAL(j + this_meshblock%ptr%y0)
-        do k = 0, this_meshblock%ptr%sz - 1
-          z_glob = REAL(k + this_meshblock%ptr%z0)
-          r_glob = sqrt((x_glob - xc_g)**2 + (y_glob - yc_g)**2 + (z_glob - zc_g)**2)
-          ! compute ExB_r
-          dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
-          dummy_y = ez(i,j,k) * bx(i,j,k) - ex(i,j,k) * bz(i,j,k)
-          dummy_z = -(ey(i,j,k) * bx(i,j,k)) + ex(i,j,k) * by(i,j,k)
-          if (r_glob .gt. psr_radius / 2.0) then
-            dummy1 = (dummy_x * (x_glob - xc_g) +&
-                   & dummy_y * (y_glob - yc_g) +&
-                   & dummy_z * (z_glob - zc_g)) / r_glob
-          else
-            dummy1 = 0.0
-          end if
-          do ri = 1, rnum
-            fr_factor = exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
-            sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor 
-            sum_f(ri) = sum_f(ri) + fr_factor
+      do i = 0, this_meshblock%ptr%sx - 1
+        x_glob = REAL(i + this_meshblock%ptr%x0)
+        do j = 0, this_meshblock%ptr%sy - 1
+          y_glob = REAL(j + this_meshblock%ptr%y0)
+          do k = 0, this_meshblock%ptr%sz - 1
+            z_glob = REAL(k + this_meshblock%ptr%z0)
+            r_glob = sqrt((x_glob - xc_g)**2 + (y_glob - yc_g)**2 + (z_glob - zc_g)**2)
+            ! compute ExB_r
+            dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
+            dummy_y = ez(i,j,k) * bx(i,j,k) - ex(i,j,k) * bz(i,j,k)
+            dummy_z = -(ey(i,j,k) * bx(i,j,k)) + ex(i,j,k) * by(i,j,k)
+            if (r_glob .gt. psr_radius / 2.0) then
+              dummy1 = (dummy_x * (x_glob - xc_g) +&
+                     & dummy_y * (y_glob - yc_g) +&
+                     & dummy_z * (z_glob - zc_g)) / r_glob
+            else
+              dummy1 = 0.0
+            end if
+            do ri = 1, rnum
+              fr_factor = exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
+              sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor 
+              sum_f(ri) = sum_f(ri) + fr_factor
+            end do
           end do
         end do
       end do
-    end do
 
-    call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+      call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+      call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
-    if (mpi_rank .eq. root_rank) then
-      ! normalizations
-      sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
-      call writeUsrOutputTimestep(step)
-      call writeUsrOutputArray('r_bins', r_bins)
-      call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
-      call writeUsrOutputEnd()
-    end if
-  end subroutine userOutput
+      if (mpi_rank .eq. root_rank) then
+        ! normalizations
+        sum_ExBr_f_global(:) = sum_ExBr_f_global(:) * r_bins(:)**2 * CC * B_norm**2 / sum_f_global(:)
+        call writeUsrOutputTimestep(step)
+        call writeUsrOutputArray('r_bins', r_bins)
+        call writeUsrOutputArray('ExB_flux', sum_ExBr_f_global)
+        call writeUsrOutputEnd()
+      end if
+    end subroutine userOutput
+
+    logical function userExcludeParticles(s, ti, tj, tk, p)
+      implicit none
+      integer, intent(in)       :: s, ti, tj, tk, p
+      real                      :: xx, yy, zz, rr
+      
+      xx = REAL(this_meshblock%ptr%x0 + species(s)%prtl_tile(ti, tj, tk)%xi(p))
+      xx = xx + species(s)%prtl_tile(ti, tj, tk)%dx(p)
+      xx = xx - REAL(global_mesh%sx) * 0.5
+
+      yy = REAL(this_meshblock%ptr%y0 + species(s)%prtl_tile(ti, tj, tk)%yi(p))
+      yy = yy + species(s)%prtl_tile(ti, tj, tk)%dy(p)
+      yy = yy - REAL(global_mesh%sy) * 0.5
+
+      zz = REAL(this_meshblock%ptr%z0 + species(s)%prtl_tile(ti, tj, tk)%zi(p))
+      zz = zz + species(s)%prtl_tile(ti, tj, tk)%dz(p)
+      zz = zz - REAL(global_mesh%sz) * 0.5
+
+      rr = sqrt(xx**2 + yy**2 + zz**2)
+      
+      userExcludeParticles = ((rr .gt. global_usr_variable_1 + 10) .and. (rr .lt. REAL(global_mesh%sx) * 0.5 - 100))
+    end function userExcludeParticles
+  #endif
   !............................................................!
 end module m_userfile
