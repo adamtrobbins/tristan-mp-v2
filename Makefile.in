@@ -49,6 +49,12 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)communications/exchange_currents.F90 \
 						$(SRC_DIR)communications/exchange_array.F90 \
 						$(SRC_DIR)io/output_logistics.F90 \
+						$(SRC_DIR)io/write_usroutput.F90 \
+						$(SRC_DIR)restart/restart.F90 \
+						$(SRC_DIR)domain/static_lb.F90 \
+						$(SRC_DIR)domain/adaptive_lb.F90 \
+						$(SRC_DIR)domain/loadbalancing.F90 \
+						$(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						$(SRC_DIR)io/write_slice.F90 \
 						$(SRC_DIR)io/write_params.F90 \
 						$(SRC_DIR)io/write_tot_flds.F90 \
@@ -57,12 +63,6 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)io/write_diagnostics.F90 \
 						$(SRC_DIR)io/write_tot.F90 \
 						$(SRC_DIR)io/write_history.F90 \
-						$(SRC_DIR)io/write_usroutput.F90 \
-						$(SRC_DIR)restart/restart.F90 \
-						$(SRC_DIR)domain/static_lb.F90 \
-						$(SRC_DIR)domain/adaptive_lb.F90 \
-						$(SRC_DIR)domain/loadbalancing.F90 \
-						$(addprefix $(USR_DIR), $(USER_FILE).F90) \
 						$(SRC_DIR)algorithms/particle_mover.F90 \
 						$(SRC_DIR)algorithms/field_solver.F90 \
 						$(SRC_DIR)algorithms/current_deposit.F90 \
@@ -80,7 +80,8 @@ INCL_FILES := $(SRC_DIR)tools/interp_efield.F \
 							$(SRC_DIR)algorithms/position_update.F \
 							$(SRC_DIR)algorithms/zigzag_deposit.F \
 							$(SRC_DIR)algorithms/gca/gca_routine.F \
-							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F
+							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F \
+							$(addprefix $(USR_DIR), $(USER_FILE).F08)
 
 PREC_SRC_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(SRC_FILES:.F90=_.F90)))
 
@@ -88,20 +89,22 @@ OBJ_DIR := obj/
 OBJ_FILES := $(addprefix $(OBJ_DIR), $(notdir $(PREC_SRC_FILES:.F90=.o)))
 
 ###########################
-.PHONY : all clean
+.PHONY : all clean backup dirs
 
 all: backup dirs precomp $(EXECUTABLE)
 
+EXCLUDE_FILES := "$(OBJ_DIR)*" "$(PREC_SRC_DIR)*" "$(EXE_DIR)*" ".git/*" "$(BACKUP_DIR)*" "*/__pycache__/*"
+
 backup:
 	mkdir -p $(BACKUP_DIR)
-	zip -r $(BACKUP_DIR)/backup_$(NOW).zip . -x \*.zip $(OBJ_DIR)/**\* $(PREC_SRC_DIR)/**\* $(EXE_DIR)/**\*
+	zip -r $(BACKUP_DIR)backup_$(NOW).zip . -x $(EXCLUDE_FILES)
 
 dirs:
 	mkdir -p $(OBJ_DIR) $(EXE_DIR) $(PREC_SRC_DIR)
 
 precomp:
 	$(foreach fl, $(SRC_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F90=_.F90)));)
-	$(foreach fl, $(INCL_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl:.F=.F)));)
+	$(foreach fl, $(INCL_FILES), cpp -nostdinc -C -P -w $(PFLAGS) $(fl) > $(addprefix $(PREC_SRC_DIR), $(notdir $(fl)));)
 
 $(EXECUTABLE):$(OBJ_FILES)
 	$(FC) $(FFLAGS) $(PFLAGS) -o $@ $(OBJ_FILES)

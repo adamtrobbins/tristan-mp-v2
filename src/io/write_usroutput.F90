@@ -1,6 +1,7 @@
 #include "../defs.F90"
 
 module m_writeusroutput
+#ifdef USROUTPUT
   use m_globalnamespace
   use m_outputnamespace, only: usrout_enable, usrout_interval
   use m_aux
@@ -68,5 +69,5 @@ contains
     write(UNIT_usrout, '(A)') '=============================='
     close(UNIT_usrout)
   end subroutine writeUsrOutputEnd
-
+#endif
 end module m_writeusroutput

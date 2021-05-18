@@ -33,7 +33,11 @@ module m_initialize
 
   use m_outputlogistics, only: initializeOutput, initializeSlice
   use m_writehistory, only: initializeHistory
-  use m_writeusroutput, only: initializeUsrOutput
+
+  #ifdef USROUTPUT
+    use m_writeusroutput, only: initializeUsrOutput
+  #endif
+
   use m_restart, only: initializeRestart, restartSimulation, rst_simulation, rst_enable
 
   use m_particlebinning
@@ -84,7 +88,9 @@ contains
 
     call initializeOutput()
     call initializeHistory()
-    call initializeUsrOutput()
+    #ifdef USROUTPUT
+      call initializeUsrOutput()
+    #endif
     call initializeSlice()
     call initializeRestart()
     call initializeDirectories()

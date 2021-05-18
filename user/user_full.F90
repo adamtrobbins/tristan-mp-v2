@@ -9,7 +9,9 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
-  use m_writeusroutput
+  #ifdef USROUTPUT
+    use m_writeusroutput
+  #endif
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -147,10 +149,18 @@ contains
   !............................................................!
 
   !--- user-specific output -----------------------------------!
-  subroutine userOutput(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    ! ... 
-  end subroutine userOutput
+  #ifdef USROUTPUT
+    subroutine userOutput(step)
+      implicit none
+      integer, optional, intent(in) :: step
+      ! ... 
+    end subroutine userOutput
+
+    logical function userExcludeParticles(s, ti, tj, tk, p)
+      implicit none
+      integer, intent(in)       :: s, ti, tj, tk, p
+      userExcludeParticles = .true.
+    end function userExcludeParticles
+  #endif
   !............................................................!
 end module m_userfile

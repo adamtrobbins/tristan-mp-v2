@@ -127,6 +127,11 @@ parser.add_argument('-payload',
                     default=False,
                     help='enable particle payloads')
 
+parser.add_argument('-usroutput',
+                    action='store_true',
+                    default=False,
+                    help='enable user-specified output routines and condition')
+
 dim_group = parser.add_mutually_exclusive_group(required=True)
 dim_group.add_argument('-1d',
                        action='store_true',
@@ -306,6 +311,8 @@ if args['vay']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DVAY '
 if args['payload']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
+if args['usroutput']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DUSROUTPUT '
 
 # extra physics
 if args['extfields']:
@@ -380,6 +387,7 @@ print('  Debug mode:              ' + ('level ' if args['debug'] != 'OFF' else '
 print('  Low memory mode:         ' + ('ON' if args['lowmem'] else 'OFF'))
 # print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
 print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
+print('  User output:             ' + ('ON' if args['usroutput'] else 'OFF'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 

@@ -15,6 +15,10 @@ module m_writetotprtl
   use m_particles
   use m_helpers, only: computeDensity, interpFromFaces, interpFromEdges
   use m_exchangearray, only: exchangeArray
+  
+  #ifdef USROUTPUT
+    use m_userfile, only: userExcludeParticles
+  #endif
 
   implicit none
 
@@ -32,6 +36,17 @@ contains
     #endif
     call printDiag("writeParticles()", 3)
   end subroutine writeParticles
+
+  logical function particleIsEligible(s, ti, tj, tk, p)
+    implicit none
+    integer, intent(in)     :: s, ti, tj, tk, p
+    logical                 :: dummy
+    dummy = (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), tot_output_stride) .eq. 0)
+    #ifdef USROUTPUT
+      dummy = (dummy .and. userExcludeParticles(s, ti, tj, tk, p))
+    #endif
+    particleIsEligible = dummy
+  end function particleIsEligible
 
   #ifdef HDF5
     subroutine writeParticles_hdf5(step, time)
@@ -61,7 +76,7 @@ contains
           do tj = 1, species(s)%tile_ny
             do tk = 1, species(s)%tile_nz
               do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), tot_output_stride) .eq. 0) then
+                if (particleIsEligible(s, ti, tj, tk, p)) then
                   npart_stride(s) = npart_stride(s) + 1
                 end if
               end do ! p
@@ -106,7 +121,7 @@ contains
             do tj = 1, species(s)%tile_ny
               do tk = 1, species(s)%tile_nz
                 do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-                  if (modulo(species(s)%prtl_tile(ti, tj, tk)%ind(p), tot_output_stride) .eq. 0) then
+                  if (particleIsEligible(s, ti, tj, tk, p)) then
                     stride_indices_arr(j) = p
                     stride_ti_arr(j) = ti
                     stride_tj_arr(j) = tj
