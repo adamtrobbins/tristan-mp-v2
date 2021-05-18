@@ -488,9 +488,18 @@ contains
       tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
     end if
 
-    if (tile%npart_sp .gt. tile%maxptl_sp) then
-      call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
-    end if
+    #ifndef AGRESSIVEMEM
+      if (tile%npart_sp .gt. tile%maxptl_sp) then
+        call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
+      end if
+    #else
+      do while (tile%npart_sp .gt. tile%maxptl_sp)
+        tile%maxptl_sp = INT(tile%maxptl_sp * 1.5) + 1
+        #ifdef DEBUG
+          print *, 'increasing', tile%npart_sp, tile%maxptl_sp
+        #endif
+      end do
+    #endif
 
     allocate(dummy_int2(tile%maxptl_sp))
     allocate(dummy_int(tile%maxptl_sp))

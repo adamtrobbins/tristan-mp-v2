@@ -51,6 +51,10 @@ vec_group.add_argument('-avx512',
                        default=False,
                        help='enable avx512 vectorization')
 
+parser.add_argument('-lowmem',
+                    action='store_true',
+                    default=False,
+                    help='enable low memory regime')
 parser.add_argument('-ifport',
                     action='store_true',
                     default=False,
@@ -213,6 +217,7 @@ if (args['cluster'] is not None):
   elif args['cluster'] == 'frontera':
     args['mpi08'] = True
     args['avx512'] = True
+    args['lowmem'] = True
   elif args['cluster'] == 'stellar':
     args['mpi08'] = True
     args['avx512'] = True
@@ -228,7 +233,8 @@ else:
     makefile_options['COMPILER_COMMAND'] += 'mpif90 '
 if args['ifport']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
-
+if args['lowmem']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DLOWMEM '
 if args['serial']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSERIALOUTPUT '
 
@@ -371,6 +377,7 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                         (' [avx512]' if args['avx512'] else '')
                                       ))
 print('  Debug mode:              ' + ('level ' if args['debug'] != 'OFF' else '') + args['debug'])
+print('  Low memory mode:         ' + ('ON' if args['lowmem'] else 'OFF'))
 # print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
 print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
