@@ -16,8 +16,8 @@ module m_globalnamespace
 
   integer, parameter      :: dprec = kind(1.0d0)
   integer, parameter      :: sprec = kind(1.0e0)
-  integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30
-  integer, parameter      :: UNIT_params = 50
+  integer, parameter      :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40, UNIT_warn = 80
+  integer, parameter      :: UNIT_params = 50, UNIT_usrout = 90
   integer, parameter      :: UNIT_restart_fld = 60, UNIT_restart_prtl = 70
 
   ! algorithm specific parameters
@@ -35,14 +35,16 @@ module m_globalnamespace
   real :: ppc0, c_omp, sigma, B_norm, unit_ch
 
   ! simulation parameters
-  integer                :: start_timestep = 0, final_timestep
+  integer                :: start_timestep = 0, final_timestep, warning_count = 0
   logical                :: resize_tiles
   integer                :: min_tile_nprt = 100, max_buffsize = 100
   character(len=STR_MAX) :: input_file_name = 'input',&
                           & output_dir_name = 'output',&
                           & slice_dir_name = 'slices',&
                           & restart_dir_name = 'restart',&
-                          & restart_from = 'restart/step_00000'
+                          & restart_from = 'restart/step_00000',&
+                          & diag_file_name = 'diag.log',&
+                          & warn_file_name = 'warn.log'
 
   integer       :: nfilter
 
@@ -53,6 +55,9 @@ module m_globalnamespace
     integer, parameter  :: UNIT_xdmf = 40
     integer             :: h5comm, h5info
   #endif
+  
+  ! variables visible globally defined by the user
+  real                    :: global_usr_variable_1, global_usr_variable_2, global_usr_variable_3
 contains
   subroutine renormalizeUnits()
     implicit none

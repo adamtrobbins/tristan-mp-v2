@@ -70,7 +70,6 @@
   # history output
   hst_enable    = 0              # enable/disable history output [0]
   hst_interval  = 1              # interval between history output steps [1]
-  hst_readable  = 1              # enable the human readable format (less accurate) [0]
 
   # spectra output
   # bins are `g - 1` for massive and `e` for massless

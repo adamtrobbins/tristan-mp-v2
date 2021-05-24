@@ -148,7 +148,7 @@ contains
         enddo
       #endif
     #endif
-    call printDiag((mpi_rank .eq. 0), "advanceBHalfstep()", .true.)
+    call printDiag("advanceBHalfstep()", 2)
   end subroutine advanceBHalfstep
 
   subroutine advanceEFullstep()
@@ -288,7 +288,7 @@ contains
         enddo
       #endif
     #endif
-    call printDiag((mpi_rank .eq. 0), "advanceEFullstep()", .true.)
+    call printDiag("advanceEFullstep()", 2)
   end subroutine advanceEFullstep
 
   subroutine addCurrents()
@@ -321,7 +321,7 @@ contains
     ez(xmin:xmax, ymin:ymax, zmin:zmax) = &
         & ez(xmin:xmax, ymin:ymax, zmin:zmax) + &
         & jz(xmin:xmax, ymin:ymax, zmin:zmax)
-    call printDiag((mpi_rank .eq. 0), "addCurrents()", .true.)
+    call printDiag("addCurrents()", 2)
   end subroutine addCurrents
 
   real function lambdaAbsorb(x0, y0, z0)

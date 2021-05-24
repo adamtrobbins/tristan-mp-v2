@@ -1,4 +1,4 @@
-#include "defs.F90"
+#include "../defs.F90"
 
 !--- FIELDS ----------------------------------------------------!
 ! To store all the field related quantities
@@ -9,6 +9,7 @@
 
 module m_fields
   use m_globalnamespace
+  use m_domain
   implicit none
 
   real, allocatable     :: ex(:,:,:), ey(:,:,:), ez(:,:,:),&
@@ -21,4 +22,8 @@ module m_fields
   real, allocatable     :: sm_arr(:,:,:)
   ! absorption layer thickness
   real                  :: ds_abs
+
+  ! for field backup
+  real, allocatable     :: ex_back(:,:,:), ey_back(:,:,:), ez_back(:,:,:),&
+                         & bx_back(:,:,:), by_back(:,:,:), bz_back(:,:,:)
 end module m_fields

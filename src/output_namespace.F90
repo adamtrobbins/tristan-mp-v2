@@ -5,8 +5,12 @@ module m_outputnamespace
   implicit none
 
   ! history
-  logical                   :: hst_enable, hst_human_readable = .false.
+  logical                   :: hst_enable
   integer                   :: hst_interval
+
+  ! user-specified diagnostic output
+  logical                   :: usrout_enable
+  integer                   :: usrout_interval
 
   ! total output and slice
   integer                   :: tot_output_index = 0, slice_index = 0
@@ -49,8 +53,8 @@ module m_outputnamespace
   #endif
 
   #ifdef RADIATION
-    real              :: rad_spec_bin_size
-    real, allocatable :: rad_spectra(:,:), glob_rad_spectra(:,:)
+    real                                :: rad_spec_bin_size
+    real, allocatable, dimension(:,:)   :: rad_spectra, glob_rad_spectra
   #endif
 
   ! ... for `slice` outputs

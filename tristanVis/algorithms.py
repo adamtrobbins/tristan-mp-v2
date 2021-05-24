@@ -22,3 +22,10 @@ def integrateFieldline2D(point, xx, yy, fx, fy,
     y += dx * fy_ / ff_
     fieldline.append([x, y])
   return np.array(fieldline)
+
+def slice1D(field, points):
+  from scipy.interpolate import RegularGridInterpolator
+  import numpy as np
+  coords = list(field.coords.keys())
+  fld = RegularGridInterpolator([field.coords[c] for c in coords[::-1]], field.data)
+  return np.array([fld(point[::-1]) for point in points])

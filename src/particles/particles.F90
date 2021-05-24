@@ -111,9 +111,9 @@ module m_particles
   end type prtl_enroute
 
   type :: enroute_array
-    type(prtl_enroute), allocatable     :: send_enroute(:)
-    integer                             :: cnt_send
-    integer                             :: max_send
+    type(prtl_enroute), allocatable     :: enroute(:)
+    integer                             :: cnt
+    integer                             :: max
   end type enroute_array
 
   type :: enroute_handler
@@ -125,9 +125,13 @@ module m_particles
   type(particle_species), target, allocatable   :: species(:)
   ! number of species
   integer                                       :: nspec
+  integer(kind=8), allocatable                  :: maxptl_array(:)
 
-  type(prtl_enroute), allocatable, dimension(:)    :: recv_enroute
+  ! type(prtl_enroute), allocatable, dimension(:)    :: recv_enroute
+  type(enroute_array)                              :: recv_enroute
   type(enroute_handler)                            :: enroute_bot
+
+  type(enroute_array), allocatable, dimension(:)   :: prtl_backup
 
   #ifdef MPI08
     type(MPI_DATATYPE)                             :: myMPI_ENROUTE

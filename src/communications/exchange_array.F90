@@ -189,6 +189,6 @@ contains
       end do ! ind1
     end do ! global loop
     lg_arr(:,:,:) = lg_arr(:,:,:) + jx_buff(:,:,:)
-    call printDiag((mpi_rank .eq. 0), "exchangeArray()", .true.)
+    call printDiag("exchangeArray()", 3)
   end subroutine exchangeArray
 end module m_exchangearray

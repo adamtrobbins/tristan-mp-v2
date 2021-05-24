@@ -9,6 +9,9 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
+  #ifdef USROUTPUT
+    use m_writeusroutput
+  #endif
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -143,5 +146,21 @@ contains
       updateB_ = .true.
     end if
   end subroutine userFieldBoundaryConditions
+  !............................................................!
+
+  !--- user-specific output -----------------------------------!
+  #ifdef USROUTPUT
+    subroutine userOutput(step)
+      implicit none
+      integer, optional, intent(in) :: step
+      ! ... 
+    end subroutine userOutput
+
+    logical function userExcludeParticles(s, ti, tj, tk, p)
+      implicit none
+      integer, intent(in)       :: s, ti, tj, tk, p
+      userExcludeParticles = .true.
+    end function userExcludeParticles
+  #endif
   !............................................................!
 end module m_userfile
