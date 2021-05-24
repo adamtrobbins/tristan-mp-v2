@@ -171,39 +171,39 @@ contains
     integer, optional, intent(in) :: step
     ! ... dummy loop ...
     integer   :: s, ti, tj, tk, p
-    real      :: gamma, nx, ny, nz, norm
-    real      :: gamma_max = 50.0
-    real      :: beta_max, u_max
-    beta_max = sqrt(1.0 - 1.0 / gamma_max**2)
-    u_max = gamma_max * beta_max
-    ! limit particle gamma-factor
-    do s = 1, nspec
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              ! for boris particles only
-              if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .lt. mpi_size) then
-                gamma = sqrt(1.0 + species(s)%prtl_tile(ti, tj, tk)%u(p)**2 +& 
-                                 & species(s)%prtl_tile(ti, tj, tk)%v(p)**2 +&
-                                 & species(s)%prtl_tile(ti, tj, tk)%w(p)**2)
-                if (gamma .gt. gamma_max) then
-                  norm = species(s)%prtl_tile(ti, tj, tk)%u(p)**2 +&
-                       & species(s)%prtl_tile(ti, tj, tk)%v(p)**2 +&
-                       & species(s)%prtl_tile(ti, tj, tk)%w(p)**2
-                  species(s)%prtl_tile(ti, tj, tk)%u(p) = u_max *&
-                          & (species(s)%prtl_tile(ti, tj, tk)%u(p) / norm)
-                  species(s)%prtl_tile(ti, tj, tk)%v(p) = u_max *&
-                          & (species(s)%prtl_tile(ti, tj, tk)%v(p) / norm)
-                  species(s)%prtl_tile(ti, tj, tk)%w(p) = u_max *&
-                          & (species(s)%prtl_tile(ti, tj, tk)%w(p) / norm)
-                end if
-              end if
-            end do
-          end do
-        end do
-      end do
-    end do
+    !real      :: gamma, nx, ny, nz, norm
+    !real      :: gamma_max = 50.0
+    !real      :: beta_max, u_max
+    !beta_max = sqrt(1.0 - 1.0 / gamma_max**2)
+    !u_max = gamma_max * beta_max
+    !! limit particle gamma-factor
+    !do s = 1, nspec
+      !do ti = 1, species(s)%tile_nx
+        !do tj = 1, species(s)%tile_ny
+          !do tk = 1, species(s)%tile_nz
+            !do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+              !! for boris particles only
+              !if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .lt. mpi_size) then
+                !gamma = sqrt(1.0 + species(s)%prtl_tile(ti, tj, tk)%u(p)**2 +& 
+                                 !& species(s)%prtl_tile(ti, tj, tk)%v(p)**2 +&
+                                 !& species(s)%prtl_tile(ti, tj, tk)%w(p)**2)
+                !if (gamma .gt. gamma_max) then
+                  !norm = species(s)%prtl_tile(ti, tj, tk)%u(p)**2 +&
+                       !& species(s)%prtl_tile(ti, tj, tk)%v(p)**2 +&
+                       !& species(s)%prtl_tile(ti, tj, tk)%w(p)**2
+                  !species(s)%prtl_tile(ti, tj, tk)%u(p) = u_max *&
+                          !& (species(s)%prtl_tile(ti, tj, tk)%u(p) / norm)
+                  !species(s)%prtl_tile(ti, tj, tk)%v(p) = u_max *&
+                          !& (species(s)%prtl_tile(ti, tj, tk)%v(p) / norm)
+                  !species(s)%prtl_tile(ti, tj, tk)%w(p) = u_max *&
+                          !& (species(s)%prtl_tile(ti, tj, tk)%w(p) / norm)
+                !end if
+              !end if
+            !end do
+          !end do
+        !end do
+      !end do
+    !end do
   end subroutine userDriveParticles
 
   subroutine userExternalFields(xp, yp, zp,&
@@ -721,37 +721,37 @@ contains
     smax_car = ds_abs / 4.0
 
     ! inject in low density regions
-    call computeDensity(1, reset=.true., ds=0, charge=.false.)
-    call computeDensity(2, reset=.false., ds=0, charge=.false.)
-    do i = 0, this_meshblock%ptr%sx - 1
-      i_glob = i + this_meshblock%ptr%x0
-      do j = 0, this_meshblock%ptr%sy - 1
-        j_glob = j + this_meshblock%ptr%y0
-        do k = 0, this_meshblock%ptr%sz - 1
-          k_glob = k + this_meshblock%ptr%z0
-          r_g = sqrt(REAL(i_glob - xc_g)**2 + REAL(j_glob - yc_g)**2 + REAL(k_glob - zc_g)**2)
-          density = lg_arr(i, j, k)
-          ppc = 0.5 * ppc0
-          if ((density .lt. 1) .and. (r_g .lt. rmax_sph)) then
-            do while (ppc .gt. 0) 
-              if (random(dseed) .lt. ppc) then
-                xi = INT(i, 2); yi = INT(j, 2); zi = INT(k, 2)
-                dx = random(dseed); dy = random(dseed); dz = random(dseed)
-                call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-                call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-                dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
-                if (dummy_ .gt. edotb_thr_closed) then
-                  weight = dummy_ * nGJ / ppc
-                  call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-                  call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-                end if ! E.B limiter
-              end if
-              ppc = ppc - 1.0
-            end do
-          end if
-        end do
-      end do
-    end do
+    !call computeDensity(1, reset=.true., ds=0, charge=.false.)
+    !call computeDensity(2, reset=.false., ds=0, charge=.false.)
+    !do i = 0, this_meshblock%ptr%sx - 1
+      !i_glob = i + this_meshblock%ptr%x0
+      !do j = 0, this_meshblock%ptr%sy - 1
+        !j_glob = j + this_meshblock%ptr%y0
+        !do k = 0, this_meshblock%ptr%sz - 1
+          !k_glob = k + this_meshblock%ptr%z0
+          !r_g = sqrt(REAL(i_glob - xc_g)**2 + REAL(j_glob - yc_g)**2 + REAL(k_glob - zc_g)**2)
+          !density = lg_arr(i, j, k)
+          !ppc = 0.5 * ppc0
+          !if ((density .lt. 1) .and. (r_g .lt. rmax_sph)) then
+            !do while (ppc .gt. 0) 
+              !if (random(dseed) .lt. ppc) then
+                !xi = INT(i, 2); yi = INT(j, 2); zi = INT(k, 2)
+                !dx = random(dseed); dy = random(dseed); dz = random(dseed)
+                !call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+                !call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+                !dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
+                !if (dummy_ .gt. edotb_thr_closed) then
+                  !weight = dummy_ * nGJ / ppc
+                  !call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+                  !call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+                !end if ! E.B limiter
+              !end if
+              !ppc = ppc - 1.0
+            !end do
+          !end if
+        !end do
+      !end do
+    !end do
 
     ! remove particles falling into the star
     do s = 1, nspec
