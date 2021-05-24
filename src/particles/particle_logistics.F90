@@ -488,7 +488,7 @@ contains
       tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
     end if
 
-    #ifndef AGRESSIVEMEM
+    #ifndef LOWMEM 
       if (tile%npart_sp .gt. tile%maxptl_sp) then
         call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
       end if
