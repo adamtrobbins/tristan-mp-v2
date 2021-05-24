@@ -230,7 +230,7 @@ else:
   if ((not args['mpi']) and (not args['mpi08'])):
     makefile_options['COMPILER_COMMAND'] += 'gfortran '
   else:
-    makefile_options['COMPILER_COMMAND'] += 'mpif90 '
+    makefile_options['COMPILER_COMMAND'] += 'mpif90 ' if args['intel'] else 'mpiifort '
 if args['ifport']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 
