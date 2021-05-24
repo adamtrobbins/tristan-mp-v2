@@ -51,6 +51,10 @@ vec_group.add_argument('-avx512',
                        default=False,
                        help='enable avx512 vectorization')
 
+parser.add_argument('-lowmem',
+                    action='store_true',
+                    default=False,
+                    help='enable low memory regime')
 parser.add_argument('-ifport',
                     action='store_true',
                     default=False,
@@ -98,10 +102,10 @@ parser.add_argument('-absorb',
                     default=False,
                     help='enable absorbing boundaries')
 
-parser.add_argument('-debug',
-                    action='store_true',
-                    default=False,
-                    help='enable DEBUG flag')
+parser.add_argument('--debug',
+                    action='store',
+                    default='OFF',
+                    help='enable the debug mode at specific level')
 
 parser.add_argument('-safe',
                     action='store_true',
@@ -122,6 +126,11 @@ parser.add_argument('-payload',
                     action='store_true',
                     default=False,
                     help='enable particle payloads')
+
+parser.add_argument('-usroutput',
+                    action='store_true',
+                    default=False,
+                    help='enable user-specified output routines and condition')
 
 dim_group = parser.add_mutually_exclusive_group(required=True)
 dim_group.add_argument('-1d',
@@ -213,6 +222,7 @@ if (args['cluster'] is not None):
   elif args['cluster'] == 'frontera':
     args['mpi08'] = True
     args['avx512'] = True
+    args['lowmem'] = True
   elif args['cluster'] == 'stellar':
     args['mpi08'] = True
     args['avx512'] = True
@@ -225,10 +235,11 @@ else:
   if ((not args['mpi']) and (not args['mpi08'])):
     makefile_options['COMPILER_COMMAND'] += 'gfortran '
   else:
-    makefile_options['COMPILER_COMMAND'] += 'mpif90 '
+    makefile_options['COMPILER_COMMAND'] += 'mpif90 ' if args['intel'] else 'mpiifort '
 if args['ifport']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
-
+if args['lowmem']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DLOWMEM '
 if args['serial']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSERIALOUTPUT '
 
@@ -239,11 +250,18 @@ elif args['mpi08']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI08 '
 
 # debug
-if args['debug'] and (not args['intel']):
-  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG -fcheck=all -fimplicit-none -fbacktrace '
-elif (args['debug'] and args['intel']):
-  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
-  makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+if args['debug'] != 'OFF':
+  # non-intel compilers are not supported
+  #  if not args['intel']):
+    #  makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
+    #  makefile_options['COMPILER_FLAGS'] += '-fcheck=all -fimplicit-none -fbacktrace '
+  #  elif args['intel']:
+  if int(args['debug']) >= 0:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
+  if int(args['debug']) >= 1:
+    makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+  if int(args['debug']) >= 2:
+    makefile_options['COMPILER_FLAGS'] += '-check all -check noarg_temp_created '
 else:
   makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
@@ -282,10 +300,9 @@ if args['absorb']:
 # extra algorithms
 if args['dwn']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DDOWNSAMPLING '
-if args['alb'] and (not args['slb']):
+if args['alb']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DALB '
 if args['slb']:
-  args['alb'] = False
   makefile_options['PREPROCESSOR_FLAGS'] += '-DSLB '
 
 if args['gca'] != 'OFF':
@@ -294,6 +311,8 @@ if args['vay']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DVAY '
 if args['payload']:
   makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
+if args['usroutput']:
+  makefile_options['PREPROCESSOR_FLAGS'] += '-DUSROUTPUT '
 
 # extra physics
 if args['extfields']:
@@ -343,7 +362,7 @@ print('SETUP ...................................................................
 print('  Userfile:                ' + makefile_options['USER_FILE'])
 print('  Dim:                     ' + ('1D' if args['1d'] else ('2D' if args['2d'] else ('3D' if args['3d'] else 'None'))))
 print('  # of ghost zones:        ' + str(args['nghosts']))
-print('  Load balancing:          ' + ('adaptive' if args['alb'] else ('static' if args['slb'] else 'OFF')))
+print('  Load balancing:          ' + ('static/adaptive' if (args['alb'] and args['slb']) else ('static' if args['slb'] else ('adaptive' if args['alb'] else 'OFF'))))
 print('  Particle downsampling:   ' + ('ON' if args['dwn'] else 'OFF'))
 print('  Particle pusher:         ' + ('Vay' if args['vay'] else 'Boris') + ('/GCA ({} iterations)'.format(args['gca']) if args['gca'] != 'OFF' else ''))
 print('  Particle payloads:       ' + ('ON' if args['payload'] else 'OFF'))
@@ -364,9 +383,11 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                       (' [avx2]' if args['avx2'] else
                                         (' [avx512]' if args['avx512'] else '')
                                       ))
-print('  Debug mode:              ' + ('ON' if args['debug'] else 'OFF'))
+print('  Debug mode:              ' + ('level ' if args['debug'] != 'OFF' else '') + args['debug'])
+print('  Low memory mode:         ' + ('ON' if args['lowmem'] else 'OFF'))
 # print('  "Safe" mode:             ' + ('ON' if args['safe'] else 'OFF'))
 print('  Output:                  ' + (('HDF5' + (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
+print('  User output:             ' + ('ON' if args['usroutput'] else 'OFF'))
 print('  MPI version:             ' + ('old' if not args['mpi08'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 

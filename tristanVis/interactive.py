@@ -93,7 +93,49 @@ class TwoDPlotAndSlice:
     plt.show()
 
 class TwoDPlotAndSpectra:
+  """
+  Plot 2D field plot and particle distribution function side-by-side. Clicking on the field plot will select particular regions for the particle distribution plot. Holding `Shift` while clicking will add the region to an already selected one.
+
+  ...
+
+  Methods
+  -------
+  plot(figsize=(12, 4)):
+    Create the interactive plot.
+
+  Example
+  -------
+    myplot = TwoDPlotAndSlice(...)
+    myplot.plot()
+
+  """
   def __init__(self, x, y, z, field_data, spec_data, coordinates=None, imshow_kwargs={}, rectangle_kwargs={}, spectra_kwargs={}):
+    """
+    Initializer for the `TwoDPlotAndSpectra` class.
+
+    Args
+    ----
+      x, y, z : N-D arrays
+        array of coordinates for the field
+
+      field_data : 2D array
+        field data to plot
+
+      spec_data : `Spectra`
+        particle distribution data of type `Spectra`
+
+      coordinates : str, optional
+        2D plane of the field data, can be either of the following: `'xy'`, `'yz'`, `'xz'` (default is `None`)
+
+      imshow_kwargs : dict, optional
+        keyword arguments that go into `plt.imshow` (default is {})
+
+      rectangle_kwargs : dict, optional
+        properties of rectangles drawn over the selected region (default is {})
+
+      spectra_kwargs : dict, optional
+        keyword arguments for the spectral plot (default is {})
+    """
     self.x = x; self.y = y; self.z = z
     self.field_data = field_data
     self.spec_data = spec_data
@@ -101,6 +143,9 @@ class TwoDPlotAndSpectra:
     self.imshow_kwargs = imshow_kwargs
     self.rectangle_kwargs = rectangle_kwargs
     self.spectra_kwargs = spectra_kwargs
+    self.spectra_kwargs.setdefault('smooth')
+    self.spectra_kwargs.setdefault('xlim')
+    self.spectra_kwargs.setdefault('ylim')
     self.SHIFT = False
     self.specbins = []
   def on_key_press(self, event):
@@ -137,9 +182,9 @@ class TwoDPlotAndSpectra:
     bns = np.copy(self.spec_data.ebins)
     if not self.spectra_kwargs['smooth'] is None:
       from scipy.ndimage import gaussian_filter1d as smooth
-      cnt = smooth(np.copy(cnt / bns), self.spectra_kwargs['smooth'])
+      cnt = smooth(np.copy(cnt), self.spectra_kwargs['smooth'])
     else:
-      cnt = np.copy(cnt / bns)
+      cnt = np.copy(cnt)
     if ((not self.SHIFT) or (self.specbins == [])):
       self.specbins = [(x0, y0)]
       self.spec_x = bns
@@ -184,14 +229,30 @@ class TwoDPlotAndSpectra:
         self.coordinates = 'xz'
       elif self.z.min() == self.z.max():
         self.coordinates = 'xy'
+
+    if self.coordinates == 'yz':
+      xmin = self.y.min(); xmax = self.y.max()
+      ymin = self.z.min(); ymax = self.z.max()
+    elif self.coordinates == 'xz':
+      xmin = self.x.min(); xmax = self.x.max()
+      ymin = self.z.min(); ymax = self.z.max()
+    elif self.coordinates == 'xy':
+      xmin = self.x.min(); xmax = self.x.max()
+      ymin = self.y.min(); ymax = self.y.max()
+    else:
+      raise
+
+    self.extent = (xmin, xmax, ymin, ymax)
     ax_fld = self.fig.add_subplot(121)
-    im = ax_fld.imshow(self.field_data, origin='lower', **self.imshow_kwargs)
+    im = ax_fld.imshow(self.field_data, origin='lower', extent=self.extent, **self.imshow_kwargs)
     ax_fld.set_xlabel(self.coordinates[0])
     ax_fld.set_ylabel(self.coordinates[1])
     ax_spec = self.fig.add_subplot(122)
     self.spec, = ax_spec.plot([], [])
-    ax_spec.set_xlim(*self.spectra_kwargs['xlim'])
-    ax_spec.set_ylim(*self.spectra_kwargs['ylim'])
+    if not self.spectra_kwargs['xlim'] is None:
+      ax_spec.set_xlim(*self.spectra_kwargs['xlim'])
+    if not self.spectra_kwargs['ylim'] is None:
+      ax_spec.set_ylim(*self.spectra_kwargs['ylim'])
     ax_spec.set_xscale('log')
     ax_spec.set_yscale('log')
     ax_spec.set_xlabel(r'$\gamma - 1$')

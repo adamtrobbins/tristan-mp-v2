@@ -56,12 +56,6 @@ contains
       call getInput('output', 'spec_nz', spec_nz, 1)
     #endif
 
-    if (spec_log_bins) then
-      spec_min = log(spec_min)
-      spec_max = log(spec_max)
-    endif
-    spec_bin_size = (spec_max - spec_min) / spec_num
-
     #ifdef RADIATION
       call getInput('output', 'rad_spec_min', rad_spec_min, spec_min)
       call getInput('output', 'rad_spec_max', rad_spec_max, spec_max)
@@ -71,12 +65,15 @@ contains
         rad_spec_max = log(rad_spec_max)
       endif
       rad_spec_bin_size = (rad_spec_max - rad_spec_min) / rad_spec_num
-
-      if (.not. allocated(rad_spectra)) allocate(rad_spectra(nspec, rad_spec_num))
-      if (.not. allocated(glob_rad_spectra)) allocate(glob_rad_spectra(nspec, rad_spec_num))
+      allocate(rad_spectra(nspec, rad_spec_num))
       rad_spectra(:, :) = 0.0
-      glob_rad_spectra(:, :) = 0.0
     #endif
+
+    if (spec_log_bins) then
+      spec_min = log(spec_min)
+      spec_max = log(spec_max)
+    endif
+    spec_bin_size = (spec_max - spec_min) / spec_num
 
     call getInput('output', 'flds_at_prtl', flds_at_prtl_enable, .false.)
     call getInput('output', 'write_xdmf', xdmf_enable, .true.)
@@ -97,6 +94,8 @@ contains
     implicit none
     integer                 :: i
     character(len=STR_MAX)  :: var_name
+    real :: slice_tmp
+
     call getInput('slice_output', 'enable', slice_output_enable, .false.)
     call getInput('slice_output', 'start', slice_output_start, 0)
     call getInput('slice_output', 'interval', slice_output_interval, 10)
@@ -108,36 +107,54 @@ contains
     slice_axes(:) = -1
     slice_pos(:) = -1
 
-    do i = 1, 100
+    do i = 1, 9
       write (var_name, "(A7,I1)") "sliceX_", i
-      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
-      if (slice_pos(nslices + 1) .ne. -1) then
-        nslices = nslices + 1
-        slice_axes(nslices) = 1
+      call getInput('slice_output', var_name, slice_tmp, -1.0)
+      if ((slice_tmp .gt. 0.0) .and. (slice_tmp .lt. 1.0)) then
+        slice_pos(nslices + 1) = INT(global_mesh%sx * slice_tmp) 
+      else if (slice_tmp .ge. 0.0) then
+        slice_pos(nslices + 1) = INT(slice_tmp) 
       else
         exit
       end if
+      nslices = nslices + 1
+      slice_axes(nslices) = 1
+      if ((slice_pos(nslices) .lt. 0) .or. (slice_pos(nslices) .ge. global_mesh%sx)) then
+        call throwError("ERROR: slice x position specified wrong.")
+      end if
     end do
 
-    do i = 1, 100
+    do i = 1, 9
       write (var_name, "(A7,I1)") "sliceY_", i
-      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
-      if (slice_pos(nslices + 1) .ne. -1) then
-        nslices = nslices + 1
-        slice_axes(nslices) = 2
+      call getInput('slice_output', var_name, slice_tmp, -1.0)
+      if ((slice_tmp .gt. 0.0) .and. (slice_tmp .lt. 1.0)) then
+        slice_pos(nslices + 1) = INT(global_mesh%sy * slice_tmp) 
+      else if (slice_tmp .ge. 0.0) then
+        slice_pos(nslices + 1) = INT(slice_tmp) 
       else
         exit
       end if
+      nslices = nslices + 1
+      slice_axes(nslices) = 2
+      if ((slice_pos(nslices) .lt. 0) .or. (slice_pos(nslices) .ge. global_mesh%sy)) then
+        call throwError("ERROR: slice y position specified wrong.")
+      end if
     end do
 
-    do i = 1, 100
+    do i = 1, 9
       write (var_name, "(A7,I1)") "sliceZ_", i
-      call getInput('slice_output', var_name, slice_pos(nslices + 1), -1)
-      if (slice_pos(nslices + 1) .ne. -1) then
-        nslices = nslices + 1
-        slice_axes(nslices) = 3
+      call getInput('slice_output', var_name, slice_tmp, -1.0)
+      if ((slice_tmp .gt. 0.0) .and. (slice_tmp .lt. 1.0)) then
+        slice_pos(nslices + 1) = INT(global_mesh%sz * slice_tmp) 
+      else if (slice_tmp .ge. 0.0) then
+        slice_pos(nslices + 1) = INT(slice_tmp) 
       else
         exit
+      end if
+      nslices = nslices + 1
+      slice_axes(nslices) = 3
+      if ((slice_pos(nslices) .lt. 0) .or. (slice_pos(nslices) .ge. global_mesh%sz)) then
+        call throwError("ERROR: slice z position specified wrong.")
       end if
     end do
   end subroutine initializeSlice
@@ -240,9 +257,16 @@ contains
       if (.not. allocated(glob_spectra)) then
         allocate(glob_spectra(nspec, spec_nx, spec_ny, spec_nz, spec_num))
       end if
+
       #ifdef GCA
         if (.not. allocated(glob_gca_spectra)) then
           allocate(glob_gca_spectra(2 * nspec, spec_nx, spec_ny, spec_nz, spec_num))
+        end if
+      #endif
+
+      #ifdef RADIATION
+        if (.not. allocated(glob_rad_spectra)) then
+          allocate(glob_rad_spectra(nspec, rad_spec_num))
         end if
       #endif
     end if
@@ -345,11 +369,13 @@ contains
 
       #ifdef RADIATION
         ! compute radiation spectra
-        if (allocated(rad_spectra) .and. allocated(glob_rad_spectra)) then
+        if (allocated(rad_spectra)) then
           rad_send_spec(:) = rad_spectra(s,:)
           call MPI_REDUCE(rad_send_spec, rad_recv_spec, rad_spec_num, MPI_REAL,&
                         & MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
-          glob_rad_spectra(s,:) = rad_recv_spec(:)
+          if (mpi_rank .eq. root_rnk) then
+            glob_rad_spectra(s,:) = rad_recv_spec(:)
+          end if
           rad_spectra(s,:) = 0.0
         end if
       #endif
@@ -360,6 +386,11 @@ contains
     if (allocated(recv_spec)) deallocate(recv_spec)
     #ifdef GCA
       if (allocated(gca_spectra)) deallocate(gca_spectra)
+    #endif
+
+    #ifdef RADIATION
+      if (allocated(rad_send_spec)) deallocate(rad_send_spec)
+      if (allocated(rad_recv_spec)) deallocate(rad_recv_spec)
     #endif
   end subroutine prepareSpectraForOutput
 
@@ -389,7 +420,7 @@ contains
       #endif
     end do
 
-    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 15) =&
+    fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 15 - 1) =&
                                  & (/'ex   ', 'ey   ', 'ez   ',&
                                    & 'bx   ', 'by   ', 'bz   ',&
                                    & 'jx   ', 'jy   ', 'jz   ',&
@@ -397,7 +428,7 @@ contains
                                    & 'xx   ', 'yy   ', 'zz   '/)
     n_fld_vars = n_fld_vars + 15
     if (derivatives_enable) then
-      fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 4) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
+      fld_vars(n_fld_vars + 1 : n_fld_vars + 1 + 4 - 1) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
       n_fld_vars = n_fld_vars + 4
     end if
   end subroutine defineFieldVarsToOutput

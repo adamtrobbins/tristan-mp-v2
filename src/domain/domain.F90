@@ -55,6 +55,7 @@ module m_domain
   integer :: alb_sxmin, alb_symin, alb_szmin
   integer :: alb_int_x, alb_int_y, alb_int_z
   integer :: alb_start_x, alb_start_y, alb_start_z
+  integer :: alb_slab_x, alb_slab_y, alb_slab_z
 
   ! load per each MPI process
   integer :: lb_load

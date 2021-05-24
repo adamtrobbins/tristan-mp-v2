@@ -10,3 +10,4 @@
 !fulltest.py
 !Makefile.in
 !README.md
+__pycache__

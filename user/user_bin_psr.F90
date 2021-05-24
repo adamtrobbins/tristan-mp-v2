@@ -923,11 +923,4 @@ contains
 
   !............................................................!
 
-  !--- user-specific output -----------------------------------!
-  subroutine userOutput(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    ! ...
-  end subroutine userOutput
-  !............................................................!
 end module m_userfile

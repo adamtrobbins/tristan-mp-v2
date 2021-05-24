@@ -196,6 +196,10 @@ contains
         #ifdef GCA
           if (allocated(glob_gca_spectra)) deallocate(glob_gca_spectra)
         #endif
+
+        #ifdef RADIATION
+          if (allocated(glob_rad_spectra)) deallocate(glob_rad_spectra)
+        #endif
       end if
     end subroutine writeSpectra_hdf5
   #endif

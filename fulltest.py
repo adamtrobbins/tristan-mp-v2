@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 import os
 import glob
@@ -23,15 +22,24 @@ def clustername(string):
 parser = argparse.ArgumentParser()
 parser.add_argument('--path', required=True, type=dir_path)
 parser.add_argument('--cluster', required=True, type=clustername)
+parser.add_argument('--dry', action='store_true', default=False, help='dry run.')
 parser.add_argument('-c', action='store_true', default=False, help='only test compilation.')
 parser.add_argument('-r', action='store_true', default=False, help='only run simulations.')
 parser.add_argument('-v', action='store_true', default=False, help='verbose mode (full output).')
-parser.add_argument('-d', action='store_true', default=False, help='diagnostic mode.')
+parser.add_argument('-d', '--diag', type=int, default=None, help='diagnostic mode [choose test #].')
 parser.add_argument('-t', '--test', type=str, default=','.join(map(str, list(range(15)))), help='tests to run.')
 options = parser.parse_args()
 tests = [int(t) for t in options.test.split(',')]
 
 suffix = '' if options.v else ' >/dev/null 2>&1'
+
+
+def callCommand(command):
+  if options.dry:
+    print (f'$ {command}')
+  else:
+    os.system(command)
+
 
 # modules for compilation
 if (options.cluster == 'perseus'):
@@ -49,7 +57,6 @@ outdir = options.path
 
 codedir = os.getcwd()
 testdir = 'test_0'
-# testdir = 'test_' + datetime.now().strftime("%H.%M_%d.%m.%Y")
 testdir_full = outdir + '/' + testdir
 
 # simulation environment (tristan & slurm)
@@ -74,23 +81,32 @@ class TwoStream(Simulation):
   jobid = 'twostream'
   userfile = 'user_twostream'
   dimension = 1
-  def diag(self, ax, fig=None):
+  def diag(self):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(8, 6))
     hist = isolde.parseHistory(self.path + '/output/history')
     omegap0 = self.params['algorithm']['c'] / self.params['plasma']['c_omp']
     rate = 0.5 * (0.5)**0.5 / (self.params['problem']['shift_gamma'])**(1.5)
     time = hist['time'] * omegap0; E2 = hist['E^2'] / hist['Etot'][0]; ax.plot(time, E2, label='sim')
-    xs = np.linspace(10, 40, 10); ys = np.exp(2 * rate * xs); ys = (E2[time>10][0]) * (ys / ys[0]); ax.plot(xs, ys, label=r'$\omega/\omega_{\textrm{p}b}=\gamma_b^{-3/2}$')
+    xs = np.linspace(10, 40, 10); ys = np.exp(2 * rate * xs); ys = (E2[time>10][0]) * (ys / ys[0]); ax.plot(xs, ys, label=r'$\omega/\omega_{b}^p=\gamma_b^{-3/2}$')
     ax.set_ylim(1e-4, 1e-1); ax.set_xlim(0, 200); ax.set_yscale('log');
     ax.set_xlabel(r'$t\omega_{\rm p0}$'); ax.set_ylabel(r'$U_E / E_{\rm tot}$')
     ax.axvline(ax.get_xlim()[0], color='black'); ax.axhline(ax.get_ylim()[0], color='black')
-    ax.text(110, 0.6e-3, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.5'))
+    ax.text(110, 0.6e-3, r"""
+            energy conservation
+            by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$
+            """.format(int(hist['time'][-1]*omegap0), int(hist['% dEtot'][-1]*10000) / 10000))
     ax.set_title(self.jobid); plt.legend()
+    plt.tight_layout();
+    plt.show();
 
 class PlasmaOsc(Simulation):
   jobid = 'plasmaosc'
   userfile = 'user_langmuir'
   dimension = 1
-  def diag(self, ax, fig=None):
+  def diag(self):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(8, 6))
     exs = []; steps = np.arange(50)
     for step in steps:
       flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % step)
@@ -101,22 +117,29 @@ class PlasmaOsc(Simulation):
     for i in range(4):
       ax.axvline(i, c='gray', lw=1, ls='--')
     hist = isolde.parseHistory(self.path + '/output/history')
-    ax.text(2, -1, r'energy conservation\\by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}\%$'.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000), bbox=dict(facecolor='white', edgecolor='gray', boxstyle='round,pad=0.5'))
+    ax.text(2, -1, r"""
+            energy conservation
+            by $t\omega_{{\rm p 0}}={{{}}}: \Delta E/E={{{}}}%$
+            """.format(int(hist['time'][-1]*0.45 / self.params['plasma']['c_omp']), int(hist['% dEtot'][-1]*10000) / 10000))
+    plt.tight_layout();
+    plt.show();
 
 class Weibel(Simulation):
   jobid = 'weibel'
   userfile = 'user_weibel'
   dimension = 2
-  def diag(self, ax, fig=None):
+  def diag(self):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6, 6))
     ax.set_title(self.jobid); ax.grid(False)
     from matplotlib.animation import FuncAnimation
     flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % 0)
     xmin = flds['xx'][0].min() / self.params['plasma']['c_omp']; xmax = flds['xx'][0].max() / self.params['plasma']['c_omp']
     ymin = flds['yy'][0].min() / self.params['plasma']['c_omp']; ymax = flds['yy'][0].max() / self.params['plasma']['c_omp']
-    im = ax.imshow(flds['bz'][0], origin='lower', cmap='bipolar', vmin=-0.01, vmax=0.01, extent=(xmin,xmax,ymin,ymax))
+    im = ax.imshow(flds['bz'][0], origin='lower', cmap='RdBu', vmin=-0.01, vmax=0.01, extent=(xmin,xmax,ymin,ymax))
     ax.set_xlabel(r'$x/d_{e0}$'); ax.set_ylabel(r'$y/d_{e0}$')
-    txt1 = ax.text(10, 120, r'$B_z$', color='white')
-    txt2 = ax.text(90, 120, r'', color='white', zorder=100)
+    txt1 = ax.text(10, 120, r'$B_z$', color='k')
+    txt2 = ax.text(90, 120, r'', color='k', zorder=100)
     def init():
       im.set_data(flds['bz'][0])
       txt2.set_text(r'$t\omega_{{\rm p0}}=0$')
@@ -125,17 +148,21 @@ class Weibel(Simulation):
       flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % i); im.set_data(flds['bz'][0]);
       txt2.set_text(r'$t\omega_{{\rm p0}}={{{}}}$'.format(i * self.params['output']['interval'] * 0.45 / self.params['plasma']['c_omp']))
       return im, txt1, txt2,
-    anim = FuncAnimation(fig, animate, init_func=init, frames=50, interval=1000, blit=True, repeat=True)
+    anim = FuncAnimation(fig, animate, init_func=init, frames=50, interval=500, blit=True, repeat=True)
+    plt.tight_layout();
+    plt.show();
 
 class Merging(Simulation):
   jobid = 'merging'
   userfile = 'unit_chargedmerging'
   dimension = 2
-  def diag(self, ax, fig=None):
+  def diag(self):
+    import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation
     import matplotlib.collections as mcoll
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     divE_max = 1e-11;
+    fig, ax = plt.subplots(figsize=(6, 6))
     def getMomenta(prtls):
       en = np.sum(np.sqrt(1.0 + prtls['1']['u']**2 + prtls['1']['v']**2 + prtls['1']['w']**2) * prtls['1']['wei']) + np.sum(np.sqrt(1.0 + prtls['2']['u']**2 + prtls['2']['v']**2 + prtls['2']['w']**2) * prtls['2']['wei'])
       mx = np.sum(prtls['1']['u'] * prtls['1']['wei']) + np.sum(prtls['2']['u'] * prtls['2']['wei'])
@@ -146,10 +173,10 @@ class Merging(Simulation):
     def template(prtls):
       energy1, momx1, momy1, momz1 = getMomenta(prtls)
       return r'npart: {} ($\times$2)'.format(len(prtls['1']['x'])) + \
-              '\ntotal energy [err\%]: {:.3f} [{:.4f}\%]'.format(energy1, np.abs((energy1 - energy0) * 100 / energy0)) + \
-              '\nmomX [err\%]: {:.3f} [{:.4f}\%]'.format(momx1, np.abs((momx1 - momx0) * 100 / momx0)) + \
-              '\nmomY [err\%]: {:.3f} [{:.4f}\%]'.format(momy1, np.abs((momy1 - momy0) * 100 / momy0)) + \
-              '\nmomZ [err\%]: {:.3f} [{:.4f}\%]'.format(momz1, np.abs((momz1 - momz0) * 100 / (momz0 + 1e-10)))
+              '\ntotal energy [err%]: {:.3f} [{:.4f}%]'.format(energy1, np.abs((energy1 - energy0) * 100 / energy0)) + \
+              '\nmomX [err%]: {:.3f} [{:.4f}%]'.format(momx1, np.abs((momx1 - momx0) * 100 / momx0)) + \
+              '\nmomY [err%]: {:.3f} [{:.4f}%]'.format(momy1, np.abs((momy1 - momy0) * 100 / momy0)) + \
+              '\nmomZ [err%]: {:.3f} [{:.4f}%]'.format(momz1, np.abs((momz1 - momz0) * 100 / (momz0 + 1e-10)))
     sc1 = ax.scatter([-100], [-100], fc='blue', label='lecs', zorder=2)
     sc2 = ax.scatter([-100], [-100], fc='red', label='ions', zorder=2)
     lgd = ax.legend(loc='lower right');
@@ -192,10 +219,98 @@ class Merging(Simulation):
       diag.set_text(template(prtls))
       return sc1, sc2, im, ttl, diag, lgd, grid1, grid2,
     anim = FuncAnimation(fig, animate, init_func=init,
-                         frames=40, interval=1000, blit=True, repeat=True)
+                         frames=40, interval=250, blit=True, repeat=True)
+    plt.tight_layout();
+    plt.show();
+
+class AdaptiveLB(Simulation):
+  jobid = 'alb'
+  userfile = 'unit_alb'
+  dimension = 3
+  def diag(self):
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+    fig = plt.figure(figsize=(8, 8))
+    sx = self.params['grid']['mx0']; sy = self.params['grid']['my0']; sz = self.params['grid']['mz0']
+    
+    ax1 = plt.subplot(221)
+    ax1.grid(False)
+    im1 = ax1.imshow(np.zeros((sx, sz)), vmin=0, vmax=300, origin='lower', extent=(0, sx, 0, sz), cmap='hot')
+    ax1.set_xlabel('x'); ax1.set_ylabel('z')
+    ax1.set_xlim(0, sx)
+    ax1.set_ylim(0, sz)
+
+    ax2 = plt.subplot(222)
+    ax2.grid(False)
+    im2 = ax2.imshow(np.zeros((sx, sy)), vmin=0, vmax=300, origin='lower', extent=(0, sx, 0, sy), cmap='hot')
+    ax2.set_xlabel('x'); ax2.set_ylabel('y')
+    ax2.set_xlim(0, sx)
+    ax2.set_ylim(0, sy)
+
+    ax3 = plt.subplot(223)
+    ax3.grid(False)
+    im3 = ax3.imshow(np.zeros((sy, sz)), vmin=0, vmax=300, origin='lower', extent=(0, sy, 0, sz), cmap='hot')
+    ax3.set_xlabel('y'); ax3.set_ylabel('z')
+    ax3.set_xlim(0, sy)
+    ax3.set_ylim(0, sz)
+    
+    ax4 = plt.subplot(224, projection='3d')
+    sc4_1 = ax4.scatter([-100], [-100], fc='C0')
+    sc4_2 = ax4.scatter([-100], [-100], fc='C0')
+    ax4.set_xlim(0, sx)
+    ax4.set_ylim(0, sy)
+    ax4.set_zlim(0, sz)
+    ax4.set_xlabel('x'); ax4.set_ylabel('y'); ax4.set_zlabel('z')
+
+    def draw(i):
+      prtls = isolde.getParticles(self.path + '/output/prtl.tot.%05d' % i)
+      flds = isolde.getFields(self.path + '/output/flds.tot.%05d' % i)
+      dom = isolde.getDomains(self.path + '/output/domain.%05d' % i)
+      # xz
+      dens_xz = np.sum(flds['dens1'] + flds['dens2'], axis=1)
+      im1.set_data(dens_xz)
+      while ax1.lines != []:
+        ax1.lines[0].remove()
+      for x0 in np.unique(dom['x0']):
+        ax1.axvline(x0, c='C0', lw=0.5)
+      for z0 in np.unique(dom['z0']):
+        ax1.axhline(z0, c='C0', lw=0.5)
+      # xy
+      dens_xy = np.sum(flds['dens1'] + flds['dens2'], axis=0)
+      im2.set_data(dens_xy)
+      while ax2.lines != []:
+        ax2.lines[0].remove()
+      for x0 in np.unique(dom['x0']):
+        ax2.axvline(x0, c='C0', lw=0.5)
+      for y0 in np.unique(dom['y0']):
+        ax2.axhline(y0, c='C0', lw=0.5)
+      ax2.set_xlabel('x'); ax2.set_ylabel('y')
+      # xy
+      dens_yz = np.sum(flds['dens1'] + flds['dens2'], axis=2)
+      im3.set_data(dens_yz)
+      while ax3.lines != []:
+        ax3.lines[0].remove()
+      for z0 in np.unique(dom['z0']):
+        ax3.axhline(z0, c='C0', lw=0.5)
+      for y0 in np.unique(dom['y0']):
+        ax3.axvline(y0, c='C0', lw=0.5)
+      ax3.set_xlabel('x'); ax3.set_ylabel('y')
+      # scatter
+      sc4_1._offsets3d = (prtls['1']['x'], prtls['1']['y'], prtls['1']['z'])
+      sc4_2._offsets3d = (prtls['2']['x'], prtls['2']['y'], prtls['2']['z'])
+      return im1, ax1, im2, ax2, im3, ax3, ax4, sc4_1, sc4_2, 
+
+    def init():
+      return draw(0)
+    def animate(i):
+      return draw(i)
+    anim = FuncAnimation(fig, animate, init_func=init,
+                         frames=40, interval=250, blit=False, repeat=True)
+    plt.tight_layout();
+    plt.show();
 
 # Here specify the test simulations and give additional specs of the environment
-common_flags = ' --cluster={} -hdf5 -debug'.format(options.cluster)
+common_flags = ' --cluster={} -hdf5 --debug=1'.format(options.cluster)
 simulations = [
                TwoStream(common_flags,
                           params={
@@ -241,113 +356,116 @@ simulations = [
                            'particles': {'nspec' : 2, 'maxptl1' : 1e8, 'm1' : 1, 'ch1' : -1, 'dwn1' : 1, 'maxptl2' : 1e8, 'm2' : 1, 'ch2' : 1, 'dwn2' : 1},
                            'downsampling' : {'interval' : 1, 'start' : 1, 'max_weight' : 1e5, 'cartesian_bins' : 1, 'energy_min' : 0, 'energy_max' : 1e5, 'int_weights' : 0, 'dynamic_bins' : 1, 'mom_bins' : 1, 'mom_spread' : 1e5}
                            }
+                        ),
+              AdaptiveLB(common_flags + ' -alb', nproc=192,
+                         params={
+                           'node_configuration': {'sizex' : 8, 'sizey' : 8, 'sizez' : 3},
+                           'time': {'last' : 400},
+                           'grid': {'mx0' : 112, 'my0' : 112, 'mz0' : 114, 'resize_tiles' : 1, 'tileX' : 5, 'tileY' : 5, 'tileZ' : 5},
+                           'algorithm': {'nfilter': 0, 'fieldsolver' : 0, 'currdeposit' : 0},
+                           'output': {'enable': 1, 'interval' : 10, 'stride' : 10, 'istep' : 1, 'diag_enable' : 1},
+                           'adaptive_load_balancing': {'in_x': 1, 'in_y': 1, 'in_z' : 1,
+                                                       'sx_min': 8, 'sy_min': 8, 'sz_min': 8,
+                                                       'interval_x': 5, 'interval_y': 5, 'interval_z': 5,
+                                                       'slab_x': 2, 'slab_y' : 2, 'slab_z': 2
+                                                      },
+                           'plasma': {'ppc0' : 16, 'sigma' : 5, 'c_omp' : 10},
+                           'particles': {'nspec' : 2, 'maxptl1' : 1e6, 'm1' : 1, 'ch1' : 1, 'maxptl2' : 1e6, 'm2' : 1, 'ch2' : -1},
+                           'problem' : {'radius' : 5}
+                           }
                         )
                ]
 
-if (options.d):
+if (options.diag):
   # diagnostic mode where you analize the test results
   import matplotlib.pyplot as plt
   import numpy as np
   import tristanVis.isolde as isolde
-  try:
-    import tristanVis.snippets as trS
-    trS.loadCustomStyles(style='fivethirtyeight', fs=10)
-  except:
-    pass
-  fig = plt.figure(figsize=(12, 8))
+  plt.style.use('fivethirtyeight')
   for ii, simulation in enumerate(simulations):
-    if not (ii + 1 in tests):
-      continue
-    ax = plt.subplot(2, 2, ii + 1)
-    simulation.path = testdir_full + '/%02d_' % (ii + 1) + simulation.jobid
-    simulation.diag(ax, fig)
-  plt.tight_layout()
-  plt.show()
+    if (ii + 1 == options.diag):
+      if (options.dry):
+        print (f'Plotting for `{simulation.jobid}`')
+      else:
+        simulation.path = f'{testdir_full}/{ii + 1:02}_{simulation.jobid}'
+        simulation.diag()
+        break
 else:
   # regular mode where you compile and run tests
-    if not os.path.exists(testdir_full):
-      os.makedirs(testdir_full)
-    with open(testdir_full + '/test.log', 'w+') as testlog:
+  if not os.path.exists(testdir_full):
+    os.makedirs(testdir_full)
+  with open(testdir_full + '/test.log', 'w+') as testlog:
+    # load modules
+    for ii, simulation in enumerate(simulations):
+      if not (ii + 1 in tests):
+        continue
+      # create directory for simulation
+      simulation.path = f'{testdir_full}/{ii + 1:02}_{simulation.jobid}'
+      if os.path.exists(simulation.path) and not options.r:
+        callCommand(f'rm -r {simulation.path}')
+      if not options.r and not options.dry:
+        os.makedirs(simulation.path)
+      testlog.write(('TEST_#{}_'.format(ii+1) + simulation.jobid).ljust(50, '.') + '\n')
+      # configure
+      config_command = 'python configure.py '
+      config_command += simulation.flags
+      config_command += ' -{}d'.format(simulation.dimension)
+      config_command += ' --{}='.format(simulation.userfile[:4]) + simulation.userfile
       if (not options.r):
-        # load modules
-        for ii, simulation in enumerate(simulations):
-          if not (ii + 1 in tests):
-            continue
-          # create directory for simulation
-          simulation.path = testdir_full + '/%02d_' % (ii + 1) + simulation.jobid
-          if os.path.exists(simulation.path):
-            shutil.rmtree(simulation.path)
-          os.makedirs(simulation.path)
-
-          testlog.write(('TEST_#{}_'.format(ii+1) + simulation.jobid).ljust(50, '.') + '\n')
-
-          # configure
-          config_command = 'python configure.py '
-          config_command += simulation.flags
-          config_command += ' -{}d'.format(simulation.dimension)
-          config_command += ' --{}='.format(simulation.userfile[:4]) + simulation.userfile
-          os.system(config_command + suffix)
-
-          # clean
-          os.system('make clean' + suffix)
-          # compile
-          os.system('make all' + suffix)
-
-          # check if compilation successfull
-          simulation.exe = 'tristan-mp{}d'.format(simulation.dimension)
-          simulation.exe_full = simulation.path + '/' + simulation.exe
-          if os.path.isfile(codedir + '/exec/' + simulation.exe):
-            testlog.write('compilation'.ljust(46, '.') + '[OK]\n')
-            print ('Compilation of `{}` done.'.format(simulation.jobid))
-
-            # move executable
-            os.system('mv {} {}'.format(codedir + '/exec/' + simulation.exe, simulation.path) + suffix)
-
-            # clean
-            os.system('make clean' + suffix)
-
-            # write input
-            simulation.input = 'input.' + simulation.jobid
-            simulation.input_full = simulation.path + '/' + simulation.input
-            with open(simulation.input_full, 'w+') as inp:
-              for block in simulation.params.keys():
-                inp.write('\n<{}>\n\n'.format(block))
-                for var in simulation.params[block].keys():
-                  inp.write('  {}  =  {}\n'.format(var, simulation.params[block][var]))
-            testlog.write('input file'.ljust(46, '.') + '[OK]\n')
-
-            # write submit
-            simulation.submit = 'submit_' + simulation.jobid
-            simulation.submit_full = simulation.path + '/' + simulation.submit
-            with open(simulation.submit_full, 'w+') as sub:
-              sub.write('#!/bin/bash\n')
-              sub.write('#SBATCH -t {}\n'.format(simulation.walltime))
-              sub.write('#SBATCH -n {}\n'.format(simulation.nproc))
-              sub.write('#SBATCH -J {}\n'.format(simulation.jobid))
-              sub.write('#SBATCH --output={}/tristan-v2.out\n'.format(simulation.path))
-              sub.write('#SBATCH --error={}/tristan-v2.err\n\n'.format(simulation.path))
-
-              sub.write('DIR={}\n'.format(simulation.path))
-              sub.write('EXECUTABLE=$DIR/{}\n'.format(simulation.exe))
-              sub.write('INPUT=$DIR/{}\n'.format(simulation.input))
-              sub.write('OUTPUT_DIR=$DIR/output\n'.format(simulation.path))
-              sub.write('SLICE_DIR=$DIR/slices\n'.format(simulation.path))
-              sub.write('REPORT_FILE=$DIR/report\n'.format(simulation.path))
-              sub.write('ERROR_FILE=$DIR/error\n\n'.format(simulation.path))
-
-              for module in modules:
-                sub.write('module load {}\n'.format(module))
-
-              sub.write('\nmkdir $OUTPUT_DIR\n\n')
-
-              sub.write('srun $EXECUTABLE -i $INPUT -o $OUTPUT_DIR -s $SLICE_DIR -r $RESTART_DIR -R $RESTART > $REPORT_FILE 2> $ERROR_FILE')
-            testlog.write('submit file'.ljust(46, '.') + '[OK]\n')
-          testlog.write('\n')
-
+        # compile everything if not in `r` mode
+        callCommand(config_command + suffix)
+        # clean
+        callCommand('make clean' + suffix)
+        # compile
+        callCommand('make all' + suffix)
+        # check if compilation successfull
+        simulation.exe = f'tristan-mp{simulation.dimension}d'
+        simulation.exe_full = f'{simulation.path}/{simulation.exe}'
+        if (not os.path.isfile(codedir + '/exec/' + simulation.exe)) and not options.dry:
+          raise RuntimeError("Something went wrong")
+        testlog.write('compilation'.ljust(46, '.') + '[OK]\n')
+        print ('Compilation of `{}` done.'.format(simulation.jobid))
+        # move executable
+        callCommand(f'mv {codedir}/exec/{simulation.exe} {simulation.path}')
+        # clean
+        callCommand('make clean' + suffix)
+        # write input
+        simulation.input = 'input.' + simulation.jobid
+        simulation.input_full = simulation.path + '/' + simulation.input
+        if not options.dry:
+          with open(simulation.input_full, 'w+') as inp:
+            for block in simulation.params.keys():
+              inp.write('\n<{}>\n\n'.format(block))
+              for var in simulation.params[block].keys():
+                inp.write('  {}  =  {}\n'.format(var, simulation.params[block][var]))
+        testlog.write('input file'.ljust(46, '.') + '[OK]\n')
+      # write submit
+      simulation.submit = 'submit_' + simulation.jobid
+      simulation.submit_full = simulation.path + '/' + simulation.submit
+      if (not options.r) and (not options.dry):
+        with open(simulation.submit_full, 'w+') as sub:
+          sub.write('#!/bin/bash\n')
+          sub.write('#SBATCH -t {}\n'.format(simulation.walltime))
+          sub.write('#SBATCH -n {}\n'.format(simulation.nproc))
+          sub.write('#SBATCH -J {}\n'.format(simulation.jobid))
+          sub.write('#SBATCH --output={}/tristan-v2.out\n'.format(simulation.path))
+          sub.write('#SBATCH --error={}/tristan-v2.err\n\n'.format(simulation.path))
+          sub.write('DIR={}\n'.format(simulation.path))
+          sub.write('EXECUTABLE=$DIR/{}\n'.format(simulation.exe))
+          sub.write('INPUT=$DIR/{}\n'.format(simulation.input))
+          sub.write('OUTPUT_DIR=$DIR/output\n'.format(simulation.path))
+          sub.write('SLICE_DIR=$DIR/slices\n'.format(simulation.path))
+          sub.write('REPORT_FILE=$DIR/report\n'.format(simulation.path))
+          sub.write('ERROR_FILE=$DIR/error\n\n'.format(simulation.path))
+          for module in modules:
+            sub.write('module load {}\n'.format(module))
+          sub.write('\nmkdir $OUTPUT_DIR\n\n')
+          sub.write('srun $EXECUTABLE -i $INPUT -o $OUTPUT_DIR -s $SLICE_DIR -r $RESTART_DIR -R $RESTART > $REPORT_FILE 2> $ERROR_FILE')
+      testlog.write('submit file'.ljust(46, '.') + '[OK]\n')
       testlog.write('\n\n')
-      if (not options.c) or (options.r):
-        for ii, simulation in enumerate(simulations):
-          if not (ii + 1 in tests):
-            continue
-          os.system('sbatch ' + simulation.submit_full)
-          testlog.write(('`{}`'.format(simulation.jobid)).ljust(41, '.') + 'submitted\n')
+    if (not options.c) or (options.r):
+      for ii, simulation in enumerate(simulations):
+        if not (ii + 1 in tests):
+          continue
+        callCommand('sbatch ' + simulation.submit_full)
+        testlog.write(('`{}`'.format(simulation.jobid)).ljust(41, '.') + 'submitted\n')

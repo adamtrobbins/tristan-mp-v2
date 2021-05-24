@@ -16,17 +16,28 @@ module m_initialize
   use m_readinput, only: getInput, readCommandlineArgs
 
   use m_domain
-  use m_loadbalancing, only: initializeLB, redistributeMeshblocksSLB
+  use m_loadbalancing, only: initializeLB
+  #ifdef SLB
+    use m_staticlb, only: redistributeMeshblocksSLB
+  #endif
 
   use m_fieldlogistics, only: initializeFields
   use m_particlelogistics, only: initializeParticles
   use m_exchangeparts, only: initializePrtlExchange
 
-  use m_userfile, only: userReadInput, userInitParticles,&
-                      & userInitFields, user_slb_load_ptr => userSLBload
+  use m_userfile, only: userReadInput, userInitParticles, userInitFields
+
+  #ifdef SLB
+    use m_userfile, only: user_slb_load_ptr => userSLBload
+  #endif
+
   use m_outputlogistics, only: initializeOutput, initializeSlice
   use m_writehistory, only: initializeHistory
-  use m_writeusroutput, only: initializeUsrOutput
+
+  #ifdef USROUTPUT
+    use m_writeusroutput, only: initializeUsrOutput
+  #endif
+
   use m_restart, only: initializeRestart, restartSimulation, rst_simulation, rst_enable
 
   use m_particlebinning
@@ -73,9 +84,13 @@ contains
 
     call initializeCommunications()
 
+    call getInput('particles', 'nspec', nspec, 2)
+
     call initializeOutput()
     call initializeHistory()
-    call initializeUsrOutput()
+    #ifdef USROUTPUT
+      call initializeUsrOutput()
+    #endif
     call initializeSlice()
     call initializeRestart()
     call initializeDirectories()
