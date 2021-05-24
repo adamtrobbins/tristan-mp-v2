@@ -1,4 +1,4 @@
-# Tristan-MP v2.1.2
+# Tristan-MP v2.2
 
 For detailed tutorials and code description please visit our [wiki](https://ntoles.github.io/tristan-wiki/). If you are a new user testing the code on a new computer cluster, please consider contributing to [this chapter](https://ntoles.github.io/tristan-wiki/tristanv2-configure.html#cluster-specific-customization) about cluster-specific configuration to make the life easier for future generations.
 
@@ -23,6 +23,20 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 - `MINOR` version when you add functionality in a backwards compatible manner, and
 - `PATCH` version when you make backwards compatible bug fixes.
 
+* `v2.2` __May 2021__
+  * Adaptive load balancing
+  * Dynamic reallocation of tiles (more stable on low memory machines, slightly slower)
+  * Explicit low-memory mode for clusters such as frontera (-lowmem flag)
+  * User-specific output added at runtime
+  * Updated the fulltest.py facility (see wiki)
+  * Debug levels (0, 1, 2)
+  * A facility for warnings and diagnostic output (see wiki)
+  * Coupling of GCA with Vay pusher
+  * Cooling limiter
+  * Fluid velocity output
+  * Major bugfix in the momentum output
+  * Major restructuring in the initializer
+  * Minor improvements, restructurings and bugfixes
 * `v2.1.2` __Mar 2021__
   * Dynamic reallocation of tiles
   * Coupling of GCA with Vay pusher
