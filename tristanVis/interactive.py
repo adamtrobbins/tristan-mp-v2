@@ -182,15 +182,20 @@ class TwoDPlotAndSpectra:
     bns = np.copy(self.spec_data.ebins)
     if not self.spectra_kwargs['smooth'] is None:
       from scipy.ndimage import gaussian_filter1d as smooth
+      cnt1 = smooth(np.copy(cnt1), self.spectra_kwargs['smooth'])
+      cnt2 = smooth(np.copy(cnt2), self.spectra_kwargs['smooth'])
       cnt = smooth(np.copy(cnt), self.spectra_kwargs['smooth'])
     else:
+      cnt1 = np.copy(cnt1)
+      cnt2 = np.copy(cnt2)
       cnt = np.copy(cnt)
     if ((not self.SHIFT) or (self.specbins == [])):
       self.specbins = [(x0, y0)]
       self.spec_x = bns
-      self.spec_y = cnt
-      self.spec.set_xdata(self.spec_x)
-      self.spec.set_ydata(self.spec_y)
+      self.spec_y = (cnt1, cnt2, cnt)
+      for i in range(3):
+        self.spec[i].set_xdata(self.spec_x)
+        self.spec[i].set_ydata(self.spec_y[i])
       while len(self.fig.axes[0].patches) != 0:
         self.fig.axes[0].patches[0].remove()
       self.fig.axes[0].add_patch(mpatches.Rectangle((x0, y0), sx, sy, fc='None', zorder=100, **self.rectangle_kwargs))
@@ -199,17 +204,19 @@ class TwoDPlotAndSpectra:
         self.specbins.append((x0, y0))
         self.spec_x = bns
         try:
-          self.spec_y += cnt
+          self.spec_y = (self.spec_y[0] + cnt1, self.spec_y[1] + cnt2, self.spec_y[2] + cnt) 
         except:
-          self.spec_y = cnt
-        self.spec.set_xdata(self.spec_x)
-        self.spec.set_ydata(self.spec_y)
+          self.spec_y = (cnt1, cnt2, cnt)
+        for i in range(3):
+          self.spec[i].set_xdata(self.spec_x)
+          self.spec[i].set_ydata(self.spec_y[i])
         self.fig.axes[0].add_patch(mpatches.Rectangle((x0, y0), sx, sy, fc='None', zorder=100, **self.rectangle_kwargs))
       else:
         self.specbins.remove((x0, y0))
-        self.spec_y -= cnt
-        self.spec.set_xdata(self.spec_x)
-        self.spec.set_ydata(self.spec_y)
+        self.spec_y = (self.spec_y[0] - cnt1, self.spec_y[1] - cnt2, self.spec_y[2] - cnt) 
+        for i in range(3):
+          self.spec[i].set_xdata(self.spec_x)
+          self.spec[i].set_ydata(self.spec_y[i])
         for rect in self.fig.axes[0].patches:
           if (rect.get_xy() == (x0, y0)):
             rect.remove()
@@ -248,7 +255,10 @@ class TwoDPlotAndSpectra:
     ax_fld.set_xlabel(self.coordinates[0])
     ax_fld.set_ylabel(self.coordinates[1])
     ax_spec = self.fig.add_subplot(122)
-    self.spec, = ax_spec.plot([], [])
+    sp1, = ax_spec.plot([], [], label='1')
+    sp2, = ax_spec.plot([], [], label='2')
+    sp, = ax_spec.plot([], [], label='tot')
+    self.spec = (sp1, sp2, sp)
     if not self.spectra_kwargs['xlim'] is None:
       ax_spec.set_xlim(*self.spectra_kwargs['xlim'])
     if not self.spectra_kwargs['ylim'] is None:
@@ -257,6 +267,7 @@ class TwoDPlotAndSpectra:
     ax_spec.set_yscale('log')
     ax_spec.set_xlabel(r'$\gamma - 1$')
     ax_spec.set_ylabel(r'$(\gamma - 1)f(\gamma)$')
+    plt.legend();
     divider = make_axes_locatable(ax_fld)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
