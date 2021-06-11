@@ -28,13 +28,14 @@ module m_userfile
   real, private     :: shell_width, prtl_kick, rmin_dr
   real, private     :: sigma_nGJ, nGJ, inj_dr
   real, private     :: sigGJ_limiter, edotb_thr_closed
-  real, private     :: omegaB0, psr_rlc
+  real, private     :: omegaB0, psr_rlc, alpha_inj
   #ifdef GCA
     real, private     :: psr_gca_enforce_rad
   #endif
 
   real, private     :: gammarad_over_sigma_LC, gammarad_dummy
   real, private     :: eph_at_LC, gammac_dummy
+  integer, private  :: vol_inj_start 
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -45,6 +46,8 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    call getInput('problem', 'vol_inj_start', vol_inj_start)
+    call getInput('problem', 'alpha_inj', alpha_inj)
 
     call getInput('problem', 'psr_radius', psr_radius)
     call getInput('problem', 'psr_angle', psr_angle)
@@ -70,11 +73,15 @@ contains
     #ifdef RADIATION
       ! gamma_rad / sigma_LC for the field near LC
       call getInput('problem', 'grad_sigma_LC', gammarad_over_sigma_LC, 0.5)
-      gammarad_dummy = 0.5 * gammarad_over_sigma_LC * (omegaB0 * psr_radius / CC) * sqrt(psr_radius / psr_rlc) * psr_bstar
+      gammarad_dummy = 0.5 * gammarad_over_sigma_LC * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**2.5 * psr_bstar**1.5
 
-      ! energy of the photon (in me c^2) radiated in the field of LC by a particle with gamma ~ sigmaLC
-      call getInput('problem', 'eph_at_LC', eph_at_LC, 100.0)
-      gammac_dummy = 0.5 * eph_at_LC**(-0.5) * psr_bstar**1.5 * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**(3.5)
+      ! gamma of particle radiating me c^2 photon at LC
+      call getInput('problem', 'eph_at_LC', eph_at_LC, 10.0)
+      gammac_dummy = eph_at_LC * (psr_radius / psr_rlc)**0.5 * psr_bstar**0.5
+
+      ! redefine `gamma_syn`, `emit_gamma_syn`
+      cool_gamma_syn = gammarad_dummy
+      emit_gamma_syn = gammac_dummy
     #endif
 
     call getInput('problem', 'rmin_dr', rmin_dr, 1.0)
@@ -118,11 +125,6 @@ contains
     implicit none
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
-    #ifdef RADIATION
-      ! redefine `gamma_syn`, `emit_gamma_syn`
-      cool_gamma_syn = gammarad_dummy
-      emit_gamma_syn = gammac_dummy
-    #endif
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -714,44 +716,46 @@ contains
           end if ! E.B limiter
         end if ! current MPI block
       end if ! closed zone
+
     end do
 
     ! max radius for spherical absorption and absorbing layer size in cartesian absorption
     rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
     smax_car = ds_abs / 4.0
 
-    ! inject in low density regions
-    !call computeDensity(1, reset=.true., ds=0, charge=.false.)
-    !call computeDensity(2, reset=.false., ds=0, charge=.false.)
-    !do i = 0, this_meshblock%ptr%sx - 1
-      !i_glob = i + this_meshblock%ptr%x0
-      !do j = 0, this_meshblock%ptr%sy - 1
-        !j_glob = j + this_meshblock%ptr%y0
-        !do k = 0, this_meshblock%ptr%sz - 1
-          !k_glob = k + this_meshblock%ptr%z0
-          !r_g = sqrt(REAL(i_glob - xc_g)**2 + REAL(j_glob - yc_g)**2 + REAL(k_glob - zc_g)**2)
-          !density = lg_arr(i, j, k)
-          !ppc = 0.5 * ppc0
-          !if ((density .lt. 1) .and. (r_g .lt. rmax_sph)) then
-            !do while (ppc .gt. 0) 
-              !if (random(dseed) .lt. ppc) then
-                !xi = INT(i, 2); yi = INT(j, 2); zi = INT(k, 2)
-                !dx = random(dseed); dy = random(dseed); dz = random(dseed)
-                !call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-                !call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-                !dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
-                !if (dummy_ .gt. edotb_thr_closed) then
-                  !weight = dummy_ * nGJ / ppc
-                  !call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-                  !call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-                !end if ! E.B limiter
-              !end if
-              !ppc = ppc - 1.0
-            !end do
-          !end if
-        !end do
-      !end do
-    !end do
+    if (step .ge. vol_inj_start) then
+      ! inject in low density regions
+      call computeDensity(1, reset=.true., ds=0, charge=.false.)
+      call computeDensity(2, reset=.false., ds=0, charge=.false.)
+      do i = 0, this_meshblock%ptr%sx - 1
+        i_glob = i + this_meshblock%ptr%x0
+        do j = 0, this_meshblock%ptr%sy - 1
+          j_glob = j + this_meshblock%ptr%y0
+          do k = 0, this_meshblock%ptr%sz - 1
+            k_glob = k + this_meshblock%ptr%z0
+            r_g = sqrt(REAL(i_glob - xc_g)**2 + REAL(j_glob - yc_g)**2 + REAL(k_glob - zc_g)**2) + 0.0001
+            density = lg_arr(i, j, k)
+            if ((r_g .gt. 0.5 * psr_radius) .and.&
+              & (density .lt. 5.0 * (nGJ * (psr_radius / r_g)**3)) .and.&
+              & (r_g .lt. 0.5 * rmax_sph)) then
+              ppc = 0.5 * ppc0
+              weight = alpha_inj * (5.0 * nGJ * (psr_radius / r_g)**3) / ppc
+              ppc = ppc * tanh((r_g - psr_radius) / (0.5 * psr_radius))
+              do while (ppc .gt. 0) 
+                if (random(dseed) .lt. ppc) then
+                  xi = INT(i, 2); yi = INT(j, 2); zi = INT(k, 2)
+                  dx = random(dseed); dy = random(dseed); dz = random(dseed)
+                  call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+                  call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+                  !end if ! E.B limiter
+                end if
+                ppc = ppc - 1.0
+              end do
+            end if
+          end do
+        end do
+      end do
+    end if
 
     ! remove particles falling into the star
     do s = 1, nspec

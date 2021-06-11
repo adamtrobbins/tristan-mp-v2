@@ -127,7 +127,10 @@ class Spectra:
     return (x0, y0, z0)
   def getTotal(self, s):
     ss = 'n' + str(s)
-    return np.sum(self.__data[ss], axis=(0, 1, 2))
+    if 'r' not in ss:
+      return np.sum(self.__data[ss], axis=(0, 1, 2))
+    else:
+      return self.__data[ss]
   @property
   def data(self):
     return self.__data

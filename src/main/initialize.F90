@@ -133,6 +133,7 @@ contains
     else
       call restartSimulation()
     end if
+    call userReadInput()
 
     call checkEverything()
 

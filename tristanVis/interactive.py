@@ -109,7 +109,10 @@ class TwoDPlotAndSpectra:
     myplot.plot()
 
   """
-  def __init__(self, x, y, z, field_data, spec_data, coordinates=None, imshow_kwargs={}, rectangle_kwargs={}, spectra_kwargs={}):
+  def __init__(self, 
+      x, y, z, field_data, spec_data, 
+      coordinates=None, 
+      imshow_kwargs={}, rectangle_kwargs={}, spectra_kwargs={}):
     """
     Initializer for the `TwoDPlotAndSpectra` class.
 
