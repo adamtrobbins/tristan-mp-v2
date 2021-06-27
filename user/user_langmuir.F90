@@ -38,45 +38,37 @@ contains
     return
   end function
 
-    function userSLBload(x_glob, y_glob, z_glob,&
+  function userSLBload(x_glob, y_glob, z_glob,&
                      & dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
     real, intent(in), optional  :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional  :: dummy1, dummy2, dummy3
-
     return
   end function
-
-  !--- driving ------------------------------------------------!
-  subroutine userCurrentDeposit(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    ! called after particles move and deposit ...
-    ! ... and before the currents are added to the electric field
-  end subroutine userCurrentDeposit
 
   subroutine userInitParticles()
     implicit none
     real                :: nUP
     integer             :: s, ti, tj, tk, p
-    real                :: xp, kx, u_
+    real                :: xp, yp, zp, kx, u_, v_, w_
     type(region)        :: back_region
     real                :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
+    type(maxwellian)    :: maxw
 
     procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    nUP = 0.5 * ppc0
-
     back_region%x_min = 0.0
     back_region%x_max = global_mesh%sx
-    back_region%y_min = 0.0
-    back_region%y_max = global_mesh%sy
+    #ifdef twoD
+      back_region%y_min = 0.0
+      back_region%y_max = global_mesh%sy
+    #endif
 
+    nUP = ppc0
     kx = 2.0 * M_PI * REAL(nwaves) / REAL(global_mesh%sx)
-
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, upstream_T)
     s = 1
     do ti = 1, species(s)%tile_nx
@@ -125,9 +117,16 @@ contains
   !............................................................!
 
   !--- driving ------------------------------------------------!
+  subroutine userCurrentDeposit(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! called after particles move and deposit ...
+    ! ... and before the currents are added to the electric field
+  end subroutine userCurrentDeposit
+
   subroutine userDriveParticles(step)
     implicit none
-        integer, optional, intent(in)             :: step
+    integer, optional, intent(in) :: step
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
@@ -147,7 +146,7 @@ contains
   !--- boundaries ---------------------------------------------!
   subroutine userParticleBoundaryConditions(step)
     implicit none
-      integer, optional, intent(in)             :: step
+    integer, optional, intent(in) :: step
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)

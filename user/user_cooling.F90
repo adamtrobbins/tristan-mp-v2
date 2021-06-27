@@ -11,8 +11,6 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-
-
   !--- PRIVATE variables -----------------------------------------!
   real      :: plaw_ind, plaw_gmin, plaw_gmax
   private   :: plaw_ind, plaw_gmin, plaw_gmax
@@ -142,4 +140,5 @@ contains
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
+
 end module m_userfile

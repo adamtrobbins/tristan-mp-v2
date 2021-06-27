@@ -61,109 +61,111 @@ contains
       call throwError("Pair annihilation requires at least 2 species with opposite charges to participate.")
     end if
 
-    ! this assumes that all the species have the same tiles
-    ! ... so picking just a random `s0`
-    s0 = ann_electrons(1)
-    ! loop over all tiles
-    do ti = 1, species(s0)%tile_nx
-      do tj = 1, species(s0)%tile_ny
-        do tk = 1, species(s0)%tile_nz
-          if ((Annihilation_sporadic) .and. (random(dseed) * Annihilation_interval .gt. 1.0)) then
-            cycle
-          end if
+    if (s_lec * s_pos .ne. 0) then
+      ! this assumes that all the species have the same tiles
+      ! ... so picking just a random `s0`
+      s0 = ann_electrons(1)
+      ! loop over all tiles
+      do ti = 1, species(s0)%tile_nx
+        do tj = 1, species(s0)%tile_ny
+          do tk = 1, species(s0)%tile_nz
+            if ((Annihilation_sporadic) .and. (random(dseed) * Annihilation_interval .gt. 1.0)) then
+              cycle
+            end if
 
-          ! number of cells on a tile
-          nx_bin = species(s0)%prtl_tile(ti, tj, tk)%x2 - species(s0)%prtl_tile(ti, tj, tk)%x1
-          ny_bin = species(s0)%prtl_tile(ti, tj, tk)%y2 - species(s0)%prtl_tile(ti, tj, tk)%y1
-          nz_bin = species(s0)%prtl_tile(ti, tj, tk)%z2 - species(s0)%prtl_tile(ti, tj, tk)%z1
+            ! number of cells on a tile
+            nx_bin = species(s0)%prtl_tile(ti, tj, tk)%x2 - species(s0)%prtl_tile(ti, tj, tk)%x1
+            ny_bin = species(s0)%prtl_tile(ti, tj, tk)%y2 - species(s0)%prtl_tile(ti, tj, tk)%y1
+            nz_bin = species(s0)%prtl_tile(ti, tj, tk)%z2 - species(s0)%prtl_tile(ti, tj, tk)%z1
 
-          ! count total # of electrons in the tile
-          npart_lec = 0
-          do si = 1, s_lec
-            npart_lec = npart_lec + species(ann_electrons(si))%prtl_tile(ti, tj, tk)%npart_sp
-          end do
-          if (allocated(lec_cell_bins)) deallocate(lec_cell_bins)
-          allocate(lec_cell_bins(nx_bin, ny_bin, nz_bin))
+            ! count total # of electrons in the tile
+            npart_lec = 0
+            do si = 1, s_lec
+              npart_lec = npart_lec + species(ann_electrons(si))%prtl_tile(ti, tj, tk)%npart_sp
+            end do
+            if (allocated(lec_cell_bins)) deallocate(lec_cell_bins)
+            allocate(lec_cell_bins(nx_bin, ny_bin, nz_bin))
 
-          if (npart_lec .eq. 0) then
-            cycle
-          end if
+            if (npart_lec .eq. 0) then
+              cycle
+            end if
 
-          ! count total # of positrons in the tile
-          npart_pos = 0
-          do si = 1, s_pos
-            npart_pos = npart_pos + species(ann_positrons(si))%prtl_tile(ti, tj, tk)%npart_sp
-          end do
-          if (allocated(pos_cell_bins)) deallocate(pos_cell_bins)
-          allocate(pos_cell_bins(nx_bin, ny_bin, nz_bin))
+            ! count total # of positrons in the tile
+            npart_pos = 0
+            do si = 1, s_pos
+              npart_pos = npart_pos + species(ann_positrons(si))%prtl_tile(ti, tj, tk)%npart_sp
+            end do
+            if (allocated(pos_cell_bins)) deallocate(pos_cell_bins)
+            allocate(pos_cell_bins(nx_bin, ny_bin, nz_bin))
 
-          if (npart_pos .eq. 0) then
-            cycle
-          end if
+            if (npart_pos .eq. 0) then
+              cycle
+            end if
 
-          ! initialize cell-based bins
-          do pi = 1, nx_bin
-            do pj = 1, ny_bin
-              do pk = 1, nz_bin
-                lec_cell_bins(pi, pj, pk)%npart = 0
-                allocate(lec_cell_bins(pi, pj, pk)%prtls(npart_lec))
-                pos_cell_bins(pi, pj, pk)%npart = 0
-                allocate(pos_cell_bins(pi, pj, pk)%prtls(npart_pos))
+            ! initialize cell-based bins
+            do pi = 1, nx_bin
+              do pj = 1, ny_bin
+                do pk = 1, nz_bin
+                  lec_cell_bins(pi, pj, pk)%npart = 0
+                  allocate(lec_cell_bins(pi, pj, pk)%prtls(npart_lec))
+                  pos_cell_bins(pi, pj, pk)%npart = 0
+                  allocate(pos_cell_bins(pi, pj, pk)%prtls(npart_pos))
+                end do
               end do
             end do
-          end do
 
-          ! put particles into correct groups according to their cells
-          x1_tile = species(s0)%prtl_tile(ti, tj, tk)%x1
-          y1_tile = species(s0)%prtl_tile(ti, tj, tk)%y1
-          z1_tile = species(s0)%prtl_tile(ti, tj, tk)%z1
-          do si = 1, s_lec
-            do p = 1, species(ann_electrons(si))%prtl_tile(ti, tj, tk)%npart_sp
-              pi = species(ann_electrons(si))%prtl_tile(ti, tj, tk)%xi(p) - x1_tile + 1
-              pj = species(ann_electrons(si))%prtl_tile(ti, tj, tk)%yi(p) - y1_tile + 1
-              pk = species(ann_electrons(si))%prtl_tile(ti, tj, tk)%zi(p) - z1_tile + 1
+            ! put particles into correct groups according to their cells
+            x1_tile = species(s0)%prtl_tile(ti, tj, tk)%x1
+            y1_tile = species(s0)%prtl_tile(ti, tj, tk)%y1
+            z1_tile = species(s0)%prtl_tile(ti, tj, tk)%z1
+            do si = 1, s_lec
+              do p = 1, species(ann_electrons(si))%prtl_tile(ti, tj, tk)%npart_sp
+                pi = species(ann_electrons(si))%prtl_tile(ti, tj, tk)%xi(p) - x1_tile + 1
+                pj = species(ann_electrons(si))%prtl_tile(ti, tj, tk)%yi(p) - y1_tile + 1
+                pk = species(ann_electrons(si))%prtl_tile(ti, tj, tk)%zi(p) - z1_tile + 1
 
-              lec_cell_bins(pi, pj, pk)%npart = lec_cell_bins(pi, pj, pk)%npart + 1
-              nn = lec_cell_bins(pi, pj, pk)%npart
-              lec_cell_bins(pi, pj, pk)%prtls(nn)%s = ann_electrons(si)
-              lec_cell_bins(pi, pj, pk)%prtls(nn)%ti = ti
-              lec_cell_bins(pi, pj, pk)%prtls(nn)%tj = tj
-              lec_cell_bins(pi, pj, pk)%prtls(nn)%tk = tk
-              lec_cell_bins(pi, pj, pk)%prtls(nn)%p = p
+                lec_cell_bins(pi, pj, pk)%npart = lec_cell_bins(pi, pj, pk)%npart + 1
+                nn = lec_cell_bins(pi, pj, pk)%npart
+                lec_cell_bins(pi, pj, pk)%prtls(nn)%s = ann_electrons(si)
+                lec_cell_bins(pi, pj, pk)%prtls(nn)%ti = ti
+                lec_cell_bins(pi, pj, pk)%prtls(nn)%tj = tj
+                lec_cell_bins(pi, pj, pk)%prtls(nn)%tk = tk
+                lec_cell_bins(pi, pj, pk)%prtls(nn)%p = p
+              end do
             end do
-          end do
 
-          do si = 1, s_pos
-            do p = 1, species(ann_positrons(si))%prtl_tile(ti, tj, tk)%npart_sp
-              pi = species(ann_positrons(si))%prtl_tile(ti, tj, tk)%xi(p) - x1_tile + 1
-              pj = species(ann_positrons(si))%prtl_tile(ti, tj, tk)%yi(p) - y1_tile + 1
-              pk = species(ann_positrons(si))%prtl_tile(ti, tj, tk)%zi(p) - z1_tile + 1
+            do si = 1, s_pos
+              do p = 1, species(ann_positrons(si))%prtl_tile(ti, tj, tk)%npart_sp
+                pi = species(ann_positrons(si))%prtl_tile(ti, tj, tk)%xi(p) - x1_tile + 1
+                pj = species(ann_positrons(si))%prtl_tile(ti, tj, tk)%yi(p) - y1_tile + 1
+                pk = species(ann_positrons(si))%prtl_tile(ti, tj, tk)%zi(p) - z1_tile + 1
 
-              pos_cell_bins(pi, pj, pk)%npart = pos_cell_bins(pi, pj, pk)%npart + 1
-              nn = pos_cell_bins(pi, pj, pk)%npart
-              pos_cell_bins(pi, pj, pk)%prtls(nn)%s = ann_positrons(si)
-              pos_cell_bins(pi, pj, pk)%prtls(nn)%ti = ti
-              pos_cell_bins(pi, pj, pk)%prtls(nn)%tj = tj
-              pos_cell_bins(pi, pj, pk)%prtls(nn)%tk = tk
-              pos_cell_bins(pi, pj, pk)%prtls(nn)%p = p
+                pos_cell_bins(pi, pj, pk)%npart = pos_cell_bins(pi, pj, pk)%npart + 1
+                nn = pos_cell_bins(pi, pj, pk)%npart
+                pos_cell_bins(pi, pj, pk)%prtls(nn)%s = ann_positrons(si)
+                pos_cell_bins(pi, pj, pk)%prtls(nn)%ti = ti
+                pos_cell_bins(pi, pj, pk)%prtls(nn)%tj = tj
+                pos_cell_bins(pi, pj, pk)%prtls(nn)%tk = tk
+                pos_cell_bins(pi, pj, pk)%prtls(nn)%p = p
+              end do
             end do
-          end do
 
-          ! at this point positrons and electrons on a tile are distributed ...
-          ! ... into groups based on their cells
-          ! loop over all cells on a tile
-          do pi = 1, nx_bin
-            do pj = 1, ny_bin
-              do pk = 1, nz_bin
-                if ((lec_cell_bins(pi, pj, pk)%npart .ge. 1) .and. (pos_cell_bins(pi, pj, pk)%npart .ge. 1)) then
-                  call pairAnnihilationWithGroups(lec_cell_bins(pi, pj, pk), pos_cell_bins(pi, pj, pk))
-                end if
+            ! at this point positrons and electrons on a tile are distributed ...
+            ! ... into groups based on their cells
+            ! loop over all cells on a tile
+            do pi = 1, nx_bin
+              do pj = 1, ny_bin
+                do pk = 1, nz_bin
+                  if ((lec_cell_bins(pi, pj, pk)%npart .ge. 1) .and. (pos_cell_bins(pi, pj, pk)%npart .ge. 1)) then
+                    call pairAnnihilationWithGroups(lec_cell_bins(pi, pj, pk), pos_cell_bins(pi, pj, pk))
+                  end if
+                end do
               end do
             end do
           end do
         end do
       end do
-    end do
+    end if
   end subroutine pairAnnihilation
 
   subroutine pairAnnihilationWithGroups(electron_group, positron_group)
@@ -225,7 +227,7 @@ contains
         end if
       #else
         if ((P_12 .gt. 1.0)) then
-          print '(1X,A,ES10.3,A)', 'Warning: Annihilation cross section P_12 = ', P_12, ' > 1 !!'
+          call addWarning(3)
         endif
       #endif
       rnd = random(dseed)

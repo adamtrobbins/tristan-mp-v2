@@ -93,7 +93,7 @@ contains
     ! called after particles move and deposit ...
     ! ... and before the currents are added to the electric field
   end subroutine userCurrentDeposit
-  
+
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step

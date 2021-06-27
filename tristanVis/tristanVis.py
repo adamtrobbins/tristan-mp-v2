@@ -74,7 +74,7 @@ class FieldData2D():
 
 class Simulation():
   def __init__(self,
-               root, fld_steps=None, useSlices=True, mask=None,
+               root, fld_steps=None, useSlices=False, mask=None,
                coordinateTransformation={'x': lambda x: x, 'y': lambda y: y, 'z': lambda z: z},
                extraVariables=None
               ):
@@ -141,7 +141,7 @@ class Simulation():
                         extraVariables=self._extraVariables,
                         coordinateTransformation=self._coordinateTransformation)
       self.fields.update({st: fld})
-      
+
   def loadData(self):
     self.readFiles()
     [fld.loadData() for st, fld in self.fields.items()]

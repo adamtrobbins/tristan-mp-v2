@@ -38,7 +38,7 @@ contains
     #ifdef HDF5
       call writeSpectra_hdf5(step, time)
     #endif
-    call printDiag((mpi_rank .eq. 0), "...writeSpectra()", .true.)
+    call printDiag("writeSpectra()", 3)
   end subroutine writeSpectra
 
   #ifdef HDF5
@@ -195,6 +195,10 @@ contains
         if (allocated(glob_spectra)) deallocate(glob_spectra)
         #ifdef GCA
           if (allocated(glob_gca_spectra)) deallocate(glob_gca_spectra)
+        #endif
+
+        #ifdef RADIATION
+          if (allocated(glob_rad_spectra)) deallocate(glob_rad_spectra)
         #endif
       end if
     end subroutine writeSpectra_hdf5

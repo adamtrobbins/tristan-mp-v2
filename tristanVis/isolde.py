@@ -1,9 +1,9 @@
 import struct
 import numpy as np
-import h5py
 import os
 
 def getParticles(fname):
+  import h5py
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
     species = np.unique([int(key.split('_')[1]) for key in keys])
@@ -18,7 +18,7 @@ def getParticles(fname):
   return data
 
 def getFields(fname, nodes = False):
-  # hdf5 file
+  import h5py
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
     data = {}
@@ -27,6 +27,7 @@ def getFields(fname, nodes = False):
   return data
 
 def getParameters(fname):
+  import h5py
   with h5py.File(fname, 'r') as file:
     keys = list(file.keys())
     params = {}
@@ -38,13 +39,13 @@ def getSlice(output, proj, step):
   if (output[-1] != '/'):
     output += '/'
   proj, shift = proj.split('=')
-  return getFields(output + '/slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
+  return getFields(output + 'slice' + proj.upper() + '=' + '%05d' % int(shift) + '.%05d' % step)
 
 def convertToXarray(fields,
                     coordinateTransformation = {'x': lambda f: f,
                                                 'y': lambda f: f,
                                                 'z': lambda f: f},
-                    additionalVariables = {}):
+                    additionalVariables = {}, mask = None):
   import xarray as xr
   import numpy as np
   np.seterr(divide='ignore', invalid='ignore')
@@ -63,6 +64,7 @@ def convertToXarray(fields,
     if (len(xr_axes) != 2):
       raise ValueError("Incorrect `xr_axes`.")
     x1, x2 = xr_axes
+    xr_axes = xr_axes[::-1]
     xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,:]))
     xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][:,0]))
   elif dimension == 3:
@@ -75,7 +77,22 @@ def convertToXarray(fields,
     xr_data[k] = (xr_axes, fields[k][:])
   for k in additionalVariables.keys():
     xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:])
+  if mask is not None:
+    xr_data = xr_data.where(mask(xr_data))
   return xr_data
+
+def getTimeAverageData(steps, loadScript):
+  data = {}
+  for step in steps:
+    fields = loadScript(step)
+    for key in fields.keys():
+      if not (key in data.keys()):
+        data[key] = fields[key]
+      else:
+        data[key] += fields[key]
+  for fld in data.keys():
+    data[fld] /= len(steps)
+  return data
 
 # usage example for 2D uniform grid:
 # ```
@@ -110,7 +127,13 @@ class Spectra:
     return (x0, y0, z0)
   def getTotal(self, s):
     ss = 'n' + str(s)
-    return np.sum(self.__data[ss], axis=(0, 1, 2))
+    if 'r' not in ss:
+      return np.sum(self.__data[ss], axis=(0, 1, 2))
+    else:
+      return self.__data[ss]
+  @property
+  def data(self):
+    return self.__data
   def getBySpatialBin(self, s, ijk, onlyGCA = False, onlyBoris = False):
     i, j, k = ijk
     specname = self.findSpecname(s, onlyGCA, onlyBoris)
@@ -161,15 +184,42 @@ class Spectra:
         self.__data['ngca' + str(s)] = np.transpose(raw['ngca' + str(s)])
 
 def getSpectra(fname, radiation = False, gca = False):
+  import h5py
   with h5py.File(fname, 'r') as file:
     spec = Spectra(file, radiation, gca)
   return spec
 
 def getDomains(fname):
+  import h5py
   with h5py.File(fname, 'r') as file:
     data = {}
     for k in file.keys():
       data[k] = file[k][:]
+  return data
+
+def parseInput(fname):
+  from itertools import groupby
+  import re
+  def getFirstNontrivialElement(lst):
+    for i, el in enumerate(lst):
+      if el != '':
+        return (i, el)
+    return (-1, '')
+  with open(fname, 'r') as f:
+    data = {}
+    curr_blockname = None
+    for line in f:
+      if (line.startswith('<')):
+        blockname = (line[1:].split('>')[0])
+        data[blockname] = {}
+        curr_blockname = blockname
+      elif not line.strip().startswith('#') and not line.strip() == '':
+        line = re.split('=|#|\t|\n', line)
+        _, var = getFirstNontrivialElement(line)
+        var = var.strip()
+        _, value = getFirstNontrivialElement(line[_ + 1:])
+        value = float(value)
+        data[curr_blockname].update({var: value})
   return data
 
 def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
@@ -239,136 +289,69 @@ def parseReport(fname, nsteps = None, skip = 1, skip_every = 1e6):
       ni += 1
   return data
 
-def parseHistory(fname, nsteps = None):
-  keys = []
-  if (not nsteps):
-    nsteps = int(1e6)
-  def parseBlock(block, data, isfirst = False):
-    if (isfirst):
-      block = block.split('\n')[2:-2]
-      for subblock in block:
-        for word in subblock.split():
-          if word[0] == '[' and word[-1] == ']':
-            if ('%' not in word): # sanity check
-              keys.append(word[1:-1])
-              data[word[1:-1]] = np.array([])
-    else:
-      block = block.split('\n')[2:-2]
-      k = 0
-      for subblock in block:
-        for word in subblock.split():
-          if ('%' not in word) and ('|' not in word) and k < len(keys):
-            data[keys[k]] = np.append(data[keys[k]], np.float(word))
-            k = k + 1
-  data = {}
-  with open(fname, 'r') as file:
-    isfirst = True
-    ni = 0
-    while ni <= nsteps:
-      block = ""
-      for i in range(8):
-        line = file.readline()
-        if line == '':
-          ni = nsteps + 1
+def parseHistory(fname):
+  from itertools import groupby
+  import re
+  def make_grouper():
+    counter = 0
+    def key(line):
+      nonlocal counter
+      if line.startswith('===='):
+        counter += 1
+      return counter
+    return key
+  with open(fname, 'r') as f:
+    data = {}
+    for k, group in groupby(f, key=make_grouper()):
+      fasta_section = ''.join(group)
+      block = fasta_section.split("\n", 1)[1]
+      if (k == 1):
+        template = block
+        template_keys = np.array(re.findall('\[.+?\]', template))
+        mask = (template_keys != '[% Etot]')
+        template_keys = np.array(list(map(lambda x: x[1:-1], template_keys[mask])))
+        data = {key: np.array([]) for key in template_keys}
+      else:
+        block_values = np.array(re.findall('-?\ *[0-9]+\.?[0-9]*(?:[Ee]\ *[-|+]?\ *[0-9]+)?', block))
+        if (len(block) == 0):
           break
-        else:
-          block += line
-      parseBlock(block, data, isfirst)
-      isfirst = False
-      ni = ni + 1
+        block_values = np.array(list(map(np.float, block_values[mask])))
+        pairs = {key: v for key, v in zip(template_keys, block_values)}
+        for key in template_keys:
+          data[key] = np.append(data[key], pairs[key])
   return data
 
-# easy plotting functions
-def plot2DField(ax, x, y, field, rotate=False,
-                title='field', cmap='jet',
-                vmin=None, vmax=None,
-                scale='lin', region=[-np.inf, np.inf, -np.inf, np.inf],
-                cbar = '2%', cbar_pad=0.05,
-                **kwargs):
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-    if rotate:
-      field = np.rot90(field)
-      x_dummy = 1.0 * np.array(x)
-      x = 1.0 * np.array(y)
-      y = 1.0 * np.array(x_dummy)
-    xmin = x[x > region[0]].min()
-    xmax = x[x <= region[1]].max()
-    ymin = y[y > region[2]].min()
-    ymax = y[y <= region[3]].max()
-    ax.set_aspect(1)
-    ax.set_xlim(xmin, xmax)
-    ax.set_ylim(ymin, ymax)
-    if not vmin:
-        vmin = field.min()
-    if not vmax:
-        vmax = field.max()
-    if scale == 'lin':
-      norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    elif scale == 'log':
-      vmax = max(vmax, 1e-10)
-      norm = mpl.colors.LogNorm(vmin=max(vmin, vmax/1e10), vmax=vmax)
-    elif scale == 'sym':
-      vmax = max(np.abs(vmin), vmax)
-      norm=mpl.colors.SymLogNorm(vmin=-vmax, vmax=vmax,
-                                 linthresh=kwargs['lth'],
-                                 linscale=kwargs['lsc'])
-
-    im = ax.imshow(field, norm=norm,
-                   cmap=cmap, origin='lower',
-                   extent=(x.min(), x.max(), y.min(), y.max()))
-
-    if 'xlabel' in kwargs:
-        ax.set_xlabel(kwargs['xlabel'])
-    else:
-        ax.set_xlabel('x' if not rotate else 'y')
-    if 'ylabel' in kwargs:
-        ax.set_ylabel(kwargs['ylabel'])
-    else:
-        ax.set_ylabel('y' if not rotate else 'x')
-    if cbar is not None:
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size=cbar, pad=cbar_pad)
-        plt.colorbar(im, cax=cax)
-    ax.set_title(title)
-
-
-def plot2DScatterParticles(ax, x_list, y_list,
-                           label='particles', legend=True,
-                           color='black', **kwargs):
-    ax.scatter(x_list, y_list, c=color, label=label, **kwargs)
-    ax.set_aspect(1)
-    if legend:
-        ax.legend()
-
-def plot2DDomains(ax, domain_data,
-                  color='red', **kwargs):
-    from matplotlib.patches import Rectangle
-    x0_list = domain_data['x0']
-    y0_list = domain_data['y0']
-    sx_list = domain_data['sx']
-    sy_list = domain_data['sy']
-    for x0, y0, sx, sy in zip(x0_list, y0_list, sx_list, sy_list):
-        rect = Rectangle((x0, y0), sx, sy,
-                         edgecolor=color, facecolor='none')
-        ax.add_patch(rect)
-
-def plotReport(ax, data, only_fullstep = True, **kwargs):
-    labels = []
-    y_list = []
-    for k in list(data.keys())[1:]:
-        y_list.append
-        if (k.split()[0] != 'nprt') and (((k.split()[0] != 'Full_step') and (not only_fullstep)) or (only_fullstep and k.split()[0] == 'Full_step')):
-            labels.append(k)
-            y_list.append(data[k]['dt'])
-    y = np.vstack(y_list)
-    if (only_fullstep and 'label' in kwargs):
-        labels = [kwargs['label']]
-    if (only_fullstep):
-        ax.plot(data['t'], y[0], label = labels[0])
-    else:
-        ax.stackplot(data['t'], y, labels = labels)
-    ax.legend()
-    ax.set_ylabel(r'$\Delta t$ [ms]')
-    ax.set_xlabel(r'timestep')
+def parseUsrOutput(fname):
+  from itertools import groupby
+  import re
+  def make_grouper():
+    counter = 0
+    def key(line):
+      nonlocal counter
+      if line.startswith('===='):
+        counter += 1
+      return counter
+    return key
+  def is_float(val):
+    try:
+      num = np.float(val)
+    except ValueError:
+      return False
+    return True
+  with open(fname, 'r') as f:
+    data = {}
+    for k, group in groupby(f, key=make_grouper()):
+      fasta_section = ''.join(group).split('\n')
+      accept_value = False
+      for b in fasta_section:
+        if b.startswith('t ='):
+          time = int(b.split('=')[1])
+          data[time] = {}
+        if ':' in b:
+          var = b.split(':')[0]
+          accept_value = True
+        elif (accept_value):
+          array = np.array([np.float(v) for v in b.split(',') if is_float(v)])
+          data[time].update({var: array if len(array) > 1 else array[0]})
+          accept_value = False
+  return data
