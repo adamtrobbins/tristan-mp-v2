@@ -488,7 +488,7 @@ contains
       tile%maxptl_sp = INT(tile%maxptl_sp * 0.5)
     end if
 
-    #ifndef LOWMEM 
+    #ifndef LOWMEM
       if (tile%npart_sp .gt. tile%maxptl_sp) then
         call throwError('ERROR: `npart > maxptl` in `reallocTileSize`')
       end if
@@ -962,7 +962,6 @@ contains
       species(s)%cntr_sp = 0
     end do
 
-
     call reallocateEnrouteArray(meshblock)
   end subroutine reallocateParticles
 
@@ -1022,50 +1021,67 @@ contains
     recv_enroute%max = buffsize
     recv_enroute%cnt = 0
 
-    do ind1 = -1, 1
-      do ind2 = -1, 1
-        do ind3 = -1, 1
-          if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          #ifdef oneD
-            if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-          #elif twoD
-            if (ind3 .ne. 0) cycle
-          #endif
-          if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
-            buffsize = buffsize_x
-          else if ((ind1 .eq. 0) .and. (ind3 .eq. 0)) then
-            buffsize = buffsize_y
-          else if ((ind1 .eq. 0) .and. (ind2 .eq. 0)) then
-            buffsize = buffsize_z
-          else if (ind3 .eq. 0) then
-            buffsize = buffsize_xy
-          else if (ind2 .eq. 0) then
-            buffsize = buffsize_xz
-          else if (ind1 .eq. 0) then
-            buffsize = buffsize_yz
-          else
-            buffsize = buffsize_xyz
-          end if
-          if (allocated(enroute_bot%get(ind1, ind2, ind3)%enroute)) then
-            ! reallocate
-            old_buffsize = enroute_bot%get(ind1, ind2, ind3)%max
-            min_buffsize = MIN(old_buffsize, buffsize)
-            allocate(enroute_temp(1:buffsize))
-            enroute_temp(1:min_buffsize) = enroute_bot%get(ind1, ind2, ind3)%enroute(1:min_buffsize)
-            deallocate(enroute_bot%get(ind1, ind2, ind3)%enroute)
-            allocate(enroute_bot%get(ind1, ind2, ind3)%enroute(1:buffsize))
-            enroute_bot%get(ind1, ind2, ind3)%enroute(1:min_buffsize) = enroute_temp(1:min_buffsize)
-            deallocate(enroute_temp)
-          else
-            ! allocate from scratch
-            allocate(enroute_bot%get(ind1, ind2, ind3)%enroute(buffsize))
-          end if
-          enroute_bot%get(ind1, ind2, ind3)%max = buffsize
-          enroute_bot%get(ind1, ind2, ind3)%cnt = 0
+    #ifndef LOWMEM
+
+      do ind1 = -1, 1
+        do ind2 = -1, 1
+          do ind3 = -1, 1
+            if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+            #ifdef oneD
+              if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+            #elif twoD
+              if (ind3 .ne. 0) cycle
+            #endif
+            if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then
+              buffsize = buffsize_x
+            else if ((ind1 .eq. 0) .and. (ind3 .eq. 0)) then
+              buffsize = buffsize_y
+            else if ((ind1 .eq. 0) .and. (ind2 .eq. 0)) then
+              buffsize = buffsize_z
+            else if (ind3 .eq. 0) then
+              buffsize = buffsize_xy
+            else if (ind2 .eq. 0) then
+              buffsize = buffsize_xz
+            else if (ind1 .eq. 0) then
+              buffsize = buffsize_yz
+            else
+              buffsize = buffsize_xyz
+            end if
+            if (allocated(enroute_bot%get(ind1, ind2, ind3)%enroute)) then
+              ! reallocate
+              old_buffsize = enroute_bot%get(ind1, ind2, ind3)%max
+              min_buffsize = MIN(old_buffsize, buffsize)
+              allocate(enroute_temp(1:buffsize))
+              enroute_temp(1:min_buffsize) = enroute_bot%get(ind1, ind2, ind3)%enroute(1:min_buffsize)
+
+              call reallocateEnroute(ind1, ind2, ind3, buffsize)
+
+              enroute_bot%get(ind1, ind2, ind3)%enroute(1:min_buffsize) = enroute_temp(1:min_buffsize)
+              deallocate(enroute_temp)
+            else
+              ! allocate from scratch
+              call reallocateEnroute(ind1, ind2, ind3, buffsize)
+
+            end if
+            enroute_bot%get(ind1, ind2, ind3)%max = buffsize
+            enroute_bot%get(ind1, ind2, ind3)%cnt = 0
+          end do
         end do
       end do
-    end do
+
+  #endif ! LOWMEM
+
   end subroutine reallocateEnrouteArray
+
+  subroutine reallocateEnroute(ind1, ind2, ind3, buffsize)
+    implicit none
+    integer, intent(in) :: ind1, ind2, ind3, buffsize
+    enroute_bot%get(ind1, ind2, ind3)%max = buffsize
+    if (allocated(enroute_bot%get(ind1, ind2, ind3)%enroute)) then
+      deallocate(enroute_bot%get(ind1, ind2, ind3)%enroute)
+    end if
+    allocate(enroute_bot%get(ind1, ind2, ind3)%enroute(buffsize))
+  end subroutine reallocateEnroute
 
   subroutine backupParticles()
     implicit none
