@@ -181,6 +181,10 @@ contains
                 enroute_bot%get(send_x, send_y, send_z)%cnt = enroute_bot%get(send_x, send_y, send_z)%cnt + 1
                 if (enroute_bot%get(send_x, send_y, send_z)%cnt .ge.&
                   & enroute_bot%get(send_x, send_y, send_z)%max) then
+                  print *, "RANK: ", mpi_rank
+                  print *, "MBLOCK: ", this_meshblock%ptr%x0, this_meshblock%ptr%y0
+                  print *, "SPEC: ", s
+                  print *, "DIR: ", send_x, send_y, send_z
                   call throwError('ERROR: particle send buffer array too small: '//&
                       & trim(STR(enroute_bot%get(send_x, send_y, send_z)%max))//'.')
                 end if
