@@ -29,3 +29,11 @@ def slice1D(field, points):
   coords = list(field.coords.keys())
   fld = RegularGridInterpolator([field.coords[c] for c in coords[::-1]], field.data)
   return np.array([fld(point[::-1]) for point in points])
+
+def vectorPotential(bx, by):
+  import numpy as np
+  my, mx = bx.shape
+  bydx = -np.cumsum(by[0,:])
+  bxdy = np.cumsum(bx[:,:], axis = 0)
+  Az = bydx[np.newaxis,:] + bxdy
+  return Az

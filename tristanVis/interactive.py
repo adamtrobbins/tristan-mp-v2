@@ -281,3 +281,166 @@ class TwoDPlotAndSpectra:
     self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
     plt.tight_layout()
     plt.show()
+
+class ThreeDPlotAndSlice:
+  """
+  Plot 2D field plot (from 3D data) and a custom 2D slice side-by-side. Clicking and dragging on the field plot will select particular line across which to take the slice.
+
+  ...
+
+  Methods
+  -------
+  plot(figsize=(12, 4)):
+    Create the interactive plot.
+
+  Example
+  -------
+    myplot = ThreeDPlotAndSlice(...)
+    myplot.plot()
+
+  """
+  def __init__(self, field_data):
+    self.field_data = field_data
+    self.inside = False
+    self.p1 = (None, None)
+    self.p2 = (None, None)
+    self.mouse_hold = False
+  def in_axes(self, event):
+    self.inside = (event.inaxes == self.fig.axes[0])
+  def leave_axes(self, event):
+    self.inside = False
+  def on_press(self, event):
+    if (self.inside):
+      self.mouse_hold = True
+      self.p1 = (event.xdata, event.ydata)
+  def on_release(self, event):
+    def interpolate(s, p1, p2):
+      return (np.array(p1) + s * (np.array(p2) - np.array(p1)), np.linalg.norm(s * (np.array(p2) - np.array(p1))))
+    if (self.inside):
+      self.p2 = (event.xdata, event.ydata)
+      res = self.resolution
+      theta = np.arctan2((np.array(self.p2) - np.array(self.p1))[0], (np.array(self.p2) - np.array(self.p1))[1])
+      ss = np.linspace(0, 1, res)
+      x1x2s = np.array([interpolate(s, self.p1, self.p2)[0] for s in ss])
+      x12s = np.array([interpolate(s, self.p1, self.p2)[1] for s in ss])
+      ds = interpolate(1, self.p1, self.p2)[1] / res
+      x3s = np.arange(*self.hidden_lims, ds)
+      # if (self.proj == 'xy'):
+        # sliced_bx = np.array([
+          # [self.interpolated_bx((x3, *x1x2[::-1])) for x1x2 in x1x2s
+          # ] for x3 in x3s
+        # ])
+        # sliced_by = np.array([
+          # [self.interpolated_by((x3, *x1x2[::-1])) for x1x2 in x1x2s
+          # ] for x3 in x3s
+        # ])
+        # sliced_bxy = sliced_bx * np.sin(theta) + sliced_by * np.cos(theta)
+        # sliced_bz = np.array([
+          # [self.interpolated_bz((x3, *x1x2[::-1])) for x1x2 in x1x2s
+          # ] for x3 in x3s
+        # ])
+      # else:
+        # raise ValueError('Unkonwn projection')
+      sliced_field = np.array([
+        [self.interpolated_field((x3, *x1x2[::-1])) for x1x2 in x1x2s
+        ] for x3 in x3s
+      ])
+      while self.ax_slice.collections != []:
+        self.ax_slice.collections[0].remove()
+      while self.ax_slice.patches != []:
+        self.ax_slice.patches[0].remove()
+      # self.ax_slice.streamplot(x12s, x3s, sliced_bxy, sliced_bz, **self.streamplot_kwargs)
+      self.im.set_data(sliced_field)
+      self.im.set_extent((x12s.min(), x12s.max(), *self.hidden_lims))
+      self.mouse_hold = False
+      self.fig.canvas.draw()
+      self.fig.canvas.flush_events()
+  def on_mousemove(self, event):
+    if (self.inside and self.mouse_hold):
+      start = self.p1
+      end = (event.xdata, event.ydata)
+      self.line.set_xdata([start[0], end[0]])
+      self.line.set_ydata([start[1], end[1]])
+  def plot(self, proj, shift, field,
+           hidden_lims=None,
+           transform=None,
+           resolution=100,
+           figsize=(8, 3),
+           pcolor_kwargs={},
+           line_kwargs={},
+           slice_kwargs={},
+           streamplot_kwargs={}
+          ):
+    from scipy.interpolate import RegularGridInterpolator
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    self.field = field(self.field_data)
+    self.pcolor_kwargs = pcolor_kwargs
+    self.line_kwargs = line_kwargs
+    self.slice_kwargs = slice_kwargs
+    self.streamplot_kwargs = streamplot_kwargs
+    self.fig = plt.figure(figsize=figsize)
+    self.shift = shift
+    self.resolution = resolution
+    self.proj = proj
+    self.hidden_lims = hidden_lims
+    ax_fld = self.fig.add_subplot(121)
+    ax_fld.set_aspect(1)
+    if (self.proj == 'xy'):
+      if (transform is not None):
+        xyz = transform(self.field_data['xx'], self.field_data['yy'], self.field_data['zz'])
+        if (self.hidden_lims is None):
+          self.hidden_lims = (xyz[2].min(), xyz[2].max())
+        x1 = xyz[0][self.shift,:,:]
+        x2 = xyz[1][self.shift,:,:]
+      else:
+        if (self.hidden_lims is None):
+          self.hidden_lims = (self.field_data['zz'].min(), self.field_data['zz'].max())
+        x1 = self.field_data['xx'][self.shift,:,:]
+        x2 = self.field_data['yy'][self.shift,:,:]
+      fld = self.field[self.shift,:,:]
+    else:
+      raise ValueError('Unkonwn projection')
+    self.pcolor = ax_fld.pcolormesh(x1, x2, fld, shading='auto',
+                                    **self.pcolor_kwargs)
+    if (transform is not None):
+      xyz = transform(self.field_data['xx'], self.field_data['yy'], self.field_data['zz'])
+      self.interpolated_field = RegularGridInterpolator((xyz[2][:,0,0],
+                                                         xyz[1][0,:,0],
+                                                         xyz[0][0,0,:]), self.field)
+      self.interpolated_bx = RegularGridInterpolator((xyz[2][:,0,0],
+                                                      xyz[1][0,:,0],
+                                                      xyz[0][0,0,:]), self.field_data['bx'])
+      self.interpolated_by = RegularGridInterpolator((xyz[2][:,0,0],
+                                                      xyz[1][0,:,0],
+                                                      xyz[0][0,0,:]), self.field_data['by'])
+      self.interpolated_bz = RegularGridInterpolator((xyz[2][:,0,0],
+                                                      xyz[1][0,:,0],
+                                                      xyz[0][0,0,:]), self.field_data['bz'])
+    else:
+      self.interpolated_field = RegularGridInterpolator((self.field_data['zz'][:,0,0],
+                                                         self.field_data['yy'][0,:,0],
+                                                         self.field_data['xx'][0,0,:]), self.field)
+    im = self.pcolor
+    divider = make_axes_locatable(ax_fld)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    self.line, = ax_fld.plot([], [], **self.line_kwargs)
+
+    self.ax_slice = self.fig.add_subplot(122)
+    self.im = self.ax_slice.imshow([[0]], origin='lower',
+                              **self.slice_kwargs)
+    self.ax_slice.set_xlabel(r'$xy$')
+    self.ax_slice.set_ylabel(r'$z$')
+    divider = make_axes_locatable(self.ax_slice)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(self.im, cax=cax)
+
+    in1 = self.fig.canvas.mpl_connect('axes_enter_event', self.in_axes)
+    in2 = self.fig.canvas.mpl_connect('axes_leave_event', self.leave_axes)
+    mouse1 = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+    mouse2 = self.fig.canvas.mpl_connect('button_release_event', self.on_release)
+    mouse3 = self.fig.canvas.mpl_connect('motion_notify_event', self.on_mousemove)
+    plt.tight_layout()
+    plt.show()

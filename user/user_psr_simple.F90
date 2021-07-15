@@ -33,7 +33,8 @@ module m_userfile
     real, private     :: psr_gca_enforce_rad
   #endif
 
-  real, private     :: gammarad_over_sigma_LC, gammarad_dummy
+  real, private     :: b_at_LC
+  real, private     :: gammarad_LC, gammarad_dummy
   real, private     :: eph_at_LC, gammac_dummy
   integer, private  :: vol_inj_start 
   !...............................................................!
@@ -71,13 +72,15 @@ contains
     omegaB0 = sqrt(sigma) * CC / c_omp
 
     #ifdef RADIATION
-      ! gamma_rad / sigma_LC for the field near LC
-      call getInput('problem', 'grad_sigma_LC', gammarad_over_sigma_LC, 0.5)
-      gammarad_dummy = 0.5 * gammarad_over_sigma_LC * (omegaB0 * psr_radius / CC) * (psr_radius / psr_rlc)**2.5 * psr_bstar**1.5
+      b_at_LC = 0.1 * psr_bstar * (psr_radius / psr_rlc)**3
+
+      ! gamma_rad for the field near LC
+      call getInput('problem', 'grad_LC', gammarad_LC, 0.5)
+      gammarad_dummy = gammarad_LC * (b_at_LC)**0.5
 
       ! gamma of particle radiating me c^2 photon at LC
       call getInput('problem', 'eph_at_LC', eph_at_LC, 10.0)
-      gammac_dummy = eph_at_LC * (psr_radius / psr_rlc)**0.5 * psr_bstar**0.5
+      gammac_dummy = eph_at_LC * (b_at_LC)**0.5
 
       ! redefine `gamma_syn`, `emit_gamma_syn`
       cool_gamma_syn = gammarad_dummy
@@ -607,7 +610,8 @@ contains
 
       bz_at_surface = (3.0 * nz * mu_dot_n - mu_z)
 
-      dummy_flag = (((random(dseed) * 2.0) .lt. abs(bz_at_surface)) .and. (bz_at_surface .gt. 0.0))
+      dummy_flag = (((random(dseed) * 2.0) .lt. abs(bz_at_surface)) .and. &
+                  & ((bz_at_surface .gt. 0.0) .or. (psr_angle .ne. 0.0)))
       ! injection in the open zone
       if (dummy_flag) then
         x_glob = x_glob + xc_g
@@ -697,7 +701,7 @@ contains
       end if ! open zone injection
 
       ! injection in the closed zone
-      if (bz_at_surface .le. 0.0) then
+      if ((bz_at_surface .le. 0.0) .and. (psr_angle .eq. 0.0)) then
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g

@@ -68,11 +68,11 @@ def convertToXarray(fields,
     xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,:]))
     xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][:,0]))
   elif dimension == 3:
-    xr_axes = list('xyz')
+    xr_axes = list('zyx')
     x1, x2, x3 = xr_axes
-    xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][0,0,:]))
+    xr_data.coords[x1] = ((x1), coordinateTransformation[x1](fields[x1*2][:,0,0]))
     xr_data.coords[x2] = ((x2), coordinateTransformation[x2](fields[x2*2][0,:,0]))
-    xr_data.coords[x3] = ((x3), coordinateTransformation[x3](fields[x3*2][:,0,0]))
+    xr_data.coords[x3] = ((x3), coordinateTransformation[x3](fields[x3*2][0,0,:]))
   for k in fields.keys():
     xr_data[k] = (xr_axes, fields[k][:])
   for k in additionalVariables.keys():
