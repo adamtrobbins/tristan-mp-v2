@@ -97,6 +97,53 @@ contains
     allocate(mpi_recvflags(sendrecv_neighbors))
 
     do s = 1, nspec ! loop over species
+
+      #ifdef LOWMEM
+        enroute_bot%get(:,:,:)%cnt = 0
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+              pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+              pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+              pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
+              pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
+              pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                ! send_* = -1 / 0 / +1
+                send_x = 0; send_y = 0; send_z = 0
+                #if defined(oneD) || defined(twoD) || defined(threeD)
+                  send_x = (ISIGN(1, pt_xi(p) - this_meshblock%ptr%sx) + 1) / 2 - (ISIGN(1, -pt_xi(p) - 1) + 1) / 2
+                #endif
+                #if defined(twoD) || defined(threeD)
+                  send_y = (ISIGN(1, pt_yi(p) - this_meshblock%ptr%sy) + 1) / 2 - (ISIGN(1, -pt_yi(p) - 1) + 1) / 2
+                #endif
+                #if defined(threeD)
+                  send_z = (ISIGN(1, pt_zi(p) - this_meshblock%ptr%sz) + 1) / 2 - (ISIGN(1, -pt_zi(p) - 1) + 1) / 2
+                #endif
+                if ((send_x .ne. 0) .or. (send_y .ne. 0) .or. (send_z .ne. 0)) then
+                  if (.not. associated(this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr)) then
+                    cycle
+                  end if
+                  ! count the # of particles to be sent in each direction
+                  enroute_bot%get(send_x, send_y, send_z)%cnt = enroute_bot%get(send_x, send_y, send_z)%cnt + 1
+                end if
+              end do ! particles
+              pt_xi => null(); pt_yi => null(); pt_zi => null()
+              pt_dx => null(); pt_dy => null(); pt_dz => null()
+            end do
+          end do
+        end do
+        ! allocate the corresponding buffer arrays for each direction
+        do send_x = -1, 1
+          do send_y = -1, 1
+            do send_z = -1, 1
+              call reallocateEnroute(send_x, send_y, send_z, enroute_bot%get(send_x, send_y, send_z)%cnt + 1)
+            end do
+          end do
+        end do
+      #endif ! LOWMEM
+
       enroute_bot%get(:,:,:)%cnt = 0
       ! particle crosses MPI blocks //
       do ti = 1, species(s)%tile_nx
@@ -321,6 +368,11 @@ contains
                 call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
                 if (mpi_recvflags(cntr)) then
                   call MPI_GET_COUNT(istat, myMPI_ENROUTE, cnt_recv_enroute, ierr)
+
+                  if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
+                    call throwError('ERROR: particle had rcv array too small.')
+                  end if
+
                   call MPI_RECV(recv_enroute%enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&
                               & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
 
@@ -335,6 +387,19 @@ contains
           end do ! ind2
         end do ! ind1
       end do ! global loop
+
+      #ifdef LOWMEM
+        do send_x = -1, 1
+          do send_y = -1, 1
+            do send_z = -1, 1
+              if (allocated(enroute_bot%get(send_x, send_y, send_z)%enroute)) then
+                deallocate(enroute_bot%get(send_x, send_y, send_z)%enroute)
+              end if
+            end do
+          end do
+        end do
+      #endif
+
     end do ! loop over species
     call printDiag("exchangeParticles()", 2)
   end subroutine exchangeParticles
@@ -367,6 +432,54 @@ contains
     allocate(mpi_recvflags(sendrecv_neighbors))
 
     do s = 1, nspec ! loop over species
+
+      #ifdef LOWMEM
+        enroute_bot%get(:,:,:)%cnt = 0
+        do ti = 1, species(s)%tile_nx
+          do tj = 1, species(s)%tile_ny
+            do tk = 1, species(s)%tile_nz
+              pt_xi => species(s)%prtl_tile(ti, tj, tk)%xi
+              pt_yi => species(s)%prtl_tile(ti, tj, tk)%yi
+              pt_zi => species(s)%prtl_tile(ti, tj, tk)%zi
+              pt_dx => species(s)%prtl_tile(ti, tj, tk)%dx
+              pt_dy => species(s)%prtl_tile(ti, tj, tk)%dy
+              pt_dz => species(s)%prtl_tile(ti, tj, tk)%dz
+              do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                ! send_* = -1 / 0 / +1
+                send_x = 0; send_y = 0; send_z = 0
+                #if defined(oneD) || defined(twoD) || defined(threeD)
+                  send_x = (ISIGN(1, pt_xi(p) - this_meshblock%ptr%sx) + 1) / 2 - (ISIGN(1, -pt_xi(p) - 1) + 1) / 2
+                #endif
+                #if defined(twoD) || defined(threeD)
+                  send_y = (ISIGN(1, pt_yi(p) - this_meshblock%ptr%sy) + 1) / 2 - (ISIGN(1, -pt_yi(p) - 1) + 1) / 2
+                #endif
+                #if defined(threeD)
+                  send_z = (ISIGN(1, pt_zi(p) - this_meshblock%ptr%sz) + 1) / 2 - (ISIGN(1, -pt_zi(p) - 1) + 1) / 2
+                #endif
+                if ((send_x .ne. 0) .or. (send_y .ne. 0) .or. (send_z .ne. 0)) then
+                  if (.not. associated(this_meshblock%ptr%neighbor(send_x, send_y, send_z)%ptr)) then
+                    cycle
+                  end if
+                  ! count the # of particles to be sent in each direction
+                  enroute_bot%get(send_x, send_y, send_z)%cnt = enroute_bot%get(send_x, send_y, send_z)%cnt + 1
+                end if
+              end do ! particles
+              pt_xi => null(); pt_yi => null(); pt_zi => null()
+              pt_dx => null(); pt_dy => null(); pt_dz => null()
+            end do
+          end do
+        end do
+        ! allocate the corresponding buffer arrays for each direction
+        do send_x = -1, 1
+          do send_y = -1, 1
+            do send_z = -1, 1
+              call reallocateEnroute(send_x, send_y, send_z,&
+                                              & enroute_bot%get(send_x, send_y, send_z)%cnt+1)
+            end do
+          end do
+        end do
+      #endif ! LOWMEM
+
       enroute_bot%get(:,:,:)%cnt = 0
       ! particle crosses MPI blocks //
       do ti = 1, species(s)%tile_nx
@@ -621,6 +734,11 @@ contains
                 call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
                 if (mpi_recvflags(cntr)) then
                   call MPI_GET_COUNT(istat, myMPI_ENROUTE, recv_enroute%cnt, ierr)
+
+                  if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
+                    call throwError('ERROR: particle had rcv array too small.')
+                  end if
+
                   call MPI_RECV(recv_enroute%enroute(1:recv_enroute%cnt), recv_enroute%cnt, myMPI_ENROUTE,&
                               & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
                   ! write received data to local memory
@@ -659,6 +777,18 @@ contains
                   call throwError('ERROR: particle in wrong tile after exchange')
                 end if
               end do
+            end do
+          end do
+        end do
+      #endif
+
+      #ifdef LOWMEM
+        do send_x = -1, 1
+          do send_y = -1, 1
+            do send_z = -1, 1
+              if (allocated(enroute_bot%get(send_x, send_y, send_z)%enroute)) then
+                deallocate(enroute_bot%get(send_x, send_y, send_z)%enroute)
+              end if
             end do
           end do
         end do
