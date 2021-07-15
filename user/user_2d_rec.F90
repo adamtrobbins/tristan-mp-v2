@@ -315,6 +315,9 @@ contains
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
       boundary_y = 0
     end if
+    if (step .eq. open_boundaries) then
+      call reassignNeighborsForAll(meshblocks)
+    end if
 
     if (boundary_x .ne. 1) then
 
