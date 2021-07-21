@@ -1278,6 +1278,7 @@ contains
       implicit none
       integer, intent(in)       :: s, ti, tj, tk, p
       real                      :: xx, yy, zz, rr
+      real                      :: uu, vv, ww, gg
       
       xx = REAL(this_meshblock%ptr%x0 + species(s)%prtl_tile(ti, tj, tk)%xi(p))
       xx = xx + species(s)%prtl_tile(ti, tj, tk)%dx(p)
@@ -1292,8 +1293,15 @@ contains
       zz = zz - REAL(global_mesh%sz) * 0.5
 
       rr = sqrt(xx**2 + yy**2 + zz**2)
+
+      uu = REAL(species(s)%prtl_tile(ti, tj, tk)%u(p))
+      vv = REAL(species(s)%prtl_tile(ti, tj, tk)%v(p))
+      ww = REAL(species(s)%prtl_tile(ti, tj, tk)%w(p))
+      gg = sqrt(1.0 + uu**2 + vv**2 + ww**2)
       
-      userExcludeParticles = ((rr .gt. global_usr_variable_1 + 10) .and. (rr .lt. REAL(global_mesh%sx) * 0.5 - 100))
+      userExcludeParticles = ((rr .gt. global_usr_variable_1 + 40) .and.&
+                            & (rr .lt. REAL(global_mesh%sx) * 0.5 - 100) .and.&
+                            & (gg .gt. 20.0))
     end function userExcludeParticles
   #endif
   !............................................................!
