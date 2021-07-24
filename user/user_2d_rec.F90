@@ -55,6 +55,12 @@ contains
       ! single current sheet
       cs_x = 0.5
     end if
+
+    if (boundary_x .ne. 1) then
+      injector_x1 = injector_sx - 1.0e-5
+      injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
+      injector_reset_interval = INT(injector_sx / (injector_betax * CC))
+    end if
   end subroutine userReadInput
 
   function userSLBload(x_glob, y_glob, z_glob,&
@@ -161,12 +167,6 @@ contains
     ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
     bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
     jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
-
-    if (boundary_x .ne. 1) then
-      injector_x1 = injector_sx - 1.0e-5
-      injector_x2 = REAL(global_mesh%sx) - injector_sx + 1.0e-5
-      injector_reset_interval = INT(injector_sx / (injector_betax * CC))
-    end if
 
     k = 0
     sx_glob = REAL(global_mesh%sx)
