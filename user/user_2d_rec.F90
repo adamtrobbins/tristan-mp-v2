@@ -446,4 +446,13 @@ contains
     end function userExcludeParticles
   #endif
   !............................................................!
+  #ifdef GCA
+    logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
+      implicit none
+      integer(kind=2), intent(in), optional   :: xi, yi, zi
+      real, intent(in), optional              :: dx, dy, dz, u, v, w
+      real, intent(in), optional              :: weight
+      userEnforceGCA = .false.
+    end function userEnforceGCA
+  #endif
 end module m_userfile
