@@ -701,26 +701,26 @@ contains
         end if
       end if ! open zone injection
 
-      ! injection in the closed zone
-      if (abs(cos_theta) .lt. 0.5) then
-        x_glob = x_glob + xc_g
-        y_glob = y_glob + yc_g
-        z_glob = z_glob + zc_g
-        call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
-        ! if particle is within the current MPI meshblock
-        if (dummy_flag) then
-          call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-          ! initialize at rest
-          call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-          call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-          dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
-          if (dummy_ .gt. edotb_thr_closed) then
-            weight = dummy_ * nGJ / ppc
-            call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-            call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-          end if ! E.B limiter
-        end if ! current MPI block
-      end if ! closed zone
+      !! injection in the closed zone
+      !if (abs(cos_theta) .lt. 0.5) then
+        !x_glob = x_glob + xc_g
+        !y_glob = y_glob + yc_g
+        !z_glob = z_glob + zc_g
+        !call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+        !! if particle is within the current MPI meshblock
+        !if (dummy_flag) then
+          !call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+          !! initialize at rest
+          !call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+          !call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+          !dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
+          !if (dummy_ .gt. edotb_thr_closed) then
+            !weight = dummy_ * nGJ / ppc
+            !call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+            !call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+          !end if ! E.B limiter
+        !end if ! current MPI block
+      !end if ! closed zone
 
     end do
 
