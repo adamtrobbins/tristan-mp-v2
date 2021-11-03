@@ -703,38 +703,6 @@ contains
         end if
       end if ! open zone injection
 
-      ! volume injection
-      nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
-      ppc = 0.5 * ppc0
-      weight = inj_mult * nGJ / ppc
-      rmin_inj = psr_radius + 5.0
-      rmax_inj = psr_radius + 4.0 * psr_radius
-      n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc)
-      do n = 1, n_part
-        ! for each spherical shell iterate over the given number of particles to inject
-        call randomPointInSphericalShell(rmin_inj, rmax_inj, x_glob, y_glob, z_glob)
-        rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
-        nx = x_glob / rr
-        ny = y_glob / rr
-        nz = z_glob / rr
-        cos_theta = (nz)
-        if (abs(cos_theta) .gt. 0.6) then
-          x_glob = x_glob + xc_g
-          y_glob = y_glob + yc_g
-          z_glob = z_glob + zc_g
-          call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
-          ! if particle is within the current MPI meshblock
-          if (dummy_flag) then
-            ! open zone injection
-            call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-            density = lg_arr(xi, yi, zi)
-            if (density .lt. 20.0 * nGJ * (psr_radius / rr)**2) then
-              call dumpParticlesHere(xi, yi, zi, dx, dy, dz, weight)
-            end if
-          end if
-        end if
-        end do ! npart
-      end do ! ri
 
       ! ! injection in the closed zone
       ! if (abs(cos_theta) .lt. 0.5) then
@@ -758,6 +726,38 @@ contains
       ! end if ! closed zone
 
     end do
+
+    ! volume injection
+    nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
+    ppc = 0.5 * ppc0
+    weight = inj_mult * nGJ / ppc
+    rmin_inj = psr_radius + 5.0
+    rmax_inj = psr_radius + 4.0 * psr_radius
+    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc)
+    do n = 1, n_part
+      ! for each spherical shell iterate over the given number of particles to inject
+      call randomPointInSphericalShell(rmin_inj, rmax_inj, x_glob, y_glob, z_glob)
+      rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+      nx = x_glob / rr
+      ny = y_glob / rr
+      nz = z_glob / rr
+      cos_theta = (nz)
+      if (abs(cos_theta) .gt. 0.6) then
+        x_glob = x_glob + xc_g
+        y_glob = y_glob + yc_g
+        z_glob = z_glob + zc_g
+        call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+        ! if particle is within the current MPI meshblock
+        if (dummy_flag) then
+          ! open zone injection
+          call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+          density = lg_arr(xi, yi, zi)
+          if (density .lt. 20.0 * nGJ * (psr_radius / rr)**2) then
+            call dumpParticlesHere(xi, yi, zi, dx, dy, dz, weight)
+          end if
+        end if
+      end if
+    end do ! npart
 
     ! max radius for spherical absorption and absorbing layer size in cartesian absorption
     rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
