@@ -731,9 +731,9 @@ contains
     nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
     ppc = 0.5 * ppc0
     weight = inj_mult * nGJ / ppc
-    rmin_inj = psr_radius + 5.0
-    rmax_inj = psr_radius + 4.0 * psr_radius
-    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc)
+    rmin_inj = 2.0 * psr_radius
+    rmax_inj = 4.0 * psr_radius
+    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc) / 10
     do n = 1, n_part
       ! for each spherical shell iterate over the given number of particles to inject
       call randomPointInSphericalShell(rmin_inj, rmax_inj, x_glob, y_glob, z_glob)
@@ -742,7 +742,7 @@ contains
       ny = y_glob / rr
       nz = z_glob / rr
       cos_theta = (nz)
-      if (abs(cos_theta) .gt. 0.6) then
+      if (abs(cos_theta) .lt. 0.6) then
         x_glob = x_glob + xc_g
         y_glob = y_glob + yc_g
         z_glob = z_glob + zc_g
