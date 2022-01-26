@@ -733,7 +733,7 @@ contains
     weight = inj_mult * nGJ / ppc
     rmin_inj = 2.0 * psr_radius
     rmax_inj = 4.0 * psr_radius
-    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc) / 10
+    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc) / 1000
     do n = 1, n_part
       ! for each spherical shell iterate over the given number of particles to inject
       call randomPointInSphericalShell(rmin_inj, rmax_inj, x_glob, y_glob, z_glob)
