@@ -71,6 +71,7 @@ contains
     #endif
 
     allocate(send_fld(sendrecv_buffsz))
+    allocate(send_EB(sendrecv_offsetsz))
     allocate(recv_fld(sendrecv_offsetsz))
   end subroutine reallocateFieldBuffers
 

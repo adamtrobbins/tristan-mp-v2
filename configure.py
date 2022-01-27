@@ -274,6 +274,7 @@ if args['test']:
 # compiler (+ vectorization etc)
 if args['intel']:
   makefile_options['MODULE'] = '-module '
+  # makefile_options['COMPILER_FLAGS'] += '-O0 '
   makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
 else:
   makefile_options['MODULE'] = '-J '
