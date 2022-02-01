@@ -170,16 +170,16 @@ contains
                             & recv_fld(1 : cnt), cnt, MPI_REAL, mpi_recvfrom, mpi_tag,&
                             & MPI_COMM_WORLD, istat, ierr)
 
-            if ((mpi_rank .eq. 3) .and. (mpi_sendto .eq. 0)) then
-              call MPI_GET_COUNT(istat, MPI_REAL, cnt, ierr)
-              print *, ">>",  mpi_rank, istat%MPI_SOURCE, istat%MPI_TAG, istat%MPI_ERROR, cnt
-              !print *, mpi_rank, "sending", send_EB(1:cnt)
-            end if
-            if ((mpi_rank .eq. 0) .and. (mpi_recvfrom .eq. 3)) then
-              call MPI_GET_COUNT(istat, MPI_REAL, cnt, ierr)
-              print *, ">>", mpi_rank, istat%MPI_SOURCE, istat%MPI_TAG, istat%MPI_ERROR, cnt
-              !print *, mpi_rank, "receiving", recv_fld(1:cnt)
-            end if
+!            if ((mpi_rank .eq. 3) .and. (mpi_sendto .eq. 0)) then
+!              call MPI_GET_COUNT(istat, MPI_REAL, cnt, ierr)
+!              print *, ">>",  mpi_rank, istat%MPI_SOURCE, istat%MPI_TAG, istat%MPI_ERROR, cnt
+!              !print *, mpi_rank, "sending", send_EB(1:cnt)
+!            end if
+!            if ((mpi_rank .eq. 0) .and. (mpi_recvfrom .eq. 3)) then
+!              call MPI_GET_COUNT(istat, MPI_REAL, cnt, ierr)
+!              print *, ">>", mpi_rank, istat%MPI_SOURCE, istat%MPI_TAG, istat%MPI_ERROR, cnt
+!              !print *, mpi_rank, "receiving", recv_fld(1:cnt)
+!            end if
             call extractRecvArray(-ind1, -ind2, -ind3, exchangeE, exchangeB)
           else
             print *, "NOT SUPPOSED TO BE HERE"
@@ -190,106 +190,6 @@ contains
     end do
     call printDiag("exchangeFields()", 2)
   end subroutine exchangeFields
-
-  !subroutine exchangeFields(exchangeE, exchangeB)
-    !implicit none
-    !logical, intent(in) :: exchangeE, exchangeB
-    !integer            :: i, j, k, imin, imax, jmin, jmax, kmin, kmax
-    !integer            :: ind1, ind2, ind3, cntr, n_cntr
-    !integer            :: send_cnt, recv_cnt, ierr
-    !integer            :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
-    !integer            :: mpi_offset
-
-    !#ifdef MPI08
-      !type(MPI_REQUEST), allocatable  :: mpi_req(:)
-      !type(MPI_STATUS)                :: istat
-    !#endif
-
-    !#ifdef MPI
-      !integer, allocatable            :: mpi_req(:)
-      !integer                         :: istat(MPI_STATUS_SIZE)
-    !#endif
-
-    !logical, allocatable              :: mpi_sendflags(:), mpi_recvflags(:)
-    !logical                           :: quit_loop
-
-    !if ((.not. exchangeE) .and. (.not. exchangeB)) then
-      !call throwError('ERROR: `exchangeFields()` called with `.false.` and `.false.`')
-    !end if
-
-    !allocate(mpi_req(sendrecv_neighbors))
-    !allocate(mpi_sendflags(sendrecv_neighbors))
-    !allocate(mpi_recvflags(sendrecv_neighbors))
-
-    !cntr = 0
-    !do ind1 = -1, 1
-      !do ind2 = -1, 1
-        !do ind3 = -1, 1
-          !if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-          !#ifdef oneD
-            !if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-          !#elif twoD
-            !if (ind3 .ne. 0) cycle
-          !#endif
-          !if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
-          !cntr = cntr + 1
-          !mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-          !mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
-          !mpi_offset = (cntr - 1) * sendrecv_offsetsz
-          !call bufferSendArray(mpi_offset, ind1, ind2, ind3, exchangeE, exchangeB, send_cnt)
-          !! post non-blocking send requests
-          !call MPI_ISEND(send_fld(mpi_offset + 1 : mpi_offset + send_cnt), send_cnt, MPI_REAL,&
-                       !& mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
-        !end do
-      !end do
-    !end do
-
-    !! wait to send & receive all the MPI calls and write data to memory
-    !quit_loop = .false.
-    !mpi_sendflags(:) = .false.
-    !mpi_recvflags(:) = .false.
-    !do while (.not. quit_loop)
-      !quit_loop = .true.
-      !cntr = 0
-      !do ind1 = -1, 1
-        !do ind2 = -1, 1
-          !do ind3 = -1, 1
-            !if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-            !#ifdef oneD
-              !if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-            !#elif twoD
-              !if (ind3 .ne. 0) cycle
-            !#endif
-            !if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
-            !cntr = cntr + 1
-
-            !if (.not. mpi_sendflags(cntr)) then
-              !! check if the message has been sent
-              !quit_loop = .false.
-              !call MPI_TEST(mpi_req(cntr), mpi_sendflags(cntr), istat, ierr)
-            !end if
-
-            !mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-            !mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
-
-            !if (.not. mpi_recvflags(cntr)) then
-              !quit_loop = .false.
-              !call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
-              !if (mpi_recvflags(cntr)) then
-                !! if the message is ready to be received -> get the size & receive it
-                !call MPI_GET_COUNT(istat, MPI_REAL, recv_cnt, ierr)
-                !call MPI_RECV(recv_fld(1:recv_cnt), recv_cnt, MPI_REAL,&
-                            !& mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
-
-                !call extractRecvArray(ind1, ind2, ind3, exchangeE, exchangeB)
-              !end if ! if receive is ready
-            !end if ! if receive hasn't been done yet
-          !end do ! ind3
-        !end do ! ind2
-      !end do ! ind1
-    !end do ! global loop
-    !call printDiag("exchangeFields()", 2)
-  !end subroutine exchangeFields
 
   subroutine exchangeFieldSlabInX(rnk1, rnk2, slab)
     implicit none

@@ -7,7 +7,6 @@ program tristan
   use m_finalize
   implicit none
   !----- main code --------------------------
-  print *, "FOOOO"
 
   call initializeAll()
   #ifndef TESTMODE

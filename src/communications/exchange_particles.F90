@@ -46,7 +46,7 @@ contains
     #ifdef PRTLPAYLOADS
       additional_real = additional_real + 3
     #endif
-
+ 
     !     # of blockcounts = 3:
     !       3  x integer2  [xi, yi, zi]                       | + 3 if GCA [xi_past, yi_past, zi_past]
     !       7  x real      [dx, dy, dz, u, v, w, weight]      | + 8 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp]
@@ -74,9 +74,10 @@ contains
     integer, pointer, contiguous          :: pt_proc(:)
     real, pointer, contiguous             :: pt_dx(:), pt_dy(:), pt_dz(:)
     integer             :: s, p, send_x, send_y, send_z, ti, tj, tk, ti_p, tj_p, tk_p
-    integer             :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
+    integer             :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag, mpi_tag, mpi_tag2
     integer             :: ierr, ind1, ind2, ind3, cntr, temp_xyz
-    integer             :: cnt_recv_enroute
+    integer             :: cnt_recv_enroute, cnt_send_enroute
+    logical :: should_send, should_recv
     integer(kind=2)     :: new_xyz
 
     #ifdef MPI08
@@ -265,29 +266,121 @@ contains
       ! // particle crosses MPI blocks
 
       ! start sending //
-      cntr = 0
-      do ind1 = -1, 1
-        do ind2 = -1, 1
-          do ind3 = -1, 1
-            if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-            #ifdef oneD
-              if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-            #elif twoD
-              if (ind3 .ne. 0) cycle
-            #endif
-            if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
-            cntr = cntr + 1
-            mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+!      cntr = 0
+!      do ind1 = -1, 1
+!        do ind2 = -1, 1
+!          do ind3 = -1, 1
+!            if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+!            #ifdef oneD
+!              if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+!            #elif twoD
+!              if (ind3 .ne. 0) cycle
+!            #endif
+!            if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+!            cntr = cntr + 1
+!            mpi_sendtag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
+  !            ! post non-blocking send requests
+!            mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
+!            call MPI_ISEND(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
+!                         & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
+!                         & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
+!          end do
+!        end do
+!      end do
+!      ! // start sending
 
-            ! post non-blocking send requests
-            mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-            call MPI_ISEND(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
-                         & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
-                         & mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
-          end do
-        end do
+      cntr = 0   
+      do ind1 = -1, 1
+         do ind2 = -1, 1
+            do ind3 = -1, 1
+               if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle 
+               #ifdef oneD 
+                 if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle 
+               #elif twoD    
+                 if (ind3 .ne. 0) cycle 
+               #endif
+               if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+               cntr = cntr + 1
+               mpi_tag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1) 
+               mpi_tag2 = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)+200
+               mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk   
+               mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk  
+               should_send = associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr) 
+               should_recv = associated(this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr)  
+               cnt_send_enroute = enroute_bot%get(ind1,ind2,ind3)%cnt
+               if (should_send .and. should_recv) then
+                  call MPI_SENDRECV(cnt_send_enroute, 1, MPI_INTEGER, mpi_sendto, mpi_tag2, cnt_recv_enroute, 1, MPI_INTEGER, mpi_recvfrom, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+                  if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
+                    call throwError('ERROR: particle had rcv array too small.')
+                  end if
+                  call MPI_SENDRECV(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
+                       & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
+                       & mpi_sendto, mpi_tag,recv_enroute%enroute(1:cnt_recv_enroute), &
+                       & cnt_recv_enroute, myMPI_ENROUTE, mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr) 
+                  if (cnt_recv_enroute .gt. 0) then
+                    call extractParticlesFromEnroute(cnt_recv_enroute, s)
+                  end if ! if > 0 particles received
+               else
+                  print *, "NOT SUPPOSED TO BE HERE"    
+                  stop 
+               end if
+            end do
+         end do
       end do
-      ! // start sending
+
+!      ! wait to send & receive all the MPI calls and write data to memory
+!      quit_loop = .false.
+!      mpi_sendflags(:) = .false.
+!      mpi_recvflags(:) = .false.
+!      do while (.not. quit_loop)
+!        ! try to receive while not done
+!        quit_loop = .true.
+!        cntr = 0
+!        do ind1 = -1, 1
+!          do ind2 = -1, 1
+!            do ind3 = -1, 1
+!              if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
+!              #ifdef oneD
+!                if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
+!              #elif twoD
+!                if (ind3 .ne. 0) cycle
+!              #endif
+!              if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+!              cntr = cntr + 1
+!
+!              if (.not. mpi_sendflags(cntr)) then
+!                ! check if the message has been sent
+!                 quit_loop = .false.
+!                call MPI_TEST(mpi_req(cntr), mpi_sendflags(cntr), istat, ierr)
+!              end if
+!
+!              mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
+!              mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
+!
+!              if (.not. mpi_recvflags(cntr)) then
+!                quit_loop = .false.
+!                call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
+!                if (mpi_recvflags(cntr)) then
+!                  call MPI_GET_COUNT(istat, myMPI_ENROUTE, cnt_recv_enroute, ierr)
+!
+!                  if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
+!                    call throwError('ERROR: particle had rcv array too small.')
+!                  end if
+!
+!                  call MPI_RECV(recv_enroute%enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&
+!                               & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
+!
+!                  ! write received data to local memory
+!                  if (cnt_recv_enroute .gt. 0) then
+!                    call extractParticlesFromEnroute(cnt_recv_enroute, s)
+!                  end if ! if > 0 particles received
+!                end if ! if the message can be received -> get the size & receive it
+!              end if ! if the message has already been received
+!
+!            end do ! ind3
+!          end do ! ind2
+!        end do ! ind1
+!      end do ! global loop
 
       ! particle moves between tiles within a single MPI block //
       do ti = 1, species(s)%tile_nx
@@ -338,59 +431,7 @@ contains
         end do
       #endif
 
-      ! wait to send & receive all the MPI calls and write data to memory
-      quit_loop = .false.
-      mpi_sendflags(:) = .false.
-      mpi_recvflags(:) = .false.
-      do while (.not. quit_loop)
-        ! try to receive while not done
-        quit_loop = .true.
-        cntr = 0
-        do ind1 = -1, 1
-          do ind2 = -1, 1
-            do ind3 = -1, 1
-              if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
-              #ifdef oneD
-                if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-              #elif twoD
-                if (ind3 .ne. 0) cycle
-              #endif
-              if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
-              cntr = cntr + 1
 
-              if (.not. mpi_sendflags(cntr)) then
-                ! check if the message has been sent
-                quit_loop = .false.
-                call MPI_TEST(mpi_req(cntr), mpi_sendflags(cntr), istat, ierr)
-              end if
-
-              mpi_recvfrom = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-              mpi_recvtag = (-ind3 + 2) + 3 * (-ind2 + 1) + 9 * (-ind1 + 1)
-
-              if (.not. mpi_recvflags(cntr)) then
-                quit_loop = .false.
-                call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
-                if (mpi_recvflags(cntr)) then
-                  call MPI_GET_COUNT(istat, myMPI_ENROUTE, cnt_recv_enroute, ierr)
-
-                  if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
-                    call throwError('ERROR: particle had rcv array too small.')
-                  end if
-
-                  call MPI_RECV(recv_enroute%enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE,&
-                              & mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
-
-                  ! write received data to local memory
-                  if (cnt_recv_enroute .gt. 0) then
-                    call extractParticlesFromEnroute(cnt_recv_enroute, s)
-                  end if ! if > 0 particles received
-                end if ! if the message can be received -> get the size & receive it
-              end if ! if the message has already been received
-
-            end do ! ind3
-          end do ! ind2
-        end do ! ind1
-      end do ! global loop
 
       #ifdef LOWMEM
         do send_x = -1, 1
