@@ -76,7 +76,7 @@ def convertToXarray(fields,
   for k in fields.keys():
     xr_data[k] = (xr_axes, fields[k][:])
   for k in additionalVariables.keys():
-    xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:])
+    xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:].data)
   if mask is not None:
     xr_data = xr_data.where(mask(xr_data))
   return xr_data
