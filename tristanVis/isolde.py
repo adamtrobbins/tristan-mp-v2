@@ -218,7 +218,10 @@ def parseInput(fname):
         _, var = getFirstNontrivialElement(line)
         var = var.strip()
         _, value = getFirstNontrivialElement(line[_ + 1:])
-        value = float(value)
+        try:
+          value = float(value)
+        except:
+          value = None
         data[curr_blockname].update({var: value})
   return data
 
