@@ -299,17 +299,22 @@ contains
                #elif twoD    
                  if (ind3 .ne. 0) cycle 
                #endif
-               if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
+!               if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
                cntr = cntr + 1
                mpi_tag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1) 
                mpi_tag2 = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)+200
-               mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk   
-               mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk  
                should_send = associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr) 
                should_recv = associated(this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr)  
                cnt_send_enroute = enroute_bot%get(ind1,ind2,ind3)%cnt
+!               if ((mpi_rank .eq. 0)) then
+!                  print *, "sum rank", mpi_rank, ind1, ind2, ind3, should_send, should_recv 
+!               end if
                if (should_send .and. should_recv) then
-                  call MPI_SENDRECV(cnt_send_enroute, 1, MPI_INTEGER, mpi_sendto, mpi_tag2, cnt_recv_enroute, 1, MPI_INTEGER, mpi_recvfrom, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+                  mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk   
+                  mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk  
+              
+                  call MPI_SENDRECV(cnt_send_enroute, 1, MPI_INTEGER, mpi_sendto, mpi_tag2,&
+                       & cnt_recv_enroute, 1, MPI_INTEGER, mpi_recvfrom, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
                   if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
                     call throwError('ERROR: particle had rcv array too small.')
                   end if
@@ -320,9 +325,33 @@ contains
                   if (cnt_recv_enroute .gt. 0) then
                     call extractParticlesFromEnroute(cnt_recv_enroute, s)
                   end if ! if > 0 particles received
-               else
-                  print *, "NOT SUPPOSED TO BE HERE"    
-                  stop 
+!                  if ((mpi_rank .eq. 0) ) then
+!                     print *, "rank", mpi_rank, "sent ", enroute_bot%get(ind1,ind2,ind3)%cnt, "to", mpi_sendto, "and recv", cnt_recv_enroute, "from", mpi_recvfrom
+!                  end if
+               else if ((.not. should_send) .and. should_recv) then
+                  ! proc # 8
+                  mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk ! 7
+                  call MPI_RECV(cnt_recv_enroute, 1, MPI_INTEGER, mpi_recvfrom, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+                  call MPI_RECV(recv_enroute%enroute(1:cnt_recv_enroute),cnt_recv_enroute, myMPI_ENROUTE,&
+                       & mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+                  if (cnt_recv_enroute .gt. 0) then
+                     call extractParticlesFromEnroute(cnt_recv_enroute, s)
+                  end if
+!                  if ((mpi_rank .eq. 0)) then
+!                     print *, "rank", mpi_rank, "recv", cnt_recv_enroute, " from", mpi_recvfrom
+!                  end if
+               else if ((.not. should_recv) .and. should_send) then
+                  mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
+                  call MPI_SEND(cnt_send_enroute, 1, MPI_INTEGER, mpi_sendto, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+!                  if (cnt_recv_enroute .ge. size(recv_enroute%enroute)) then
+!                     call throwError('ERROR: particle had rcv array too small here.')
+!                  end if
+                  call MPI_SEND(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
+                       & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
+                       & mpi_sendto, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+!                  if ((mpi_rank .eq. 0)) then
+!                     print *, "rank", mpi_rank, "send", enroute_bot%get(ind1,ind2,ind3)%cnt, "to", mpi_sendto
+!                  end if
                end if
             end do
          end do

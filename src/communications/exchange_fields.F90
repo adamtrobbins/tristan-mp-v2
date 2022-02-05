@@ -7,6 +7,52 @@ module m_exchangefields
   use m_domain
   use m_fields
 contains
+  subroutine findCnt(ind1, ind2, ind3, exchangeE, exchangeB, send_cnt)
+    implicit none
+    integer                 :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
+    logical, intent(in)     :: exchangeE, exchangeB
+    integer, intent(in)     :: ind1, ind2, ind3
+    integer, intent(out)    :: send_cnt
+    ! highlight the region to send and save to `send_fld`
+    if (ind1 .eq. 0) then
+      imin = 0; imax = this_meshblock%ptr%sx - 1
+    else if (ind1 .eq. -1) then
+      imin = 0; imax = NGHOST - 1
+    else if (ind1 .eq. 1) then
+      imin = this_meshblock%ptr%sx - NGHOST; imax = this_meshblock%ptr%sx - 1
+    end if
+    if (ind2 .eq. 0) then
+      jmin = 0; jmax = this_meshblock%ptr%sy - 1
+    else if (ind2 .eq. -1) then
+      jmin = 0; jmax = NGHOST - 1
+    else if (ind2 .eq. 1) then
+      jmin = this_meshblock%ptr%sy - NGHOST; jmax = this_meshblock%ptr%sy - 1
+    end if
+    if (ind3 .eq. 0) then
+      kmin = 0; kmax = this_meshblock%ptr%sz - 1
+    else if (ind3 .eq. -1) then
+      kmin = 0; kmax = NGHOST - 1
+    else if (ind3 .eq. 1) then
+      kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz - 1
+    end if
+    #ifdef oneD
+      jmin = 0; jmax = 0
+      kmin = 0; kmax = 0
+    #elif twoD
+      kmin = 0; kmax = 0
+    #endif
+
+    send_cnt = 1
+    if (exchangeE) then
+       send_cnt = send_cnt + 3*(imax-imin+1)*(jmax-jmin+1)*(kmax-kmin+1)
+    end if
+
+    if (exchangeB) then
+       send_cnt = send_cnt + 3*(imax-imin+1)*(jmax-jmin+1)*(kmax-kmin+1)
+    end if
+    send_cnt = send_cnt - 1
+  end subroutine findCnt
+    
   subroutine bufferSendArray(offset, ind1, ind2, ind3, exchangeE, exchangeB, send_cnt)
     implicit none
     integer                 :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
@@ -144,7 +190,6 @@ contains
       call throwError('ERROR: `exchangeFields()` called with `.false.` and `.false.`')
     end if
 
-    !cntr = 0
     ! looping through all send directions
     do ind1 = -1, 1
       do ind2 = -1, 1
@@ -155,41 +200,34 @@ contains
           #elif twoD
             if (ind3 .ne. 0) cycle
           #endif
+          mpi_tag = 100 + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
           should_send = associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)
           should_recv = associated(this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr)
           if (should_send .and. should_recv) then
-            ! nothing to send (only recv)
-
             mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
             mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk
-            mpi_tag = 100 + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
 
             call bufferSendArray(0, ind1, ind2, ind3, exchangeE, exchangeB, cnt)
 
             call MPI_SENDRECV(send_EB(1 : cnt), cnt, MPI_REAL, mpi_sendto, mpi_tag,&
                             & recv_fld(1 : cnt), cnt, MPI_REAL, mpi_recvfrom, mpi_tag,&
                             & MPI_COMM_WORLD, istat, ierr)
-
-!            if ((mpi_rank .eq. 3) .and. (mpi_sendto .eq. 0)) then
-!              call MPI_GET_COUNT(istat, MPI_REAL, cnt, ierr)
-!              print *, ">>",  mpi_rank, istat%MPI_SOURCE, istat%MPI_TAG, istat%MPI_ERROR, cnt
-!              !print *, mpi_rank, "sending", send_EB(1:cnt)
-!            end if
-!            if ((mpi_rank .eq. 0) .and. (mpi_recvfrom .eq. 3)) then
-!              call MPI_GET_COUNT(istat, MPI_REAL, cnt, ierr)
-!              print *, ">>", mpi_rank, istat%MPI_SOURCE, istat%MPI_TAG, istat%MPI_ERROR, cnt
-!              !print *, mpi_rank, "receiving", recv_fld(1:cnt)
-!            end if
             call extractRecvArray(-ind1, -ind2, -ind3, exchangeE, exchangeB)
-          else
-            print *, "NOT SUPPOSED TO BE HERE"
-            stop
-          end if
+         else if ((.not. should_send) .and. should_recv) then
+            mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk 
+            call findCnt(ind1, ind2, ind3, exchangeE, exchangeB, cnt)
+            call MPI_RECV(recv_fld(1 : cnt),cnt, MPI_REAL,mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+            call extractRecvArray(-ind1, -ind2, -ind3, exchangeE, exchangeB)
+         else if ((.not. should_recv) .and. should_send) then
+            mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk 
+            call bufferSendArray(0, ind1, ind2, ind3, exchangeE, exchangeB, cnt)
+            call MPI_SEND(send_EB(1 : cnt), cnt, MPI_REAL,mpi_sendto, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+         end if
         end do
       end do
-    end do
-    call printDiag("exchangeFields()", 2)
-  end subroutine exchangeFields
+   end do
+   call printDiag("exchangeFields()", 2)
+ end subroutine exchangeFields
 
   subroutine exchangeFieldSlabInX(rnk1, rnk2, slab)
     implicit none

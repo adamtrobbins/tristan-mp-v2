@@ -8,6 +8,80 @@ module m_exchangecurrents
   use m_fields
 contains
 
+  subroutine findCnt(ind1, ind2, ind3, fill_ghosts, send_cnt)
+    integer                       :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
+    integer, intent(in)           :: ind1, ind2, ind3    
+    logical, intent(in)           :: fill_ghosts     
+    integer, intent(out)          :: send_cnt 
+
+    ! highlight the region to send and save to `send_EB`
+    if (.not. fill_ghosts) then
+       !   sending ghost zones + normal zones
+       if (ind1 .eq. 0) then
+          imin = -NGHOST; imax = this_meshblock%ptr%sx + NGHOST - 1
+       else if (ind1 .eq. -1) then
+          imin = -NGHOST; imax = NGHOST - 1
+       else if (ind1 .eq. 1) then
+          imin = this_meshblock%ptr%sx - NGHOST; imax = this_meshblock%ptr%sx + NGHOST - 1
+       end if
+
+       if (ind2 .eq. 0) then
+          jmin = -NGHOST; jmax = this_meshblock%ptr%sy + NGHOST - 1
+       else if (ind2 .eq. -1) then
+          jmin = -NGHOST; jmax = NGHOST - 1
+       else if (ind2 .eq. 1) then
+          jmin = this_meshblock%ptr%sy - NGHOST; jmax = this_meshblock%ptr%sy + NGHOST - 1
+       end if
+
+       if (ind3 .eq. 0) then
+          kmin = -NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
+       else if (ind3 .eq. -1) then
+          kmin = -NGHOST; kmax = NGHOST - 1
+       else if (ind3 .eq. 1) then
+          kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz + NGHOST - 1
+       end if
+#ifdef oneD
+       jmin = 0; jmax = 0
+       kmin = 0; kmax = 0
+#elif twoD
+       kmin = 0; kmax = 0
+#endif
+    else
+       !   sending just the normal zones
+       if (ind1 .eq. 0) then
+          imin = 0; imax = this_meshblock%ptr%sx - 1
+       else if (ind1 .eq. -1) then
+          imin = 0; imax = NGHOST - 1
+       else if (ind1 .eq. 1) then
+          imin = this_meshblock%ptr%sx - NGHOST; imax = this_meshblock%ptr%sx - 1
+       end if
+
+       if (ind2 .eq. 0) then
+          jmin = 0; jmax = this_meshblock%ptr%sy - 1
+       else if (ind2 .eq. -1) then
+          jmin = 0; jmax = NGHOST - 1
+       else if (ind2 .eq. 1) then
+          jmin = this_meshblock%ptr%sy - NGHOST; jmax = this_meshblock%ptr%sy - 1
+       end if
+
+       if (ind3 .eq. 0) then
+          kmin = 0; kmax = this_meshblock%ptr%sz - 1
+       else if (ind3 .eq. -1) then
+          kmin = 0; kmax = NGHOST - 1
+       else if (ind3 .eq. 1) then
+          kmin = this_meshblock%ptr%sz - NGHOST; kmax = this_meshblock%ptr%sz - 1
+       end if
+#ifdef oneD
+       jmin = 0; jmax = 0
+       kmin = 0; kmax = 0
+#elif twoD
+       kmin = 0; kmax = 0
+#endif
+    end if
+
+    send_cnt = 3*(imax-imin+1)*(jmax-jmin+1)*(kmax-kmin+1)
+  end subroutine findCnt
+
   subroutine bufferSendArray( ind1, ind2, ind3,fill_ghosts, send_cnt)
     integer                       :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
     integer, intent(in)           :: ind1, ind2, ind3
@@ -231,25 +305,31 @@ contains
           #elif twoD
             if (ind3 .ne. 0) cycle
           #endif
-          if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
 
-          mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-          mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk
           mpi_tag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1) + 50
 
           should_send = associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)
           should_recv = associated(this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr)
           if (should_send .and. should_recv) then
 
+             mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
+             mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk
+
              call bufferSendArray(ind1, ind2, ind3, fill_ghosts, cnt)
              call MPI_SENDRECV(send_EB(1 : cnt), cnt, MPI_REAL, mpi_sendto, mpi_tag,&
                   & recv_fld(1 : cnt), cnt, MPI_REAL, mpi_recvfrom, mpi_tag,&
                   & MPI_COMM_WORLD, istat, ierr)
              call extractRecvArray(-ind1, -ind2, -ind3, fill_ghosts)
-          else
-             print *, "NOT SUPPOSED TO BE HERE"
-             stop
-          end if
+          else if ((.not. should_send) .and. should_recv) then
+            mpi_recvfrom = this_meshblock%ptr%neighbor(-ind1,-ind2,-ind3)%ptr%rnk 
+            call findCnt(-ind1, -ind2, -ind3, fill_ghosts, cnt)
+            call MPI_RECV(recv_fld(1 : cnt),cnt, MPI_REAL,mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+            call extractRecvArray(-ind1, -ind2, -ind3, fill_ghosts)
+         else if ((.not. should_recv) .and. should_send) then
+            mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk 
+            call bufferSendArray(ind1, ind2, ind3, fill_ghosts, cnt)
+            call MPI_SEND(send_EB(1 : cnt), cnt, MPI_REAL,mpi_sendto, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+         end if
         end do
       end do
     end do
