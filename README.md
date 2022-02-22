@@ -65,10 +65,3 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
   * Slice outputs for 3d added
   * Particle momentum binning improved for downsampling
   * Minor bugs fixed
-
-### To-do (ongoing)
-
-- [ ] Safe mode (with dynamic allocation)
-- [ ] Adaptive load balancing (in progress...)
-- [ ] Particle splitting (in progress...)
-- [ ] Documentation for the python library for visualization
