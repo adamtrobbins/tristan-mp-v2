@@ -36,7 +36,7 @@ module m_userfile
   real, private     :: b_at_LC
   real, private     :: gammarad_LC, gammarad_dummy
   real, private     :: eph_at_LC, gammac_dummy
-  integer, private  :: vol_inj_start 
+  integer, private  :: vol_inj_start
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -189,7 +189,7 @@ contains
             !do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
               !! for boris particles only
               !if (species(s)%prtl_tile(ti, tj, tk)%proc(p) .lt. mpi_size) then
-                !gamma = sqrt(1.0 + species(s)%prtl_tile(ti, tj, tk)%u(p)**2 +& 
+                !gamma = sqrt(1.0 + species(s)%prtl_tile(ti, tj, tk)%u(p)**2 +&
                                  !& species(s)%prtl_tile(ti, tj, tk)%v(p)**2 +&
                                  !& species(s)%prtl_tile(ti, tj, tk)%w(p)**2)
                 !if (gamma .gt. gamma_max) then
@@ -247,9 +247,9 @@ contains
     call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
   end subroutine dumpParticlesHere
 
-  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! VOLUME INJECTOR
-  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   !subroutine userParticleBoundaryConditions(step)
     !implicit none
     !integer, optional, intent(in) :: step
@@ -368,9 +368,9 @@ contains
     !end do
   !end subroutine userParticleBoundaryConditions
 
-  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   ! SURFACE INJECTOR EVERYWHERE
-  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   !subroutine userParticleBoundaryConditions(step)
     !implicit none
     !integer, optional, intent(in) :: step
@@ -551,9 +551,9 @@ contains
     !end do
   !end subroutine userParticleBoundaryConditions
 
-  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
-  ! SURFACE INJECTOR ON POLAR CAP + CLOSED ZONE INJECTOR 
-  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+  ! SURFACE INJECTOR ON POLAR CAP + CLOSED ZONE INJECTOR
+  ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
@@ -573,6 +573,8 @@ contains
       real                          :: vE_x, vE_y, vE_z
       real                          :: e0_SQR, b0_SQR
     #endif
+
+    real        :: dr_i, rmin_inj, rmax_inj
 
     phase = step * psr_omega
     mu_x = sin(psr_angle) * cos(phase)
@@ -594,11 +596,11 @@ contains
 
     ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     ppc = 0.5 * ppc0
-    if (sigGJ_limiter .ne. 0) then
+    ! if (sigGJ_limiter .ne. 0) then
       ! compute number density and write to `lg_arr`
-      call computeDensity(1, reset=.true., ds=0, charge=.false.)
-      call computeDensity(2, reset=.false., ds=0, charge=.false.)
-    end if
+    call computeDensity(1, reset=.true., ds=0, charge=.false.)
+    call computeDensity(2, reset=.false., ds=0, charge=.false.)
+    ! end if
     n_part = INT(2.0 * (4.0 * M_PI / 3.0) * ((psr_radius + shell_width + inj_dr)**3 - (psr_radius + inj_dr)**3) * ppc)
     do n = 1, n_part
       call randomPointInSphericalShell(psr_radius + inj_dr, psr_radius + inj_dr + shell_width, x_glob, y_glob, z_glob)
@@ -701,28 +703,61 @@ contains
         end if
       end if ! open zone injection
 
-      !! injection in the closed zone
-      !if (abs(cos_theta) .lt. 0.5) then
-        !x_glob = x_glob + xc_g
-        !y_glob = y_glob + yc_g
-        !z_glob = z_glob + zc_g
-        !call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
-        !! if particle is within the current MPI meshblock
-        !if (dummy_flag) then
-          !call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
-          !! initialize at rest
-          !call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
-          !call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
-          !dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
-          !if (dummy_ .gt. edotb_thr_closed) then
-            !weight = dummy_ * nGJ / ppc
-            !call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-            !call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
-          !end if ! E.B limiter
-        !end if ! current MPI block
-      !end if ! closed zone
+
+      ! ! injection in the closed zone
+      ! if (abs(cos_theta) .lt. 0.5) then
+      !   x_glob = x_glob + xc_g
+      !   y_glob = y_glob + yc_g
+      !   z_glob = z_glob + zc_g
+      !   call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+      !   ! if particle is within the current MPI meshblock
+      !   if (dummy_flag) then
+      !     call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+      !     ! initialize at rest
+      !     call interpFromEdges(dx, dy, dz, xi, yi, zi, ex, ey, ez, ex0, ey0, ez0)
+      !     call interpFromFaces(dx, dy, dz, xi, yi, zi, bx, by, bz, bx0, by0, bz0)
+      !     dummy_ = abs(ex0 * bx0 + ey0 * by0 + ez0 * bz0) / (bx0**2 + by0**2 + bz0**2)
+      !     if (dummy_ .gt. edotb_thr_closed) then
+      !       weight = dummy_ * nGJ / ppc
+      !       call createParticle(1, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+      !       call createParticle(2, xi, yi, zi, dx, dy, dz, 0.0, 0.0, 0.0, weight=weight)
+      !     end if ! E.B limiter
+      !   end if ! current MPI block
+      ! end if ! closed zone
 
     end do
+
+    ! volume injection
+    nGJ = 2 * psr_omega * B_norm * psr_bstar / (CC * abs(unit_ch))
+    ppc = 0.5 * ppc0
+    weight = inj_mult * nGJ / ppc
+    rmin_inj = 2.0 * psr_radius
+    rmax_inj = 4.0 * psr_radius
+    n_part = INT(2.0 * (4.0 * M_PI / 3.0) * (rmax_inj**3 - rmin_inj**3) * ppc) / 1000
+    do n = 1, n_part
+      ! for each spherical shell iterate over the given number of particles to inject
+      call randomPointInSphericalShell(rmin_inj, rmax_inj, x_glob, y_glob, z_glob)
+      rr = sqrt(x_glob**2 + y_glob**2 + z_glob**2)
+      nx = x_glob / rr
+      ny = y_glob / rr
+      nz = z_glob / rr
+      cos_theta = (nz)
+      if (abs(cos_theta) .lt. 0.6) then
+        x_glob = x_glob + xc_g
+        y_glob = y_glob + yc_g
+        z_glob = z_glob + zc_g
+        call globalToLocalCoords(x_glob, y_glob, z_glob, x_loc, y_loc, z_loc, containedQ=dummy_flag)
+        ! if particle is within the current MPI meshblock
+        if (dummy_flag) then
+          ! open zone injection
+          call localToCellBasedCoords(x_loc, y_loc, z_loc, xi, yi, zi, dx, dy, dz)
+          density = lg_arr(xi, yi, zi)
+          if (density .lt. 20.0 * nGJ * (psr_radius / rr)**2) then
+            call dumpParticlesHere(xi, yi, zi, dx, dy, dz, weight)
+          end if
+        end if
+      end if
+    end do ! npart
 
     ! max radius for spherical absorption and absorbing layer size in cartesian absorption
     rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
@@ -746,7 +781,7 @@ contains
               !ppc = 0.5 * ppc0
               !weight = alpha_inj * (5.0 * nGJ * (psr_radius / r_g)**3) / ppc
               !ppc = ppc * tanh((r_g - psr_radius) / (0.5 * psr_radius))
-              !do while (ppc .gt. 0) 
+              !do while (ppc .gt. 0)
                 !if (random(dseed) .lt. ppc) then
                   !xi = INT(i, 2); yi = INT(j, 2); zi = INT(k, 2)
                   !dx = random(dseed); dy = random(dseed); dz = random(dseed)
@@ -794,11 +829,11 @@ contains
       end do
     end do
   end subroutine userParticleBoundaryConditions
-    
 
-  !! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+
+  !! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   !! DISK-DOME INJECTOR
-  !! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! 
+  !! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
   !subroutine userParticleBoundaryConditions(step)
     !implicit none
     !integer, optional, intent(in) :: step
@@ -844,7 +879,7 @@ contains
         !end if ! E.B limiter
       !end if ! current MPI block
     !end do
-  
+
     !! max radius for spherical absorption and absorbing layer size in cartesian absorption
     !rmax_sph = 0.5 * MIN(global_mesh%sx, global_mesh%sy, global_mesh%sz) - ds_abs + 4.0
     !smax_car = ds_abs / 4.0
@@ -1255,7 +1290,7 @@ contains
             end if
             do ri = 1, rnum
               fr_factor = exp(-(r_glob - r_bins(ri))**2 / (dr * 0.5)**2)
-              sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor 
+              sum_ExBr_f(ri) = sum_ExBr_f(ri) + dummy1 * fr_factor
               sum_f(ri) = sum_f(ri) + fr_factor
             end do
           end do
@@ -1280,7 +1315,7 @@ contains
       integer, intent(in)       :: s, ti, tj, tk, p
       real                      :: xx, yy, zz, rr
       real                      :: uu, vv, ww, gg
-      
+
       xx = REAL(this_meshblock%ptr%x0 + species(s)%prtl_tile(ti, tj, tk)%xi(p))
       xx = xx + species(s)%prtl_tile(ti, tj, tk)%dx(p)
       xx = xx - REAL(global_mesh%sx) * 0.5
@@ -1299,7 +1334,7 @@ contains
       vv = REAL(species(s)%prtl_tile(ti, tj, tk)%v(p))
       ww = REAL(species(s)%prtl_tile(ti, tj, tk)%w(p))
       gg = sqrt(1.0 + uu**2 + vv**2 + ww**2)
-      
+
       userExcludeParticles = ((rr .gt. global_usr_variable_1 + 40) .and.&
                             & (rr .lt. REAL(global_mesh%sx) * 0.5 - 100) .and.&
                             & (gg .gt. 20.0))

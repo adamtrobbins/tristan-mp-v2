@@ -76,7 +76,7 @@ def convertToXarray(fields,
   for k in fields.keys():
     xr_data[k] = (xr_axes, fields[k][:])
   for k in additionalVariables.keys():
-    xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:])
+    xr_data[k] = (xr_axes, additionalVariables[k](xr_data)[:].data)
   if mask is not None:
     xr_data = xr_data.where(mask(xr_data))
   return xr_data
@@ -218,7 +218,10 @@ def parseInput(fname):
         _, var = getFirstNontrivialElement(line)
         var = var.strip()
         _, value = getFirstNontrivialElement(line[_ + 1:])
-        value = float(value)
+        try:
+          value = float(value)
+        except:
+          value = None
         data[curr_blockname].update({var: value})
   return data
 
