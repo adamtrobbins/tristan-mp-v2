@@ -196,7 +196,7 @@ contains
   subroutine restartSimulation()
     implicit none
     character(len=STR_MAX)      :: mpichar, filename
-    integer                     :: s, ti, tj, tk, num, pid
+    integer                     :: s, ti, tj, tk, num, pid, ierr
     integer                     :: dummy_int1, dummy_int2, dummy_int3
     real                        :: dummy_real
     write(mpichar, "(i8.8)") mpi_rank
@@ -320,6 +320,8 @@ contains
       end do
     end do
     close(UNIT_restart_prtl)
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
     call printDiag("restartSimulation()", 1)
   end subroutine restartSimulation
