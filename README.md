@@ -23,7 +23,7 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 - `MINOR` version when you add functionality in a backwards compatible manner, and
 - `PATCH` version when you make backwards compatible bug fixes.
 
-* `v2.3` __Feb 2021__
+* `v2.3` __Feb 2022__
   * Reproducibility (blocking MPI comms)
   * New boundary/injection conditions in the reconnection userfile
   * Minor bugfixes
