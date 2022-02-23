@@ -277,7 +277,6 @@ contains
 #elif twoD
             if (ind3 .ne. 0) cycle
 #endif
-!               if (.not. associated(this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr)) cycle
             cntr = cntr + 1
             mpi_tag = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
             mpi_tag2 = (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)+200
@@ -311,10 +310,10 @@ contains
               end if
             else if ((.not. should_recv) .and. should_send) then
               mpi_sendto = this_meshblock%ptr%neighbor(ind1,ind2,ind3)%ptr%rnk
-              call MPI_SEND(cnt_send_enroute, 1, MPI_INTEGER, mpi_sendto, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+              call MPI_SEND(cnt_send_enroute, 1, MPI_INTEGER, mpi_sendto, mpi_tag2, MPI_COMM_WORLD, ierr)
               call MPI_SEND(enroute_bot%get(ind1,ind2,ind3)%enroute(1:enroute_bot%get(ind1,ind2,ind3)%cnt),&
               & enroute_bot%get(ind1,ind2,ind3)%cnt, myMPI_ENROUTE,&
-              & mpi_sendto, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+              & mpi_sendto, mpi_tag, MPI_COMM_WORLD, ierr)
             end if
           end do
         end do
