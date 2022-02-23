@@ -1244,14 +1244,12 @@ contains
                   & (i .ge. species(s)%prtl_tile(ti, tj, tk)%x2)) then
                   call throwError('ERROR: particle in wrong tile in i.')
                 end if
-                pt_yi(p) = 0; pt_zi(p) = 0;
               #endif
               #if defined (twoD) || defined (threeD)
                 if ((j .lt. species(s)%prtl_tile(ti, tj, tk)%y1) .or.&
                   & (j .ge. species(s)%prtl_tile(ti, tj, tk)%y2)) then
                   call throwError('ERROR: particle in wrong tile in j.')
                 end if
-                pt_zi(p) = 0;
               #endif
               #if defined(threeD)
                 if ((k .lt. species(s)%prtl_tile(ti, tj, tk)%z1) .or.&
@@ -1260,22 +1258,32 @@ contains
                 end if
               #endif
               
+              #if defined (oneD)
+                pt_yi(p) = 0; pt_zi(p) = 0;
+              #elif defined (twoD)
+                pt_zi(p) = 0;
+              #endif
+              
               #if defined(oneD) || defined (twoD) || defined (threeD)
                 if ((pt_dx(p) .lt. 0) .or. (pt_dx(p) .gt. 1)) then
                   call throwError('ERROR: invalid particle coordinate in x.')
                 end if
-                pt_dy(p) = 0.5; pt_dz(p) = 0.5;
               #endif
               #if defined (twoD) || defined (threeD)
                 if ((pt_dy(p) .lt. 0) .or. (pt_dy(p) .gt. 1)) then
                   call throwError('ERROR: invalid particle coordinate in y.')
                 end if
-                pt_dz(p) = 0.5;
               #endif
               #if defined(threeD)
                 if ((pt_dz(p) .lt. 0) .or. (pt_dz(p) .gt. 1)) then
                   call throwError('ERROR: invalid particle coordinate in z.')
                 end if
+              #endif
+
+              #if defined (oneD)
+                pt_dy(p) = 0.5; pt_dz(p) = 0.5;
+              #elif defined (twoD)
+                pt_dz(p) = 0.5;
               #endif
               
               if (abs(pt_proc(p)) .gt. 10 * mpi_size) then
