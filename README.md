@@ -23,6 +23,10 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 - `MINOR` version when you add functionality in a backwards compatible manner, and
 - `PATCH` version when you make backwards compatible bug fixes.
 
+* `v2.3` __Feb 2021__
+  * Reproducibility (blocking MPI comms)
+  * New boundary/injection conditions in the reconnection userfile
+  * Minor bugfixes
 * `v2.2` __May 2021__
   * Adaptive load balancing
   * Dynamic reallocation of tiles (more stable on low memory machines, slightly slower)
