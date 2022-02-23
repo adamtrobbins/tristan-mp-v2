@@ -407,7 +407,7 @@ else:
         os.makedirs(simulation.path)
       testlog.write(('TEST_#{}_'.format(ii+1) + simulation.jobid).ljust(50, '.') + '\n')
       # configure
-      config_command = 'python configure.py '
+      config_command = 'python configure.py -mpinonblock'
       config_command += simulation.flags
       config_command += ' -{}d'.format(simulation.dimension)
       config_command += ' --{}='.format(simulation.userfile[:4]) + simulation.userfile

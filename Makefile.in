@@ -92,7 +92,7 @@ OBJ_FILES := $(addprefix $(OBJ_DIR), $(notdir $(PREC_SRC_FILES:.F90=.o)))
 
 all: backup dirs precomp $(EXECUTABLE)
 
-EXCLUDE_FILES := "$(OBJ_DIR)*" "$(PREC_SRC_DIR)*" "$(EXE_DIR)*" ".git/*" "$(BACKUP_DIR)*" "*/__pycache__/*"
+EXCLUDE_FILES := "$(OBJ_DIR)*" "$(PREC_SRC_DIR)*" "$(EXE_DIR)*" ".git/*" "$(BACKUP_DIR)*" "*/__pycache__/*" "test_*/"
 
 backup:
 	mkdir -p $(BACKUP_DIR)
