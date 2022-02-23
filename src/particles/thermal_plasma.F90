@@ -13,7 +13,7 @@ module m_thermalplasma
 
   type :: maxwellian
     ! tabulated maxwellian is used 1d/2d for any T, and 3d for T < t_crit
-    ! ... in all cases if T < t_crit -- we use non-relativistic maxwellian
+    ! ... in all cases if T < t_nonrel -- we use non-relativistic maxwellian
     ! ... and `u_table` contains `beta` instead of `4-velocity`
     real                            :: temperature, shift_gamma
     real, allocatable, dimension(:) :: DF_table
@@ -24,7 +24,7 @@ module m_thermalplasma
   end type maxwellian
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private    :: t_crit = 0.1
+  real, private    :: t_crit = 0.1, t_nonrel = 0.01
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -63,7 +63,7 @@ contains
     do iter = 1, maxw%npoints
       u_1 = u_max * REAL(iter - 1) / REAL(maxw%npoints)
       u_2 = u_max * REAL(iter) / REAL(maxw%npoints)
-      if (temp .ge. t_crit) then
+      if (temp .ge. t_nonrel) then
         if (maxw%dimension .eq. 1) then
           df = (u_2 - u_1) * 0.5 * (exp(-sqrt(1.0 + u_1**2) / temp) + exp(-sqrt(1.0 + u_2**2) / temp))
         else if (maxw%dimension .eq. 2) then
@@ -121,8 +121,8 @@ contains
             dx2 = X3 / maxw%DF_table(iter)
             U = maxw%u_table(iter) * dx2
           end if
-          ! if T < t_crit -> convert from `beta` to `4-velocity`
-          if (maxw%temperature .lt. t_crit) then
+          ! if T < t_nonrel -> convert from `beta` to `4-velocity`
+          if (maxw%temperature .lt. t_nonrel) then
             U = U / sqrt(1.0 - U**2)
           end if
           exit
