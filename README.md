@@ -2,16 +2,43 @@
 
 For detailed tutorials and code description please visit our [wiki](https://ntoles.github.io/tristan-wiki/). If you are a new user testing the code on a new computer cluster, please consider contributing to [this chapter](https://ntoles.github.io/tristan-wiki/tristanv2-configure.html#cluster-specific-customization) about cluster-specific configuration to make the life easier for future generations.
 
-## Contributors (alphabetical order)
+## Getting Started
 
-* Fabio Bacchini (:it:)
-* Alexander Chernoglazov (:ru:)
-* Daniel Groselj (:slovenia:)
-* Hayk Hakobyan (:armenia:)
-* Jens Mahlmann (:de:)
-* Arno Vanthieghem (:belgium:)
+### Prerequisites
 
-### Branch policy
+* MPI (either OpenMPI or Intel-MPI)
+* GCC or Intel Fortran compiler
+* (optional) Parallel HDF5 (compiled with either OpenMPI or Intel-MPI)
+
+On clusters typically all you need to do is to load the specific modules see [here](https://ntoles.github.io/tristan-wiki/tristanv2-configure.html#cluster-specific-customization). 
+
+If you are, however, running on a local machine make sure to install the following prerequisites (assuming non-Intel compiler and `apt` package manager):
+
+```shell
+# gcc + openmpi
+sudo apt install build-essential libopenmpi-dev
+# hdf5
+sudo apt libhdf5-openmpi-dev hdf5-tools
+```
+
+> Also make sure you have a working `python3` installation to be able to configure the code.
+
+### Usage
+
+```shell
+# to view all configuration options
+python3 configure.py --help
+# to configure the code (example)
+python3 configure.py -mpi08 -hdf5 --user=user_2d_rec -2d
+# compile and link
+make
+# run the code (on clusters need to do `srun`)
+mpirun -np <NCORES> ./exec/tristan-mp2d -input ../inputs/input.2d_rec
+```
+
+## For developers/users
+
+### Branching Policy
 
 To prevent `v2` from growing to become the Lovecraftian monster it once was we highly encourage both users and developers to follow the guidelines on branching policies.
 
@@ -25,7 +52,7 @@ To prevent `v2` from growing to become the Lovecraftian monster it once was we h
 
 The `dev/main` branch is the most up-to-date **tested** version of the code, and it will be merged to `master` as soon as all the new features are documented.
 
-### For developers
+### Development
 
 Since `v2.4` code formatting policy is employed. To follow the proper formatting automatically we use the `fprettify` tool. To install `fprettify` in the local directory (via `pip`) one can use the `dev-requirements.txt` file, by running the following: 
 ```shell
@@ -43,7 +70,27 @@ After that one can either use the tool in a stand-alone manner:
 ```
 or in the VSCode environment (see the extension list in the `.vscode/settings.json` of the current repo).
 
-### Latest releases
+---
+
+## Contributors (alphabetical order)
+
+* Fabio Bacchini (University of Colorado Boulder)
+* Alexander Chernoglazov (University of Maryland)
+* Daniel Groselj (Columbia)
+* Hayk Hakobyan (PPPL/Columbia)
+* Jens Mahlmann (Princeton)
+* Arno Vanthieghem (Princeton)
+
+## Board of trustees
+
+* Prof. Anatoly Spitkovsky (Princeton)
+* Prof. Sasha Philippov (University of Maryland)
+
+## Publications
+
+__@TODO__
+
+## Latest Releases
 
 We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>`, increment the:
 - `MAJOR` version when you make incompatible changes,
@@ -52,7 +99,7 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 
 * `v2.4` __Jun 2022__
   * Formatting (see the "for developers" section)
-  * 
+  * Compilation linking with non-intel compilers (@TODO: to be tested)
 * `v2.3` __Feb 2022__
   * Reproducibility (blocking MPI comms)
   * New boundary/injection conditions in the reconnection userfile
