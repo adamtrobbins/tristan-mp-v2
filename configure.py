@@ -28,10 +28,16 @@ parser.add_argument('--cluster',
                     choices=clusters,
                     help='choose cluster-specific configurations.')
 
-parser.add_argument('-intel',
-                    action='store_true',
-                    default=True,
-                    help='enable intel compiler')
+cpu_group = parser.add_mutually_exclusive_group(required=False)
+cpu_group.add_argument('-intel',
+                       action='store_true',
+                       default=False,
+                       help='enable Intel cpu optimizations')
+cpu_group.add_argument('-amd',
+                       action='store_true',
+                       default=False,
+                       help='enable AMD cpu optimizations')
+
 parser.add_argument('-hdf5',
                     action='store_true',
                     default=False,
@@ -74,10 +80,10 @@ mpi_group.add_argument('-mpi08',
                        default=False,
                        help='enable mpi_f08')
 
-mpi_group.add_argument('-test',
-                       action='store_true',
-                       default=False,
-                       help='enable test mode')
+parser.add_argument('-test',
+                    action='store_true',
+                    default=False,
+                    help='enable test mode')
 
 # user file
 user_group = parser.add_mutually_exclusive_group(required=True)
@@ -236,10 +242,7 @@ if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
     makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
 else:
-    if ((not args['mpi']) and (not args['mpi08'])):
-        makefile_options['COMPILER_COMMAND'] += 'gfortran '
-    else:
-        makefile_options['COMPILER_COMMAND'] += 'mpif90 ' if args['intel'] else 'mpiifort '
+    makefile_options['COMPILER_COMMAND'] += 'mpif90 ' if args['intel'] else 'mpiifort '
 if args['ifport']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 if args['lowmem']:
@@ -257,7 +260,6 @@ elif args['mpi08']:
 
 # debug
 if args['debug'] != 'OFF':
-    # non-intel compilers are not supported
     if int(args['debug']) >= 0:
         makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     if int(args['debug']) >= 1:
@@ -270,18 +272,20 @@ else:
 if args['test']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
 
-# compiler (+ vectorization etc)
+# compiler (+ optimization, vectorization etc)
 if args['intel']:
     makefile_options['MODULE'] = '-module '
     makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
-else:
+    if args['avx2']:
+        makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
+    elif args['avx512']:
+        makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX512 -qopt-zmm-usage:high '
+elif args['amd']:
     makefile_options['MODULE'] = '-J '
     makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
-
-if args['avx2']:
-    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
-elif args['avx512']:
-    makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX512 -qopt-zmm-usage:high '
+else:
+    makefile_options['MODULE'] = '-J '
+    makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ffree-line-length-512 '
 
 if args['1d']:
     makefile_options['EXE_NAME'] = 'tristan-mp1d'

@@ -12,4 +12,5 @@
 !README.md
 !dev-requirements.txt
 !.vscode
+.vscode/*.log
 __pycache__
