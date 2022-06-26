@@ -1,6 +1,15 @@
-# Tristan-MP v2.2
+# Tristan v2.4
 
 For detailed tutorials and code description please visit our [wiki](https://ntoles.github.io/tristan-wiki/). If you are a new user testing the code on a new computer cluster, please consider contributing to [this chapter](https://ntoles.github.io/tristan-wiki/tristanv2-configure.html#cluster-specific-customization) about cluster-specific configuration to make the life easier for future generations.
+
+## Contributors (alphabetical order)
+
+* Fabio Bacchini (:it:)
+* Alexander Chernoglazov (:ru:)
+* Daniel Groselj (:slovenia:)
+* Hayk Hakobyan (:armenia:)
+* Jens Mahlmann (:de:)
+* Arno Vanthieghem (:belgium:)
 
 ### Branch policy
 
