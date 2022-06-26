@@ -12,8 +12,8 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: eph0, gamma_e0
-  private   :: eph0, gamma_e0
+  real :: eph0, gamma_e0
+  private :: eph0, gamma_e0
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -27,38 +27,38 @@ contains
     call getInput('problem', 'gamma_e0', gamma_e0)
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
 
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
   subroutine userInitParticles()
     implicit none
-    real            :: u, v, w
-    real            :: xg, yg, zg, kx, ky, kz, U_, TH_
-    integer         :: ntot, n
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    real :: u, v, w
+    real :: xg, yg, zg, kx, ky, kz, U_, TH_
+    integer :: ntot, n
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    ntot = global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0
+    ntot = global_mesh % sx * global_mesh % sy * global_mesh % sz * ppc0
     do n = 1, ntot
-      xg = random(dseed) * (global_mesh%sx)
-      yg = random(dseed) * (global_mesh%sy)
-      zg = random(dseed) * (global_mesh%sz)
+      xg = random(dseed) * (global_mesh % sx)
+      yg = random(dseed) * (global_mesh % sy)
+      zg = random(dseed) * (global_mesh % sz)
       U_ = 2.0 * random(dseed) - 1.0
       TH_ = 2.0 * M_PI * random(dseed)
       kx = eph0 * sqrt(1.0 - U_**2) * cos(TH_)
@@ -69,9 +69,9 @@ contains
     end do
     ntot = ntot / 2
     do n = 1, ntot
-      xg = random(dseed) * (global_mesh%sx)
-      yg = random(dseed) * (global_mesh%sy)
-      zg = random(dseed) * (global_mesh%sz)
+      xg = random(dseed) * (global_mesh % sx)
+      yg = random(dseed) * (global_mesh % sy)
+      zg = random(dseed) * (global_mesh % sz)
       u = sqrt(gamma_e0**2 - 1.0)
       v = 0.0; w = 0.0
       ! monoenergetic electrons and positrons streaming in x:
@@ -84,9 +84,9 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
   end subroutine userInitFields
   !............................................................!
 
@@ -116,11 +116,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -139,7 +139,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE

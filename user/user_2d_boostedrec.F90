@@ -9,14 +9,14 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
-  #ifdef USROUTPUT
-    use m_writeusroutput
-  #endif
+#ifdef USROUTPUT
+  use m_writeusroutput
+#endif
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private    :: nCS_over_nUP, current_width, upstream_T, cs_x, cs_x1, cs_x2
-  real, private    :: boost_y_Gamma, boost_y_beta, measure_x
+  real, private :: nCS_over_nUP, current_width, upstream_T, cs_x, cs_x1, cs_x2
+  real, private :: boost_y_Gamma, boost_y_beta, measure_x
   integer, private :: cs_lecs, cs_ions, up_lecs, up_ions
   !...............................................................!
 
@@ -49,28 +49,28 @@ contains
     cs_x1 = 0.25; cs_x2 = 0.75
   end subroutine userReadInput
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
-    real                        :: rad2
-    if (present(x_glob) .and. present(y_glob) .and.&
-      & present(dummy1) .and. present(dummy2)) then
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
+    real :: rad2
+    if (present(x_glob) .and. present(y_glob) .and. &
+        present(dummy1) .and. present(dummy2)) then
       if (present(dummy3) .and. (dummy3 .ne. 0.0)) then
         rad2 = (x_glob - dummy1)**2 + (y_glob - dummy3)**2
-        userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2 *&
-                                & (1.0 - exp(-rad2 / (5.0 * dummy2)**2))
+        userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2 * &
+                                  (1.0 - exp(-rad2 / (5.0 * dummy2)**2))
       else
         userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2
       end if
@@ -82,19 +82,19 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real                :: nUP, nCS
-    type(region)        :: back_region
-    real                :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
-    integer             :: s, ti, tj, tk, p
-    real                :: ux, uy, uz, gamma
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    real :: nUP, nCS
+    type(region) :: back_region
+    real :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
+    integer :: s, ti, tj, tk, p
+    real :: ux, uy, uz, gamma
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
     nUP = 0.5 * ppc0
     nCS = 0.5 * ppc0 * nCS_over_nUP
 
-    sx_glob = REAL(global_mesh%sx)
-    sy_glob = REAL(global_mesh%sy)
+    sx_glob = REAL(global_mesh % sx)
+    sy_glob = REAL(global_mesh % sy)
 
     ! background is NOT boosted
     !back_region%x_min = 0.0
@@ -112,40 +112,40 @@ contains
       shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
       current_sheet_T = 0.5 * sigma / (nCS_over_nUP)
 
-      back_region%x_min = sx_glob * cs_x1 - 10 * current_width
-      back_region%x_max = sx_glob * cs_x1 + 10 * current_width
-      back_region%y_min = 0.0
-      back_region%y_max = sy_glob
-      call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
-                                     & shift_gamma = shift_gamma, shift_dir = 3,&
-                                     & spat_distr_ptr = spat_distr_ptr,&
-                                     & dummy1 = cs_x1 * sx_glob, dummy2 = current_width)
-      back_region%x_min = sx_glob * cs_x2 - 10 * current_width
-      back_region%x_max = sx_glob * cs_x2 + 10 * current_width
-      call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T,&
-                                     & shift_gamma = shift_gamma, shift_dir = -3,&
-                                     & spat_distr_ptr = spat_distr_ptr,&
-                                     & dummy1 = cs_x2 * sx_glob, dummy2 = current_width)
+      back_region % x_min = sx_glob * cs_x1 - 10 * current_width
+      back_region % x_max = sx_glob * cs_x1 + 10 * current_width
+      back_region % y_min = 0.0
+      back_region % y_max = sy_glob
+      call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T, &
+                                       shift_gamma=shift_gamma, shift_dir=3, &
+                                       spat_distr_ptr=spat_distr_ptr, &
+                                       dummy1=cs_x1 * sx_glob, dummy2=current_width)
+      back_region % x_min = sx_glob * cs_x2 - 10 * current_width
+      back_region % x_max = sx_glob * cs_x2 + 10 * current_width
+      call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS, current_sheet_T, &
+                                       shift_gamma=shift_gamma, shift_dir=-3, &
+                                       spat_distr_ptr=spat_distr_ptr, &
+                                       dummy1=cs_x2 * sx_glob, dummy2=current_width)
     end if
-    
-    back_region%x_min = 0.0
-    back_region%y_min = 0.0
-    back_region%x_max = sx_glob
-    back_region%y_max = sy_glob
+
+    back_region % x_min = 0.0
+    back_region % y_min = 0.0
+    back_region % x_max = sx_glob
+    back_region % y_max = sy_glob
     call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP, 0.0)
 
     ! loop over all particles
     do s = 1, nspec
-      do ti = 1, species(s)%tile_nx
-        do tj = 1, species(s)%tile_ny
-          do tk = 1, species(s)%tile_nz
-            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-              ux = species(s)%prtl_tile(ti, tj, tk)%u(p)
-              uy = species(s)%prtl_tile(ti, tj, tk)%v(p)
-              uz = species(s)%prtl_tile(ti, tj, tk)%w(p)
+      do ti = 1, species(s) % tile_nx
+        do tj = 1, species(s) % tile_ny
+          do tk = 1, species(s) % tile_nz
+            do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
+              ux = species(s) % prtl_tile(ti, tj, tk) % u(p)
+              uy = species(s) % prtl_tile(ti, tj, tk) % v(p)
+              uz = species(s) % prtl_tile(ti, tj, tk) % w(p)
               gamma = sqrt(1.0 + ux**2 + uy**2 + uz**2)
               uy = (boost_y_Gamma * uy + boost_y_beta * boost_y_Gamma * gamma)
-              species(s)%prtl_tile(ti, tj, tk)%v(p) = uy
+              species(s) % prtl_tile(ti, tj, tk) % v(p) = uy
             end do
           end do
         end do
@@ -157,17 +157,17 @@ contains
   subroutine userInitFields()
     implicit none
     integer :: i, i_glob
-    real    :: x_glob, sx_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    real :: x_glob, sx_glob
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
 
-    sx_glob = REAL(global_mesh%sx)
-    do i = -NGHOST, this_meshblock%ptr%sx - 1 + NGHOST
-      i_glob = i + this_meshblock%ptr%x0
+    sx_glob = REAL(global_mesh % sx)
+    do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
+      i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob) + 0.5
-      by(i,:,:) = tanh((x_glob - cs_x1 * sx_glob) / current_width) -&
-                & tanh((x_glob - cs_x2 * sx_glob) / current_width) - 1.0
+      by(i, :, :) = tanh((x_glob - cs_x1 * sx_glob) / current_width) - &
+                    tanh((x_glob - cs_x2 * sx_glob) / current_width) - 1.0
     end do
   end subroutine userInitFields
   !............................................................!
@@ -198,11 +198,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -214,7 +214,7 @@ contains
   !--- boundaries ---------------------------------------------!
   subroutine userParticleBoundaryConditions(step)
     implicit none
-    integer, optional, intent(in)             :: step
+    integer, optional, intent(in) :: step
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
@@ -225,60 +225,60 @@ contains
   !............................................................!
 
   !--- user-specific output -----------------------------------!
-  #ifdef USROUTPUT
-    subroutine userOutput(step)
-      implicit none
-      integer, optional, intent(in) :: step
-      integer                       :: root_rank = 0
-      real, allocatable             :: y_bins(:), ExB_arr(:), ExB_arr_global(:)
-      ! real                          :: dr, x_glob, y_glob, z_glob, r_glob
-      real                          :: dummy_x, dummy_y, dummy_z, dummy
-      ! real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
-      ! integer                       :: ri, rnum = 50, i, j, k, ierr
-      integer                       :: x_bin, yi, ynum, i, j, k, ierr
+#ifdef USROUTPUT
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    integer :: root_rank = 0
+    real, allocatable :: y_bins(:), ExB_arr(:), ExB_arr_global(:)
+    ! real                          :: dr, x_glob, y_glob, z_glob, r_glob
+    real :: dummy_x, dummy_y, dummy_z, dummy
+    ! real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
+    ! integer                       :: ri, rnum = 50, i, j, k, ierr
+    integer :: x_bin, yi, ynum, i, j, k, ierr
 
-      ynum = INT(global_mesh%sy)
+    ynum = INT(global_mesh % sy)
 
-      ! allocate(y_bins(ynum))
-      allocate(ExB_arr(ynum))
-      allocate(ExB_arr_global(ynum))
-      ExB_arr(:) = 0.0
+    ! allocate(y_bins(ynum))
+    allocate (ExB_arr(ynum))
+    allocate (ExB_arr_global(ynum))
+    ExB_arr(:) = 0.0
 
-      if (this_meshblock%ptr%x0 .eq. 0) then
-        x_bin = INT(measure_x * global_mesh%sx)
-        i = x_bin; k = 0
-        do j = 0, this_meshblock%ptr%sy - 1
-          dummy_x = -(ez(i,j,k) * by(i,j,k)) + ey(i,j,k) * bz(i,j,k)
-          dummy = bx(i,j,k)**2 + by(i,j,k)**2 + bz(i,j,k)**2
+    if (this_meshblock % ptr % x0 .eq. 0) then
+      x_bin = INT(measure_x * global_mesh % sx)
+      i = x_bin; k = 0
+      do j = 0, this_meshblock % ptr % sy - 1
+        dummy_x = -(ez(i, j, k) * by(i, j, k)) + ey(i, j, k) * bz(i, j, k)
+        dummy = bx(i, j, k)**2 + by(i, j, k)**2 + bz(i, j, k)**2
 
-          yi = j + this_meshblock%ptr%y0
-          ExB_arr(yi + 1) = dummy_x / dummy
-        end do
-      end if
+        yi = j + this_meshblock % ptr % y0
+        ExB_arr(yi + 1) = dummy_x / dummy
+      end do
+    end if
 
-      call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
-      if (mpi_rank .eq. root_rank) then
-        call writeUsrOutputTimestep(step)
-        call writeUsrOutputArray('ExB', ExB_arr_global)
-        call writeUsrOutputEnd()
-      end if
-    end subroutine userOutput
+    if (mpi_rank .eq. root_rank) then
+      call writeUsrOutputTimestep(step)
+      call writeUsrOutputArray('ExB', ExB_arr_global)
+      call writeUsrOutputEnd()
+    end if
+  end subroutine userOutput
 
-    logical function userExcludeParticles(s, ti, tj, tk, p)
-      implicit none
-      integer, intent(in)       :: s, ti, tj, tk, p
-      userExcludeParticles = .true.
-    end function userExcludeParticles
-  #endif
+  logical function userExcludeParticles(s, ti, tj, tk, p)
+    implicit none
+    integer, intent(in) :: s, ti, tj, tk, p
+    userExcludeParticles = .true.
+  end function userExcludeParticles
+#endif
   !............................................................!
-  #ifdef GCA
-    logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
-      implicit none
-      integer(kind=2), intent(in), optional   :: xi, yi, zi
-      real, intent(in), optional              :: dx, dy, dz, u, v, w
-      real, intent(in), optional              :: weight
-      userEnforceGCA = .false.
-    end function userEnforceGCA
-  #endif
+#ifdef GCA
+  logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
+    implicit none
+    integer(kind=2), intent(in), optional :: xi, yi, zi
+    real, intent(in), optional :: dx, dy, dz, u, v, w
+    real, intent(in), optional :: weight
+    userEnforceGCA = .false.
+  end function userEnforceGCA
+#endif
 end module m_userfile

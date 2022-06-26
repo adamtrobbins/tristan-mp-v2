@@ -9,11 +9,11 @@ program tristan
   !----- main code --------------------------
 
   call initializeAll()
-  #ifndef TESTMODE
-    call mainloop()
-  #else
-    call testcode()
-  #endif
+#ifndef TESTMODE
+  call mainloop()
+#else
+  call testcode()
+#endif
   call finalizeAll()
 
   !..... main code ..........................

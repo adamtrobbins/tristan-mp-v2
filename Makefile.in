@@ -1,5 +1,4 @@
-# Template for `TRISTAN-MP v2` Makefile
-# Kindly borrowed from `Athena++`
+# Template for `Tristan v2` Makefile
 SHELL=/bin/sh
 
 # Files for conditional compilation
@@ -16,9 +15,6 @@ USR_DIR := @USER_DIR@
 SRC_DIR := src/
 PREC_SRC_DIR := src_/
 EXE_FILE := @EXE_NAME@
-
-BACKUP_DIR := backups/
-NOW := $(shell date +"%H.%M.%S_%m.%d.%y")
 
 EXECUTABLE := $(EXE_DIR)$(EXE_FILE)
 
@@ -88,15 +84,11 @@ OBJ_DIR := obj/
 OBJ_FILES := $(addprefix $(OBJ_DIR), $(notdir $(PREC_SRC_FILES:.F90=.o)))
 
 ###########################
-.PHONY : all clean backup dirs
+.PHONY : all clean dirs
 
-all: backup dirs precomp $(EXECUTABLE)
+all: dirs precomp $(EXECUTABLE)
 
-EXCLUDE_FILES := "$(OBJ_DIR)*" "$(PREC_SRC_DIR)*" "$(EXE_DIR)*" ".git/*" "$(BACKUP_DIR)*" "*/__pycache__/*" "test_*/*"
-
-backup:
-	mkdir -p $(BACKUP_DIR)
-	zip -r $(BACKUP_DIR)backup_$(NOW).zip . -x $(EXCLUDE_FILES)
+EXCLUDE_FILES := "$(OBJ_DIR)*" "$(PREC_SRC_DIR)*" "$(EXE_DIR)*" ".git/*" "*/__pycache__/*" "test_*/*"
 
 dirs:
 	mkdir -p $(OBJ_DIR) $(EXE_DIR) $(PREC_SRC_DIR)

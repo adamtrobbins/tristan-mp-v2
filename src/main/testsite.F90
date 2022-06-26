@@ -29,7 +29,7 @@ contains
 
   subroutine testcode()
     implicit none
-    
+
     ! YOUR TEST CODE GOES HERE ...
 
     call checkEverything()

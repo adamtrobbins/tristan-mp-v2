@@ -10,4 +10,6 @@
 !fulltest.py
 !Makefile.in
 !README.md
+!dev-requirements.txt
+!.vscode
 __pycache__

@@ -5,7 +5,7 @@ module m_errors
   implicit none
 contains
   subroutine throwError(msg)
-    character(len=*), intent(in)  :: msg
+    character(len=*), intent(in) :: msg
     print *, msg
     stop
   end subroutine

@@ -2,9 +2,9 @@
 
 module m_writetot
   use m_globalnamespace, only: mpi_rank
-  use m_outputnamespace, only: params_enable, params_enable, prtl_tot_enable,&
-                             & flds_tot_enable, tot_output_index,&
-                             & diag_enable, spectra_enable
+  use m_outputnamespace, only: params_enable, params_enable, prtl_tot_enable, &
+                               flds_tot_enable, tot_output_index, &
+                               diag_enable, spectra_enable
 
   use m_aux, only: printDiag
   use m_outputlogistics, only: prepareOutput
@@ -18,8 +18,8 @@ module m_writetot
 contains
   subroutine writeTotOutput(time)
     implicit none
-    integer, intent(in)        :: time
-    integer                    :: step, ierr
+    integer, intent(in) :: time
+    integer :: step, ierr
 
     call prepareOutput()
 

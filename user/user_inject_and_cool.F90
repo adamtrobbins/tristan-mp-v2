@@ -12,10 +12,10 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
-  private   :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
-  logical   :: perp_only
-  private   :: perp_only
+  real :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
+  private :: plaw_ind, plaw_gmin, plaw_gmax, inject_rate, n_inject
+  logical :: perp_only
+  private :: perp_only
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -36,51 +36,51 @@ contains
     inject_rate = inject_rate * ppc0 * CC / c_omp
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
 
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
   subroutine userInitParticles()
     implicit none
-    real                :: nUP
-    type(region)        :: back_region
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    real :: nUP
+    type(region) :: back_region
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
     nUP = 0.5 * ppc0
 
-    back_region%x_min = 0.0
-    back_region%y_min = 0.0
-    back_region%x_max = REAL(global_mesh%sx)
-    back_region%y_max = REAL(global_mesh%sy)
+    back_region % x_min = 0.0
+    back_region % y_min = 0.0
+    back_region % x_max = REAL(global_mesh % sx)
+    back_region % y_max = REAL(global_mesh % sy)
 
-    call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP,&
-                                    & plaw_gmin, plaw_gmax, plaw_ind,&
-                                    & init_2dQ = perp_only)
+    call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, nUP, &
+                                      plaw_gmin, plaw_gmax, plaw_ind, &
+                                      init_2dQ=perp_only)
   end subroutine userInitParticles
 
   subroutine userInitFields()
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 1.0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 1.0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
   end subroutine userInitFields
   !............................................................!
 
@@ -110,11 +110,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -127,25 +127,25 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
-    type(region)        :: back_region
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    type(region) :: back_region
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
     n_inject = n_inject + 0.5 * inject_rate
 
     ! check if injection threshold is met (if not postpone injection):
-    if ( n_inject .gt. 0.2 ) then
-      back_region%x_min = 0.0
-      back_region%y_min = 0.0
-      back_region%x_max = REAL(global_mesh%sx)
-      back_region%y_max = REAL(global_mesh%sy)
+    if (n_inject .gt. 0.2) then
+      back_region % x_min = 0.0
+      back_region % y_min = 0.0
+      back_region % x_max = REAL(global_mesh % sx)
+      back_region % y_max = REAL(global_mesh % sy)
 
-      call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, n_inject,&
-                                      & plaw_gmin, plaw_gmax, plaw_ind,&
-                                      & init_2dQ = perp_only)
+      call fillRegionWithPowerlawPlasma(back_region, (/1, 2/), 2, n_inject, &
+                                        plaw_gmin, plaw_gmax, plaw_ind, &
+                                        init_2dQ=perp_only)
       ! reset injection density counter:
       n_inject = 0.0
-    endif
+    end if
 
   end subroutine userParticleBoundaryConditions
 
@@ -153,7 +153,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE

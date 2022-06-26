@@ -11,7 +11,7 @@ module m_userfile
   use m_particlelogistics
   implicit none
 
-  procedure (spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
+  procedure(spatialDistribution), pointer :: user_slb_load_ptr => userSLBload
 
   !--- PRIVATE variables -----------------------------------------!
 
@@ -26,21 +26,21 @@ contains
     implicit none
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
@@ -54,34 +54,34 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    real            :: u, v, w
-    real            :: xg, yg, zg
-    real            :: vpm
-    integer         :: ntot, n, i, j, k
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    real :: u, v, w
+    real :: xg, yg, zg
+    real :: vpm
+    integer :: ntot, n, i, j, k
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
     vpm = sqrt(3.0) * 0.1 * CC
 
-        do i = 0, this_meshblock%ptr%sx - 1
-          do j = 0, this_meshblock%ptr%sy - 1
-            do k = 0, this_meshblock%ptr%sz - 1
-              do n = 1, ppc0
-                  xg = REAL(i) + random(dseed) + this_meshblock%ptr%x0
-                  yg = REAL(j) + random(dseed) + this_meshblock%ptr%y0
-                  zg = REAL(k) + random(dseed) + this_meshblock%ptr%z0
-                  u = - vpm + random(dseed) * 2.0 * vpm
-                  v = - vpm + random(dseed) * 2.0 * vpm
-                  w = - vpm + random(dseed) * 2.0 * vpm
-                  ! particles at rest
-                  call injectParticleGlobally(1, xg, yg, zg, u, v, w)
-                  if (nspec .eq. 2) then
-                    call injectParticleGlobally(2, xg, yg, zg, -u, -v, -w)
-                  endif
-               end do
-            end do
+    do i = 0, this_meshblock % ptr % sx - 1
+      do j = 0, this_meshblock % ptr % sy - 1
+        do k = 0, this_meshblock % ptr % sz - 1
+          do n = 1, ppc0
+            xg = REAL(i) + random(dseed) + this_meshblock % ptr % x0
+            yg = REAL(j) + random(dseed) + this_meshblock % ptr % y0
+            zg = REAL(k) + random(dseed) + this_meshblock % ptr % z0
+            u = -vpm + random(dseed) * 2.0 * vpm
+            v = -vpm + random(dseed) * 2.0 * vpm
+            w = -vpm + random(dseed) * 2.0 * vpm
+            ! particles at rest
+            call injectParticleGlobally(1, xg, yg, zg, u, v, w)
+            if (nspec .eq. 2) then
+              call injectParticleGlobally(2, xg, yg, zg, -u, -v, -w)
+            end if
           end do
         end do
+      end do
+    end do
 
   end subroutine userInitParticles
 
@@ -89,9 +89,9 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
@@ -125,11 +125,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -148,7 +148,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE

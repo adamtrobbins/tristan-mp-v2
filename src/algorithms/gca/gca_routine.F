@@ -54,9 +54,9 @@ dx = dx_; dy = dy_; dz = dz_
   include "interp_bfield.F"
 #else
   call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
-                     & ex, ey, ez, ex0, ey0, ez0)
+ ex, ey, ez, ex0, ey0, ez0)
   call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
-                     & bx, by, bz, bx0, by0, bz0)
+ bx, by, bz, bx0, by0, bz0)
 #endif
 
 e0_SQR = ex0**2 + ey0**2 + ez0**2
@@ -105,13 +105,13 @@ else
 end if
 
 doNormalPushQ = ((.not. species(s)%gca_sp) .or.&                                              ! if species cannot do GCA
-          & (bb0 * bb0_n .eq. 0.0) .or.&                                                      ! if B = 0
-          & ((CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)) .ge. gca_rhomin) .or.&         ! if Larmor too large
-          & (uperp_g / Gamma_ .gt. gca_vperpmax) .or.&                                        ! if uperp_g too large
-          & (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0))                                          ! of E > B * fraction
+ (bb0 * bb0_n .eq. 0.0) .or.&                                                      ! if B = 0
+ ((CC**2 * Gamma_ / (abs(q_over_m) * bb0 * B_norm)) .ge. gca_rhomin) .or.&         ! if Larmor too large
+ (uperp_g / Gamma_ .gt. gca_vperpmax) .or.&                                        ! if uperp_g too large
+ (sqrt(e0_SQR) .ge. gca_eoverbmin * bb0))                                          ! of E > B * fraction
 
 doNormalPushQ = (doNormalPushQ .and. (.not. userEnforceGCA(xi_, yi_, zi_, dx_, dy_, dz_,&     ! GCA enforced by the user ...
-                                               & u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
+ u0, v0, w0, pt_wei(p))))                     ! ... (defaults to .false.)
 
 #ifdef DEBUG
   if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
@@ -218,9 +218,9 @@ else
       include "interp_bfield.F"
     #else
       call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
-                         & ex, ey, ez, ex0, ey0, ez0)
+ ex, ey, ez, ex0, ey0, ez0)
       call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
-                         & bx, by, bz, bx0, by0, bz0)
+ bx, by, bz, bx0, by0, bz0)
     #endif
 
     e0_SQR = ex0**2 + ey0**2 + ez0**2
@@ -237,17 +237,17 @@ else
     ! update coordinates
     #if defined(oneD) || defined(twoD) || defined(threeD)
       x_n1 = x_n + 0.5 * ((bx0_n / bb0_n) / Gamma_n + (bx0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
-                 & 0.5 * (vE_x_n + vE_x_n1) * CC
+ 0.5 * (vE_x_n + vE_x_n1) * CC
     #endif
 
     #if defined(twoD) || defined(threeD)
       y_n1 = y_n + 0.5 * ((by0_n / bb0_n) / Gamma_n + (by0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
-                 & 0.5 * (vE_y_n + vE_y_n1) * CC
+ 0.5 * (vE_y_n + vE_y_n1) * CC
     #endif
 
     #if defined(threeD)
       z_n1 = z_n + 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
-                 & 0.5 * (vE_z_n + vE_z_n1) * CC
+ 0.5 * (vE_z_n + vE_z_n1) * CC
     #endif
   end do
   ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -256,14 +256,14 @@ else
   #ifdef oneD
     pt_u_eff(p) = x_n1 - x_n
     pt_v_eff(p) = 0.5 * ((by0_n / bb0_n) / Gamma_n + (by0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
-                & 0.5 * (vE_y_n + vE_y_n1) * CC
+ 0.5 * (vE_y_n + vE_y_n1) * CC
     pt_w_eff(p) = 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
-                & 0.5 * (vE_z_n + vE_z_n1) * CC
+ 0.5 * (vE_z_n + vE_z_n1) * CC
   #elif twoD
     pt_u_eff(p) = x_n1 - x_n
     pt_v_eff(p) = y_n1 - y_n
     pt_w_eff(p) = 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC +&
-                & 0.5 * (vE_z_n + vE_z_n1) * CC
+ 0.5 * (vE_z_n + vE_z_n1) * CC
   #elif threeD
     pt_u_eff(p) = x_n1 - x_n
     pt_v_eff(p) = y_n1 - y_n
@@ -308,9 +308,9 @@ else
     include "interp_bfield.F"
   #else
     call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
-                       & ex, ey, ez, ex0, ey0, ez0)
+ ex, ey, ez, ex0, ey0, ez0)
     call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p),&
-                       & bx, by, bz, bx0, by0, bz0)
+ bx, by, bz, bx0, by0, bz0)
   #endif
 
   e0_SQR = ex0**2 + ey0**2 + ez0**2

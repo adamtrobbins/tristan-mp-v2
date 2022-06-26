@@ -16,6 +16,24 @@ To prevent `v2` from growing to become the Lovecraftian monster it once was we h
 
 The `dev/main` branch is the most up-to-date **tested** version of the code, and it will be merged to `master` as soon as all the new features are documented.
 
+### For developers
+
+Since `v2.4` code formatting policy is employed. To follow the proper formatting automatically we use the `fprettify` tool. To install `fprettify` in the local directory (via `pip`) one can use the `dev-requirements.txt` file, by running the following: 
+```shell
+# create a local pip environment
+python3 -m virtualenv venv
+# activate it
+source venv/bin/activate
+# install required modules
+pip install -r dev-requirements.txt
+```
+
+After that one can either use the tool in a stand-alone manner:
+```shell
+./venv/bin/fprettify -i 2 -w 4 --whitespace-assignment true --enable-decl --whitespace-decl true --whitespace-relational true --whitespace-logical true --whitespace-plusminus true --whitespace-multdiv true --whitespace-print true --whitespace-type true --whitespace-intrinsics true --enable-replacements -l 1000 [FILENAME.F90]
+```
+or in the VSCode environment (see the extension list in the `.vscode/settings.json` of the current repo).
+
 ### Latest releases
 
 We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>`, increment the:
@@ -23,6 +41,9 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 - `MINOR` version when you add functionality in a backwards compatible manner, and
 - `PATCH` version when you make backwards compatible bug fixes.
 
+* `v2.4` __Jun 2022__
+  * Formatting (see the "for developers" section)
+  * 
 * `v2.3` __Feb 2022__
   * Reproducibility (blocking MPI comms)
   * New boundary/injection conditions in the reconnection userfile
