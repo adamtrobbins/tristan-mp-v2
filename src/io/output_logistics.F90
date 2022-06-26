@@ -428,7 +428,7 @@ contains
         'xx   ', 'yy   ', 'zz   '/)
     n_fld_vars = n_fld_vars + 15
     if (derivatives_enable) then
-      fld_vars(n_fld_vars + 1:n_fld_vars + 1 + 4 - 1) = (/'curlBx', 'curlBy', 'curlBz', 'divE'/)
+      fld_vars(n_fld_vars + 1:n_fld_vars + 1 + 4 - 1) = (/'curlBx', 'curlBy', 'curlBz', 'divE  '/)
       n_fld_vars = n_fld_vars + 4
     end if
   end subroutine defineFieldVarsToOutput

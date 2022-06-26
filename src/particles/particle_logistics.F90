@@ -61,7 +61,7 @@ contains
       if ((species(s) % m_sp .ne. 0) .and. (species(s) % ch_sp .eq. 0)) then
         call throwError('ERROR: massive zero-charge particles are not allowed')
       end if
-      if ((species(s) % ch_sp .eq. 0) .and. (species(s) % deposit_sp .ne. 0)) then
+      if ((species(s) % ch_sp .eq. 0) .and. (species(s) % deposit_sp)) then
         call throwError('ERROR: zero-charged particles cannot deposit current')
       end if
 
