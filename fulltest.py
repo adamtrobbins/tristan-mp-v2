@@ -24,7 +24,7 @@ def clustername(string):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--path', required=True, type=dir_path)
-parser.add_argument('--cluster', required=True, type=clustername)
+parser.add_argument('--cluster', type=clustername)
 parser.add_argument('--dry', action='store_true',
                     default=False, help='dry run.')
 parser.add_argument('-c', action='store_true',
@@ -373,7 +373,10 @@ class AdaptiveLB(Simulation):
 
 
 # Here specify the test simulations and give additional specs of the environment
-common_flags = ' --cluster={} -hdf5 --debug=1'.format(options.cluster)
+if options.cluster:
+    common_flags = ' --cluster={} -hdf5 --debug=1'.format(options.cluster)
+else:
+    common_flags = ' -hdf5 --debug=1'
 simulations = [
     TwoStream(common_flags,
               params={
@@ -471,7 +474,7 @@ else:
             testlog.write(('TEST_#{}_'.format(ii+1) +
                           simulation.jobid).ljust(50, '.') + '\n')
             # configure
-            config_command = 'python configure.py'
+            config_command = 'python3 configure.py'
             config_command += simulation.flags
             config_command += ' -{}d'.format(simulation.dimension)
             config_command += ' --{}='.format(
@@ -509,7 +512,7 @@ else:
             # write submit
             simulation.submit = 'submit_' + simulation.jobid
             simulation.submit_full = simulation.path + '/' + simulation.submit
-            if (not options.r) and (not options.dry):
+            if (not options.r) and (not options.dry) and (options.cluster):
                 with open(simulation.submit_full, 'w+') as sub:
                     sub.write('#!/bin/bash\n')
                     sub.write('#SBATCH -t {}\n'.format(simulation.walltime))

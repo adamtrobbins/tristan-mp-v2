@@ -255,7 +255,7 @@ if args['mpinonblock']:
 # mpi version
 if args['mpi']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI '
-elif args['mpi08']:
+else:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DMPI08 '
 
 # debug
@@ -263,7 +263,10 @@ if args['debug'] != 'OFF':
     if int(args['debug']) >= 0:
         makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     if int(args['debug']) >= 1:
-        makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+        if args['intel'] or args['amd']:
+            makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
+        else:
+            makefile_options['COMPILER_FLAGS'] += '-fbacktrace -ffpe-trap=invalid,zero,overflow,underflow,denormal '
     if int(args['debug']) >= 2:
         makefile_options['COMPILER_FLAGS'] += '-check all -check noarg_temp_created '
 else:
