@@ -36,6 +36,31 @@ make
 mpirun -np <NCORES> ./exec/tristan-mp2d -input ../inputs/input.2d_rec
 ```
 
+### Docker
+
+Another way to avoid the tedium of installing libraries (especially for local development) is to use [Docker containers](https://docs.docker.com/get-started/). This approach allows to quickly create an isolated linux environment with all the necessary packages already preinstalled (similar to a VM, but much lighter). The best thing is that VSCode can natively attach to a running container, and all the development can be done there (make sure to install the [appropriate extension](https://code.visualstudio.com/docs/remote/containers)).
+
+To get started with this approach, make sure to install the Docker (as well as the Docker-compose) then simply follow these steps.
+
+```shell
+# from tristan root diretory
+cd docker
+# launch the container in the background (first-time run might take a few mins)
+docker-compose up -d
+# ensure the container is running
+docker ps
+```
+
+Then you can attach to the container via VSCode, or if you prefer the terminal, simply attach to the running container by doing:
+```shell
+docker exec -it <CONTAINER_ID> /bin/zsh
+# then the code will be in the `/code` directory
+cd /code
+```
+where `<CONTAINER_ID>` can be obtained via `docker ps`. To stop the container simply run `docker-compose down` from the same `docker/` directory.
+
+> Each running container has in principle its own isolated filesystem. In this case however we "mount" the root directory (the one with the `Tristan v2` source code) into the `/code` directory of the filesystem. This way all the changes made to the source code will be automatically synchronized to the one existing on your host machine. Any changes to the rest of the container's filesystem, however, are discarded the next time you restart the container.
+
 ## For developers/users
 
 ### Branching Policy

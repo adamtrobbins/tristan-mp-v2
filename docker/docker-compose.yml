@@ -1,0 +1,7 @@
+version: "3"
+services:
+  tristanv2:
+    image: tristan-v2
+    build: .
+    volumes:
+      - $PWD/../:/code
