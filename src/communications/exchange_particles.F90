@@ -36,7 +36,7 @@ contains
     additional_real = 0; additional_int = 0; additional_int2 = 0
 
     call MPI_TYPE_GET_EXTENT(MPI_INTEGER2, lb, extent_int2, ierr)
-    call MPI_TYPE_GET_EXTENT(MPI_REAL, lb, extent_real, ierr)
+    call MPI_TYPE_GET_EXTENT(default_mpi_real, lb, extent_real, ierr)
 
 #ifdef GCA
     additional_int2 = additional_int2 + 3
@@ -55,7 +55,7 @@ contains
     blockcounts(0) = 3 + additional_int2
     oldtypes(0) = MPI_INTEGER2
     blockcounts(1) = 7 + additional_real
-    oldtypes(1) = MPI_REAL
+    oldtypes(1) = default_mpi_real
     blockcounts(2) = 2 + additional_int
     oldtypes(2) = MPI_INTEGER
 

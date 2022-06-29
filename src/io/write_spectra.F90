@@ -89,29 +89,29 @@ contains
       ! writing bins:
       bin_dims(1) = spec_num
       call h5screate_simple_f(1, bin_dims, dspace_id, error)
-      call h5dcreate_f(file_id, 'ebins', H5T_NATIVE_REAL, dspace_id, dset_id, error)
-      call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, bin_dims, error)
+      call h5dcreate_f(file_id, 'ebins', default_h5_real, dspace_id, dset_id, error)
+      call h5dwrite_f(dset_id, default_h5_real, bin_data, bin_dims, error)
       call h5dclose_f(dset_id, error)
       call h5sclose_f(dspace_id, error)
 
       bin_dims(1) = spec_nx
       call h5screate_simple_f(1, bin_dims, dspace_id, error)
-      call h5dcreate_f(file_id, 'xbins', H5T_NATIVE_REAL, dspace_id, dset_id, error)
-      call h5dwrite_f(dset_id, H5T_NATIVE_REAL, xbin_data, bin_dims, error)
+      call h5dcreate_f(file_id, 'xbins', default_h5_real, dspace_id, dset_id, error)
+      call h5dwrite_f(dset_id, default_h5_real, xbin_data, bin_dims, error)
       call h5dclose_f(dset_id, error)
       call h5sclose_f(dspace_id, error)
 
       bin_dims(1) = spec_ny
       call h5screate_simple_f(1, bin_dims, dspace_id, error)
-      call h5dcreate_f(file_id, 'ybins', H5T_NATIVE_REAL, dspace_id, dset_id, error)
-      call h5dwrite_f(dset_id, H5T_NATIVE_REAL, ybin_data, bin_dims, error)
+      call h5dcreate_f(file_id, 'ybins', default_h5_real, dspace_id, dset_id, error)
+      call h5dwrite_f(dset_id, default_h5_real, ybin_data, bin_dims, error)
       call h5dclose_f(dset_id, error)
       call h5sclose_f(dspace_id, error)
 
       bin_dims(1) = spec_nz
       call h5screate_simple_f(1, bin_dims, dspace_id, error)
-      call h5dcreate_f(file_id, 'zbins', H5T_NATIVE_REAL, dspace_id, dset_id, error)
-      call h5dwrite_f(dset_id, H5T_NATIVE_REAL, zbin_data, bin_dims, error)
+      call h5dcreate_f(file_id, 'zbins', default_h5_real, dspace_id, dset_id, error)
+      call h5dwrite_f(dset_id, default_h5_real, zbin_data, bin_dims, error)
       call h5dclose_f(dset_id, error)
       call h5sclose_f(dspace_id, error)
 
@@ -128,9 +128,9 @@ contains
       ! writing bins:
       dsetname = 'rbins'
       call h5screate_simple_f(1, rad_dims, dspace_id, error)
-      call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+      call h5dcreate_f(file_id, dsetname, default_h5_real, dspace_id, &
                        dset_id, error)
-      call h5dwrite_f(dset_id, H5T_NATIVE_REAL, bin_data, rad_dims, error)
+      call h5dwrite_f(dset_id, default_h5_real, bin_data, rad_dims, error)
       call h5dclose_f(dset_id, error)
       call h5sclose_f(dspace_id, error)
 #endif
@@ -143,9 +143,9 @@ contains
         ! writing spectra:
         dsetname = 'n'//trim(STR(s))
         call h5screate_simple_f(4, spec_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+        call h5dcreate_f(file_id, dsetname, default_h5_real, dspace_id, &
                          dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_spectra(s, :, :, :, :), spec_dims, error)
+        call h5dwrite_f(dset_id, default_h5_real, glob_spectra(s, :, :, :, :), spec_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
 
@@ -153,18 +153,18 @@ contains
         ! writing spectra:
         dsetname = 'nbor'//trim(STR(s))
         call h5screate_simple_f(4, spec_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+        call h5dcreate_f(file_id, dsetname, default_h5_real, dspace_id, &
                          dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_gca_spectra(s, :, :, :, :), spec_dims, error)
+        call h5dwrite_f(dset_id, default_h5_real, glob_gca_spectra(s, :, :, :, :), spec_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
 
         ! writing spectra:
         dsetname = 'ngca'//trim(STR(s))
         call h5screate_simple_f(4, spec_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+        call h5dcreate_f(file_id, dsetname, default_h5_real, dspace_id, &
                          dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_gca_spectra(nspec + s, :, :, :, :), spec_dims, error)
+        call h5dwrite_f(dset_id, default_h5_real, glob_gca_spectra(nspec + s, :, :, :, :), spec_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
 #endif
@@ -173,9 +173,9 @@ contains
         ! writing spectra:
         dsetname = 'nr'//trim(STR(s))
         call h5screate_simple_f(1, rad_dims, dspace_id, error)
-        call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, dspace_id, &
+        call h5dcreate_f(file_id, dsetname, default_h5_real, dspace_id, &
                          dset_id, error)
-        call h5dwrite_f(dset_id, H5T_NATIVE_REAL, glob_rad_spectra(s, :), rad_dims, error)
+        call h5dwrite_f(dset_id, default_h5_real, glob_rad_spectra(s, :), rad_dims, error)
         call h5dclose_f(dset_id, error)
         call h5sclose_f(dspace_id, error)
         glob_rad_spectra(s, :) = 0.0

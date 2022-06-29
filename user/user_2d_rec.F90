@@ -509,7 +509,7 @@ contains
       end do
     end if
 
-    call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, default_mpi_real, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. root_rank) then
       call writeUsrOutputTimestep(step)

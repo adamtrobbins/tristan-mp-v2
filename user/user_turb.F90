@@ -133,8 +133,8 @@ contains
         end do
       end do
     end if
-    call MPI_Bcast(rand_phases_1, N_modes**2, MPI_REAL, root_rnk, MPI_COMM_WORLD, i)
-    call MPI_Bcast(rand_phases_2, N_modes**2, MPI_REAL, root_rnk, MPI_COMM_WORLD, i)
+    call MPI_Bcast(rand_phases_1, N_modes**2, default_mpi_real, root_rnk, MPI_COMM_WORLD, i)
+    call MPI_Bcast(rand_phases_2, N_modes**2, default_mpi_real, root_rnk, MPI_COMM_WORLD, i)
 
     ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
     bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0

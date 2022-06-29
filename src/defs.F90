@@ -7,3 +7,13 @@
 #define TINYWEI   1e-6
 
 #define M_PI      3.141592653589793
+
+#ifdef HDF5
+
+#ifdef DOUBLEPRECISION
+  #define default_h5_real H5T_NATIVE_DOUBLE
+#else
+  #define default_h5_real H5T_NATIVE_REAL
+#endif
+
+#endif

@@ -1294,8 +1294,8 @@ contains
       end do
     end do
 
-    call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(sum_f, sum_f_global, rnum, MPI_REAL, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(sum_ExBr_f, sum_ExBr_f_global, rnum, default_mpi_real, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(sum_f, sum_f_global, rnum, default_mpi_real, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. root_rank) then
       ! normalizations

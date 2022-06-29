@@ -14,6 +14,10 @@ module m_globalnamespace
   include "mpif.h"
 #endif
 
+#ifdef HDF5
+  use hdf5
+#endif
+
   integer, parameter :: dprec = kind(1.0d0)
   integer, parameter :: sprec = kind(1.0e0)
   integer, parameter :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40, UNIT_warn = 80
@@ -51,9 +55,18 @@ module m_globalnamespace
   ! mpi variables
   integer :: mpi_rank, mpi_size, mpi_statsize
   integer :: sizex, sizey, sizez
+
 #ifdef HDF5
   integer, parameter :: UNIT_xdmf = 40
   integer :: h5comm, h5info
+#endif
+
+#ifdef MPI08
+  type(MPI_Datatype) :: default_mpi_real
+#endif
+
+#ifdef MPI
+  integer :: default_mpi_real
 #endif
 
   ! variables visible globally defined by the user

@@ -212,19 +212,19 @@ contains
 
             call bufferSendArray(0, ind1, ind2, ind3, exchangeE, exchangeB, cnt)
 
-            call MPI_SENDRECV(send_EB(1:cnt), cnt, MPI_REAL, mpi_sendto, mpi_tag, &
-                              recv_fld(1:cnt), cnt, MPI_REAL, mpi_recvfrom, mpi_tag, &
+            call MPI_SENDRECV(send_EB(1:cnt), cnt, default_mpi_real, mpi_sendto, mpi_tag, &
+                              recv_fld(1:cnt), cnt, default_mpi_real, mpi_recvfrom, mpi_tag, &
                               MPI_COMM_WORLD, istat, ierr)
             call extractRecvArray(-ind1, -ind2, -ind3, exchangeE, exchangeB)
           else if ((.not. should_send) .and. should_recv) then
             mpi_recvfrom = this_meshblock % ptr % neighbor(-ind1, -ind2, -ind3) % ptr % rnk
             call findCnt(ind1, ind2, ind3, exchangeE, exchangeB, cnt)
-            call MPI_RECV(recv_fld(1:cnt), cnt, MPI_REAL, mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+            call MPI_RECV(recv_fld(1:cnt), cnt, default_mpi_real, mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
             call extractRecvArray(-ind1, -ind2, -ind3, exchangeE, exchangeB)
           else if ((.not. should_recv) .and. should_send) then
             mpi_sendto = this_meshblock % ptr % neighbor(ind1, ind2, ind3) % ptr % rnk
             call bufferSendArray(0, ind1, ind2, ind3, exchangeE, exchangeB, cnt)
-            call MPI_SEND(send_EB(1:cnt), cnt, MPI_REAL, mpi_sendto, mpi_tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(send_EB(1:cnt), cnt, default_mpi_real, mpi_sendto, mpi_tag, MPI_COMM_WORLD, ierr)
           end if
         end do
       end do
@@ -334,7 +334,7 @@ contains
           send_cnt = send_cnt - 1
 
           ! post non-blocking send requests
-          call MPI_ISEND(send_fld(mpi_offset + 1:mpi_offset + send_cnt), send_cnt, MPI_REAL, &
+          call MPI_ISEND(send_fld(mpi_offset + 1:mpi_offset + send_cnt), send_cnt, default_mpi_real, &
                          mpi_sendto, mpi_sendtag, MPI_COMM_WORLD, mpi_req(cntr), ierr)
         end do
       end do
@@ -373,8 +373,8 @@ contains
               call MPI_IPROBE(mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, mpi_recvflags(cntr), istat, ierr)
               if (mpi_recvflags(cntr)) then
                 ! if the message is ready to be received -> get the size & receive it
-                call MPI_GET_COUNT(istat, MPI_REAL, recv_cnt, ierr)
-                call MPI_RECV(recv_fld(1:recv_cnt), recv_cnt, MPI_REAL, &
+                call MPI_GET_COUNT(istat, default_mpi_real, recv_cnt, ierr)
+                call MPI_RECV(recv_fld(1:recv_cnt), recv_cnt, default_mpi_real, &
                               mpi_recvfrom, mpi_recvtag, MPI_COMM_WORLD, istat, ierr)
 
                 ! write received data to local memory
@@ -618,9 +618,9 @@ contains
             end do
           end do
         end do
-        call MPI_SEND(buffer, size_, MPI_REAL, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(buffer, size_, default_mpi_real, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
       else if (mpi_rank .eq. rnk_recv) then
-        call MPI_RECV(buffer, size_, MPI_REAL, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+        call MPI_RECV(buffer, size_, default_mpi_real, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
         ! extract from the buffer
         if (direction .lt. 0) then
           dummy_ = 0
@@ -698,9 +698,9 @@ contains
             end do
           end do
         end do
-        call MPI_SEND(buffer, size_, MPI_REAL, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(buffer, size_, default_mpi_real, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
       else if (mpi_rank .eq. rnk_recv) then
-        call MPI_RECV(buffer, size_, MPI_REAL, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+        call MPI_RECV(buffer, size_, default_mpi_real, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
         ! extract from the buffer
         if (direction .lt. 0) then
           dummy_ = 0
@@ -778,9 +778,9 @@ contains
             end do
           end do
         end do
-        call MPI_SEND(buffer, size_, MPI_REAL, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(buffer, size_, default_mpi_real, rnk_recv, mpi_tag, MPI_COMM_WORLD, ierr)
       else if (mpi_rank .eq. rnk_recv) then
-        call MPI_RECV(buffer, size_, MPI_REAL, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
+        call MPI_RECV(buffer, size_, default_mpi_real, rnk_send, mpi_tag, MPI_COMM_WORLD, istat, ierr)
         ! extract from the buffer
         if (direction .lt. 0) then
           dummy_ = 0
