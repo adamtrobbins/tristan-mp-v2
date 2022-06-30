@@ -10,12 +10,12 @@ module m_globalnamespace
   use mpi_f08
 #endif
 
-#ifdef MPI
-  include "mpif.h"
-#endif
-
 #ifdef HDF5
   use hdf5
+#endif
+
+#ifdef MPI
+  include "mpif.h"
 #endif
 
   integer, parameter :: dprec = kind(1.0d0)
