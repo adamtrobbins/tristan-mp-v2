@@ -279,6 +279,7 @@ else:
 
 if args['double']:
     makefile_options['COMPILER_FLAGS'] += '-r8 '
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DDPREC '
 
 if args['test']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '

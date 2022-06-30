@@ -10,7 +10,7 @@
 
 #ifdef HDF5
 
-#ifdef DOUBLEPRECISION
+#ifdef DPREC
   #define default_h5_real H5T_NATIVE_DOUBLE
 #else
   #define default_h5_real H5T_NATIVE_REAL
