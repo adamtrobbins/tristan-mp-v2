@@ -4,4 +4,4 @@ services:
     image: tristan-v2
     build: .
     volumes:
-      - $PWD/../:/code
+      - $PWD/../:/root/code
