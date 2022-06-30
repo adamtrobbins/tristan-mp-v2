@@ -54,8 +54,8 @@ docker ps
 Then you can attach to the container via VSCode, or if you prefer the terminal, simply attach to the running container by doing:
 ```shell
 docker exec -it <CONTAINER_ID> /bin/zsh
-# then the code will be in the `/code` directory
-cd /code
+# then the code will be in the `/root/code` directory
+cd /root/code
 ```
 where `<CONTAINER_ID>` can be obtained via `docker ps`. To stop the container simply run `docker-compose down` from the same `docker/` directory.
 
