@@ -250,12 +250,20 @@ contains
   subroutine initializeCommunications()
     implicit none
     integer :: ierr
+    real :: dummy
     call MPI_INIT(ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, mpi_rank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, mpi_size, ierr)
     mpi_statsize = MPI_STATUS_SIZE
     if (mpi_size .ne. sizex * sizey * sizez) then
       call throwError('ERROR: # of processors is not equal to the number of processors from input')
+    end if
+    if (SIZEOF(dummy) .eq. 4) then
+      default_mpi_real = MPI_REAL
+    else if (SIZEOF(dummy) .eq. 8) then
+      default_mpi_real = MPI_REAL8
+    else
+      call throwError('ERROR: SIZEOF(dummy) is not 4 or 8')
     end if
   end subroutine initializeCommunications
 

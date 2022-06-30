@@ -139,7 +139,7 @@ contains
       call h5Screate_simple_f(dataset_rank, global_dims, filespace(f), error)
     end do
     do f = 1, n_fld_vars
-      call h5Dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, filespace(f), dset_id(f), error)
+      call h5Dcreate_f(file_id, fld_vars(f), default_h5_real, filespace(f), dset_id(f), error)
     end do
     do f = 1, n_fld_vars
       call h5Sselect_hyperslab_f(filespace(f), H5S_SELECT_SET_F, offsets, blocks, error)
@@ -166,7 +166,7 @@ contains
       end do
 
       ! Write the dataset collectively
-      call h5Dwrite_f(dset_id(f), H5T_NATIVE_REAL, sm_arr(0:blocks(1) - 1, 0:blocks(2) - 1, 0:blocks(3) - 1), &
+      call h5Dwrite_f(dset_id(f), default_h5_real, sm_arr(0:blocks(1) - 1, 0:blocks(2) - 1, 0:blocks(3) - 1), &
                       global_dims, error, file_space_id=filespace(f), mem_space_id=memspace(f), xfer_prp=plist_id)
     end do
 
@@ -249,7 +249,7 @@ contains
 
     do f = 1, n_fld_vars
       if (mpi_rank .eq. root_rnk) then
-        call h5Dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, filespace(f), dset_id(f), error)
+        call h5Dcreate_f(file_id, fld_vars(f), default_h5_real, filespace(f), dset_id(f), error)
         call h5Dclose_f(dset_id(f), error)
       end if
 
@@ -276,7 +276,7 @@ contains
           call getBlockDimensions(meshblocks(rnk + 1), rnk_starts, rnk_offsets, rnk_blocks, global_dims)
           if (rnk .ne. root_rnk) then
             call MPI_RECV(sm_arr(0:rnk_blocks(1) - 1, 0:rnk_blocks(2) - 1, 0:rnk_blocks(3) - 1), &
-                          INT(rnk_blocks(1) * rnk_blocks(2) * rnk_blocks(3)), MPI_REAL, &
+                          INT(rnk_blocks(1) * rnk_blocks(2) * rnk_blocks(3)), default_mpi_real, &
                           rnk, f, MPI_COMM_WORLD, istat, ierr)
           end if
 
@@ -284,14 +284,14 @@ contains
           call h5Screate_simple_f(dataset_rank, blocks, memspace(f), error)
           call h5Dopen_f(file_id, fld_vars(f), dset_id(f), error)
 
-          call h5Dwrite_f(dset_id(f), H5T_NATIVE_REAL, sm_arr(0:rnk_blocks(1) - 1, 0:rnk_blocks(2) - 1, 0:rnk_blocks(3) - 1), &
+          call h5Dwrite_f(dset_id(f), default_h5_real, sm_arr(0:rnk_blocks(1) - 1, 0:rnk_blocks(2) - 1, 0:rnk_blocks(3) - 1), &
                           global_dims, error, file_space_id=filespace(f), mem_space_id=memspace(f))
           call h5Dclose_f(dset_id(f), error)
           call h5Sclose_f(memspace(f), error)
         else if (rnk .eq. mpi_rank) then ! other ranks do...
           ! send to `root_rnk`
           call MPI_SEND(sm_arr(0:blocks(1) - 1, 0:blocks(2) - 1, 0:blocks(3) - 1), &
-                        INT(blocks(1) * blocks(2) * blocks(3)), MPI_REAL, &
+                        INT(blocks(1) * blocks(2) * blocks(3)), default_mpi_real, &
                         root_rnk, f, MPI_COMM_WORLD, ierr)
         end if
       end do ! ranks

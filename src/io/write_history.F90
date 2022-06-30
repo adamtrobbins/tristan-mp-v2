@@ -44,9 +44,9 @@ contains
 
     call computeEnergyInBox(e_energy, b_energy, prtl_energy)
 
-    call MPI_REDUCE(e_energy, global_e_energy, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(b_energy, global_b_energy, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(prtl_energy, global_prtl_energy, nspec, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(e_energy, global_e_energy, 1, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(b_energy, global_b_energy, 1, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(prtl_energy, global_prtl_energy, nspec, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. 0) then
       global_e_energy = global_e_energy * B_norm**2 / 2

@@ -290,7 +290,7 @@ contains
         if (writing_intQ) then
           call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER, filespace(p), dset_id(p), error)
         else
-          call h5dcreate_f(file_id, dsetname, H5T_NATIVE_REAL, filespace(p), dset_id(p), error)
+          call h5dcreate_f(file_id, dsetname, default_h5_real, filespace(p), dset_id(p), error)
         end if
         call h5sclose_f(filespace(p), error)
         call h5dget_space_f(dset_id(p), filespace(p), error)
@@ -306,7 +306,7 @@ contains
                           xfer_prp=h5p_default_f)
           deallocate (temp_int_arr)
         else
-          call h5dwrite_f(dset_id(p), H5T_NATIVE_REAL, temp_real_arr, global_dims, error, &
+          call h5dwrite_f(dset_id(p), default_h5_real, temp_real_arr, global_dims, error, &
                           file_space_id=filespace(p), mem_space_id=memspace, &
                           xfer_prp=h5p_default_f)
           deallocate (temp_real_arr)

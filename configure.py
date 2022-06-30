@@ -97,6 +97,11 @@ user_group.add_argument('--unit',
                         help='select unit file')
 
 # algorithms
+parser.add_argument('-double',
+                    action='store_true',
+                    default=False,
+                    help='use double precision')
+
 parser.add_argument('--nghosts',
                     action='store',
                     default=3,
@@ -272,6 +277,9 @@ if args['debug'] != 'OFF':
 else:
     makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
+if args['double']:
+    makefile_options['COMPILER_FLAGS'] += '-r8 '
+
 if args['test']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
 
@@ -395,6 +403,7 @@ print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
                                       (' [avx2]' if args['avx2'] else
                                        (' [avx512]' if args['avx512'] else '')
                                        ))
+print('  Precision:               ' + ('double' if args['double'] else 'single'))
 print('  Debug mode:              ' +
       ('level ' if args['debug'] != 'OFF' else '') + args['debug'])
 print('  Low memory mode:         ' + ('ON' if args['lowmem'] else 'OFF'))

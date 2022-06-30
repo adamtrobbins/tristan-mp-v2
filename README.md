@@ -123,6 +123,7 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 - `PATCH` version when you make backwards compatible bug fixes.
 
 * `v2.4` __Jun 2022__
+  * Double precision option
   * Formatting (see the "for developers" section)
   * Compilation linking with non-intel compilers (@TODO: to be tested)
 * `v2.3` __Feb 2022__

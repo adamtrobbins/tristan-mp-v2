@@ -110,9 +110,9 @@ contains
           data_int(1) = sim_params % param_value(n) % value_int
           call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data_int, data_dims, error)
         else if (sim_params % param_type(n) .eq. 2) then
-          call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_REAL, dspace_id, dset_id, error)
+          call h5dcreate_f(file_id, trim(dsetname), default_h5_real, dspace_id, dset_id, error)
           data_real(1) = sim_params % param_value(n) % value_real
-          call h5dwrite_f(dset_id, H5T_NATIVE_REAL, data_real, data_dims, error)
+          call h5dwrite_f(dset_id, default_h5_real, data_real, data_dims, error)
         else if (sim_params % param_type(n) .eq. 3) then
           call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
           data_int(1) = sim_params % param_value(n) % value_bool

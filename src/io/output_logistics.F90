@@ -245,7 +245,7 @@ contains
           end do
         end do
       end do
-      call MPI_ALLREDUCE(emax, glob_emax, 1, MPI_REAL, MPI_MAX, MPI_COMM_WORLD, ierr)
+      call MPI_ALLREDUCE(emax, glob_emax, 1, default_mpi_real, MPI_MAX, MPI_COMM_WORLD, ierr)
       if (glob_emax .gt. spec_max) then
         spec_max = glob_emax
         spec_num = INT(CEILING((spec_max - spec_min) / spec_bin_size))
@@ -346,7 +346,7 @@ contains
     ! send to root rank
     do s = 1, nspec
       send_spec(:, :, :, :) = spectra(s, :, :, :, :)
-      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, MPI_REAL, &
+      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, default_mpi_real, &
                       MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
       if (mpi_rank .eq. root_rnk) then
         glob_spectra(s, :, :, :, :) = recv_spec(:, :, :, :)
@@ -354,11 +354,11 @@ contains
 
 #ifdef GCA
       send_spec(:, :, :, :) = gca_spectra(s, :, :, :, :)
-      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, MPI_REAL, &
+      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, default_mpi_real, &
                       MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
 
       send_spec(:, :, :, :) = gca_spectra(nspec + s, :, :, :, :)
-      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, MPI_REAL, &
+      call MPI_REDUCE(send_spec, recv_spec, spec_nx * spec_ny * spec_nz * spec_num, default_mpi_real, &
                       MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
 
       if (mpi_rank .eq. root_rnk) then
@@ -371,7 +371,7 @@ contains
       ! compute radiation spectra
       if (allocated(rad_spectra)) then
         rad_send_spec(:) = rad_spectra(s, :)
-        call MPI_REDUCE(rad_send_spec, rad_recv_spec, rad_spec_num, MPI_REAL, &
+        call MPI_REDUCE(rad_send_spec, rad_recv_spec, rad_spec_num, default_mpi_real, &
                         MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
         if (mpi_rank .eq. root_rnk) then
           glob_rad_spectra(s, :) = rad_recv_spec(:)

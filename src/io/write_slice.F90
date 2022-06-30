@@ -192,7 +192,7 @@ contains
         if (mpi_rank .ne. root_rnk) then
           allocate (temp_arr(this_sy, this_sz))
           temp_arr(:, :) = sm_arr(0, :, :)
-          call MPI_SEND(temp_arr(:, :), this_sy * this_sz, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(temp_arr(:, :), this_sy * this_sz, default_mpi_real, root_rnk, f, MPI_COMM_WORLD, ierr)
           deallocate (temp_arr)
         else
           field_data(this_y0:this_y0 + this_sy - 1, this_z0:this_z0 + this_sz - 1) = sm_arr(0, :, :)
@@ -209,14 +209,14 @@ contains
           mb_sz = meshblocks(rnk + 1) % sz
           if ((x_cut .ge. mb_x0) .and. (x_cut .lt. mb_x0 + mb_sx) .and. (mpi_rank .ne. rnk)) then
             allocate (temp_arr(mb_sy, mb_sz))
-            call MPI_RECV(temp_arr(:, :), mb_sy * mb_sz, MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            call MPI_RECV(temp_arr(:, :), mb_sy * mb_sz, default_mpi_real, rnk, f, MPI_COMM_WORLD, istat, ierr)
             field_data(mb_y0:mb_y0 + mb_sy - 1, mb_z0:mb_z0 + mb_sz - 1) = temp_arr(:, :)
             deallocate (temp_arr)
           end if
         end do
 
-        call H5Dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, dspace_id, dset_id, error)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_REAL, field_data, global_dims, error)
+        call H5Dcreate_f(file_id, fld_vars(f), default_h5_real, dspace_id, dset_id, error)
+        call H5Dwrite_f(dset_id, default_h5_real, field_data, global_dims, error)
         call H5Dclose_f(dset_id, error)
       end if
     end do ! fld_vars
@@ -302,7 +302,7 @@ contains
         if (mpi_rank .ne. root_rnk) then
           allocate (temp_arr(this_sx, this_sz))
           temp_arr(:, :) = sm_arr(:, 0, :)
-          call MPI_SEND(temp_arr(:, :), this_sx * this_sz, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(temp_arr(:, :), this_sx * this_sz, default_mpi_real, root_rnk, f, MPI_COMM_WORLD, ierr)
           deallocate (temp_arr)
         else
           field_data(this_x0:this_x0 + this_sx - 1, this_z0:this_z0 + this_sz - 1) = sm_arr(:, 0, :)
@@ -319,14 +319,14 @@ contains
           mb_sz = meshblocks(rnk + 1) % sz
           if ((y_cut .ge. mb_y0) .and. (y_cut .lt. mb_y0 + mb_sy) .and. (mpi_rank .ne. rnk)) then
             allocate (temp_arr(mb_sx, mb_sz))
-            call MPI_RECV(temp_arr(:, :), mb_sx * mb_sz, MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            call MPI_RECV(temp_arr(:, :), mb_sx * mb_sz, default_mpi_real, rnk, f, MPI_COMM_WORLD, istat, ierr)
             field_data(mb_x0:mb_x0 + mb_sx - 1, mb_z0:mb_z0 + mb_sz - 1) = temp_arr(:, :)
             deallocate (temp_arr)
           end if
         end do
 
-        call H5Dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, dspace_id, dset_id, error)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_REAL, field_data, global_dims, error)
+        call H5Dcreate_f(file_id, fld_vars(f), default_h5_real, dspace_id, dset_id, error)
+        call H5Dwrite_f(dset_id, default_h5_real, field_data, global_dims, error)
         call H5Dclose_f(dset_id, error)
       end if
     end do ! fld_vars
@@ -412,7 +412,7 @@ contains
         if (mpi_rank .ne. root_rnk) then
           allocate (temp_arr(this_sx, this_sy))
           temp_arr(:, :) = sm_arr(:, :, 0)
-          call MPI_SEND(temp_arr(:, :), this_sx * this_sy, MPI_REAL, root_rnk, f, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(temp_arr(:, :), this_sx * this_sy, default_mpi_real, root_rnk, f, MPI_COMM_WORLD, ierr)
           deallocate (temp_arr)
         else
           field_data(this_x0:this_x0 + this_sx - 1, this_y0:this_y0 + this_sy - 1) = sm_arr(:, :, 0)
@@ -429,14 +429,14 @@ contains
           mb_sz = meshblocks(rnk + 1) % sz
           if ((z_cut .ge. mb_z0) .and. (z_cut .lt. mb_z0 + mb_sz) .and. (mpi_rank .ne. rnk)) then
             allocate (temp_arr(mb_sx, mb_sy))
-            call MPI_RECV(temp_arr(:, :), mb_sx * mb_sy, MPI_REAL, rnk, f, MPI_COMM_WORLD, istat, ierr)
+            call MPI_RECV(temp_arr(:, :), mb_sx * mb_sy, default_mpi_real, rnk, f, MPI_COMM_WORLD, istat, ierr)
             field_data(mb_x0:mb_x0 + mb_sx - 1, mb_y0:mb_y0 + mb_sy - 1) = temp_arr(:, :)
             deallocate (temp_arr)
           end if
         end do
 
-        call H5Dcreate_f(file_id, fld_vars(f), H5T_NATIVE_REAL, dspace_id, dset_id, error)
-        call H5Dwrite_f(dset_id, H5T_NATIVE_REAL, field_data, global_dims, error)
+        call H5Dcreate_f(file_id, fld_vars(f), default_h5_real, dspace_id, dset_id, error)
+        call H5Dwrite_f(dset_id, default_h5_real, field_data, global_dims, error)
         call H5Dclose_f(dset_id, error)
       end if
     end do ! fld_vars
