@@ -196,13 +196,13 @@ contains
               temp_real_arr(j) = REAL(this_meshblock % ptr % z0 + temp_int) + temp_real1
             case ('u')
               temp_real1 = species(s) % prtl_tile(ti, tj, tk) % u(temp)
-              temp_real_arr(j) = REAL(temp_real1, 4)
+              temp_real_arr(j) = temp_real1
             case ('v')
               temp_real1 = species(s) % prtl_tile(ti, tj, tk) % v(temp)
-              temp_real_arr(j) = REAL(temp_real1, 4)
+              temp_real_arr(j) = temp_real1
             case ('w')
               temp_real1 = species(s) % prtl_tile(ti, tj, tk) % w(temp)
-              temp_real_arr(j) = REAL(temp_real1, 4)
+              temp_real_arr(j) = temp_real1
             case ('wei')
               temp_real1 = species(s) % prtl_tile(ti, tj, tk) % weight(temp)
               temp_real_arr(j) = temp_real1
@@ -214,7 +214,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
                                    ex, ey, ez, temp_real1, temp_real2, temp_real3)
-              temp_real_arr(j) = REAL(temp_real1 * B_norm, 4)
+              temp_real_arr(j) = temp_real1 * B_norm
             case ('ey')
               call interpFromEdges(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % dy(temp), &
@@ -223,7 +223,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
                                    ex, ey, ez, temp_real1, temp_real2, temp_real3)
-              temp_real_arr(j) = REAL(temp_real2 * B_norm, 4)
+              temp_real_arr(j) = temp_real2 * B_norm
             case ('ez')
               call interpFromEdges(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % dy(temp), &
@@ -232,7 +232,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
                                    ex, ey, ez, temp_real1, temp_real2, temp_real3)
-              temp_real_arr(j) = REAL(temp_real3 * B_norm, 4)
+              temp_real_arr(j) = temp_real3 * B_norm
             case ('bx')
               call interpFromFaces(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % dy(temp), &
@@ -241,7 +241,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
                                    bx, by, bz, temp_real1, temp_real2, temp_real3)
-              temp_real_arr(j) = REAL(temp_real1 * B_norm, 4)
+              temp_real_arr(j) = temp_real1 * B_norm
             case ('by')
               call interpFromFaces(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % dy(temp), &
@@ -250,7 +250,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
                                    bx, by, bz, temp_real1, temp_real2, temp_real3)
-              temp_real_arr(j) = REAL(temp_real2 * B_norm, 4)
+              temp_real_arr(j) = temp_real2 * B_norm
             case ('bz')
               call interpFromFaces(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % dy(temp), &
@@ -259,7 +259,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
                                    bx, by, bz, temp_real1, temp_real2, temp_real3)
-              temp_real_arr(j) = REAL(temp_real3 * B_norm, 4)
+              temp_real_arr(j) = temp_real3 * B_norm
             case default
               if (prtl_vars(p) (1:4) .eq. 'dens') then
                 temp_real_arr(j) = lg_arr(species(s) % prtl_tile(ti, tj, tk) % xi(temp), &

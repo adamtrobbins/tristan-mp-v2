@@ -614,10 +614,10 @@ contains
 
     ! create an electron/positron pair in the same location
     call createParticle(BW_electron_sp, xi_new, yi_new, zi_new, dx_new, dy_new, dz_new, &
-                        REAL(prtl1_u, 4), REAL(prtl1_v, 4), REAL(prtl1_w, 4), &
+                        REAL(prtl1_u), REAL(prtl1_v), REAL(prtl1_w), &
                         weight=wei)
     call createParticle(BW_positron_sp, xi_new, yi_new, zi_new, dx_new, dy_new, dz_new, &
-                        REAL(prtl2_u, 4), REAL(prtl2_v, 4), REAL(prtl2_w, 4), &
+                        REAL(prtl2_u), REAL(prtl2_v), REAL(prtl2_w), &
                         weight=wei)
   end subroutine PPfromTwoPhotons
 

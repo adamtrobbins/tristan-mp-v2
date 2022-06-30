@@ -382,14 +382,14 @@ contains
     ! Compensate for currents
     dummy = 1.0d0 / REAL(species(s1) % prtl_tile(ti1, tj1, tk1) % weight(p1), 8)
     call depositCurrentsFromSingleParticle(s1, species(s1) % prtl_tile(ti1, tj1, tk1), p1, &
-                                           REAL(lec_x, 4), REAL(lec_y, 4), REAL(lec_z, 4), &
-                                           REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4), &
-                                           multiplier=REAL(dummy, 4))
+                                           REAL(lec_x), REAL(lec_y), REAL(lec_z), &
+                                           REAL(x_ph), REAL(y_ph), REAL(z_ph), &
+                                           multiplier=REAL(dummy))
     dummy = 1.0d0 / REAL(species(s2) % prtl_tile(ti2, tj2, tk2) % weight(p2), 8)
     call depositCurrentsFromSingleParticle(s2, species(s2) % prtl_tile(ti2, tj2, tk2), p2, &
-                                           REAL(pos_x, 4), REAL(pos_y, 4), REAL(pos_z, 4), &
-                                           REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4), &
-                                           multiplier=REAL(dummy, 4))
+                                           REAL(pos_x), REAL(pos_y), REAL(pos_z), &
+                                           REAL(x_ph), REAL(y_ph), REAL(z_ph), &
+                                           multiplier=REAL(dummy))
 
     lec_Ux = REAL(species(s1) % prtl_tile(ti1, tj1, tk1) % u(p1), 8)
     lec_Uy = REAL(species(s1) % prtl_tile(ti1, tj1, tk1) % v(p1), 8)
@@ -469,14 +469,14 @@ contains
                       eph_prime, &
                       kprime_x, kprime_y, kprime_z, &
                       k_x, k_y, k_z)
-    call injectParticleLocally(Annihilation_photon_sp, REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4), &
-                               REAL(k_x, 4), REAL(k_y, 4), REAL(k_z, 4))
+    call injectParticleLocally(Annihilation_photon_sp, REAL(x_ph), REAL(y_ph), REAL(z_ph), &
+                               REAL(k_x), REAL(k_y), REAL(k_z))
     call LorentzBoost(-beta_CM_x, -beta_CM_y, -beta_CM_z, &
                       eph_prime, &
                       -kprime_x, -kprime_y, -kprime_z, &
                       k_x, k_y, k_z)
-    call injectParticleLocally(Annihilation_photon_sp, REAL(x_ph, 4), REAL(y_ph, 4), REAL(z_ph, 4), &
-                               REAL(k_x, 4), REAL(k_y, 4), REAL(k_z, 4))
+    call injectParticleLocally(Annihilation_photon_sp, REAL(x_ph), REAL(y_ph), REAL(z_ph), &
+                               REAL(k_x), REAL(k_y), REAL(k_z))
   end subroutine annihilatePairs
 
   subroutine generateRandomThetaAnn(gamma, theta_final)

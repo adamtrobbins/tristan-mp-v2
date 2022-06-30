@@ -554,11 +554,11 @@ contains
 #endif
       sm_arr(i1, j1, k1) = B_norm * divE
     case ('xx')
-      sm_arr(i1, j1, k1) = REAL(this_meshblock % ptr % x0 + i, 4)
+      sm_arr(i1, j1, k1) = REAL(this_meshblock % ptr % x0 + i)
     case ('yy')
-      sm_arr(i1, j1, k1) = REAL(this_meshblock % ptr % y0 + j, 4)
+      sm_arr(i1, j1, k1) = REAL(this_meshblock % ptr % y0 + j)
     case ('zz')
-      sm_arr(i1, j1, k1) = REAL(this_meshblock % ptr % z0 + k, 4)
+      sm_arr(i1, j1, k1) = REAL(this_meshblock % ptr % z0 + k)
     case default
       if (((fld_var(1:4) .ne. 'dens') .and. &
            (fld_var(1:4) .ne. 'enrg') .and. &
