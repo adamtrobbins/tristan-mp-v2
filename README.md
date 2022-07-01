@@ -53,13 +53,13 @@ docker ps
 
 Then you can attach to the container via VSCode, or if you prefer the terminal, simply attach to the running container by doing:
 ```shell
-docker exec -it <CONTAINER_ID> /bin/zsh
-# then the code will be in the `/root/code` directory
-cd /root/code
+docker exec -it trv2 zsh
+# then the code will be in the `/root/tristan-v2` directory
+cd /root/tristan-v2
 ```
-where `<CONTAINER_ID>` can be obtained via `docker ps`. To stop the container simply run `docker-compose down` from the same `docker/` directory.
+To stop the container run `docker-compose stop`. To stop and delete the container simply run `docker-compose down` from the same `docker/` directory.
 
-> Each running container has in principle its own isolated filesystem. In this case however we "mount" the root directory (the one with the `Tristan v2` source code) into the `/code` directory of the filesystem. This way all the changes made to the source code will be automatically synchronized to the one existing on your host machine. Any changes to the rest of the container's filesystem, however, are discarded the next time you restart the container.
+> Each container has in principle its own isolated filesystem, aside from the shared `/root/tristan-v2` directory. Any changes to the rest of the container's filesystem are discarded when the container is deleted (either via `docker-compose stop` or directly `docker rm <CONTAINER>`).
 
 ## For developers/users
 

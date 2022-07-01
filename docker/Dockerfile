@@ -2,15 +2,20 @@ FROM ubuntu:20.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
-    git zsh neovim wget curl \
+    git zsh vim wget curl \
     python3 python3-pip build-essential libopenmpi-dev \
     libhdf5-openmpi-dev hdf5-tools
 
-RUN ln -s $(which python3) $(dirname $(which python3))/python
-RUN ln -s $(which neovim) $(dirname $(which neovim))/vim
-RUN ln -s $(which neovim) $(dirname $(which neovim))/vi
+RUN ln -s /bin/python3 /bin/python
 
 RUN chsh -s /bin/zsh
+
+RUN git clone https://github.com/tarjoilija/zgen.git "${HOME}/.zgen"
+RUN echo 'source "${HOME}/.zgen/zgen.zsh"\n\
+zgen load denysdovhan/spaceship-zsh-theme spaceship\n\
+alias ls="ls --color=auto"' >> /root/.zshrc
+
+RUN pip install autopep8 fprettify json5 packaging pycodestyle pyparsing ConfigArgParse
 
 RUN apt-get clean && \
     apt-get autoclean && \

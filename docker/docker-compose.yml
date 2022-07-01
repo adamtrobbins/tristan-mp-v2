@@ -2,6 +2,10 @@ version: "3"
 services:
   tristanv2:
     image: tristan-v2
-    build: .
+    container_name: trv2
+    build:
+      context: .
     volumes:
-      - $PWD/../:/root/code
+      - type: bind
+        source: ../
+        target: /root/tristan_v2
