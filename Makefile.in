@@ -69,14 +69,14 @@ SRC_FILES :=$(SRC_DIR)global_namespace.F90 \
 						$(SRC_DIR)main/testsite.F90 \
 						$(SRC_DIR)main/tristan.F90
 
-INCL_FILES := $(SRC_DIR)tools/interp_efield.F \
-							$(SRC_DIR)tools/interp_bfield.F \
-							$(SRC_DIR)algorithms/boris/boris_push.F \
-							$(SRC_DIR)algorithms/vay/vay_push.F \
-							$(SRC_DIR)algorithms/position_update.F \
-							$(SRC_DIR)algorithms/zigzag_deposit.F \
-							$(SRC_DIR)algorithms/gca/gca_routine.F \
-							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F
+INCL_FILES := $(SRC_DIR)tools/interp_efield.F08 \
+							$(SRC_DIR)tools/interp_bfield.F08 \
+							$(SRC_DIR)algorithms/boris/boris_push.F08 \
+							$(SRC_DIR)algorithms/vay/vay_push.F08 \
+							$(SRC_DIR)algorithms/position_update.F08 \
+							$(SRC_DIR)algorithms/zigzag_deposit.F08 \
+							$(SRC_DIR)algorithms/gca/gca_routine.F08 \
+							$(SRC_DIR)algorithms/gca/gca_ecrossb_drift.F08
 
 PREC_SRC_FILES := $(addprefix $(PREC_SRC_DIR), $(notdir $(SRC_FILES:.F90=_.F90)))
 
