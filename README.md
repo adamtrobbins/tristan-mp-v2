@@ -1,4 +1,4 @@
-# Tristan v2.4
+# Tristan v2.5
 
 For detailed tutorials and code description please visit our [wiki](https://ntoles.github.io/tristan-wiki/). If you are a new user testing the code on a new computer cluster, please consider contributing to [this chapter](https://ntoles.github.io/tristan-wiki/tristanv2-configure.html#cluster-specific-customization) about cluster-specific configuration to make the life easier for future generations.
 
@@ -122,7 +122,10 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
 - `MINOR` version when you add functionality in a backwards compatible manner, and
 - `PATCH` version when you make backwards compatible bug fixes.
 
-* `v2.4` __Jun 2022__
+* `v2.5` __Jun 2022__
+  * Proper makefile/compilation command
+  * minor warnings on gcc + intel fixed
+* `v2.4.1` __Jun 2022__
   * Double precision option
   * Formatting (see the "for developers" section)
   * Compilation linking with non-intel compilers (@TODO: to be tested)
