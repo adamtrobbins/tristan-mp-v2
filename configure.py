@@ -223,6 +223,8 @@ else:
 makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
+makefile_options['WARNING_FLAGS'] = ''
+makefile_options['DEFS'] = '-DSTR_MAX=280 -DTINYXYZ=1e-6 -DTINYREAL=1e-3 -DTINYFLD=1e-8 -DTINYWEI=1e-6 -DM_PI=3.141592653589793 '
 
 # specific cluster:
 specific_cluster = False
@@ -265,6 +267,7 @@ else:
 
 # debug
 if args['debug'] != 'OFF':
+    makefile_options['WARNING_FLAGS'] += '-Wall -Wextra -Wconversion -pedantic -Wno-compare-reals -Wno-unused-dummy-argument '
     if int(args['debug']) >= 0:
         makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     if int(args['debug']) >= 1:
@@ -278,8 +281,14 @@ else:
     makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
 if args['double']:
-    makefile_options['COMPILER_FLAGS'] += '-r8 '
+    if args['intel'] or args['amd']:
+        makefile_options['COMPILER_FLAGS'] += '-r8 '
+    else:
+        makefile_options['COMPILER_FLAGS'] += '-fdefault-real-8 '
     makefile_options['PREPROCESSOR_FLAGS'] += '-DDPREC '
+    makefile_options['DEFS'] += '-Ddefault_h5_real=H5T_NATIVE_DOUBLE '
+else:
+    makefile_options['DEFS'] += '-Ddefault_h5_real=H5T_NATIVE_REAL '
 
 if args['test']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
@@ -358,7 +367,7 @@ if args['annihilation']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DPAIRANNIHILATION '
 
 makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + \
-    str(args['nghosts']) + ' '
+    str(args['nghosts']) + '_2 '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
@@ -418,4 +427,4 @@ print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 print('==============================================================================')
 
 print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND']
-      + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'])
+      + makefile_options['PREPROCESSOR_FLAGS'] + makefile_options['COMPILER_FLAGS'] + makefile_options['DEFS'] + makefile_options['WARNING_FLAGS'])
