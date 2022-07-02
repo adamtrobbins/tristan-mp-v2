@@ -297,6 +297,7 @@ if args['test']:
 if args['intel']:
     makefile_options['MODULE'] = '-module '
     makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
+    makefile_options['COMPILER_FLAGS'] += '-diag-disable 10397 -diag-disable 10346 '
     if args['avx2']:
         makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
     elif args['avx512']:

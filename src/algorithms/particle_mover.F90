@@ -170,7 +170,7 @@ contains
               ! routine for massive particles
               q_over_m = species(s) % ch_sp / species(s) % m_sp
 #if !defined(RADIATION) && !defined(EXTERNALFIELDS) && !defined(GCA)
-              !$omp simd private(lind, dummy_, dummy2_, g_temp, over_e_temp,&
+              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&
@@ -178,7 +178,7 @@ contains
               !dir$ vector aligned
 #endif
 #ifdef GCA
-              !$omp simd private(lind, dummy_, dummy2_, g_temp, over_e_temp,&
+              !$omp simd private(lind, dummy_, g_temp, over_e_temp,&
               !$omp  temp_r, temp_i, u0, v0, w0, u1, v1, w1,&
               !$omp  ex0, ey0, ez0, bx0, by0, bz0,&
               !$omp  c000, c100, c001, c101, c010, c110, c011, c111,&

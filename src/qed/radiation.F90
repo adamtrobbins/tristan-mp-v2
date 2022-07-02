@@ -1,6 +1,6 @@
 module m_radiation
   use m_globalnamespace
-  use m_outputnamespace, only: rad_spectra, rad_spec_num, rad_spec_min, rad_spec_max, spec_log_bins
+  use m_outputnamespace
   use m_qednamespace
   use m_readinput, only: getInput
 

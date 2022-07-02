@@ -129,30 +129,29 @@ contains
     end do
   end subroutine printWarnings
 
-  function getFMTForReal(value, w) result(FMT)
+    function getFMTForReal(value, w) result(FMT)
     implicit none
-    real, intent(in) :: value
-    character(len=280) :: FMT
+    real, intent(in)              :: value
+    character(len=STR_MAX)        :: FMT
     integer, intent(in), optional :: w
-    integer :: w_
-    character(len=10) :: dummy1, dummy2
+    integer                       :: w_
+    character(len=10)             :: dummy
     if (.not. present(w)) then
       w_ = 10
     else
       w_ = w
     end if
-    write (dummy1, '(I10)') w_
-    write (dummy2, '(I10)') min(max(w_ - 8, 3), 15)
+    write(dummy, '(I10)') w_
 
-    if ((abs(value) .ge. 100000.0) .or. &
-        ((abs(value) .lt. 1e-2) .and. &
-         (abs(value) .ge. 0.0))) then
-      FMT = 'ES'//trim(dummy1)//'.'//trim(dummy2)
+    if ((abs(value) .ge. 100000) .or.&
+      & ((abs(value) .lt. 1e-2) .and.&
+        & (abs(value) .ne. 0.0))) then
+      FMT = 'ES' // trim(dummy) // '.3'
     else
-      FMT = 'F'//trim(dummy1)//'.'//trim(dummy2)
+      FMT = 'F' // trim(dummy) // '.3'
     end if
   end function getFMTForReal
-
+  
   function getFMTForRealScientific(w) result(FMT)
     implicit none
     character(len=STR_MAX) :: FMT
@@ -226,19 +225,21 @@ contains
     write (msg_str, '(A15)') msg
     
     if (.not. present(fullstep)) then
-        FMT = "(1X,A15" // &
-                trim(getFMTForReal(dt_mean, 14)) // "," // &
-                trim(getFMTForReal(dt_min, 12)) // "," // &
-                trim(getFMTForReal(dt_max, 11)) // &
-               ")"
+        FMT = "(1X,A15,ES14.6,ES12.4,ES11.3)"
+        !FMT = "(1X,A15" // &
+                !trim(getFMTForReal(dt_mean, 14)) // "," // &
+                !trim(getFMTForReal(dt_min, 12)) // "," // &
+                !trim(getFMTForReal(dt_max, 11)) // &
+               !")"
         print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max
     else
-        FMT = "(3X,A13" // &
-                trim(getFMTForReal(dt_mean, 14)) // "," // &
-                trim(getFMTForReal(dt_min, 12)) // "," // &
-                trim(getFMTForReal(dt_max, 11)) // "," // &
-                trim(getFMTForReal(dt_mean * 100 / fullstep, 19)) // &
-               ")"
+        FMT = "(3X,A13,ES14.6,ES12.4,ES11.3,ES19.2)"
+        !FMT = "(3X,A13" // &
+                !trim(getFMTForReal(dt_mean, 14)) // "," // &
+                !trim(getFMTForReal(dt_min, 12)) // "," // &
+                !trim(getFMTForReal(dt_max, 11)) // "," // &
+                !trim(getFMTForReal(dt_mean * 100 / fullstep, 19)) // &
+               !")"
         print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max, dt_mean * 100 / fullstep
     end if
   end subroutine printTime
