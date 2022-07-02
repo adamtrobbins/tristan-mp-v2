@@ -1,4 +1,4 @@
-#include "../defs.F90"
+#define END_LINE char(10)
 
 module m_readinput
   use m_globalnamespace
@@ -205,7 +205,7 @@ contains
       sim_params % param_type(sim_params % count) = 1
       sim_params % param_group(sim_params % count) % str = blockname
       sim_params % param_name(sim_params % count) % str = varname
-      sim_params % param_value(sim_params % count) % value_int = val
+      sim_params % param_value(sim_params % count) % value_int = INT(val, 4)
     end if
   end subroutine getInt8Input
   subroutine strToInt8(val_str, val, stat)
@@ -265,7 +265,7 @@ contains
     integer, intent(out) :: stat
     real(kind=8) :: val_
     call strToReal8(val_str, val_, stat)
-    val = REAL(val_)
+    val = REAL(val_, 4)
   end subroutine strToReal4
 
   subroutine getReal8Input(blockname, varname, val, def_val)
@@ -305,7 +305,7 @@ contains
       sim_params % param_type(sim_params % count) = 2
       sim_params % param_group(sim_params % count) % str = blockname
       sim_params % param_name(sim_params % count) % str = varname
-      sim_params % param_value(sim_params % count) % value_real = val
+      sim_params % param_value(sim_params % count) % value_real = REAL(val, 4)
     end if
   end subroutine getReal8Input
   subroutine strToReal8(val_str, val, stat)

@@ -1,18 +1,28 @@
-#include "../defs.F90"
-
 module m_exchangearray
   use m_globalnamespace
   use m_aux
   use m_errors
   use m_domain
   use m_fields
+
+#ifndef MPINONBLOCK
+  private :: findCnt, bufferSendArray
+#endif
+
 contains
+
 #ifndef MPINONBLOCK
   ! blocking MPI communication
   subroutine findCnt(ind1, ind2, ind3, send_cnt)
-    integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
+    integer :: imin, imax, jmin, jmax, kmin, kmax
     integer, intent(in) :: ind1, ind2, ind3
     integer, intent(out) :: send_cnt
+    imin = -2 * NGHOST
+    imax = -2 * NGHOST
+    jmin = -2 * NGHOST
+    jmax = -2 * NGHOST
+    kmin = -2 * NGHOST
+    kmax = -2 * NGHOST
 
     ! highlight the region to send and save to `send_EB`
     if (ind1 .eq. 0) then
@@ -46,6 +56,12 @@ contains
     kmin = 0; kmax = 0
 #endif
 
+    if ((imin .eq. -2 * NGHOST) .or. (imax .eq. -2 * NGHOST) .or. &
+        (jmin .eq. -2 * NGHOST) .or. (jmax .eq. -2 * NGHOST) .or. &
+        (kmin .eq. -2 * NGHOST) .or. (kmax .eq. -2 * NGHOST)) then
+      call throwError("Error: invalid index evaluation in findCnt")
+    end if
+
     send_cnt = (imax - imin + 1) * (jmax - jmin + 1) * (kmax - kmin + 1)
   end subroutine findCnt
 
@@ -53,6 +69,12 @@ contains
     integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
     integer, intent(in) :: ind1, ind2, ind3
     integer, intent(out) :: send_cnt
+    imin = -2 * NGHOST
+    imax = -2 * NGHOST
+    jmin = -2 * NGHOST
+    jmax = -2 * NGHOST
+    kmin = -2 * NGHOST
+    kmax = -2 * NGHOST
 
     ! highlight the region to send and save to `send_fld`
     if (ind1 .eq. 0) then
@@ -86,6 +108,12 @@ contains
     kmin = 0; kmax = 0
 #endif
 
+    if ((imin .eq. -2 * NGHOST) .or. (imax .eq. -2 * NGHOST) .or. &
+        (jmin .eq. -2 * NGHOST) .or. (jmax .eq. -2 * NGHOST) .or. &
+        (kmin .eq. -2 * NGHOST) .or. (kmax .eq. -2 * NGHOST)) then
+      call throwError("Error: invalid index evaluation in bufferSendArray")
+    end if
+
     send_cnt = 1
     do i = imin, imax
       do j = jmin, jmax
@@ -103,6 +131,12 @@ contains
     integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
     integer :: send_cnt
     integer, intent(in) :: ind1, ind2, ind3
+    imin = -2 * NGHOST
+    imax = -2 * NGHOST
+    jmin = -2 * NGHOST
+    jmax = -2 * NGHOST
+    kmin = -2 * NGHOST
+    kmax = -2 * NGHOST
 
     ! write received data to local memory
     ! highlight the region to extract the `recv_fld`
@@ -138,6 +172,12 @@ contains
     kmin = 0; kmax = 0
 #endif
 
+    if ((imin .eq. -2 * NGHOST) .or. (imax .eq. -2 * NGHOST) .or. &
+        (jmin .eq. -2 * NGHOST) .or. (jmax .eq. -2 * NGHOST) .or. &
+        (kmin .eq. -2 * NGHOST) .or. (kmax .eq. -2 * NGHOST)) then
+      call throwError("Error: invalid index evaluation in extractRecvArray")
+    end if
+
     ! copy `recv_fld` to ghost cells
     send_cnt = 1
     do i = imin, imax
@@ -153,20 +193,16 @@ contains
 
   subroutine exchangeArray()
     implicit none
-    integer :: i, j, k, imin, imax, jmin, jmax, kmin, kmax
-    integer :: ind1, ind2, ind3, cntr, n_cntr
+    integer :: ind1, ind2, ind3
     integer :: cnt, ierr
     integer :: mpi_sendto, mpi_recvfrom, mpi_tag
-    integer :: mpi_offset
     logical :: should_send, should_recv
 
 #ifdef MPI08
-    type(MPI_REQUEST), allocatable :: mpi_req(:)
     type(MPI_STATUS) :: istat
 #endif
 
 #ifdef MPI
-    integer, allocatable :: mpi_req(:)
     integer :: istat(MPI_STATUS_SIZE)
 #endif
 

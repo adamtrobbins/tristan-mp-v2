@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writeparams
 #ifdef HDF5
   use hdf5
@@ -13,9 +11,10 @@ module m_writeparams
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: writeParams_fmt
 #ifdef HDF5
   private :: writeParams_hdf5
+#else
+  private :: writeParams_fmt
 #endif
   !...............................................................!
 contains
@@ -31,45 +30,6 @@ contains
 
     call printDiag("writeParams()", 3)
   end subroutine writeParams
-
-  subroutine writeParams_fmt(step, time)
-    implicit none
-    integer, intent(in) :: step, time
-    integer :: n
-    character(len=STR_MAX) :: FMT
-    character(len=STR_MAX) :: filename, stepchar
-
-    if (mpi_rank .eq. 0) then
-      write (stepchar, "(i5.5)") step
-      filename = trim(output_dir_name)//'/params.'//trim(stepchar)
-      open (UNIT_params, file=filename, status="replace", access="stream", form="formatted")
-      FMT = '(A52,I10)'
-      write (UNIT_params, FMT) 'timestep', time
-
-      do n = 1, sim_params % count
-        if (sim_params % param_type(n) .eq. 1) then
-          FMT = '(A30,A1,A20,A1,I10)'
-          write (UNIT_params, FMT) trim(sim_params % param_group(n) % str), ':', &
-            trim(sim_params % param_name(n) % str), ':', &
-            sim_params % param_value(n) % value_int
-        else if (sim_params % param_type(n) .eq. 2) then
-          FMT = getFMTForReal(sim_params % param_value(n) % value_real)
-          FMT = '(A30,A1,A20,A1,'//trim(FMT)//')'
-          write (UNIT_params, FMT) trim(sim_params % param_group(n) % str), ':', &
-            trim(sim_params % param_name(n) % str), ':', &
-            sim_params % param_value(n) % value_real
-        else if (sim_params % param_type(n) .eq. 3) then
-          FMT = '(A30,A1,A20,A1,L10)'
-          write (UNIT_params, FMT) trim(sim_params % param_group(n) % str), ':', &
-            trim(sim_params % param_name(n) % str), ':', &
-            sim_params % param_value(n) % value_bool
-        else
-          call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
-        end if
-      end do
-      close (UNIT_params)
-    end if
-  end subroutine writeParams_fmt
 
 #ifdef HDF5
   subroutine writeParams_hdf5(step, time)
@@ -115,7 +75,11 @@ contains
           call h5dwrite_f(dset_id, default_h5_real, data_real, data_dims, error)
         else if (sim_params % param_type(n) .eq. 3) then
           call h5dcreate_f(file_id, trim(dsetname), H5T_NATIVE_INTEGER, dspace_id, dset_id, error)
-          data_int(1) = sim_params % param_value(n) % value_bool
+          if (sim_params % param_value(n) % value_bool) then
+            data_int(1) = 1
+          else
+            data_int(1) = 0
+          end if
           call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, data_int, data_dims, error)
         else
           call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
@@ -127,6 +91,45 @@ contains
       call h5close_f(error)
     end if
   end subroutine writeParams_hdf5
+#else
+  subroutine writeParams_fmt(step, time)
+    implicit none
+    integer, intent(in) :: step, time
+    integer :: n
+    character(len=STR_MAX) :: FMT
+    character(len=STR_MAX) :: filename, stepchar
+
+    if (mpi_rank .eq. 0) then
+      write (stepchar, "(i5.5)") step
+      filename = trim(output_dir_name)//'/params.'//trim(stepchar)
+      open (UNIT_params, file=filename, status="replace", access="stream", form="formatted")
+      FMT = '(A52,I10)'
+      write (UNIT_params, FMT) 'timestep', time
+
+      do n = 1, sim_params % count
+        if (sim_params % param_type(n) .eq. 1) then
+          FMT = '(A30,A1,A20,A1,I10)'
+          write (UNIT_params, FMT) trim(sim_params % param_group(n) % str), ':', &
+            trim(sim_params % param_name(n) % str), ':', &
+            sim_params % param_value(n) % value_int
+        else if (sim_params % param_type(n) .eq. 2) then
+          FMT = getFMTForReal(sim_params % param_value(n) % value_real)
+          FMT = '(A30,A1,A20,A1,'//trim(FMT)//')'
+          write (UNIT_params, FMT) trim(sim_params % param_group(n) % str), ':', &
+            trim(sim_params % param_name(n) % str), ':', &
+            sim_params % param_value(n) % value_real
+        else if (sim_params % param_type(n) .eq. 3) then
+          FMT = '(A30,A1,A20,A1,L10)'
+          write (UNIT_params, FMT) trim(sim_params % param_group(n) % str), ':', &
+            trim(sim_params % param_name(n) % str), ':', &
+            sim_params % param_value(n) % value_bool
+        else
+          call throwError('ERROR. Unknown `param_type` in `saveAllParameters`.')
+        end if
+      end do
+      close (UNIT_params)
+    end if
+  end subroutine writeParams_fmt
 #endif
 
 end module m_writeparams

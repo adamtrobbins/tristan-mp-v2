@@ -1,25 +1,14 @@
-#include "../defs.F90"
-
 module m_qedphysics
-#ifdef QED
 
   use m_aux
   use m_globalnamespace
   use m_qednamespace
   use m_particles
   use m_readinput, only: getInput
-
-#ifdef BWPAIRPRODUCTION
   use m_bwpairproduction
-#endif
-
-#ifdef COMPTONSCATTERING
   use m_compton
-#endif
-
-#ifdef PAIRANNIHILATION
   use m_annihilation
-#endif
+#ifdef QED
 
   implicit none
 

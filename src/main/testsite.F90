@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_testsite
   use m_globalnamespace
   use m_outputnamespace

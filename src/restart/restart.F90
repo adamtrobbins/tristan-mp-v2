@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_restart
 #ifdef IFPORT
   use ifport, only: makedirqq
@@ -40,7 +38,9 @@ contains
     implicit none
     integer, intent(in) :: timestep
     character(len=STR_MAX) :: stepchar, rst_dir
+#ifdef IFPORT
     logical :: result
+#endif
     integer :: ierr, rnk, rnk_cnt, recv_count = 0
     integer :: dummy(1)
 #ifdef MPI08
@@ -131,7 +131,9 @@ contains
     integer, intent(in) :: timestep
     character(len=STR_MAX), intent(in) :: rst_dir
     character(len=STR_MAX) :: filename, mpichar
-    integer :: s, ti, tj, tk, num, pid
+    integer :: s, ti, tj, tk, num
+
+    if (.false.) print *, timestep
 
     write (mpichar, "(i8.8)") mpi_rank
 
@@ -196,9 +198,8 @@ contains
   subroutine restartSimulation()
     implicit none
     character(len=STR_MAX) :: mpichar, filename
-    integer :: s, ti, tj, tk, num, pid, ierr
+    integer :: s, ti, tj, tk, num, ierr
     integer :: dummy_int1, dummy_int2, dummy_int3
-    real :: dummy_real
     write (mpichar, "(i8.8)") mpi_rank
 
     if (mpi_rank .eq. 0) then
@@ -251,7 +252,7 @@ contains
             ! reallocate the tile if necessary
             read (UNIT_restart_prtl) dummy_int1
             if (dummy_int1 .ne. species(s) % prtl_tile(ti, tj, tk) % maxptl_sp) then
-              call allocateParticlesOnEmptyTile(s, species(s) % prtl_tile(ti, tj, tk), dummy_int1)
+              call allocateParticlesOnEmptyTile(species(s) % prtl_tile(ti, tj, tk), dummy_int1)
             end if
             read (UNIT_restart_prtl) species(s) % prtl_tile(ti, tj, tk) % npart_sp
             num = species(s) % prtl_tile(ti, tj, tk) % npart_sp

@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writeslice
 #ifdef HDF5
   use hdf5
@@ -26,7 +24,7 @@ contains
   subroutine writeSlices(time)
     implicit none
     integer, intent(in) :: time
-    integer :: step, ierr
+    integer :: step
     integer :: n
 
     call defineFieldVarsToOutput()
@@ -57,8 +55,10 @@ contains
     implicit none
     integer, intent(in) :: step, time, ni, nj
     character(len=*), intent(in) :: fname
-    character(len=STR_MAX) :: stepchar, filename
+    character(len=STR_MAX) :: filename
     integer :: var
+
+    if (.false.) print *, step, time
 
     filename = trim(slice_dir_name)//'/'//trim(fname)//'.xdmf'
 
@@ -128,7 +128,7 @@ contains
     character(len=STR_MAX) :: stepchar, filename, xchar
     integer :: ierr, error
     integer(HID_T) :: file_id, dspace_id, dset_id
-    integer :: f, s, dset_rank = 2
+    integer :: f, dset_rank = 2
     integer(HSIZE_T), dimension(2) :: global_dims
 
     real, allocatable :: field_data(:, :)
@@ -167,6 +167,8 @@ contains
       call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
       call H5Screate_simple_f(dset_rank, global_dims, dspace_id, error)
+    else
+      allocate(field_data(0,0))
     end if
 
     this_x0 = this_meshblock % ptr % x0
@@ -183,9 +185,9 @@ contains
 
       if ((x_cut .ge. this_x0) .and. (x_cut .lt. this_x0 + this_sx)) then
         ! Create dataset by interpolating fields
-        i = x_cut - this_x0
-        do j = 0, this_sy - 1
-          do k = 0, this_sz - 1
+        i = INT(x_cut - this_x0, 2)
+        do j = 0, INT(this_sy - 1, 2)
+          do k = 0, INT(this_sz - 1, 2)
             call selectFieldForOutput(fld_vars(f), 0_2, j, k, i, j, k, writing_lgarrQ)
           end do
         end do
@@ -238,7 +240,7 @@ contains
     character(len=STR_MAX) :: stepchar, filename, ychar
     integer :: ierr, error
     integer(HID_T) :: file_id, dspace_id, dset_id
-    integer :: f, s, dset_rank = 2
+    integer :: f, dset_rank = 2
     integer(HSIZE_T), dimension(2) :: global_dims
 
     real, allocatable :: field_data(:, :)
@@ -277,6 +279,8 @@ contains
       call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
       call H5Screate_simple_f(dset_rank, global_dims, dspace_id, error)
+    else
+      allocate(field_data(0, 0))
     end if
 
     this_x0 = this_meshblock % ptr % x0
@@ -293,9 +297,9 @@ contains
 
       if ((y_cut .ge. this_y0) .and. (y_cut .lt. this_y0 + this_sy)) then
         ! Create dataset by interpolating fields
-        j = y_cut - this_y0
-        do i = 0, this_sx - 1
-          do k = 0, this_sz - 1
+        j = INT(y_cut - this_y0, 2)
+        do i = 0, INT(this_sx - 1, 2)
+          do k = 0, INT(this_sz - 1, 2)
             call selectFieldForOutput(fld_vars(f), i, 0_2, k, i, j, k, writing_lgarrQ)
           end do
         end do
@@ -348,7 +352,7 @@ contains
     character(len=STR_MAX) :: stepchar, filename, zchar
     integer :: ierr, error
     integer(HID_T) :: file_id, dspace_id, dset_id
-    integer :: f, s, dset_rank = 2
+    integer :: f, dset_rank = 2
     integer(HSIZE_T), dimension(2) :: global_dims
 
     real, allocatable :: field_data(:, :)
@@ -387,6 +391,8 @@ contains
       call H5Fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
       call H5Screate_simple_f(dset_rank, global_dims, dspace_id, error)
+    else
+      allocate(field_data(0,0))
     end if
 
     this_x0 = this_meshblock % ptr % x0
@@ -403,9 +409,9 @@ contains
 
       if ((z_cut .ge. this_z0) .and. (z_cut .lt. this_z0 + this_sz)) then
         ! Create dataset by interpolating fields
-        k = z_cut - this_z0
-        do i = 0, this_sx - 1
-          do j = 0, this_sy - 1
+        k = INT(z_cut - this_z0, 2)
+        do i = 0, INT(this_sx - 1, 2)
+          do j = 0, INT(this_sy - 1, 2)
             call selectFieldForOutput(fld_vars(f), i, j, 0_2, i, j, k, writing_lgarrQ)
           end do
         end do

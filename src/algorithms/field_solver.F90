@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_fldsolver
   use m_globalnamespace
   use m_aux
@@ -15,7 +13,9 @@ contains
     implicit none
     integer :: i, j, k, ip1, jp1, kp1
     real :: const
+#ifdef ABSORB
     real :: lam, lam1, lam2, xg, yg, zg
+#endif
     const = CORR * 0.5 * CC
 
 #ifndef ABSORB
@@ -155,7 +155,9 @@ contains
     implicit none
     integer :: i, j, k, im1, jm1, km1
     real :: const
+#ifdef ABSORB
     real :: lam, lam1, lam2, xg, yg, zg
+#endif
     const = CORR * CC
 
 #ifndef ABSORB

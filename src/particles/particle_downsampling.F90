@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_particledownsampling
 #ifdef DOWNSAMPLING
 
@@ -88,7 +86,7 @@ contains
                 do pj = 1, ny_bin
                   do pk = 1, nz_bin
 
-                    call allocateParticlesOnEmptyTile(s, downsampling_tile, position_grid(pi, pj, pk) % npart)
+                    call allocateParticlesOnEmptyTile(downsampling_tile, position_grid(pi, pj, pk) % npart)
 
                     downsampling_tile % spec = s
                     downsampling_tile % npart_sp = position_grid(pi, pj, pk) % npart

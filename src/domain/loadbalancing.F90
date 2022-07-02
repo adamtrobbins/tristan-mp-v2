@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_loadbalancing
   use m_globalnamespace
   use m_readinput, only: getInput

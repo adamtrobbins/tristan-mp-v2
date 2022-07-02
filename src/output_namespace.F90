@@ -1,5 +1,3 @@
-#include "defs.F90"
-
 module m_outputnamespace
   use m_globalnamespace
   implicit none

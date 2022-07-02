@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_errors
   use m_globalnamespace
   implicit none

@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_outputlogistics
   use m_globalnamespace
   use m_outputnamespace
@@ -163,7 +161,9 @@ contains
     ! DEP_PRT [particle-dependent]
     implicit none
     integer :: s
-    integer :: ierr, ndown, pid
+#ifdef PRTLPAYLOADS
+    integer :: pid
+#endif
     ! initialize particle variables
     n_prtl_vars = 9
     prtl_vars(1:n_prtl_vars) = (/'x    ', 'y    ', 'z    ', &
@@ -206,7 +206,7 @@ contains
   subroutine prepareSpectraForOutput()
     implicit none
     real :: energy, u_, v_, w_, x_g, y_g, z_g, emax, glob_emax
-    integer :: s, i, ti, tj, tk, p, spec_index
+    integer :: s, ti, tj, tk, p, spec_index
     integer :: spec_x_index, spec_y_index, spec_z_index
     integer :: ierr, root_rnk
     real, allocatable :: spectra(:, :, :, :, :)

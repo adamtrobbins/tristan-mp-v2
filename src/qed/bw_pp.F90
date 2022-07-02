@@ -1,7 +1,4 @@
-#include "../defs.F90"
-
 module m_bwpairproduction
-#ifdef BWPAIRPRODUCTION
 
   use m_globalnamespace
   use m_qednamespace
@@ -9,6 +6,7 @@ module m_bwpairproduction
   use m_errors
   use m_bincoupling
   use m_particlelogistics
+#ifdef BWPAIRPRODUCTION
   implicit none
 
   !--- PRIVATE variables/functions -------------------------------!

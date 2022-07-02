@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_thermalplasma
   use m_globalnamespace
   use m_aux
@@ -39,7 +37,7 @@ contains
     implicit none
     type(maxwellian), intent(inout) :: maxw
     integer :: iter
-    real :: u_1, u_2, u_max, df, temp
+    real :: u_1, u_2, u_max, df = 0.0, temp
 
     if (maxw % generated) then
       call throwError('ERROR: maxwell table already generated.')
@@ -100,7 +98,7 @@ contains
     implicit none
     type(maxwellian), intent(inout) :: maxw
     real, intent(out) :: u_, v_, w_
-    real :: U, ETA, X1, X2, X3, X4, X5, X6, X7, X8, dx1, dx2, BETA, gamma, gamma1
+    real :: U = 0.0, ETA = 0.0, X1, X2, X3, X4, X5, X6, X7, X8, dx1, dx2, BETA, gamma
     logical :: flag
     integer :: iter
 
@@ -225,7 +223,7 @@ contains
     real :: x_glob, y_glob, z_glob
 
     real, intent(in), optional :: weights
-    real :: weights_
+    real :: weights_, rnd_num
     logical, intent(in), optional :: zero_current
     logical :: zero_current_
 
@@ -328,7 +326,8 @@ contains
       else
         rnd = 1.0
       end if
-      if ((.not. present(spat_distr_ptr)) .or. (random(dseed) .lt. rnd)) then
+      rnd_num = random(dseed)
+      if ((.not. present(spat_distr_ptr)) .or. (rnd_num .lt. rnd)) then
         do s = 1, num_species
           ! generate momenta for every species individually
           spec_ = fill_species(s)

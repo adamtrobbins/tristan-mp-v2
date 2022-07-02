@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_mainloop
   use m_globalnamespace
   use m_outputnamespace, only: slice_output_enable, slice_output_start, slice_output_interval, &
@@ -52,8 +50,7 @@ module m_mainloop
 contains
   subroutine mainloop()
     implicit none
-    integer :: ierr, i
-    integer :: s, ti, tj, tk, p
+    integer :: ierr
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call printDiag("Starting mainloop()", 0)
@@ -363,16 +360,14 @@ contains
   subroutine startTimer(timer_id)
     implicit none
     integer, intent(in) :: timer_id
-    integer :: ierr
-    d_timers(timer_id) = MPI_WTIME()
+    d_timers(timer_id) = REAL(MPI_WTIME(), 8)
   end subroutine startTimer
 
   subroutine flushTimer(timer_id)
     implicit none
     integer, intent(in) :: timer_id
     real(kind=8) :: dt
-    integer :: ierr
-    dt = (MPI_WTIME() - d_timers(timer_id))
+    dt = REAL(MPI_WTIME() - d_timers(timer_id), 8)
     timers(timer_id) = timers(timer_id) + dt
   end subroutine flushTimer
 
@@ -510,39 +505,38 @@ contains
 #endif
 
     if (mpi_rank .eq. 0) then
-      fullstep = SUM(dt_fullstep) * 1000 / mpi_size
+      fullstep = REAL(SUM(dt_fullstep) * 1000 / mpi_size)
       call printTimeHeader(tstep)
 
       call printTime(dt_fullstep, "Full_step: ")
-      call printTime(dt_movestep, "  move_step: ", fullstep)
-      call printTime(dt_depositstep, "  deposit_step: ", fullstep)
-      call printTime(dt_filterstep, "  filter_step: ", fullstep)
-      call printTime(dt_fldexchstep, "  fld_exchange: ", fullstep)
-      call printTime(dt_prtlexchxtep, "  prtl_exchange: ", fullstep)
-      call printTime(dt_fldslvrstep, "  fld_solver: ", fullstep)
-      call printTime(dt_usrfuncs, "  usr_funcs: ", fullstep)
-      call printTime(dt_outputstep, "  output_step: ", fullstep)
+      call printTime(dt_movestep, "move_step: ", fullstep)
+      call printTime(dt_depositstep, "deposit_step: ", fullstep)
+      call printTime(dt_filterstep, "filter_step: ", fullstep)
+      call printTime(dt_fldexchstep, "fld_exchange: ", fullstep)
+      call printTime(dt_prtlexchxtep, "prtl_exchange: ", fullstep)
+      call printTime(dt_fldslvrstep, "fld_solver: ", fullstep)
+      call printTime(dt_usrfuncs, "usr_funcs: ", fullstep)
+      call printTime(dt_outputstep, "output_step: ", fullstep)
 
 #ifdef QED
-      call printTime(dt_qedstep, "  qed_step: ", fullstep)
+      call printTime(dt_qedstep, "qed_step: ", fullstep)
 #endif
 
 #ifdef DOWNSAMPLING
-      call printTime(dt_dwnstep, "  dwn_step: ", fullstep)
+      call printTime(dt_dwnstep, "dwn_step: ", fullstep)
 #endif
 
 #ifdef ALB
-      call printTime(dt_albstep, "  alb_step: ", fullstep)
+      call printTime(dt_albstep, "alb_step: ", fullstep)
 #endif
 
       call printNpartHeader()
       do s = 1, nspec
-        call printNpart(nprt_sp_global(s, :), &
-                        "  species # "//trim(STR(s)))
+        call printNpart(nprt_sp_global(s, :), "species # "//trim(STR(s)))
       end do
 
       call printTimeFooter()
-      print *, ""
+      print "(/)"
     end if
 
     call printWarnings(tstep)

@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writeusroutput
 #ifdef USROUTPUT
   use m_globalnamespace

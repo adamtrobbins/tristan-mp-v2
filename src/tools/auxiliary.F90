@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_aux
   use m_globalnamespace
   implicit none
@@ -79,7 +77,7 @@ contains
     character(len=*), intent(in) :: msg
     integer, optional, intent(in) :: level
     character(len=STR_MAX) :: dummy
-    integer :: sz, i, ierr
+    integer :: sz, i
     if (mpi_rank .eq. 0) then
       open (UNIT_diag, file=diag_file_name, status="old", position="append", form="formatted")
       sz = len(trim(msg))
@@ -134,29 +132,29 @@ contains
   function getFMTForReal(value, w) result(FMT)
     implicit none
     real, intent(in) :: value
-    character(len=STR_MAX) :: FMT
+    character(len=280) :: FMT
     integer, intent(in), optional :: w
     integer :: w_
-    character(len=10) :: dummy
+    character(len=10) :: dummy1, dummy2
     if (.not. present(w)) then
       w_ = 10
     else
       w_ = w
     end if
-    write (dummy, '(I10)') w_
+    write (dummy1, '(I10)') w_
+    write (dummy2, '(I10)') min(max(w_ - 8, 3), 15)
 
-    if ((abs(value) .ge. 100000) .or. &
+    if ((abs(value) .ge. 100000.0) .or. &
         ((abs(value) .lt. 1e-2) .and. &
-         (abs(value) .ne. 0.0))) then
-      FMT = 'ES'//trim(dummy)//'.3'
+         (abs(value) .ge. 0.0))) then
+      FMT = 'ES'//trim(dummy1)//'.'//trim(dummy2)
     else
-      FMT = 'F'//trim(dummy)//'.3'
+      FMT = 'F'//trim(dummy1)//'.'//trim(dummy2)
     end if
   end function getFMTForReal
 
-  function getFMTForRealScientific(value, w) result(FMT)
+  function getFMTForRealScientific(w) result(FMT)
     implicit none
-    real, intent(in) :: value
     character(len=STR_MAX) :: FMT
     integer, intent(in), optional :: w
     integer :: w_
@@ -173,150 +171,98 @@ contains
   subroutine printTimeHeader(tstep)
     implicit none
     integer, intent(in) :: tstep
-    character(len=STR_MAX) :: dummy
-    integer :: sz, i
+    integer :: i
 
-    ! printing divider
-    do i = 72, 72
-      dummy(i:i) = ' '
-    end do
     do i = 1, 71
-      dummy(i:i) = '-'
+      if (i .eq. 1) then
+        write (*, '(A2)', advance='no') ' -'
+      else if (i .eq. 71) then
+        print "(A)", '-'
+      else
+        write (*, '(A)', advance='no') '-'
+      end if
     end do
-    print *, dummy(1:72)
 
-    ! printing timestep
-    sz = len(trim("Timestep: "//STR(tstep)))
-    do i = 1, 71
-      dummy(i:i) = '.'
+    write (*, "(1X,A10,I9)", advance='no') "Timestep: ", tstep
+    do i = 1, 48
+      write (*, "(A)", advance='no') '.'
     end do
-    dummy(1:sz) = trim("Timestep: "//STR(tstep))
-    dummy(66:71) = '[DONE]'
-    print *, dummy(1:72)
-
-    ! printing header
-    do i = 1, 72
-      dummy(i:i) = ' '
-    end do
-    dummy(1:71) = '[ROUTINE]          [TIME, ms]      [MIN  /  MAX, ms]      [FRACTION, %]'
-    print *, dummy(1:72)
+    print "(A4)", "[OK]"
+    print "(1X,A71)", "[ROUTINE]          [TIME, ms]      [MIN  /  MAX, ms]      [FRACTION, %]"
   end subroutine printTimeHeader
 
   subroutine printTimeFooter()
     implicit none
-    character(len=STR_MAX) :: dummy
     integer :: i
 
-    do i = 72, 72
-      dummy(i:i) = ' '
-    end do
     do i = 1, 71
-      dummy(i:i) = '.'
+      if (i .eq. 1) then
+        write (*, '(A2)', advance='no') ' .'
+      else if (i .eq. 71) then
+        print "(A)", '.'
+      else
+        write (*, '(A)', advance='no') '.'
+      end if
     end do
-    print *, dummy(1:72)
   end subroutine printTimeFooter
 
   subroutine printTime(dt_arr, msg, fullstep)
     implicit none
     character(len=*), intent(in) :: msg
-    character(len=STR_MAX) :: dummy, dummy1, FMT
+    character(len=STR_MAX) :: FMT
+    character(len=15) :: msg_str
     real(kind=8), intent(in) :: dt_arr(:)
     real, optional, intent(in) :: fullstep
     real :: dt_mean, dt_max, dt_min
-    integer :: sz, sz1, i
-    dt_mean = SUM(dt_arr) * 1000 / mpi_size
-    dt_max = MAXVAL(dt_arr) * 1000
-    dt_min = MINVAL(dt_arr) * 1000
+    dt_mean = REAL(SUM(dt_arr) * 1000 / mpi_size)
+    dt_max = REAL(MAXVAL(dt_arr) * 1000)
+    dt_min = REAL(MINVAL(dt_arr) * 1000)
     if (present(fullstep)) then
       if (dt_mean / fullstep .lt. 1e-4) then
         dt_mean = 0; dt_min = 0; dt_max = 0
       end if
     end if
 
-    do i = 1, 72
-      dummy(i:i) = ' '
-    end do
-
-    sz = len(msg)
-    dummy(1:sz) = msg
-
-    FMT = "("//trim(getFMTForReal(dt_mean))//")"
-    write (dummy1, FMT) dt_mean
-    sz = len_trim(dummy1)
-    dummy(20:20 + sz - 1) = trim(dummy1)
-
-    FMT = "("//trim(getFMTForReal(dt_min))//")"
-    write (dummy1, FMT) dt_min
-    sz = len_trim(dummy1)
-    dummy(32:32 + sz - 1) = trim(dummy1)
-
-    FMT = "("//trim(getFMTForReal(dt_max))//")"
-    write (dummy1, FMT) dt_max
-    sz = len_trim(dummy1)
-    dummy(43:43 + sz - 1) = trim(dummy1)
-    if (present(fullstep)) then
-      FMT = "("//trim(getFMTForReal(dt_mean * 100 / fullstep))//")"
-      write (dummy1, FMT) dt_mean * 100 / fullstep
-      sz1 = len_trim(dummy1)
-      dummy(62:62 + sz1 - 1) = trim(dummy1)
+    write (msg_str, '(A15)') msg
+    
+    if (.not. present(fullstep)) then
+        FMT = "(1X,A15" // &
+                trim(getFMTForReal(dt_mean, 14)) // "," // &
+                trim(getFMTForReal(dt_min, 12)) // "," // &
+                trim(getFMTForReal(dt_max, 11)) // &
+               ")"
+        print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max
+    else
+        FMT = "(3X,A13" // &
+                trim(getFMTForReal(dt_mean, 14)) // "," // &
+                trim(getFMTForReal(dt_min, 12)) // "," // &
+                trim(getFMTForReal(dt_max, 11)) // "," // &
+                trim(getFMTForReal(dt_mean * 100 / fullstep, 19)) // &
+               ")"
+        print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max, dt_mean * 100 / fullstep
     end if
-
-    print *, dummy(1:72)
   end subroutine printTime
 
   subroutine printNpartHeader()
     implicit none
-    character(len=STR_MAX) :: dummy
-    integer :: i
-
-    ! printing header
-    do i = 1, 72
-      dummy(i:i) = ' '
-    end do
-    dummy(1:71) = '[NPART per S]       [AVERAGE]      [MIN/MAX per CPU]            [TOTAL]'
-    print *, dummy(1:72)
+    print "(1X,A71)", "[NPART per S]       [AVERAGE]      [MIN/MAX per CPU]            [TOTAL]"
   end subroutine printNpartHeader
 
   subroutine printNpart(npart_arr, msg)
     implicit none
     character(len=*), intent(in) :: msg
-    character(len=STR_MAX) :: dummy, dummy1, FMT
     integer(kind=8), intent(in) :: npart_arr(:)
     real :: npart_mean, npart_max, npart_min, npart_sum
-    integer :: sz, sz1, i
-    npart_sum = SUM(npart_arr)
+    character(len=14) :: msg_str
+    character(len=12) :: min_str, max_str
+    npart_sum = REAL(SUM(npart_arr))
     npart_mean = npart_sum / mpi_size
-    npart_max = MAXVAL(npart_arr)
-    npart_min = MINVAL(npart_arr)
-
-    do i = 1, 72
-      dummy(i:i) = ' '
-    end do
-
-    sz = len(msg)
-    dummy(1:sz) = msg
-
-    FMT = "("//trim(getFMTForReal(npart_mean))//")"
-    write (dummy1, FMT) npart_mean
-    sz = len_trim(dummy1)
-    dummy(20:20 + sz - 1) = trim(dummy1)
-
-    FMT = "("//trim(getFMTForReal(npart_min))//")"
-    write (dummy1, FMT) npart_min
-    sz = len_trim(dummy1)
-    dummy(32:32 + sz - 1) = trim(dummy1)
-
-    FMT = "("//trim(getFMTForReal(npart_max))//")"
-    write (dummy1, FMT) npart_max
-    sz = len_trim(dummy1)
-    dummy(43:43 + sz - 1) = trim(dummy1)
-
-    FMT = "("//trim(getFMTForReal(npart_sum))//")"
-    write (dummy1, FMT) npart_sum
-    sz1 = len_trim(dummy1)
-    dummy(62:62 + sz1 - 1) = trim(dummy1)
-
-    print *, dummy(1:72)
+    npart_max = REAL(MAXVAL(npart_arr))
+    npart_min = REAL(MINVAL(npart_arr))
+    write (msg_str, '(A14)') msg
+    write (min_str, '(ES12.4)') npart_min
+    write (max_str, '(ES12.4)') npart_max
+    print "(3X,A14,ES13.6,A12,A1,A12,ES17.10)", adjustl(msg_str), npart_mean, min_str, "/", adjustl(max_str), npart_sum
   end subroutine printNpart
 
   function intToStr(my_int) result(string)
@@ -333,7 +279,7 @@ contains
     real, intent(in) :: my_real
     character(:), allocatable :: string
     character(len=STR_MAX) :: temp
-    if ((my_real .ge. 1000) .or. ((my_real .lt. 1e-2) .and. (my_real .ne. 0.0))) then
+    if ((abs(my_real) .ge. 1000.0) .or. ((abs(my_real) .lt. 1e-2) .and. (abs(my_real) .gt. 0.0))) then
       write (temp, '(ES10.2)') my_real
     else
       write (temp, '(F10.2)') my_real
@@ -363,7 +309,6 @@ contains
   real(dprec) function randomNum(DSEED)
     implicit none
     real(dprec) :: DSEED
-    integer :: I
     real(dprec) :: S2P31, S2P31M, SEED
     DATA S2P31M/2147483647.D0/, S2P31/2147483648.D0/
     SEED = DSEED
@@ -378,8 +323,8 @@ contains
     real(dprec) :: DSEED
     real :: rnd
     rnd = 1.0
-    do while (rnd .eq. 1.0)
-      rnd = randomNum(DSEED)
+    do while (rnd .ge. 1.0)
+      rnd = REAL(randomNum(DSEED))
     end do
     random = rnd
     return

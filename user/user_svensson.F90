@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 ! Configuration for this userfile:
 ! ```
 !   $ python configure.py -2d --user=user_svensson -qed -ann -bw_pp -compton

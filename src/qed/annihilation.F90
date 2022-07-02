@@ -1,13 +1,12 @@
-#include "../defs.F90"
-
 module m_annihilation
-#ifdef PAIRANNIHILATION
 
   use m_globalnamespace
   use m_qednamespace
   use m_aux
   use m_errors
   use m_particlelogistics
+#ifdef PAIRANNIHILATION
+
   implicit none
 
   type, private :: particleID

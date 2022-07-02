@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_helpers
   use m_globalnamespace
   use m_aux
@@ -18,9 +16,9 @@ contains
     abs1 = abs(number1); abs2 = abs(number2)
     diff = abs(number1 - number2)
 
-    if (number1 .eq. number2) then
+    if ((number1 .le. number2) .and. (number1 .ge. number2)) then
       numbersAreClose = .true.
-    else if ((number1 .eq. 0.0) .or. (number2 .eq. 0.0) .or. &
+    else if ((number1 .le. 0.0) .or. (number2 .le. 0.0) .or. &
              (abs1 + abs2 .lt. TINYREAL)) then
       numbersAreClose = (diff .lt. TINYREAL)
     else
@@ -113,9 +111,9 @@ contains
     real, intent(out) :: dx, dy, dz
     integer(kind=2), intent(out) :: xi, yi, zi
 
-    xi = FLOOR(x_loc); dx = x_loc - FLOOR(x_loc)
-    yi = FLOOR(y_loc); dy = y_loc - FLOOR(y_loc)
-    zi = FLOOR(z_loc); dz = z_loc - FLOOR(z_loc)
+    xi = INT(FLOOR(x_loc), 2); dx = x_loc - FLOOR(x_loc)
+    yi = INT(FLOOR(y_loc), 2); dy = y_loc - FLOOR(y_loc)
+    zi = INT(FLOOR(z_loc), 2); dz = z_loc - FLOOR(z_loc)
   end subroutine localToCellBasedCoords
 
   subroutine generateCoordInRegion(xmin, xmax, ymin, ymax, zmin, zmax, &
@@ -132,25 +130,25 @@ contains
 #if defined(oneD) || defined (twoD) || defined (threeD)
     rnd = random(dseed)
     x_ = xmin + rnd * (xmax - xmin)
-    xi_ = FLOOR(x_); dx_ = x_ - FLOOR(x_)
+    xi_ = INT(FLOOR(x_), 2); dx_ = x_ - FLOOR(x_)
     if (xi_ .eq. this_meshblock % ptr % sx) then
-      xi_ = xi_ - 1; dx_ = dx_ + 1.0
+      xi_ = xi_ - 1_2; dx_ = dx_ + 1.0
     end if
 #endif
 #if defined (twoD) || defined (threeD)
     rnd = random(dseed)
     y_ = ymin + rnd * (ymax - ymin)
-    yi_ = FLOOR(y_); dy_ = y_ - FLOOR(y_)
+    yi_ = INT(FLOOR(y_), 2); dy_ = y_ - FLOOR(y_)
     if (yi_ .eq. this_meshblock % ptr % sy) then
-      yi_ = yi_ - 1; dy_ = dy_ + 1.0
+      yi_ = yi_ - 1_2; dy_ = dy_ + 1.0
     end if
 #endif
 #if defined(threeD)
     rnd = random(dseed)
     z_ = zmin + rnd * (zmax - zmin)
-    zi_ = FLOOR(z_); dz_ = z_ - FLOOR(z_)
+    zi_ = INT(FLOOR(z_), 2); dz_ = z_ - FLOOR(z_)
     if (zi_ .eq. this_meshblock % ptr % sz) then
-      zi_ = zi_ - 1; dz_ = dz_ + 1.0
+      zi_ = zi_ - 1_2; dz_ = dz_ + 1.0
     end if
 #endif
   end subroutine generateCoordInRegion
@@ -262,15 +260,13 @@ contains
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous :: pt_wei(:)
     logical :: charge_
-    integer(kind=2) :: i, j, k
-    integer :: i1, i2, j1, j2, k1, k2, ds_
-    integer :: pow
+    integer(kind=2) :: i, j, k, i1, i2, j1, j2, k1, k2, ds_, pow
     real :: contrib
 
     if (.not. present(ds)) then
-      ds_ = 2
+      ds_ = 2_2
     else
-      ds_ = ds
+      ds_ = INT(ds, 2)
     end if
 
     if (.not. present(charge)) then
@@ -280,14 +276,14 @@ contains
     end if
 
 #ifdef oneD
-    pow = 1
+    pow = 1_2
 #elif twoD
-    pow = 2
+    pow = 2_2
 #elif threeD
-    pow = 3
+    pow = 3_2
 #endif
 
-    if (species(s) % m_sp .eq. 0) then
+    if (species(s) % m_sp .le. 0) then
       contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
     else
       if (charge_) then
@@ -316,15 +312,15 @@ contains
             k1 = 0; k2 = 0
 #if defined(oneD) || defined (twoD) || defined (threeD)
             i1 = max(i - ds_, -NGHOST)
-            i2 = min(i + ds_, this_meshblock % ptr % sx + NGHOST - 1)
+            i2 = min(i + ds_, INT(this_meshblock % ptr % sx + NGHOST - 1, 2))
 #endif
 #if defined (twoD) || defined (threeD)
             j1 = max(j - ds_, -NGHOST)
-            j2 = min(j + ds_, this_meshblock % ptr % sy + NGHOST - 1)
+            j2 = min(j + ds_, INT(this_meshblock % ptr % sy + NGHOST - 1, 2))
 #endif
 #if defined (threeD)
             k1 = max(k - ds_, -NGHOST)
-            k2 = min(k + ds_, this_meshblock % ptr % sz + NGHOST - 1)
+            k2 = min(k + ds_, INT(this_meshblock % ptr % sz + NGHOST - 1, 2))
 #endif
 
             do k = k1, k2
@@ -351,28 +347,26 @@ contains
     integer :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
-    integer(kind=2) :: i, j, k
-    integer :: i1, i2, j1, j2, k1, k2, ds_
-    integer :: pow
+    integer(kind=2) :: i, j, k, i1, i2, j1, j2, k1, k2, ds_, pow
     logical :: massive
-    real :: comp
+    real :: comp = 0.0
     real :: contrib
 
     if (.not. present(ds)) then
-      ds_ = 2
+      ds_ = 2_2
     else
-      ds_ = ds
+      ds_ = INT(ds, 2)
     end if
 
 #ifdef oneD
-    pow = 1
+    pow = 1_2
 #elif twoD
-    pow = 2
+    pow = 2_2
 #elif threeD
-    pow = 3
+    pow = 3_2
 #endif
 
-    massive = (species(s) % m_sp .ne. 0)
+    massive = (species(s) % m_sp .gt. 0)
     if (.not. massive) then
       contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
     else
@@ -413,15 +407,15 @@ contains
             k1 = 0; k2 = 0
 #if defined(oneD) || defined (twoD) || defined (threeD)
             i1 = max(i - ds_, -NGHOST)
-            i2 = min(i + ds_, this_meshblock % ptr % sx + NGHOST - 1)
+            i2 = min(i + ds_, INT(this_meshblock % ptr % sx + NGHOST - 1, 2))
 #endif
 #if defined (twoD) || defined (threeD)
             j1 = max(j - ds_, -NGHOST)
-            j2 = min(j + ds_, this_meshblock % ptr % sy + NGHOST - 1)
+            j2 = min(j + ds_, INT(this_meshblock % ptr % sy + NGHOST - 1, 2))
 #endif
 #if defined (threeD)
             k1 = max(k - ds_, -NGHOST)
-            k2 = min(k + ds_, this_meshblock % ptr % sz + NGHOST - 1)
+            k2 = min(k + ds_, INT(this_meshblock % ptr % sz + NGHOST - 1, 2))
 #endif
 
             do k = k1, k2
@@ -450,28 +444,28 @@ contains
     integer :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
-    integer :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
-    real :: contrib, comp
+    integer(kind=2) :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
+    real :: contrib, comp = 0.0
 
     if (.not. present(ds)) then
-      ds_ = 2
+      ds_ = 2_2
     else
-      ds_ = ds
+      ds_ = INT(ds, 2)
     end if
 
 #ifdef oneD
-    pow = 1
+    pow = 1_2
 #elif twoD
-    pow = 2
+    pow = 2_2
 #elif threeD
-    pow = 3
+    pow = 3_2
 #endif
 
     lg_arr(:, :, :) = 0.0
     do s = 1, nspec
       if (.not. species(s) % move_sp) cycle
       if (.not. species(s) % deposit_sp) cycle
-      if (species(s) % m_sp .eq. 0) cycle
+      if (species(s) % m_sp .le. 0.0) cycle
 
       ! this factor takes into account smoothing and mass of the species
       contrib = species(s) % m_sp / (2.0 * REAL(ds_) + 1.0)**pow
@@ -503,15 +497,15 @@ contains
               k1 = 0; k2 = 0
 #if defined(oneD) || defined (twoD) || defined (threeD)
               i1 = max(i - ds_, -NGHOST)
-              i2 = min(i + ds_, this_meshblock % ptr % sx + NGHOST - 1)
+              i2 = min(i + ds_, INT(this_meshblock % ptr % sx + NGHOST - 1, 2))
 #endif
 #if defined (twoD) || defined (threeD)
               j1 = max(j - ds_, -NGHOST)
-              j2 = min(j + ds_, this_meshblock % ptr % sy + NGHOST - 1)
+              j2 = min(j + ds_, INT(this_meshblock % ptr % sy + NGHOST - 1, 2))
 #endif
 #if defined (threeD)
               k1 = max(k - ds_, -NGHOST)
-              k2 = min(k + ds_, this_meshblock % ptr % sz + NGHOST - 1)
+              k2 = min(k + ds_, INT(this_meshblock % ptr % sz + NGHOST - 1, 2))
 #endif
 
               do k = k1, k2
@@ -539,28 +533,28 @@ contains
     integer :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous :: pt_wei(:)
-    integer :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
-    real :: contrib, comp
+    integer(kind=2) :: pow, ds_, i, j, k, i1, i2, j1, j2, k1, k2
+    real :: contrib
 
     if (.not. present(ds)) then
-      ds_ = 2
+      ds_ = 2_2
     else
-      ds_ = ds
+      ds_ = INT(ds, 2)
     end if
 
 #ifdef oneD
-    pow = 1
+    pow = 1_2
 #elif twoD
-    pow = 2
+    pow = 2_2
 #elif threeD
-    pow = 3
+    pow = 3_2
 #endif
 
     lg_arr(:, :, :) = 0.0
     do s = 1, nspec
       if (.not. species(s) % move_sp) cycle
       if (.not. species(s) % deposit_sp) cycle
-      if (species(s) % m_sp .eq. 0) cycle
+      if (species(s) % m_sp .le. 0) cycle
 
       ! this factor takes into account smoothing and mass of the species
       contrib = species(s) % m_sp / (2.0 * REAL(ds_) + 1.0)**pow
@@ -581,15 +575,15 @@ contains
               k1 = 0; k2 = 0
 #if defined(oneD) || defined (twoD) || defined (threeD)
               i1 = max(i - ds_, -NGHOST)
-              i2 = min(i + ds_, this_meshblock % ptr % sx + NGHOST - 1)
+              i2 = min(i + ds_, INT(this_meshblock % ptr % sx + NGHOST - 1, 2))
 #endif
 #if defined (twoD) || defined (threeD)
               j1 = max(j - ds_, -NGHOST)
-              j2 = min(j + ds_, this_meshblock % ptr % sy + NGHOST - 1)
+              j2 = min(j + ds_, INT(this_meshblock % ptr % sy + NGHOST - 1, 2))
 #endif
 #if defined (threeD)
               k1 = max(k - ds_, -NGHOST)
-              k2 = min(k + ds_, this_meshblock % ptr % sz + NGHOST - 1)
+              k2 = min(k + ds_, INT(this_meshblock % ptr % sz + NGHOST - 1, 2))
 #endif
 
               do k = k1, k2
@@ -616,24 +610,21 @@ contains
     integer, optional, intent(in) :: ds
     integer :: p, ti, tj, tk
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
-    real, pointer, contiguous :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
-    integer(kind=2) :: i, j, k
-    integer :: i1, i2, j1, j2, k1, k2, ds_
-    integer :: pow
+    integer(kind=2) :: i, j, k, i1, i2, j1, j2, k1, k2, ds_, pow
     real :: contrib
 
     if (.not. present(ds)) then
-      ds_ = 2
+      ds_ = 2_2
     else
-      ds_ = ds
+      ds_ = INT(ds, 2)
     end if
 
 #ifdef oneD
-    pow = 1
+    pow = 1_2
 #elif twoD
-    pow = 2
+    pow = 2_2
 #elif threeD
-    pow = 3
+    pow = 3_2
 #endif
 
     contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
@@ -654,15 +645,15 @@ contains
             k1 = 0; k2 = 0
 #if defined(oneD) || defined (twoD) || defined (threeD)
             i1 = max(i - ds_, -NGHOST)
-            i2 = min(i + ds_, this_meshblock % ptr % sx + NGHOST - 1)
+            i2 = min(i + ds_, INT(this_meshblock % ptr % sx + NGHOST - 1, 2))
 #endif
 #if defined (twoD) || defined (threeD)
             j1 = max(j - ds_, -NGHOST)
-            j2 = min(j + ds_, this_meshblock % ptr % sy + NGHOST - 1)
+            j2 = min(j + ds_, INT(this_meshblock % ptr % sy + NGHOST - 1, 2))
 #endif
 #if defined (threeD)
             k1 = max(k - ds_, -NGHOST)
-            k2 = min(k + ds_, this_meshblock % ptr % sz + NGHOST - 1)
+            k2 = min(k + ds_, INT(this_meshblock % ptr % sz + NGHOST - 1, 2))
 #endif
             do k = k1, k2
               do j = j1, j2
@@ -1067,20 +1058,20 @@ contains
     end if
 
 #ifdef oneD
-    i1 = FLOOR(x1); i2 = FLOOR(x2)
+    i1 = INT(FLOOR(x1), 2); i2 = INT(FLOOR(x2), 2)
     j1 = 0; j2 = 0
     k1 = 0; k2 = 0
     i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
 #elif twoD
-    i1 = FLOOR(x1); i2 = FLOOR(x2)
-    j1 = FLOOR(y1); j2 = FLOOR(y2)
+    i1 = INT(FLOOR(x1), 2); i2 = INT(FLOOR(x2), 2)
+    j1 = INT(FLOOR(y1), 2); j2 = INT(FLOOR(y2), 2)
     k1 = 0; k2 = 0
     i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
     j1p1 = j1 + 1_2; j2p1 = j2 + 1_2
 #elif threeD
-    i1 = FLOOR(x1); i2 = FLOOR(x2)
-    j1 = FLOOR(y1); j2 = FLOOR(y2)
-    k1 = FLOOR(z1); k2 = FLOOR(z2)
+    i1 = INT(FLOOR(x1), 2); i2 = INT(FLOOR(x2), 2)
+    j1 = INT(FLOOR(y1), 2); j2 = INT(FLOOR(y2), 2)
+    k1 = INT(FLOOR(z1), 2); k2 = INT(FLOOR(z2), 2)
     i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
     j1p1 = j1 + 1_2; j2p1 = j2 + 1_2
     k1p1 = k1 + 1_2; k2p1 = k2 + 1_2
@@ -1092,7 +1083,7 @@ contains
     ! ... the start and end cells + 1: `i1p1`, `i2p1` etc ...
     ! ... the weighted_chargeed charge: `weighted_charge = weight * charge_sp * unit_charge / Bnorm`
     ! ... and deposits proper currents to corresponding components
-    include "zigzag_deposit.F08"
+#include "zigzag_deposit.F08"
   end subroutine depositCurrentsFromSingleParticle
 
   subroutine checkEverything()

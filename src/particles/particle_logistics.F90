@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_particlelogistics
   use m_globalnamespace
   use m_readinput, only: getInput
@@ -13,7 +11,6 @@ contains
     implicit none
     integer :: s, ti, tj, tk
     character(len=STR_MAX) :: var_name
-    integer :: maxptl_
 
     allocate (species(nspec))
     do s = 1, nspec
@@ -130,7 +127,6 @@ contains
     integer, intent(in) :: ind, proc
     real, intent(in) :: weight
 
-    integer :: p
     integer :: ti, tj, tk
 
     character(len=STR_MAX) :: dummy_string
@@ -359,7 +355,7 @@ contains
       meshblock_ = this_meshblock % ptr
     end if
 
-    maxptl_on_tile = maxptl / (species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz)
+    maxptl_on_tile = INT(maxptl / INT(species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz, 8), 4)
 
     species(s) % prtl_tile(ti, tj, tk) % spec = s
 
@@ -386,13 +382,13 @@ contains
       call throwError('ERROR: in `initializeParticles`')
     end if
 #endif
-    call allocateParticlesOnEmptyTile(s, species(s) % prtl_tile(ti, tj, tk), maxptl_on_tile)
+    call allocateParticlesOnEmptyTile(species(s) % prtl_tile(ti, tj, tk), maxptl_on_tile)
   end subroutine createEmptyTile
 
-  subroutine allocateParticlesOnEmptyTile(s, tile, sz)
+  subroutine allocateParticlesOnEmptyTile(tile, sz)
     ! DEP_PRT [particle-dependent]
     implicit none
-    integer, intent(in) :: s, sz
+    integer, intent(in) :: sz
     type(particle_tile), intent(inout) :: tile
 
     tile % npart_sp = 0
@@ -628,8 +624,6 @@ contains
     integer, intent(in) :: s
     integer(kind=2), intent(in) :: xi, yi, zi
     real, intent(in) :: dx, dy, dz, u, v, w
-    integer :: p
-    integer :: ti, tj, tk
     integer, optional, intent(in) :: ind, proc
     real, optional :: weight
     integer :: ind_, proc_
@@ -893,7 +887,6 @@ contains
     implicit none
     type(mesh), intent(in) :: meshblock
     integer :: s, p, ti, tj, tk, ti_, tj_, tk_
-    character(len=STR_MAX) :: var_name
     integer(kind=8) :: maxptl_
     integer, dimension(:, :, :), allocatable :: maxptl_tmpar
 
@@ -972,7 +965,7 @@ contains
     integer :: buffsize_xy
     integer :: buffsize_z, buffsize_xz, buffsize_yz
     integer :: buffsize_xyz, old_buffsize, min_buffsize
-    integer :: multiplier, ind1, ind2, ind3, ind
+    integer :: multiplier, ind1, ind2, ind3
     type(prtl_enroute), allocatable :: enroute_temp(:)
 
     multiplier = max(INT(ppc0), 1) * max_buffsize
@@ -1069,7 +1062,7 @@ contains
       end do
     end do
 
-#endif ! LOWMEM
+#endif
 
   end subroutine reallocateEnrouteArray
 
@@ -1151,7 +1144,7 @@ contains
 
   subroutine deallocateParticles()
     implicit none
-    integer :: ind1, ind2, ind3, s
+    integer :: s
 
     do s = 1, nspec
       if (allocated(species(s) % prtl_tile)) deallocate (species(s) % prtl_tile)

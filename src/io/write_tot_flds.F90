@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writetotflds
 #ifdef HDF5
   use hdf5
@@ -34,6 +32,8 @@ contains
     integer, intent(in) :: step, time, ni, nj, nk
     character(len=STR_MAX) :: stepchar, filename
     integer :: var
+
+    if (.false.) print *, time
 
     write (stepchar, "(i5.5)") step
     filename = trim(output_dir_name)//'/flds.tot.'//trim(stepchar)//'.xdmf'
@@ -104,15 +104,13 @@ contains
     integer, intent(in) :: step, time
     character(len=STR_MAX) :: stepchar, filename
     integer(HID_T) :: file_id, dset_id(100), filespace(100), memspace(100), plist_id
-    integer :: error, f, s
+    integer :: error, f
     integer(kind=2) :: i, j, k
-    logical :: writing_intQ, writing_lgarrQ
+    logical :: writing_lgarrQ
     integer :: dataset_rank = 3
     integer(HSSIZE_T), dimension(3) :: offsets
     integer(HSIZE_T), dimension(3) :: global_dims, blocks
     integer, dimension(3) :: starts
-    real :: ex0, ey0, ez0, bx0, by0, bz0
-    real :: jx0, jy0, jz0
     integer(kind=2) :: i1, j1, k1
 
     call getBlockDimensions(this_meshblock % ptr, starts, offsets, blocks, global_dims)
@@ -154,12 +152,12 @@ contains
     do f = 1, n_fld_vars
       call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
       ! Create dataset by interpolating fields
-      do i1 = 0, blocks(1) - 1
-        do j1 = 0, blocks(2) - 1
-          do k1 = 0, blocks(3) - 1
-            i = starts(1) + i1 * output_flds_istep
-            j = starts(2) + j1 * output_flds_istep
-            k = starts(3) + k1 * output_flds_istep
+      do i1 = 0, INT(blocks(1) - 1, 2)
+        do j1 = 0, INT(blocks(2) - 1, 2)
+          do k1 = 0, INT(blocks(3) - 1, 2)
+            i = INT(starts(1) + i1 * output_flds_istep, 2)
+            j = INT(starts(2) + j1 * output_flds_istep, 2)
+            k = INT(starts(3) + k1 * output_flds_istep, 2)
             call selectFieldForOutput(fld_vars(f), i1, j1, k1, i, j, k, writing_lgarrQ)
           end do
         end do

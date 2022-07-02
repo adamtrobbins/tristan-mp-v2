@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_bincoupling
   ! DEP_PRT [particle-dependent]
   use m_globalnamespace
@@ -137,7 +135,7 @@ contains
     integer, intent(in) :: sp_arr_1(n_sp_1), sp_arr_2(n_sp_2) ! array of species in set #1 and #2
     integer :: num_1, num_2 ! total # of particles in sets #1 and #2
     real :: wei_1, wei_2 ! total weight of sets #1 and #2
-    integer :: s, si, p, i, j
+    integer :: i, j
     type(spec_ind_pair), allocatable :: set_1(:), set_2(:) ! set #1 and #2 saved as "tuples" of species and index
     integer, intent(out) :: num_couples
     type(couple), allocatable, intent(out) :: coupled_pairs(:)
@@ -164,6 +162,7 @@ contains
       if ((n_sp_1 .eq. n_sp_2) .and. (n_sp_1 .eq. common_species)) then
         same_setsQ = .true.
       else
+        same_setsQ = .false.
         call throwError("Sets should be equal or have no intersection in `coupleParticlesOnTile()`")
       end if
     end if

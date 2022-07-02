@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 module m_userfile
   use m_globalnamespace
   use m_aux

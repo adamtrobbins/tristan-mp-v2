@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writespectra
 #ifdef HDF5
   use hdf5
@@ -49,10 +47,15 @@ contains
     integer :: error, s, i
     character(len=6) :: dsetname
     integer(HID_T) :: file_id, dset_id, dspace_id
-    integer(HSIZE_T) :: bin_dims(1), spec_dims(4), rad_dims(1)
+    integer(HSIZE_T) :: bin_dims(1), spec_dims(4)
+#ifdef RADIATION
+    integer(HSIZE_T) :: rad_dims(1)
+#endif
     real, allocatable, dimension(:) :: bin_data
     integer :: root_rnk = 0
     real, allocatable :: xbin_data(:), ybin_data(:), zbin_data(:)
+
+    if (.false.) print *, time
 
     ! only root rank writes the spectra file
     if (mpi_rank .eq. root_rnk) then

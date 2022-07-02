@@ -13,5 +13,6 @@
 !dev-requirements.txt
 !.vscode
 !docker
+!makedepf90
 .vscode/*.log
 __pycache__

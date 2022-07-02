@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_adaptivelb
   use m_globalnamespace
   use m_aux
@@ -24,7 +22,6 @@ contains
   subroutine redistributeMeshblocksALB(step)
     implicit none
     integer, optional, intent(in) :: step
-    integer :: valueRSS
 
     if (alb_x .and. (step .ge. alb_start_x) .and. (mod(step, alb_int_x) .eq. 0)) call metaRedistInX()
     if (alb_y .and. (step .ge. alb_start_y) .and. (mod(step, alb_int_y) .eq. 0)) call metaRedistInY()
@@ -74,7 +71,7 @@ contains
 
   subroutine metaRedistInX()
     implicit none
-    integer :: delta_i, i, j, k, cnt, ierr
+    integer :: delta_i, j, k, cnt, ierr
     integer :: load_x0, load_x1, sx0_old, sx1_old, inds(3)
 
     if (.not. allocated(lb_group_x0)) allocate (lb_group_x0(sizey * sizez))
@@ -129,7 +126,7 @@ contains
 
   subroutine metaRedistInY()
     implicit none
-    integer :: delta_j, i, j, k, cnt, ierr
+    integer :: delta_j, i, k, cnt, ierr
     integer :: load_y0, load_y1, sy0_old, sy1_old, inds(3)
 
     if (.not. allocated(lb_group_y0)) allocate (lb_group_y0(sizex * sizez))
@@ -184,7 +181,7 @@ contains
 
   subroutine metaRedistInZ()
     implicit none
-    integer :: delta_k, i, j, k, cnt, ierr
+    integer :: delta_k, i, j, cnt, ierr
     integer :: load_z0, load_z1, sz0_old, sz1_old, inds(3)
 
     if (.not. allocated(lb_group_z0)) allocate (lb_group_z0(sizex * sizey))
@@ -387,7 +384,6 @@ contains
     integer, allocatable, intent(in) :: left_group(:), right_group(:)
     integer, intent(in) :: SHIFT
     integer :: nproc_group, q, left_rnk, right_rnk, ierr
-    integer :: new_sx, new_sy, new_sz
     integer :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from, &
                i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
     nproc_group = size(left_group)
@@ -523,7 +519,6 @@ contains
     integer, allocatable, intent(in) :: left_group(:), right_group(:)
     integer, intent(in) :: SHIFT
     integer :: nproc_group, q, left_rnk, right_rnk, ierr
-    integer :: new_sx, new_sy, new_sz
     integer :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from, &
                i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
     nproc_group = size(left_group)
@@ -659,7 +654,6 @@ contains
     integer, allocatable, intent(in) :: left_group(:), right_group(:)
     integer, intent(in) :: SHIFT
     integer :: nproc_group, q, left_rnk, right_rnk, ierr
-    integer :: new_sx, new_sy, new_sz
     integer :: i1_from, i2_from, j1_from, j2_from, k1_from, k2_from, &
                i1_to, i2_to, j1_to, j2_to, k1_to, k2_to
     nproc_group = size(left_group)

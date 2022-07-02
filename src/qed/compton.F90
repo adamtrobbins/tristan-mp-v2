@@ -1,7 +1,4 @@
-#include "../defs.F90"
-
 module m_compton
-#ifdef COMPTONSCATTERING
 
   use m_globalnamespace
   use m_qednamespace
@@ -9,6 +6,7 @@ module m_compton
   use m_errors
   use m_bincoupling
   use m_particlelogistics
+#ifdef COMPTONSCATTERING
   implicit none
 
   real(kind=8), parameter :: low_eph_lim = 2d-3

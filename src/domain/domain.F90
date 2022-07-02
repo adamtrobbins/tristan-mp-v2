@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 !--- DOMAIN ----------------------------------------------------!
 ! To store all domain related variables and constructions
 !   - all grid meshblocks are stored as `mesh` type

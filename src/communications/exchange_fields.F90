@@ -1,22 +1,32 @@
-#include "../defs.F90"
-
 module m_exchangefields
   use m_globalnamespace
   use m_aux
   use m_errors
   use m_domain
   use m_fields
+  
+#ifndef MPINONBLOCK
+  private :: findCnt, bufferSendArray
+#endif
+
 contains
 
 #ifndef MPINONBLOCK
   ! blocking MPI communication
   subroutine findCnt(ind1, ind2, ind3, exchangeE, exchangeB, send_cnt)
     implicit none
-    integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
+    integer :: imin, imax, jmin, jmax, kmin, kmax
     logical, intent(in) :: exchangeE, exchangeB
     integer, intent(in) :: ind1, ind2, ind3
     integer, intent(out) :: send_cnt
     ! highlight the region to send and save to `send_fld`
+    imin = -2 * NGHOST
+    imax = -2 * NGHOST
+    jmin = -2 * NGHOST
+    jmax = -2 * NGHOST
+    kmin = -2 * NGHOST
+    kmax = -2 * NGHOST
+
     if (ind1 .eq. 0) then
       imin = 0; imax = this_meshblock % ptr % sx - 1
     else if (ind1 .eq. -1) then
@@ -44,6 +54,12 @@ contains
 #elif twoD
     kmin = 0; kmax = 0
 #endif
+
+    if ((imin .eq. -2 * NGHOST) .or. (imax .eq. -2 * NGHOST) .or. &
+        (jmin .eq. -2 * NGHOST) .or. (jmax .eq. -2 * NGHOST) .or. &
+        (kmin .eq. -2 * NGHOST) .or. (kmax .eq. -2 * NGHOST)) then
+      call throwError("Error: invalid index evaluation in findCnt")
+    end if
 
     send_cnt = 1
     if (exchangeE) then
@@ -63,6 +79,12 @@ contains
     integer, intent(in) :: ind1, ind2, ind3
     integer, intent(in) :: offset
     integer, intent(out) :: send_cnt
+    imin = -2 * NGHOST
+    imax = -2 * NGHOST
+    jmin = -2 * NGHOST
+    jmax = -2 * NGHOST
+    kmin = -2 * NGHOST
+    kmax = -2 * NGHOST
 
     ! highlight the region to send and save to `send_fld`
     if (ind1 .eq. 0) then
@@ -92,6 +114,12 @@ contains
 #elif twoD
     kmin = 0; kmax = 0
 #endif
+
+    if ((imin .eq. -2 * NGHOST) .or. (imax .eq. -2 * NGHOST) .or. &
+        (jmin .eq. -2 * NGHOST) .or. (jmax .eq. -2 * NGHOST) .or. &
+        (kmin .eq. -2 * NGHOST) .or. (kmax .eq. -2 * NGHOST)) then
+      call throwError("Error: invalid index evaluation in bufferSendArray")
+    end if
 
     send_cnt = 1
     do i = imin, imax
@@ -121,6 +149,12 @@ contains
     integer, intent(in) :: ind1, ind2, ind3
     logical, intent(in) :: exchangeE, exchangeB
     integer :: cnt
+    imin = -2 * NGHOST
+    imax = -2 * NGHOST
+    jmin = -2 * NGHOST
+    jmax = -2 * NGHOST
+    kmin = -2 * NGHOST
+    kmax = -2 * NGHOST
 
     ! highlight the region to extract the `recv_fld`
     if (ind1 .eq. 0) then
@@ -150,6 +184,12 @@ contains
 #elif twoD
     kmin = 0; kmax = 0
 #endif
+
+    if ((imin .eq. -2 * NGHOST) .or. (imax .eq. -2 * NGHOST) .or. &
+        (jmin .eq. -2 * NGHOST) .or. (jmax .eq. -2 * NGHOST) .or. &
+        (kmin .eq. -2 * NGHOST) .or. (kmax .eq. -2 * NGHOST)) then
+      call throwError("Error: invalid index evaluation in findCnt")
+    end if
 
     ! copy `recv_fld` to ghost cells
     cnt = 1
@@ -442,10 +482,6 @@ contains
   subroutine exchangeFieldSlabInX(rnk1, rnk2, slab)
     implicit none
     integer, intent(in) :: rnk1, rnk2, slab
-    real, allocatable :: send_slab(:), recv_slab(:)
-    integer :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
-    integer :: i1_recv, i2_recv, j1_recv, j2_recv, k1_recv, k2_recv
-    integer :: rnk_send, rnk_recv
 
     ! `slab < 0` means `rnk1` is sending
     ! `slab > 0` means `rnk1` is receiving
@@ -484,10 +520,6 @@ contains
   subroutine exchangeFieldSlabInY(rnk1, rnk2, slab)
     implicit none
     integer, intent(in) :: rnk1, rnk2, slab
-    real, allocatable :: send_slab(:), recv_slab(:)
-    integer :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
-    integer :: i1_recv, i2_recv, j1_recv, j2_recv, k1_recv, k2_recv
-    integer :: rnk_send, rnk_recv
 
     ! `slab < 0` means `rnk1` is sending
     ! `slab > 0` means `rnk1` is receiving
@@ -526,10 +558,6 @@ contains
   subroutine exchangeFieldSlabInZ(rnk1, rnk2, slab)
     implicit none
     integer, intent(in) :: rnk1, rnk2, slab
-    real, allocatable :: send_slab(:), recv_slab(:)
-    integer :: i1_send, i2_send, j1_send, j2_send, k1_send, k2_send
-    integer :: i1_recv, i2_recv, j1_recv, j2_recv, k1_recv, k2_recv
-    integer :: rnk_send, rnk_recv
 
     ! `slab < 0` means `rnk1` is sending
     ! `slab > 0` means `rnk1` is receiving

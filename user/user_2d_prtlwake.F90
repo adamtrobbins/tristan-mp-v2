@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 module m_userfile
   use m_globalnamespace
   use m_aux
@@ -42,7 +40,8 @@ contains
     real :: userSpatialDistribution
     real, intent(in), optional :: x_glob, y_glob, z_glob
     real, intent(in), optional :: dummy1, dummy2, dummy3
-
+    if (.false.) print *, x_glob, y_glob, z_glob, dummy1, dummy2, dummy3
+    userSpatialDistribution = 0.0
     return
   end function
 
@@ -53,6 +52,8 @@ contains
     real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
     real, intent(in), optional :: dummy1, dummy2, dummy3
+    if (.false.) print *, x_glob, y_glob, z_glob, dummy1, dummy2, dummy3
+    userSLBload = 0.0
     return
   end function
 
@@ -60,10 +61,10 @@ contains
     implicit none
     real :: vx, vy, vz, gamma
     real :: xg, yg, zg
-    integer :: i, j, k, h, npart, rho_larmor
-    real :: nUP, sx_glob, sy_glob, sz_glob
+    integer :: npart
+    real :: nUP, sx_glob, sy_glob, rho_larmor
     type(region) :: back_region
-    integer :: s, ti, tj, tk, p
+    integer :: s, ti, tj, tk
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
@@ -116,8 +117,8 @@ contains
 
   subroutine userInitFields()
     implicit none
-    integer :: i, j, k
-    integer :: i_glob, j_glob, k_glob
+    ! integer :: i, j, k
+    ! integer :: i_glob, j_glob, k_glob
 
     ! uncomment when adding external B-field
     ! real    :: pitch_deg, pitch_rad
@@ -151,6 +152,7 @@ contains
   subroutine userCurrentDeposit(step)
     implicit none
     integer, optional, intent(in) :: step
+    if (.false.) print *, step
     ! called after particles move and deposit ...
     ! ... and before the currents are added to the electric field
   end subroutine userCurrentDeposit
@@ -158,6 +160,7 @@ contains
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
+    if (.false.) print *, step
     ! ... dummy loop ...
     ! integer :: s, ti, tj, tk, p
     ! do s = 1, nspec
@@ -180,6 +183,7 @@ contains
     real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
+    if (.false.) print *, xp, yp, zp
     ! some functions of xp, yp, zp
     ex_ext = 0.0; ey_ext = 0.0; ez_ext = 0.0
     bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
@@ -190,6 +194,7 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
+    if (.false.) print *, step
   end subroutine userParticleBoundaryConditions
 
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
@@ -197,6 +202,7 @@ contains
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
     logical :: updateE_, updateB_
+    if (.false.) print *, step, updateE, updateB
 
     if (present(updateE)) then
       updateE_ = updateE

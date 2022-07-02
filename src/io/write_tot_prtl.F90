@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writetotprtl
 #ifdef HDF5
   use hdf5
@@ -66,6 +64,8 @@ contains
     real, allocatable, dimension(:) :: temp_real_arr
     real :: temp_real1, temp_real2, temp_real3
     logical :: writing_intQ
+
+    if (.false.) print *, time
 
     ! preparation
     ! number of strided particles per each species
@@ -284,6 +284,7 @@ contains
             end select ! select variable
           end do ! strided prtls
         else ! if unrecognized vartype
+          writing_intQ = .false.
           call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(prtl_var_types(p))//'`')
         end if
 

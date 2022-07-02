@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_powerlawplasma
   use m_globalnamespace
   use m_aux

@@ -133,14 +133,14 @@ if (doNormalPushQ) then
   ex0 = ex0_n; ey0 = ey0_n; ez0 = ez0_n
   bx0 = bx0_n; by0 = by0_n; bz0 = bz0_n
 #ifndef VAY
-  include "boris_push.F08"
+#include "boris_push.F08"
 #else
-  include "vay_push.F08"
+#include "vay_push.F08"
 #endif
   pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
   ! compute "effective" velocities for the deposit
-  include "position_update.F08"
+#include "position_update.F08"
   pt_u_eff(p) = u0 * CC * over_e_temp
   pt_v_eff(p) = v0 * CC * over_e_temp
   pt_w_eff(p) = w0 * CC * over_e_temp
@@ -214,8 +214,8 @@ else
 #endif
     dx = dx_; dy = dy_; dz = dz_
 #ifndef DEBUG
-    include "interp_efield.F08"
-    include "interp_bfield.F08"
+#include "interp_efield.F08"
+#include "interp_bfield.F08"
 #else
     call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
                          ex, ey, ez, ex0, ey0, ez0)
@@ -304,8 +304,8 @@ else
 #endif
   dx = dx_; dy = dy_; dz = dz_
 #ifndef DEBUG
-  include "interp_efield.F08"
-  include "interp_bfield.F08"
+#include "interp_efield.F08"
+#include "interp_bfield.F08"
 #else
   call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
                        ex, ey, ez, ex0, ey0, ez0)

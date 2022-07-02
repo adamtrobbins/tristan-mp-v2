@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_staticlb
   use m_globalnamespace
   use m_aux

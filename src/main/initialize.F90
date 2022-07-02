@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_initialize
 #ifdef IFPORT
   use ifport, only: makedirqq
@@ -385,7 +383,9 @@ contains
     ! create output/restart directories
     !   if does not already exist
     !     note: some compilers may not support IFPORT
+#ifdef IFPORT
     logical :: result
+#endif
     diag_file_name = trim(output_dir_name)//'/'//trim(diag_file_name)
     warn_file_name = trim(output_dir_name)//'/'//trim(warn_file_name)
     if (mpi_rank .eq. 0) then

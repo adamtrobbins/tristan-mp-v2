@@ -1,7 +1,4 @@
-#include "../defs.F90"
-
 module m_radiation
-#ifdef RADIATION
   use m_globalnamespace
   use m_outputnamespace, only: rad_spectra, rad_spec_num, rad_spec_min, rad_spec_max, spec_log_bins
   use m_qednamespace
@@ -10,6 +7,7 @@ module m_radiation
   use m_aux
   use m_errors
   use m_particlelogistics
+#ifdef RADIATION
   implicit none
 
   !--- PRIVATE variables/functions -------------------------------!
@@ -53,7 +51,10 @@ contains
     real, intent(in) :: weight
     integer, intent(in) :: s, index, proc
 
-    real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
+    real :: uci, vci, wci, g0, gci, betaci, over_gci
+#ifdef EMIT
+    real :: kx, ky, kz
+#endif
 
     real :: e_bar_x, e_bar_y, e_bar_z, e_bar_sq, beta_dot_e
     real :: chiR, chiR_sq, kappaR_x, kappaR_y, kappaR_z
@@ -154,7 +155,10 @@ contains
     real, intent(in) :: weight
     integer, intent(in) :: s, index, proc
 
-    real :: uci, vci, wci, kx, ky, kz, g0, gci, betaci, over_gci
+    real :: uci, vci, wci, g0, gci, betaci, over_gci
+#ifdef EMIT
+    real :: kx, ky, kz
+#endif
 
     real :: tau_emit, eph_emit, dummy_
     integer :: spec_index

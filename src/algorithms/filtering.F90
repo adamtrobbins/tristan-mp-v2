@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_filtering
   use m_globalnamespace
   use m_aux
@@ -37,7 +35,7 @@ contains
         exit
       else
         ! filter `(NGHOST)` times
-        call filterInAll(NGHOST)
+        call filterInAll(INT(NGHOST))
         n_pass = n_pass + NGHOST
         iter = iter + 1
       end if

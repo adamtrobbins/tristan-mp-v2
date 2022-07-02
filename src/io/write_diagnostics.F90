@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_writediagnostics
 #ifdef HDF5
   use hdf5
@@ -34,10 +32,11 @@ contains
     implicit none
     integer, intent(in) :: step, time
     character(len=STR_MAX) :: stepchar, filename
-    integer :: error, s, i, datarank, d, rnk
+    integer :: error, datarank, d, rnk
     integer(HID_T) :: file_id, dset_id, dspace_id
     integer(HSIZE_T), dimension(1) :: data_dims
     integer, allocatable, dimension(:) :: domain_data
+    if (.false.) print *, time
 
     datarank = 1
     data_dims(1) = mpi_size

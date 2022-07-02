@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_particlebinning
   use m_globalnamespace
   use m_aux
@@ -256,7 +254,7 @@ contains
     type(momentumBin_Sph), intent(inout) :: momentum_bin
     integer, intent(in) :: nparts_in_tile
     real :: d_theta
-    integer :: th_b, ph_b, dummy4
+    integer :: th_b, dummy4
     real :: dummy1, dummy2, dummy3
 
     ! bins go from `0 -> n_theta_bins + 1`...
@@ -288,13 +286,12 @@ contains
       momentum_bin % theta_bins(th_b) % theta_max = dummy2
       momentum_bin % theta_bins(th_b) % theta_mid = dummy3
       momentum_bin % theta_bins(th_b) % n_phi_bins = dummy4
-      call initializePhiBins_Sph(momentum_bin, momentum_bin % theta_bins(th_b), nparts_in_tile)
+      call initializePhiBins_Sph(momentum_bin % theta_bins(th_b), nparts_in_tile)
     end do
   end subroutine initializeThetaBins_Sph
 
-  subroutine initializePhiBins_Sph(momentum_bin, theta_bin, nparts_in_tile)
+  subroutine initializePhiBins_Sph(theta_bin, nparts_in_tile)
     implicit none
-    type(momentumBin_Sph), intent(inout) :: momentum_bin
     type(thetaBin_Sph), intent(inout) :: theta_bin
     integer, intent(in) :: nparts_in_tile
     integer :: ph_b
@@ -358,7 +355,6 @@ contains
     type(positionBin_XYZ), intent(out), allocatable :: position_bins(:, :, :)
     integer, intent(in) :: n_tile_sx, n_tile_sy, n_tile_sz
     integer :: pi, pj, pk
-    integer :: s
 
     allocate (position_bins(n_tile_sx, n_tile_sy, n_tile_sz))
 
@@ -436,9 +432,9 @@ contains
       pj = tile % yi(p) - tile % y1 + 1
       pk = tile % zi(p) - tile % z1 + 1
 
-      pi = floor(REAL(mod(tile % xi(p), n_tile_sx))) + 1
-      pj = floor(REAL(mod(tile % yi(p), n_tile_sy))) + 1
-      pk = floor(REAL(mod(tile % zi(p), n_tile_sz))) + 1
+      pi = floor(REAL(mod(INT(tile % xi(p), 4), n_tile_sx))) + 1
+      pj = floor(REAL(mod(INT(tile % yi(p), 4), n_tile_sy))) + 1
+      pk = floor(REAL(mod(INT(tile % zi(p), 4), n_tile_sz))) + 1
 
       position_bins(pi, pj, pk) % npart = position_bins(pi, pj, pk) % npart + 1
       position_bins(pi, pj, pk) % indices(position_bins(pi, pj, pk) % npart) = p
@@ -459,7 +455,6 @@ contains
 
     integer :: p, pi, pj, pk
     real :: prtl_ux, prtl_uy, prtl_uz, del_ex, del_ey, del_ez, prtl_energy
-    integer :: dummy_int
 
     s = tile % spec
     if ((species(s) % m_sp .eq. 0) .and. (species(s) % ch_sp .eq. 0)) then

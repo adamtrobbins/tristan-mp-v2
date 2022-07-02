@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_finalize
   use m_globalnamespace
   use m_aux
@@ -15,7 +13,6 @@ module m_finalize
 contains
   subroutine finalizeAll()
     implicit none
-    integer :: ierr
     call deallocateArrays()
     call printDiag("deallocateArrays()", 1)
     call finalizeCommunications()
@@ -26,7 +23,7 @@ contains
 
   subroutine deallocateArrays()
     implicit none
-    integer :: i, j, k, ierr
+    integer :: ierr
 
     ! dealloc meshblocks
     if (allocated(meshblocks)) deallocate (meshblocks)

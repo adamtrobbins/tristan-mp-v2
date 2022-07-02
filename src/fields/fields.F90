@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 !--- FIELDS ----------------------------------------------------!
 ! To store all the field related quantities
 !   - field indices go

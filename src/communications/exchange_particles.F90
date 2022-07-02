@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_exchangeparts
   use m_globalnamespace
   use m_readinput, only: getInput
@@ -76,7 +74,7 @@ contains
     integer, pointer, contiguous :: pt_proc(:)
     real, pointer, contiguous :: pt_dx(:), pt_dy(:), pt_dz(:)
     integer :: s, p, send_x, send_y, send_z, ti, tj, tk, ti_p, tj_p, tk_p
-    integer :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag, mpi_tag, mpi_tag2
+    integer :: mpi_sendto, mpi_recvfrom, mpi_tag, mpi_tag2
     integer :: ierr, ind1, ind2, ind3, cntr, temp_xyz
     integer :: cnt_recv_enroute, cnt_send_enroute
     logical :: should_send, should_recv
@@ -93,7 +91,6 @@ contains
 #endif
 
     logical, allocatable :: mpi_sendflags(:), mpi_recvflags(:)
-    logical :: quit_loop
 
     allocate (mpi_req(sendrecv_neighbors))
     allocate (mpi_sendflags(sendrecv_neighbors))
@@ -145,7 +142,7 @@ contains
           end do
         end do
       end do
-#endif ! LOWMEM
+#endif
 
       enroute_bot % get(:, :, :) % cnt = 0
       ! particle crosses MPI blocks //
@@ -200,21 +197,21 @@ contains
 #if defined(oneD) || defined(twoD) || defined(threeD)
                 new_xyz = enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % xi
                 temp_xyz = this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sx
-                new_xyz = -(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2
+                new_xyz = INT(-(send_x - 1) * (2 + send_x) * (new_xyz * (send_x + 1) - (temp_xyz - 1) * send_x) / 2, 2)
                 enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % xi = new_xyz
 #endif
 
 #if defined(twoD) || defined(threeD)
                 new_xyz = enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi
                 temp_xyz = this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sy
-                new_xyz = -(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2
+                new_xyz = INT(-(send_y - 1) * (2 + send_y) * (new_xyz * (send_y + 1) - (temp_xyz - 1) * send_y) / 2, 2)
                 enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi = new_xyz
 #endif
 
 #if defined(threeD)
                 new_xyz = enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi
                 temp_xyz = this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sz
-                new_xyz = -(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2
+                new_xyz = INT(-(send_z - 1) * (2 + send_z) * (new_xyz * (send_z + 1) - (temp_xyz - 1) * send_z) / 2, 2)
                 enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi = new_xyz
 #endif
 
@@ -459,7 +456,7 @@ contains
           end do
         end do
       end do
-#endif ! LOWMEM
+#endif
 
       enroute_bot % get(:, :, :) % cnt = 0
       ! particle crosses MPI blocks //
@@ -735,7 +732,7 @@ contains
     integer :: s, p, send_x, send_y, send_z, ti, tj, tk, ti_p, tj_p, tk_p
     integer :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
     integer :: ierr, ind1, ind2, ind3, cntr
-    integer :: cnt_recv_enroute
+    integer :: cnt_recv_enroute = 0
 
 #ifdef MPI08
     type(MPI_REQUEST), allocatable :: mpi_req(:)
@@ -801,7 +798,7 @@ contains
           end do
         end do
       end do
-#endif ! LOWMEM
+#endif
 
       enroute_bot % get(:, :, :) % cnt = 0
       ! particle crosses MPI blocks //
@@ -908,10 +905,10 @@ contains
                 if (send_y .eq. -1) then
                   enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi = &
                     enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi + &
-                    this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sy
+                    INT(this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sy, 2)
                 else if (send_y .eq. 1) then
                   enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi = &
-                    enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi - this_meshblock % ptr % sy
+                    INT(enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % yi - this_meshblock % ptr % sy, 2)
                 end if
 #endif
 
@@ -919,10 +916,10 @@ contains
                 if (send_z .eq. -1) then
                   enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi = &
                     enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi + &
-                    this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sz
+                    INT(this_meshblock % ptr % neighbor(send_x, send_y, send_z) % ptr % sz, 2)
                 else if (send_z .eq. 1) then
                   enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi = &
-                    enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi - this_meshblock % ptr % sz
+                    enroute_bot % get(send_x, send_y, send_z) % enroute(cntr) % zi - INT(this_meshblock % ptr % sz, 2)
                 end if
 #endif
 

@@ -1,5 +1,3 @@
-#include "../defs.F90"
-
 module m_mover
   use m_globalnamespace
   use m_aux
@@ -21,16 +19,18 @@ contains
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: timestep
-    integer :: s, p, temp_i, ti, tj, tk
+    integer :: s, p, ti, tj, tk
+    integer(kind=2) :: temp_i
     real :: g_temp, over_e_temp, temp_r
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous :: pt_dx(:), pt_dy(:), pt_dz(:), &
                                  pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
     real :: ex0, ey0, ez0, bx0, by0, bz0, q_over_m
-    real :: u0, v0, w0, u1, v1, w1, dummy_, dummy2_, dx, dy, dz
-    logical :: dummy_flag
+    real :: u0, v0, w0, u1, v1, w1, dummy_, dx, dy, dz
+#if defined (EXTERNALFIELDS)
     real :: ex_ext, ey_ext, ez_ext
     real :: bx_ext, by_ext, bz_ext
+#endif
     real :: c000, c100, c001, c101, c010, c110, c011, c111, &
             c00, c01, c10, c11, c0, c1
     integer :: iy, iz, lind
@@ -62,11 +62,14 @@ contains
 #endif
 
 #ifdef RADIATION
+    logical :: dummy_flag
     integer(kind=2) :: xi_rad, yi_rad, zi_rad
     real :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
     real :: u_init, v_init, w_init, dx_rad, dy_rad, dz_rad
     integer, pointer, contiguous :: pt_ind(:)
 #endif
+
+    if (.false.) print *, timestep
 
     iy = this_meshblock % ptr % sx + 2 * NGHOST
     iz = iy * (this_meshblock % ptr % sy + 2 * NGHOST)
@@ -113,7 +116,7 @@ contains
                 ! ... inverse energy: `over_e_temp` ...
                 ! ... reads the velocities from: `pt_*(p)` ...
                 ! ... and updates the particle position `pt_*(p)`
-                include "position_update.F08"
+#include "position_update.F08"
               end do ! p
               pt_xi => null(); pt_yi => null(); pt_zi => null()
               pt_dx => null(); pt_dy => null(); pt_dz => null()
@@ -207,8 +210,8 @@ contains
                 ! these "functions" take
                 ! ... coordinates and linear index: `dx`, `dy`, `dz` and `lind` ...
                 ! ... and "return" `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0`
-                include "interp_efield.F08"
-                include "interp_bfield.F08"
+#include "interp_efield.F08"
+#include "interp_bfield.F08"
 #else
                 call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
                                      ex, ey, ez, ex0, ey0, ez0)
@@ -247,9 +250,9 @@ contains
                 ! ... and the velocities: `u0`, `v0`, `w0` ...
                 ! ... and returns the updated velocities `u0`, `v0`, `w0`
 #ifndef VAY
-                include "boris_push.F08"
+#include "boris_push.F08"
 #else
-                include "vay_push.F08"
+#include "vay_push.F08"
 #endif
                 pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
                 over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -257,14 +260,14 @@ contains
                 ! ... inverse energy: `over_e_temp` ...
                 ! ... reads the velocities from: `pt_*(p)` ...
                 ! ... and updates the particle position `pt_*(p)`
-                include "position_update.F08"
+#include "position_update.F08"
 #else
                 ! . . . . hybrid Boris/GCA pusher . . . .
                 ! this "function"
                 ! ... reads velocities: `pt_*(p)`
                 ! ... and coordinates: `pt_*(p)`
                 ! ... then updates the particle position, velocity, and past coordinates
-                include "gca_routine.F08"
+#include "gca_routine.F08"
 #endif
 
                 ! RADIATION >
