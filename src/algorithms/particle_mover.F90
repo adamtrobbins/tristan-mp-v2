@@ -113,7 +113,7 @@ contains
                 ! ... inverse energy: `over_e_temp` ...
                 ! ... reads the velocities from: `pt_*(p)` ...
                 ! ... and updates the particle position `pt_*(p)`
-                include "position_update.F"
+                include "position_update.F08"
               end do ! p
               pt_xi => null(); pt_yi => null(); pt_zi => null()
               pt_dx => null(); pt_dy => null(); pt_dz => null()
@@ -207,8 +207,8 @@ contains
                 ! these "functions" take
                 ! ... coordinates and linear index: `dx`, `dy`, `dz` and `lind` ...
                 ! ... and "return" `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0`
-                include "interp_efield.F"
-                include "interp_bfield.F"
+                include "interp_efield.F08"
+                include "interp_bfield.F08"
 #else
                 call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
                                      ex, ey, ez, ex0, ey0, ez0)
@@ -247,9 +247,9 @@ contains
                 ! ... and the velocities: `u0`, `v0`, `w0` ...
                 ! ... and returns the updated velocities `u0`, `v0`, `w0`
 #ifndef VAY
-                include "boris_push.F"
+                include "boris_push.F08"
 #else
-                include "vay_push.F"
+                include "vay_push.F08"
 #endif
                 pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
                 over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
@@ -257,14 +257,14 @@ contains
                 ! ... inverse energy: `over_e_temp` ...
                 ! ... reads the velocities from: `pt_*(p)` ...
                 ! ... and updates the particle position `pt_*(p)`
-                include "position_update.F"
+                include "position_update.F08"
 #else
                 ! . . . . hybrid Boris/GCA pusher . . . .
                 ! this "function"
                 ! ... reads velocities: `pt_*(p)`
                 ! ... and coordinates: `pt_*(p)`
                 ! ... then updates the particle position, velocity, and past coordinates
-                include "gca_routine.F"
+                include "gca_routine.F08"
 #endif
 
                 ! RADIATION >

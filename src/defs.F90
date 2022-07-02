@@ -1,4 +1,4 @@
-#define STR_MAX   280
+#define STR_MAX   261
 #define END_LINE  char(10)
 
 #define TINYXYZ   1e-6
@@ -11,9 +11,9 @@
 #ifdef HDF5
 
 #ifdef DPREC
-  #define default_h5_real H5T_NATIVE_DOUBLE
+#define default_h5_real H5T_NATIVE_DOUBLE
 #else
-  #define default_h5_real H5T_NATIVE_REAL
+#define default_h5_real H5T_NATIVE_REAL
 #endif
 
 #endif

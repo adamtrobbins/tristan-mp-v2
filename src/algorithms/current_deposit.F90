@@ -98,7 +98,7 @@ contains
               ! ... the start and end cells + 1: `i1p1`, `i2p1` etc ...
               ! ... the weighted_chargeed charge: `weighted_charge = weight * charge_sp * unit_charge / Bnorm`
               ! ... and deposits proper currents to corresponding components
-              include "zigzag_deposit.F"
+              include "zigzag_deposit.F08"
             end do
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
