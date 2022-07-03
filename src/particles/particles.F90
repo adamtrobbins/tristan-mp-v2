@@ -26,6 +26,7 @@ module m_particles
 
 #ifdef PRTLPAYLOADS
     real, allocatable, dimension(:) :: payload1, payload2, payload3
+    !dir$ attributes align: 64 :: payload1, payload2, payload3
 #endif
     ! > `proc < 0` means the particle will be deleted once the `clearGhostParticles()` is called
   end type particle_tile
@@ -79,14 +80,18 @@ module m_particles
 
   ! particle types for exchange between processors />
   type :: prtl_enroute
+  sequence
+
     ! DEP_PRT [particle-dependent]
     integer(kind=2) :: xi, yi, zi
 
 #ifdef GCA
     integer(kind=2) :: xi_past, yi_past, zi_past
+    integer(kind=2) :: dummy1
 #endif
 
     real :: dx, dy, dz
+    integer(kind=2) :: dummy2
 
 #ifdef GCA
     real :: dx_past, dy_past, dz_past
@@ -103,7 +108,10 @@ module m_particles
 
 #ifdef PRTLPAYLOADS
     real :: payload1, payload2, payload3
+    real :: dummy3
 #endif
+
+    real :: dummy4
 
     integer :: ind, proc
   end type prtl_enroute

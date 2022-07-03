@@ -37,22 +37,22 @@ contains
     call MPI_TYPE_GET_EXTENT(default_mpi_real, lb, extent_real, ierr)
 
 #ifdef GCA
-    additional_int2 = additional_int2 + 3
-    additional_real = additional_real + 8
+    additional_int2 = additional_int2 + 4 ! + 1 dummy
+    additional_real = additional_real + 8 ! + 1 dummy
 #endif
 
 #ifdef PRTLPAYLOADS
-    additional_real = additional_real + 3
+    additional_real = additional_real + 4
 #endif
 
     !     # of blockcounts = 3:
-    !       3  x integer2  [xi, yi, zi]                       | + 3 if GCA [xi_past, yi_past, zi_past]
-    !       7  x real      [dx, dy, dz, u, v, w, weight]      | + 8 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp]
+    !       4  x integer2  [xi, yi, zi]                       | + 3 if GCA [xi_past, yi_past, zi_past] + 1 dummy
+    !       8  x real      [dx, dy, dz, u, v, w, weight]      | + 8 if GCA [dx_past, dy_past, dz_past, u_eff, v_eff, w_eff, u_par, u_perp] + 1 dummy
     !                                                         | + 3 if PRTLPAYLOADS
     !       2  x integer   [ind, proc]
-    blockcounts(0) = 3 + additional_int2
+    blockcounts(0) = 4 + additional_int2 ! + 1 dummy
     oldtypes(0) = MPI_INTEGER2
-    blockcounts(1) = 7 + additional_real
+    blockcounts(1) = 8 + additional_real ! + 1 dummy
     oldtypes(1) = default_mpi_real
     blockcounts(2) = 2 + additional_int
     oldtypes(2) = MPI_INTEGER

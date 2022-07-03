@@ -213,6 +213,7 @@ contains
 #include "interp_efield.F08"
 #include "interp_bfield.F08"
 #else
+                dx = pt_dx(p); dy = pt_dy(p); dz = pt_dz(p)
                 call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
                                      ex, ey, ez, ex0, ey0, ez0)
                 call interpFromFaces(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
