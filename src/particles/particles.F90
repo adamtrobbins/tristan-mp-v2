@@ -90,8 +90,8 @@ module m_particles
     integer(kind=2) :: dummy1
 #endif
 
-    real :: dx, dy, dz
     integer(kind=2) :: dummy2
+    real :: dx, dy, dz
 
 #ifdef GCA
     real :: dx_past, dy_past, dz_past
