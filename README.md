@@ -30,10 +30,10 @@ sudo apt libhdf5-openmpi-dev hdf5-tools
 python3 configure.py --help
 # to configure the code (example)
 python3 configure.py -mpi08 -hdf5 --user=user_2d_rec -2d
-# compile and link
-make
+# compile and link (-j compiles in parallel which is much faster)
+make all -j
 # run the code (on clusters need to do `srun`)
-mpirun -np <NCORES> ./exec/tristan-mp2d -input ../inputs/input.2d_rec
+mpirun -np <NCORES> ./bin/tristan-mp2d -input ../inputs/input.2d_rec
 ```
 
 ### Docker
@@ -117,18 +117,15 @@ __@TODO__
 
 ## Latest Releases
 
-We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>`, increment the:
-- `MAJOR` version when you make incompatible changes,
-- `MINOR` version when you add functionality in a backwards compatible manner, and
-- `PATCH` version when you make backwards compatible bug fixes.
-
 * `v2.5` __Jun 2022__
   * Proper makefile/compilation command
-  * minor warnings on gcc + intel fixed
-* `v2.4.1` __Jun 2022__
   * Double precision option
+* `v2.4` __Jun 2022__
+  * Stress-energy tensor output
+  * `mpi` particle alignment issue
   * Formatting (see the "for developers" section)
   * Compilation linking with non-intel compilers (@TODO: to be tested)
+  * minor warnings on gcc + intel fixed
 * `v2.3` __Feb 2022__
   * Reproducibility (blocking MPI comms)
   * New boundary/injection conditions in the reconnection userfile
@@ -175,3 +172,10 @@ We employ [semantic versioning](https://semver.org/) for this code. Given a vers
   * Slice outputs for 3d added
   * Particle momentum binning improved for downsampling
   * Minor bugs fixed
+
+---
+
+We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>`, increment the:
+- `MAJOR` version when you make incompatible changes,
+- `MINOR` version when you add functionality in a backwards compatible manner, and
+- `PATCH` version when you make backwards compatible bug fixes.
