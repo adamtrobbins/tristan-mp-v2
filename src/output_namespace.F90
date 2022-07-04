@@ -20,7 +20,7 @@ module m_outputnamespace
   logical :: params_enable, prtl_tot_enable
   logical :: flds_tot_enable, spectra_enable, diag_enable
   logical :: flds_at_prtl_enable, xdmf_enable
-  logical :: derivatives_enable, momenta_enable, npart_enable
+  logical :: derivatives_enable, npart_enable, T0i_output_enable, Tij_output_enable, Tii_output_enable
   integer :: tot_output_start, tot_output_interval
   integer :: tot_output_stride      ! particle striding
   integer :: output_flds_istep      ! field downsampling for .tot.

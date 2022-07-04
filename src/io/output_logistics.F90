@@ -7,7 +7,7 @@ module m_outputlogistics
   use m_particles
   use m_fields
   use m_readinput, only: getInput
-  use m_helpers, only: computeDensity, computeMomentum, computeNpart, computeFluidVelocity, computeFluidDensity
+  use m_helpers, only: computeDensity, computeMomentum, computeEnergyMomentum, computeNpart, computeFluidVelocity, computeFluidDensity
   use m_helpers, only: interpFromFaces, interpFromEdges
 #ifdef GCA
   use m_helpers, only: computeDensityGCA
@@ -76,8 +76,10 @@ contains
     call getInput('output', 'flds_at_prtl', flds_at_prtl_enable, .false.)
     call getInput('output', 'write_xdmf', xdmf_enable, .true.)
     call getInput('output', 'write_nablas', derivatives_enable, .false.)
-    call getInput('output', 'write_momenta', momenta_enable, .false.)
     call getInput('output', 'write_npart', npart_enable, .false.)
+    call getInput('output', 'write_T0i', T0i_output_enable, .false.)
+    call getInput('output', 'write_Tii', Tii_output_enable, .false.)
+    call getInput('output', 'write_Tij', Tij_output_enable, .false.)
 
 #if defined(HDF5) && defined(MPI08)
     h5comm = MPI_COMM_WORLD % MPI_VAL
@@ -404,15 +406,27 @@ contains
       fld_vars(n_fld_vars + 1) = 'dens'//STR(s)
       fld_vars(n_fld_vars + 2) = 'enrg'//STR(s)
       n_fld_vars = n_fld_vars + 2
-      if (momenta_enable) then
-        fld_vars(n_fld_vars + 1) = 'momX'//STR(s)
-        fld_vars(n_fld_vars + 2) = 'momY'//STR(s)
-        fld_vars(n_fld_vars + 3) = 'momZ'//STR(s)
-        n_fld_vars = n_fld_vars + 3
-      end if
       if (npart_enable) then
         fld_vars(n_fld_vars + 1) = 'nprt'//STR(s)
         n_fld_vars = n_fld_vars + 1
+      end if
+      if (T0i_output_enable) then
+        fld_vars(n_fld_vars + 1) = 'T0X'//STR(s)
+        fld_vars(n_fld_vars + 2) = 'T0Y'//STR(s)
+        fld_vars(n_fld_vars + 3) = 'T0Z'//STR(s)
+        n_fld_vars = n_fld_vars + 3
+      end if
+      if (Tii_output_enable) then
+        fld_vars(n_fld_vars + 1) = 'TXX'//STR(s)
+        fld_vars(n_fld_vars + 2) = 'TYY'//STR(s)
+        fld_vars(n_fld_vars + 3) = 'TZZ'//STR(s)
+        n_fld_vars = n_fld_vars + 3
+      end if
+      if (Tij_output_enable) then
+        fld_vars(n_fld_vars + 1) = 'TXY'//STR(s)
+        fld_vars(n_fld_vars + 2) = 'TXZ'//STR(s)
+        fld_vars(n_fld_vars + 3) = 'TYZ'//STR(s)
+        n_fld_vars = n_fld_vars + 3
       end if
 #ifdef GCA
       fld_vars(n_fld_vars + 1) = 'dgca'//STR(s)
@@ -562,7 +576,7 @@ contains
     case default
       if (((fld_var(1:4) .ne. 'dens') .and. &
            (fld_var(1:4) .ne. 'enrg') .and. &
-           (fld_var(1:3) .ne. 'mom') .and. &
+           (fld_var(1:1) .ne. 'T') .and. &
            (fld_var(1:4) .ne. 'nprt') .and. &
            (fld_var(1:3) .ne. 'vel') .and. &
            (fld_var(1:4) .ne. 'dgca')) .or. &
@@ -593,7 +607,7 @@ contains
     implicit none
     character(len=STR_MAX), intent(in) :: fldname
     logical, intent(out) :: writing_lgarrQ
-    integer :: s
+    integer :: s, c1, c2
 
     if (fldname(1:4) .eq. 'dens') then
       writing_lgarrQ = .true.
@@ -640,18 +654,41 @@ contains
       call computeDensityGCA(s, reset=.true., ds=output_dens_smooth)
       call exchangeArray()
 #endif
-    else if (fldname(1:3) .eq. 'mom') then
+    else if (fldname(1:1) .eq. 'T') then
+      ! writing stress-tensor components
       writing_lgarrQ = .true.
-      s = STRtoINT(fldname(5:5))
-      if (fldname(4:4) .eq. 'X') then
-        call computeMomentum(s, component=1, reset=.true., ds=output_dens_smooth)
-      else if (fldname(4:4) .eq. 'Y') then
-        call computeMomentum(s, component=2, reset=.true., ds=output_dens_smooth)
-      else if (fldname(4:4) .eq. 'Z') then
-        call computeMomentum(s, component=3, reset=.true., ds=output_dens_smooth)
+      s = STRtoINT(fldname(4:4))
+      if (fldname(2:2) .eq. '0') then
+        c1 = 0
+      else if (fldname(2:2) .eq. 'X') then
+        c1 = 1
+      else if (fldname(2:2) .eq. 'Y') then
+        c1 = 2
+      else if (fldname(2:2) .eq. 'Z') then
+        c1 = 3
       else
-        call throwError('ERROR: unknown component in `mom` output:'//trim(fldname(4:4))//'.')
+        call throwError('ERROR: unknown component in `T` output:'//trim(fldname(2:2))//'.')
       end if
+      
+      if (fldname(3:3) .eq. '0') then
+        c2 = 0
+        call throwError('ERROR: use `enrg` output for T00.')
+      else if (fldname(3:3) .eq. 'X') then
+        c2 = 1
+      else if (fldname(3:3) .eq. 'Y') then
+        c2 = 2
+      else if (fldname(3:3) .eq. 'Z') then
+        c2 = 3
+      else
+        call throwError('ERROR: unknown component in `T` output:'//trim(fldname(3:3))//'.')
+      end if
+
+      if (c1 .eq. 0) then
+        call computeMomentum(s, component=c2, reset=.true., ds=output_dens_smooth)
+      else
+        call computeEnergyMomentum(s, component1=c1, component2=c2, reset=.true., ds=output_dens_smooth)
+      end if
+
       call exchangeArray()
     else
       writing_lgarrQ = .false.

@@ -83,7 +83,7 @@
   flds_at_prtl  = 0              # save fields at particle position [0]
   write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt) [1]
   write_nablas  = 0              # write divE & curlB [0]
-  write_momenta = 0              # write average particle momenta as fields [0]
+  write_T0i = 0              # write average particle momenta as fields [0]
 
   # history output
   hst_enable    = 0              # enable/disable history output [0]
