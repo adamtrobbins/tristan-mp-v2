@@ -485,17 +485,17 @@ else:
                 # clean
                 callCommand('make clean' + suffix)
                 # compile
-                callCommand('make all' + suffix)
+                callCommand('make all -j ' + suffix)
                 # check if compilation successfull
                 simulation.exe = f'tristan-mp{simulation.dimension}d'
                 simulation.exe_full = f'{simulation.path}/{simulation.exe}'
-                if (not os.path.isfile(codedir + '/exec/' + simulation.exe)) and not options.dry:
+                if (not os.path.isfile(codedir + '/bin/' + simulation.exe)) and not options.dry:
                     raise RuntimeError("Something went wrong")
                 testlog.write('compilation'.ljust(46, '.') + '[OK]\n')
                 print('Compilation of `{}` done.'.format(simulation.jobid))
                 # move executable
                 callCommand(
-                    f'mv {codedir}/exec/{simulation.exe} {simulation.path}')
+                    f'mv {codedir}/bin/{simulation.exe} {simulation.path}')
                 # clean
                 callCommand('make clean' + suffix)
                 # write input

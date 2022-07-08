@@ -275,7 +275,7 @@ if args['debug'] != 'OFF':
             makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
         else:
             makefile_options['COMPILER_FLAGS'] += '-fbacktrace -ffpe-trap=invalid,zero,overflow,underflow,denormal '
-    if int(args['debug']) >= 2:
+    if int(args['debug']) >= 2 and (args['intel'] or args['amd']):
         makefile_options['COMPILER_FLAGS'] += '-check all -check noarg_temp_created '
 else:
     makefile_options['COMPILER_FLAGS'] += '-Ofast '
