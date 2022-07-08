@@ -47,6 +47,8 @@ To get started with this approach, make sure to install the Docker (as well as t
 cd docker
 # launch the container in the background (first-time run might take a few mins)
 docker-compose up -d
+# if you are attempting to also force rebuild the container, use the `--build` flag
+docker-compose up -d --build
 # ensure the container is running
 docker ps
 ```
@@ -54,12 +56,12 @@ docker ps
 Then you can attach to the container via VSCode, or if you prefer the terminal, simply attach to the running container by doing:
 ```shell
 docker exec -it trv2 zsh
-# then the code will be in the `/root/tristan-v2` directory
-cd /root/tristan-v2
+# then the code will be in the `/home/$USER/tristan-v2` directory
+cd /home/$USER/tristan-v2
 ```
 To stop the container run `docker-compose stop`. To stop and delete the container simply run `docker-compose down` from the same `docker/` directory.
 
-> Each container has in principle its own isolated filesystem, aside from the shared `/root/tristan-v2` directory. Any changes to the rest of the container's filesystem are discarded when the container is deleted (either via `docker-compose stop` or directly `docker rm <CONTAINER>`).
+> Each container has in principle its own isolated filesystem, aside from the shared `/root/tristan-v2` directory. Any changes to the rest of the container's filesystem are discarded when the container is deleted (either via `docker-compose down` or directly `docker rm <CONTAINER>`).
 
 ## For developers/users
 

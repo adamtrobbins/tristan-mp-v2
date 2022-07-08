@@ -5,7 +5,9 @@ services:
     container_name: trv2
     build:
       context: .
+      args:
+        USERNAME: $USER
     volumes:
       - type: bind
         source: ../
-        target: /root/tristan_v2
+        target: /home/$USER/tristan-v2
