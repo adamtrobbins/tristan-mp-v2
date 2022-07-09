@@ -887,26 +887,26 @@ contains
     integer(kind=2), intent(in) :: i, j, k
     real, intent(in) :: dx, dy, dz
 #ifdef oneD
-    real, intent(inout) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-    real, intent(inout) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-    real, intent(inout) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
+    real, intent(in) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
+    real, intent(in) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
+    real, intent(in) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
 #elif twoD
-    real, intent(inout) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-    real, intent(inout) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-    real, intent(inout) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
+    real, intent(in) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
+    real, intent(in) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
+    real, intent(in) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
 #elif threeD
-    real, intent(inout) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-    real, intent(inout) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-    real, intent(inout) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
+    real, intent(in) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
+    real, intent(in) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
+    real, intent(in) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
 #endif
     real, intent(out) :: intfx, intfy, intfz
     real :: c000, c100, c001, c101, c010, c110, c011, c111, &
@@ -1004,26 +1004,26 @@ contains
     integer(kind=2), intent(in) :: i, j, k
     real, intent(in) :: dx, dy, dz
 #ifdef oneD
-    real, intent(inout) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-    real, intent(inout) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-    real, intent(inout) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
+    real, intent(in) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
+    real, intent(in) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
+    real, intent(in) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
 #elif twoD
-    real, intent(inout) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-    real, intent(inout) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-    real, intent(inout) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
+    real, intent(in) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
+    real, intent(in) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
+    real, intent(in) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
 #elif threeD
-    real, intent(inout) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-    real, intent(inout) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-    real, intent(inout) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                              -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
+    real, intent(in) :: fx(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
+    real, intent(in) :: fy(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
+    real, intent(in) :: fz(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
+                           -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
 #endif
     real, intent(out) :: intfx, intfy, intfz
     real :: c000, c100, c001, c101, c010, c110, c011, c111, &
