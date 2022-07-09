@@ -126,7 +126,7 @@ __@TODO__
   * Stress-energy tensor output
   * `mpi` particle alignment issue
   * Formatting (see the "for developers" section)
-  * Compilation linking with non-intel compilers (@TODO: to be tested)
+  * Compilation linking with non-intel compilers
   * minor warnings on gcc + intel fixed
 * `v2.3` __Feb 2022__
   * Reproducibility (blocking MPI comms)
