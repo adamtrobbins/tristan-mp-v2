@@ -24,7 +24,7 @@ module m_aux
   end type generic_var
 
   type generic_string
-    character(len=STR_MAX), allocatable :: str
+    character(len=STR_MAX) :: str
   end type generic_string
 
   type :: simulation_params
