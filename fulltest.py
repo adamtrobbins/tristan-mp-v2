@@ -194,6 +194,7 @@ class Weibel(Simulation):
             return im, txt1, txt2,
         anim = FuncAnimation(fig, animate, init_func=init,
                              frames=50, interval=500, blit=True, repeat=True)
+        # anim.save('animation.mp4', fps=10)
         plt.tight_layout()
         plt.show()
 
@@ -232,7 +233,7 @@ class Merging(Simulation):
                 '\nmomY [err%]: {:.3f} [{:.4f}%]'.format(momy1, np.abs((momy1 - momy0) * 100 / momy0)) + \
                 '\nmomZ [err%]: {:.3f} [{:.4f}%]'.format(
                 momz1, np.abs((momz1 - momz0) * 100 / (momz0 + 1e-10)))
-        sc1 = ax.scatter([-100], [-100], fc='blue', label='lecs', zorder=2)
+            sc1 = ax.scatter([-100], [-100], fc='blue', label='lecs', zorder=2)
         sc2 = ax.scatter([-100], [-100], fc='red', label='ions', zorder=2)
         lgd = ax.legend(loc='lower right')
         major_ticks = np.arange(
@@ -376,7 +377,7 @@ class AdaptiveLB(Simulation):
 if options.cluster:
     common_flags = ' --cluster={} -hdf5 --debug=1'.format(options.cluster)
 else:
-    common_flags = ' -hdf5 --debug=1'
+    common_flags = ' -hdf5'
 simulations = [
     TwoStream(common_flags,
               params={
@@ -414,13 +415,13 @@ simulations = [
     Merging(common_flags + ' -dwn', nproc=1,
             params={
                 'node_configuration': {'sizex': 1, 'sizey': 1},
-                           'time': {'last': 500},
-                           'grid': {'mx0': 50, 'my0': 50, 'tileX': 10, 'tileY': 10},
-                           'algorithm': {'nfilter': 0},
-                           'output': {'interval': 10, 'stride': 1, 'smooth_window': 0, 'write_nablas': 1},
-                           'plasma': {'ppc0': 50, 'sigma': 5, 'c_omp': 50},
-                           'particles': {'nspec': 2, 'maxptl1': 1e8, 'm1': 1, 'ch1': -1, 'dwn1': 1, 'maxptl2': 1e8, 'm2': 1, 'ch2': 1, 'dwn2': 1},
-                           'downsampling': {'interval': 1, 'start': 1, 'max_weight': 1e5, 'cartesian_bins': 1, 'energy_min': 0, 'energy_max': 1e5, 'int_weights': 0, 'dynamic_bins': 1, 'mom_bins': 1, 'mom_spread': 1e5}
+                'time': {'last': 500},
+                'grid': {'mx0': 50, 'my0': 50, 'tileX': 10, 'tileY': 10},
+                'algorithm': {'nfilter': 0},
+                'output': {'interval': 10, 'stride': 1, 'smooth_window': 0, 'write_nablas': 1},
+                'plasma': {'ppc0': 50, 'sigma': 5, 'c_omp': 50},
+                'particles': {'nspec': 2, 'maxptl1': 1e8, 'm1': 1, 'ch1': -1, 'dwn1': 1, 'maxptl2': 1e8, 'm2': 1, 'ch2': 1, 'dwn2': 1},
+                'downsampling': {'interval': 1, 'start': 1, 'max_weight': 1e5, 'cartesian_bins': 1, 'energy_min': 0, 'energy_max': 1e5, 'int_weights': 0, 'dynamic_bins': 1, 'mom_bins': 1, 'mom_spread': 1e5}
             }
             ),
     AdaptiveLB(common_flags + ' -alb', nproc=192,
@@ -472,7 +473,7 @@ else:
             if not options.r and not options.dry:
                 os.makedirs(simulation.path)
             testlog.write(('TEST_#{}_'.format(ii+1) +
-                          simulation.jobid).ljust(50, '.') + '\n')
+                           simulation.jobid).ljust(50, '.') + '\n')
             # configure
             config_command = 'python3 configure.py'
             config_command += simulation.flags
@@ -508,7 +509,8 @@ else:
                             for var in simulation.params[block].keys():
                                 inp.write('  {}  =  {}\n'.format(
                                     var, simulation.params[block][var]))
-                testlog.write('input file'.ljust(46, '.') + '[OK]\n')
+                                testlog.write(
+                                    'input file'.ljust(46, '.') + '[OK]\n')
             # write submit
             simulation.submit = 'submit_' + simulation.jobid
             simulation.submit_full = simulation.path + '/' + simulation.submit
@@ -537,7 +539,7 @@ else:
                     sub.write('\nmkdir $OUTPUT_DIR\n\n')
                     sub.write(
                         'srun $EXECUTABLE -i $INPUT -o $OUTPUT_DIR -s $SLICE_DIR -r $RESTART_DIR -R $RESTART > $REPORT_FILE 2> $ERROR_FILE')
-            testlog.write('submit file'.ljust(46, '.') + '[OK]\n')
+                    testlog.write('submit file'.ljust(46, '.') + '[OK]\n')
             testlog.write('\n\n')
         if (not options.c) or (options.r):
             for ii, simulation in enumerate(simulations):
