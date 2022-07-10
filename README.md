@@ -122,6 +122,7 @@ __@TODO__
 * `v2.5` __Jun 2022__
   * Proper makefile/compilation command
   * Double precision option
+  * Auto converter for public version releases
 * `v2.4` __Jun 2022__
   * Stress-energy tensor output
   * `mpi` particle alignment issue
