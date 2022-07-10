@@ -1,5 +1,3 @@
-#include "../../defs.F90"
-
 ! save interpolation of fields at `t = n`
 ex0_n = ex0; ey0_n = ey0; ez0_n = ez0
 bx0_n = bx0; by0_n = by0; bz0_n = bz0

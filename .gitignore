@@ -13,6 +13,9 @@
 !dev-requirements.txt
 !.vscode
 !docker
-!makedepf90
+!extern/
+!CITATION
+!LICENSE
+extern/public/
 .vscode/*.log
 __pycache__

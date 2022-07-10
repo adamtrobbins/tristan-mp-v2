@@ -431,13 +431,12 @@ contains
                     end do
                   end do
                 end do
-
-              end if ! if receive is ready
-            end if ! if receive hasn't been done yet
-          end do ! ind3
-        end do ! ind2
-      end do ! ind1
-    end do ! global loop
+              end if
+            end if
+          end do
+        end do
+      end do
+    end do
     lg_arr(:, :, :) = lg_arr(:, :, :) + jx_buff(:, :, :)
     call printDiag("exchangeArray()", 3)
   end subroutine exchangeArray
