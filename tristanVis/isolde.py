@@ -14,6 +14,7 @@ def getParticles(fname):
     for s in range(nspec):
       data[str(s + 1)] = {}
       for i in range(nvars):
+        if (not (variables[i] + '_' + str(s + 1)) in file): continue
         (data[str(s + 1)])[variables[i]] = file[variables[i] + '_' + str(s + 1)][:]
   return data
 

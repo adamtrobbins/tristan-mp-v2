@@ -25,6 +25,24 @@ contains
     implicit none
   end subroutine userReadInput
 
+#ifdef PRTLPAYLOADS
+  elemental subroutine usrSetPhPld(u0, v0, w0, over_e_temp, incr_pld1, incr_pld2, incr_pld3)
+    !$omp declare simd(usrSetPhPld)
+    real, intent(in) :: u0, v0, w0, over_e_temp
+    real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
+  end subroutine
+  elemental subroutine usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, ex0, &
+                                   ey0, ez0, bx0, by0, bz0, incr_pld1, incr_pld2, incr_pld3)
+    !$omp declare simd(usrSetElPld)
+    real, intent(in) :: q_over_m, u0, v0, w0, over_e_temp, ex0, ey0, ez0, bx0, by0, bz0
+    real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
+  end subroutine
+#endif
+
+  subroutine userDeallocate()
+    implicit none
+  end subroutine userDeallocate
+
   function userSpatialDistribution(x_glob, y_glob, z_glob, &
                                    dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
@@ -145,6 +163,28 @@ contains
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
+
+  subroutine writeUsrRestart(timestep, rst_dir)
+    implicit none
+    integer, intent(in) :: timestep
+    character(len=STR_MAX), intent(in) :: rst_dir
+    character(len=STR_MAX) :: filename, mpichar
+    write (mpichar, "(i8.8)") mpi_rank
+    filename = trim(rst_dir)//'/usr.rst.'//trim(mpichar)
+    open (UNIT_restart_usr, file=filename, status="replace", form="unformatted")
+    close (UNIT_restart_usr)
+  end subroutine writeUsrRestart
+
+  subroutine readUsrRestart()
+    implicit none
+    integer :: i1, i2, j1, j2, k1, k2
+    character(len=STR_MAX) :: filename, mpichar
+    write (mpichar, "(i8.8)") mpi_rank
+    filename = trim(restart_from)//'/usr.rst.'//trim(mpichar)
+    open (UNIT_restart_usr, file=filename, form="unformatted")
+    rewind (UNIT_restart_usr)
+    close (UNIT_restart_usr)
+  end subroutine readUsrRestart
 
   !--- user-specific output -----------------------------------!
 #ifdef USROUTPUT

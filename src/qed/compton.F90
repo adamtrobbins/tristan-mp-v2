@@ -107,7 +107,7 @@ contains
 
     ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2, &
-                               el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2)
+                               el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2, Compton_clone_sets)
     ! the particles that form the pair list have already been abstractly split ...
     ! ... the 'splitting' is done only within the list of pairs at this stage ...
     ! ... actual weight > 1 particles have not (yet) been split.
@@ -136,6 +136,8 @@ contains
       ! ... `wei_split_tot` is what is actually available to scatter due to ...
       ! ... non-ideal pairing:
       P_corr = P_corr * min(wei_1, wei_2) / wei_split_tot
+
+      ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       ! reduce # pairs to loop over in dense regions:
       ! if (num_pairs .gt. FLOOR(ppt0)) then
       !   P_max = 2.0 * P_corr ! tight upper bound on max P_12 for Compton
@@ -150,6 +152,12 @@ contains
       ! ... the undersampling is not justified in the first place):
       ! P_corr = P_corr * REAL(num_pairs) / REAL(num_pairs_max)
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      if (Compton_nph_over_ne .ge. 1.0) then
+        P_corr = P_corr * Compton_nph_over_ne
+      else
+        P_corr = P_corr / Compton_nph_over_ne
+      end if
 
       do el_ph = 1, num_pairs
         ! "extract" the el-photon pair:
@@ -189,17 +197,25 @@ contains
 
         ! compute cross section:
         call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
+#ifdef DEBUG
+        if ((P_12 .lt. 0.0) .or. (P_12 .gt. (16.0 / 3.0))) then
+          print *, 'P_12 = ', P_12
+          print *, eph, wei_ph, kph_x, kph_y, kph_z
+          call throwError('Compton cross section P_12 out of bounds!')
+        end if
+#endif
+
         ! to match the optical depth with the binary pairing case:
         P_12 = P_12 * P_corr
 #ifdef DEBUG
         if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
           print *, 'P_12 = ', P_12
           print *, eph, wei_ph, kph_x, kph_y, kph_z
-          call throwError('Compton cross section P_12 out of bounds!')
+          call throwError('Normalized Compton scattering probability P_12 out of bounds!')
         end if
 #else
         if ((P_12 .gt. 1.0)) then
-          call addWarning(3)
+          call addWarning(2)
         end if
 #endif
 
@@ -242,8 +258,8 @@ contains
           end if
 #endif
           ! el update:
-          if (Compton_el_recoil) then
-            if (wei_el .eq. wei_split) then
+          if (Compton_el_recoil .and. (random(dseed) .le. Compton_nph_over_ne)) then
+            if (abs(wei_el - wei_split) .le. TINYWEI) then
               u_el = u_el_new
               v_el = v_el_new
               w_el = w_el_new
@@ -251,6 +267,9 @@ contains
               wei_el = wei_el - wei_split
               ! this is done for safety but is not supposed to happen:
               if (wei_el .le. TINYWEI) then
+#ifdef DEBUG
+                call throwError('ERROR: Electron weight after splitting in Compton <= 0!')
+#endif
                 species(s1) % prtl_tile(ti, tj, tk) % proc(p1) = -1
               end if
               call createParticle(s1, species(s1) % prtl_tile(ti, tj, tk) % xi(p1), &
@@ -263,22 +282,27 @@ contains
             end if
           end if
           ! photon update:
-          if (wei_ph .eq. wei_split) then
-            u_ph = u_ph_new
-            v_ph = v_ph_new
-            w_ph = w_ph_new
-          else ! split photon:
-            wei_ph = wei_ph - wei_split
-            if (wei_ph .le. TINYWEI) then
-              species(s2) % prtl_tile(ti, tj, tk) % proc(p2) = -1
+          if (random(dseed) .le. (1.0 / Compton_nph_over_ne)) then
+            if (abs(wei_ph - wei_split) .le. TINYWEI) then
+              u_ph = u_ph_new
+              v_ph = v_ph_new
+              w_ph = w_ph_new
+            else ! split photon:
+              wei_ph = wei_ph - wei_split
+              if (wei_ph .le. TINYWEI) then
+#ifdef DEBUG
+                call throwError('ERROR: Photon weight after splitting in Compton <= 0!')
+#endif
+                species(s2) % prtl_tile(ti, tj, tk) % proc(p2) = -1
+              end if
+              call createParticle(s2, species(s2) % prtl_tile(ti, tj, tk) % xi(p2), &
+                                  species(s2) % prtl_tile(ti, tj, tk) % yi(p2), &
+                                  species(s2) % prtl_tile(ti, tj, tk) % zi(p2), &
+                                  species(s2) % prtl_tile(ti, tj, tk) % dx(p2), &
+                                  species(s2) % prtl_tile(ti, tj, tk) % dy(p2), &
+                                  species(s2) % prtl_tile(ti, tj, tk) % dz(p2), &
+                                  u_ph_new, v_ph_new, w_ph_new, weight=wei_split)
             end if
-            call createParticle(s2, species(s2) % prtl_tile(ti, tj, tk) % xi(p2), &
-                                species(s2) % prtl_tile(ti, tj, tk) % yi(p2), &
-                                species(s2) % prtl_tile(ti, tj, tk) % zi(p2), &
-                                species(s2) % prtl_tile(ti, tj, tk) % dx(p2), &
-                                species(s2) % prtl_tile(ti, tj, tk) % dy(p2), &
-                                species(s2) % prtl_tile(ti, tj, tk) % dz(p2), &
-                                u_ph_new, v_ph_new, w_ph_new, weight=wei_split)
           end if
         end if
         u_el => null(); v_el => null(); w_el => null(); wei_el => null()

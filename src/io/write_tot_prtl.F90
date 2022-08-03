@@ -3,9 +3,8 @@ module m_writetotprtl
   use hdf5
   use m_globalnamespace, only: h5comm, h5info
 #endif
-  use m_globalnamespace, only: output_dir_name, mpi_rank
-  use m_outputnamespace, only: tot_output_stride, n_prtl_vars, &
-                               prtl_vars, prtl_var_types
+  use m_globalnamespace, only: output_dir_name, mpi_rank, output_dir_prtl
+  use m_outputnamespace, only: tot_output_stride
   use m_aux
   use m_errors, only: throwError
   use m_domain
@@ -71,7 +70,7 @@ contains
     ! number of strided particles per each species
     do s = 1, nspec
       npart_stride(s) = 0
-      if (.not. species(s) % output_sp) cycle
+      if (.not. species(s) % output_sp_prtl) cycle
       do ti = 1, species(s) % tile_nx
         do tj = 1, species(s) % tile_ny
           do tk = 1, species(s) % tile_nz
@@ -90,7 +89,7 @@ contains
                        MPI_COMM_WORLD, ierr)
 
     write (stepchar, "(i5.5)") step
-    filename = trim(output_dir_name)//'/prtl.tot.'//trim(stepchar)
+    filename = trim(output_dir_prtl)//'/prtl.tot.'//trim(stepchar)
 
     call h5open_f(error)
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
@@ -140,14 +139,13 @@ contains
 
       call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error)
       call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
-
-      do p = 1, n_prtl_vars
+      do p = 1, species(s) % n_prtl_vars_sp
         ! dataset name `var_name` + '_' + `species #`
-        ln_ = len(trim(prtl_vars(p)))
-        dsetname(1:ln_ + 2) = trim(prtl_vars(p))//'_'//trim(STR(s))
+        ln_ = len(trim(species(s) % prtl_vars_sp(p)))
+        dsetname(1:ln_ + 2) = trim(species(s) % prtl_vars_sp(p))//'_'//trim(STR(s))
         dsetname(ln_ + 3:7) = ' '
         ! creating dataset for a given type
-        if (trim(prtl_var_types(p)) .eq. 'int') then
+        if (trim(species(s) % prtl_var_types_sp(p)) .eq. 'int') then
           writing_intQ = .true.
           ! Create dataset
           allocate (temp_int_arr(npart_stride(s)))
@@ -156,7 +154,7 @@ contains
             ti = stride_ti_arr(j)
             tj = stride_tj_arr(j)
             tk = stride_tk_arr(j)
-            select case (trim(prtl_vars(p))) ! select integer variable
+            select case (trim(species(s) % prtl_vars_sp(p))) ! select integer variable
             case ('ind')
               temp_int = species(s) % prtl_tile(ti, tj, tk) % ind(temp)
               temp_int_arr(j) = temp_int
@@ -164,13 +162,13 @@ contains
               temp_int = species(s) % prtl_tile(ti, tj, tk) % proc(temp)
               temp_int_arr(j) = temp_int
             case default
-              call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
+              call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(species(s) % prtl_vars_sp(p))//'`')
             end select
           end do
-        else if (trim(prtl_var_types(p)) .eq. 'real') then
+        else if (trim(species(s) % prtl_var_types_sp(p)) .eq. 'real') then
           writing_intQ = .false.
-          if (prtl_vars(p) (1:4) .eq. 'dens') then
-            dummy_s = STRtoINT(prtl_vars(p) (5:5))
+          if (species(s) % prtl_vars_sp(p) (1:4) .eq. 'dens') then
+            dummy_s = STRtoINT(species(s) % prtl_vars_sp(p) (5:5))
             call computeDensity(dummy_s, reset=.true.) ! filled `lg_arr` with density of species `s`
             call exchangeArray()
           end if
@@ -181,7 +179,7 @@ contains
             ti = stride_ti_arr(j)
             tj = stride_tj_arr(j)
             tk = stride_tk_arr(j)
-            select case (trim(prtl_vars(p)))
+            select case (trim(species(s) % prtl_vars_sp(p)))
             case ('x')
               temp_int = species(s) % prtl_tile(ti, tj, tk) % xi(temp)
               temp_real1 = species(s) % prtl_tile(ti, tj, tk) % dx(temp)
@@ -213,7 +211,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
-                                   ex, ey, ez, temp_real1, temp_real2, temp_real3)
+                                   ex, ey, ez, temp_real1, temp_real2, temp_real3, comp=1)
               temp_real_arr(j) = temp_real1 * B_norm
             case ('ey')
               call interpFromEdges(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
@@ -222,7 +220,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
-                                   ex, ey, ez, temp_real1, temp_real2, temp_real3)
+                                   ex, ey, ez, temp_real1, temp_real2, temp_real3, comp=2)
               temp_real_arr(j) = temp_real2 * B_norm
             case ('ez')
               call interpFromEdges(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
@@ -231,7 +229,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
-                                   ex, ey, ez, temp_real1, temp_real2, temp_real3)
+                                   ex, ey, ez, temp_real1, temp_real2, temp_real3, comp=3)
               temp_real_arr(j) = temp_real3 * B_norm
             case ('bx')
               call interpFromFaces(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
@@ -240,7 +238,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
-                                   bx, by, bz, temp_real1, temp_real2, temp_real3)
+                                   bx, by, bz, temp_real1, temp_real2, temp_real3, comp=1)
               temp_real_arr(j) = temp_real1 * B_norm
             case ('by')
               call interpFromFaces(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
@@ -249,7 +247,7 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
-                                   bx, by, bz, temp_real1, temp_real2, temp_real3)
+                                   bx, by, bz, temp_real1, temp_real2, temp_real3, comp=2)
               temp_real_arr(j) = temp_real2 * B_norm
             case ('bz')
               call interpFromFaces(species(s) % prtl_tile(ti, tj, tk) % dx(temp), &
@@ -258,16 +256,16 @@ contains
                                    species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                    species(s) % prtl_tile(ti, tj, tk) % zi(temp), &
-                                   bx, by, bz, temp_real1, temp_real2, temp_real3)
+                                   bx, by, bz, temp_real1, temp_real2, temp_real3, comp=3)
               temp_real_arr(j) = temp_real3 * B_norm
             case default
-              if (prtl_vars(p) (1:4) .eq. 'dens') then
+              if (species(s) % prtl_vars_sp(p) (1:4) .eq. 'dens') then
                 temp_real_arr(j) = lg_arr(species(s) % prtl_tile(ti, tj, tk) % xi(temp), &
                                           species(s) % prtl_tile(ti, tj, tk) % yi(temp), &
                                           species(s) % prtl_tile(ti, tj, tk) % zi(temp))
 #ifdef PRTLPAYLOADS
-              else if (prtl_vars(p) (1:3) .eq. 'pld') then
-                dummy_s = STRtoINT(prtl_vars(p) (4:4))
+              else if (species(s) % prtl_vars_sp(p) (1:3) .eq. 'pld') then
+                dummy_s = STRtoINT(species(s) % prtl_vars_sp(p) (4:4))
                 if (dummy_s .eq. 1) then
                   temp_real_arr(j) = species(s) % prtl_tile(ti, tj, tk) % payload1(temp)
                 else if (dummy_s .eq. 2) then
@@ -279,13 +277,13 @@ contains
                 end if
 #endif
               else
-                call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(prtl_vars(p))//'`')
+                call throwError('ERROR: unrecognized `prtl_vars`: `'//trim(species(s) % prtl_vars_sp(p))//'`')
               end if
             end select ! select variable
           end do ! strided prtls
         else ! if unrecognized vartype
           writing_intQ = .false.
-          call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(prtl_var_types(p))//'`')
+          call throwError('ERROR: unrecognized `prtl_var_types`: `'//trim(species(s) % prtl_var_types_sp(p))//'`')
         end if
 
         if (writing_intQ) then

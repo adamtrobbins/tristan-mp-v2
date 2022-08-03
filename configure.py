@@ -137,6 +137,11 @@ parser.add_argument('-vay',
                     default=False,
                     help='enable Vay pusher')
 
+parser.add_argument('-blinne',
+                    action='store_true',
+                    default=False,
+                    help='enable Blinne field solver')
+
 parser.add_argument('-payload',
                     action='store_true',
                     default=False,
@@ -335,6 +340,8 @@ if args['gca'] != 'OFF':
         str(args['gca']) + ' '
 if args['vay']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DVAY '
+if args['blinne']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DBLINNE '
 if args['payload']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
 if args['usroutput']:

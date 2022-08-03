@@ -5,6 +5,9 @@ module m_helpers
   use m_domain
   use m_particles
   use m_fields
+#ifdef QED
+  use m_qednamespace
+#endif
   implicit none
 contains
   logical function numbersAreClose(number1, number2)
@@ -285,6 +288,9 @@ contains
 
     if (species(s) % m_sp .le. 0) then
       contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
+#ifdef COMPTONSCATTERING
+      contrib = contrib * Compton_nph_over_ne
+#endif
     else
       if (charge_) then
         contrib = species(s) % ch_sp / (2.0 * REAL(ds_) + 1.0)**pow
@@ -338,6 +344,94 @@ contains
     end do
   end subroutine computeDensity
 
+  subroutine computePrtCurr(s, component, reset, ds)
+    ! DEP_PRT [particle-dependent]
+    implicit none
+    integer, intent(in) :: s, component
+    logical, intent(in) :: reset
+    integer, optional, intent(in) :: ds
+    integer :: p, ti, tj, tk
+    integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
+    real, pointer, contiguous :: pt_u(:), pt_v(:), pt_w(:), pt_wei(:)
+    integer(kind=2) :: i, j, k
+    integer :: i1, i2, j1, j2, k1, k2, ds_
+    integer :: pow
+    logical :: charged
+    real :: comp
+    real :: contrib
+
+    if (.not. present(ds)) then
+      ds_ = 2
+    else
+      ds_ = ds
+    end if
+
+#ifdef oneD
+    pow = 1
+#elif twoD
+    pow = 2
+#elif threeD
+    pow = 3
+#endif
+
+    contrib = species(s) % ch_sp / (2.0 * REAL(ds_) + 1.0)**pow
+
+    if (reset) then
+      lg_arr(:, :, :) = 0
+    end if
+    do ti = 1, species(s) % tile_nx
+      do tj = 1, species(s) % tile_ny
+        do tk = 1, species(s) % tile_nz
+          pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
+          pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
+          pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
+          pt_wei => species(s) % prtl_tile(ti, tj, tk) % weight
+          pt_u => species(s) % prtl_tile(ti, tj, tk) % u
+          pt_v => species(s) % prtl_tile(ti, tj, tk) % v
+          pt_w => species(s) % prtl_tile(ti, tj, tk) % w
+          do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
+            i = pt_xi(p); j = pt_yi(p); k = pt_zi(p)
+            if (component .eq. 1) then
+              comp = pt_u(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+            else if (component .eq. 2) then
+              comp = pt_v(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+            else if (component .eq. 3) then
+              comp = pt_w(p) / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
+            end if
+
+            i1 = 0; i2 = 0
+            j1 = 0; j2 = 0
+            k1 = 0; k2 = 0
+#if defined(oneD) || defined (twoD) || defined (threeD)
+            i1 = max(i - ds_, -NGHOST)
+            i2 = min(i + ds_, this_meshblock % ptr % sx + NGHOST - 1)
+#endif
+#if defined (twoD) || defined (threeD)
+            j1 = max(j - ds_, -NGHOST)
+            j2 = min(j + ds_, this_meshblock % ptr % sy + NGHOST - 1)
+#endif
+#if defined (threeD)
+            k1 = max(k - ds_, -NGHOST)
+            k2 = min(k + ds_, this_meshblock % ptr % sz + NGHOST - 1)
+#endif
+
+            do k = k1, k2
+              do j = j1, j2
+                do i = i1, i2
+                  lg_arr(i, j, k) = lg_arr(i, j, k) + comp * pt_wei(p) * contrib
+                end do
+              end do
+            end do
+
+          end do
+          pt_xi => null(); pt_yi => null(); pt_zi => null()
+          pt_u => null(); pt_v => null(); pt_w => null()
+          pt_wei => null()
+        end do
+      end do
+    end do
+  end subroutine computePrtCurr
+
   subroutine computeMomentum(s, component, reset, ds)
     ! DEP_PRT [particle-dependent]
     implicit none
@@ -369,6 +463,9 @@ contains
     massive = (species(s) % m_sp .gt. 0)
     if (.not. massive) then
       contrib = 1.0 / (2.0 * REAL(ds_) + 1.0)**pow
+#ifdef COMPTONSCATTERING
+      contrib = contrib * Compton_nph_over_ne
+#endif
     else
       contrib = species(s) % m_sp / (2.0 * REAL(ds_) + 1.0)**pow
     end if
@@ -400,6 +497,9 @@ contains
               comp = pt_v(p)
             else if (component .eq. 3) then
               comp = pt_w(p)
+            else if (component .eq. 4) then
+              comp = pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2  ! momentum squared
+              if (massive) comp = comp * species(s) % m_sp
             end if
 
             i1 = 0; i2 = 0
@@ -882,7 +982,7 @@ contains
 
   subroutine interpFromEdges(dx, dy, dz, i, j, k, &
                              fx, fy, fz, &
-                             intfx, intfy, intfz)
+                             intfx, intfy, intfz, comp)
     implicit none
     integer(kind=2), intent(in) :: i, j, k
     real, intent(in) :: dx, dy, dz
@@ -911,95 +1011,108 @@ contains
     real, intent(out) :: intfx, intfy, intfz
     real :: c000, c100, c001, c101, c010, c110, c011, c111, &
             c00, c01, c10, c11, c0, c1
+    integer, optional, intent(in) :: comp
+    integer :: comp_
+    if (.not. present(comp)) then
+      comp_ = 0
+    else
+      comp_ = comp
+    end if
     ! f_x
+    if ((comp_ .eq. 1) .or. (comp_ .le. 0)) then
 #ifdef oneD
-    c0 = 0.5 * (fx(i, j, k) + fx(i - 1, j, k))
-    c1 = 0.5 * (fx(i, j, k) + fx(i + 1, j, k))
-    intfx = c0 * (1 - dx) + c1 * dx
+      c0 = 0.5 * (fx(i, j, k) + fx(i - 1, j, k))
+      c1 = 0.5 * (fx(i, j, k) + fx(i + 1, j, k))
+      intfx = c0 * (1 - dx) + c1 * dx
 #elif defined(twoD) || defined(threeD)
-    c000 = 0.5 * (fx(i, j, k) + fx(i - 1, j, k))
-    c100 = 0.5 * (fx(i, j, k) + fx(i + 1, j, k))
-    c010 = 0.5 * (fx(i, j + 1, k) + fx(i - 1, j + 1, k))
-    c110 = 0.5 * (fx(i, j + 1, k) + fx(i + 1, j + 1, k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
+      c000 = 0.5 * (fx(i, j, k) + fx(i - 1, j, k))
+      c100 = 0.5 * (fx(i, j, k) + fx(i + 1, j, k))
+      c010 = 0.5 * (fx(i, j + 1, k) + fx(i - 1, j + 1, k))
+      c110 = 0.5 * (fx(i, j + 1, k) + fx(i + 1, j + 1, k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
 #ifdef twoD
-    intfx = c0
+      intfx = c0
 #else
-    c001 = 0.5 * (fx(i, j, k + 1) + fx(i - 1, j, k + 1))
-    c101 = 0.5 * (fx(i, j, k + 1) + fx(i + 1, j, k + 1))
-    c011 = 0.5 * (fx(i, j + 1, k + 1) + fx(i - 1, j + 1, k + 1))
-    c111 = 0.5 * (fx(i, j + 1, k + 1) + fx(i + 1, j + 1, k + 1))
-    c01 = c001 * (1 - dx) + c101 * dx
-    c11 = c011 * (1 - dx) + c111 * dx
-    c1 = c01 * (1 - dy) + c11 * dy
-    intfx = c0 * (1 - dz) + c1 * dz
+      c001 = 0.5 * (fx(i, j, k + 1) + fx(i - 1, j, k + 1))
+      c101 = 0.5 * (fx(i, j, k + 1) + fx(i + 1, j, k + 1))
+      c011 = 0.5 * (fx(i, j + 1, k + 1) + fx(i - 1, j + 1, k + 1))
+      c111 = 0.5 * (fx(i, j + 1, k + 1) + fx(i + 1, j + 1, k + 1))
+      c01 = c001 * (1 - dx) + c101 * dx
+      c11 = c011 * (1 - dx) + c111 * dx
+      c1 = c01 * (1 - dy) + c11 * dy
+      intfx = c0 * (1 - dz) + c1 * dz
 #endif
 #endif
+    end if
 
     ! f_y
+    if ((comp_ .eq. 2) .or. (comp_ .le. 0)) then
 #ifdef oneD
-    c0 = 0.5 * (fy(i, j, k) + fy(i, j, k))
-    c1 = 0.5 * (fy(i + 1, j, k) + fy(i + 1, j, k))
-    intfy = c0 * (1 - dx) + c1 * dx
+      c0 = 0.5 * (fy(i, j, k) + fy(i, j, k))
+      c1 = 0.5 * (fy(i + 1, j, k) + fy(i + 1, j, k))
+      intfy = c0 * (1 - dx) + c1 * dx
 #elif defined(twoD) || defined(threeD)
-    c000 = 0.5 * (fy(i, j, k) + fy(i, j - 1, k))
-    c100 = 0.5 * (fy(i + 1, j, k) + fy(i + 1, j - 1, k))
-    c010 = 0.5 * (fy(i, j, k) + fy(i, j + 1, k))
-    c110 = 0.5 * (fy(i + 1, j, k) + fy(i + 1, j + 1, k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
+      c000 = 0.5 * (fy(i, j, k) + fy(i, j - 1, k))
+      c100 = 0.5 * (fy(i + 1, j, k) + fy(i + 1, j - 1, k))
+      c010 = 0.5 * (fy(i, j, k) + fy(i, j + 1, k))
+      c110 = 0.5 * (fy(i + 1, j, k) + fy(i + 1, j + 1, k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
 #ifdef twoD
-    intfy = c0
+      intfy = c0
 #else
-    c001 = 0.5 * (fy(i, j, k + 1) + fy(i, j - 1, k + 1))
-    c101 = 0.5 * (fy(i + 1, j, k + 1) + fy(i + 1, j - 1, k + 1))
-    c011 = 0.5 * (fy(i, j, k + 1) + fy(i, j + 1, k + 1))
-    c111 = 0.5 * (fy(i + 1, j, k + 1) + fy(i + 1, j + 1, k + 1))
-    c01 = c001 * (1 - dx) + c101 * dx
-    c11 = c011 * (1 - dx) + c111 * dx
-    c1 = c01 * (1 - dy) + c11 * dy
-    intfy = c0 * (1 - dz) + c1 * dz
+      c001 = 0.5 * (fy(i, j, k + 1) + fy(i, j - 1, k + 1))
+      c101 = 0.5 * (fy(i + 1, j, k + 1) + fy(i + 1, j - 1, k + 1))
+      c011 = 0.5 * (fy(i, j, k + 1) + fy(i, j + 1, k + 1))
+      c111 = 0.5 * (fy(i + 1, j, k + 1) + fy(i + 1, j + 1, k + 1))
+      c01 = c001 * (1 - dx) + c101 * dx
+      c11 = c011 * (1 - dx) + c111 * dx
+      c1 = c01 * (1 - dy) + c11 * dy
+      intfy = c0 * (1 - dz) + c1 * dz
 #endif
 #endif
+    end if
 
     ! f_z
+    if ((comp_ .eq. 3) .or. (comp_ .le. 0)) then
 #ifdef oneD
-    c0 = fz(i, j, k)
-    c1 = fz(i + 1, j, k)
-    intfz = c0 * (1 - dx) + c1 * dx
+      c0 = fz(i, j, k)
+      c1 = fz(i + 1, j, k)
+      intfz = c0 * (1 - dx) + c1 * dx
 #elif twoD
-    c000 = fz(i, j, k)
-    c100 = fz(i + 1, j, k)
-    c010 = fz(i, j + 1, k)
-    c110 = fz(i + 1, j + 1, k)
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    intfz = c00 * (1 - dy) + c10 * dy
+      c000 = fz(i, j, k)
+      c100 = fz(i + 1, j, k)
+      c010 = fz(i, j + 1, k)
+      c110 = fz(i + 1, j + 1, k)
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      intfz = c00 * (1 - dy) + c10 * dy
 #elif threeD
-    c000 = 0.5 * (fz(i, j, k) + fz(i, j, k - 1))
-    c100 = 0.5 * (fz(i + 1, j, k) + fz(i + 1, j, k - 1))
-    c010 = 0.5 * (fz(i, j + 1, k) + fz(i, j + 1, k - 1))
-    c110 = 0.5 * (fz(i + 1, j + 1, k) + fz(i + 1, j + 1, k - 1))
-    c001 = 0.5 * (fz(i, j, k) + fz(i, j, k + 1))
-    c101 = 0.5 * (fz(i + 1, j, k) + fz(i + 1, j, k + 1))
-    c011 = 0.5 * (fz(i, j + 1, k) + fz(i, j + 1, k + 1))
-    c111 = 0.5 * (fz(i + 1, j + 1, k) + fz(i + 1, j + 1, k + 1))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c01 = c001 * (1 - dx) + c101 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c11 = c011 * (1 - dx) + c111 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
-    c1 = c01 * (1 - dy) + c11 * dy
-    intfz = c0 * (1 - dz) + c1 * dz
+      c000 = 0.5 * (fz(i, j, k) + fz(i, j, k - 1))
+      c100 = 0.5 * (fz(i + 1, j, k) + fz(i + 1, j, k - 1))
+      c010 = 0.5 * (fz(i, j + 1, k) + fz(i, j + 1, k - 1))
+      c110 = 0.5 * (fz(i + 1, j + 1, k) + fz(i + 1, j + 1, k - 1))
+      c001 = 0.5 * (fz(i, j, k) + fz(i, j, k + 1))
+      c101 = 0.5 * (fz(i + 1, j, k) + fz(i + 1, j, k + 1))
+      c011 = 0.5 * (fz(i, j + 1, k) + fz(i, j + 1, k + 1))
+      c111 = 0.5 * (fz(i + 1, j + 1, k) + fz(i + 1, j + 1, k + 1))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c01 = c001 * (1 - dx) + c101 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c11 = c011 * (1 - dx) + c111 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
+      c1 = c01 * (1 - dy) + c11 * dy
+      intfz = c0 * (1 - dz) + c1 * dz
 #endif
+    end if
   end subroutine interpFromEdges
 
   subroutine interpFromFaces(dx, dy, dz, i, j, k, &
                              fx, fy, fz, &
-                             intfx, intfy, intfz)
+                             intfx, intfy, intfz, comp)
     implicit none
     integer(kind=2), intent(in) :: i, j, k
     real, intent(in) :: dx, dy, dz
@@ -1028,126 +1141,139 @@ contains
     real, intent(out) :: intfx, intfy, intfz
     real :: c000, c100, c001, c101, c010, c110, c011, c111, &
             c00, c01, c10, c11, c0, c1
+    integer, optional, intent(in) :: comp
+    integer :: comp_
+    if (.not. present(comp)) then
+      comp_ = 0
+    else
+      comp_ = comp
+    end if
     ! f_x
+    if ((comp_ .eq. 1) .or. (comp_ .le. 0)) then
 #ifdef oneD
-    c0 = 0.5 * (fx(i, j, k) + fx(i, j, k))
-    c1 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j, k))
-    intfx = c0 * (1 - dx) + c1 * dx
+      c0 = 0.5 * (fx(i, j, k) + fx(i, j, k))
+      c1 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j, k))
+      intfx = c0 * (1 - dx) + c1 * dx
 #elif twoD
-    c000 = 0.5 * (fx(i, j, k) + fx(i, j - 1, k))
-    c100 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j - 1, k))
-    c010 = 0.5 * (fx(i, j, k) + fx(i, j + 1, k))
-    c110 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j + 1, k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    intfx = c00 * (1 - dy) + c10 * dy
+      c000 = 0.5 * (fx(i, j, k) + fx(i, j - 1, k))
+      c100 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j - 1, k))
+      c010 = 0.5 * (fx(i, j, k) + fx(i, j + 1, k))
+      c110 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j + 1, k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      intfx = c00 * (1 - dy) + c10 * dy
 #elif threeD
-    c000 = 0.25 * (fx(i, j, k) + fx(i, j - 1, k) + &
-                   fx(i, j, k - 1) + fx(i, j - 1, k - 1))
-    c100 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j - 1, k) + &
-                   fx(i + 1, j, k - 1) + fx(i + 1, j - 1, k - 1))
-    c001 = 0.25 * (fx(i, j, k) + fx(i, j, k + 1) + &
-                   fx(i, j - 1, k) + fx(i, j - 1, k + 1))
-    c101 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j, k + 1) + &
-                   fx(i + 1, j - 1, k) + fx(i + 1, j - 1, k + 1))
-    c010 = 0.25 * (fx(i, j, k) + fx(i, j + 1, k) + &
-                   fx(i, j, k - 1) + fx(i, j + 1, k - 1))
-    c110 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j, k - 1) + &
-                   fx(i + 1, j + 1, k - 1) + fx(i + 1, j + 1, k))
-    c011 = 0.25 * (fx(i, j, k) + fx(i, j + 1, k) + &
-                   fx(i, j + 1, k + 1) + fx(i, j, k + 1))
-    c111 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j + 1, k) + &
-                   fx(i + 1, j + 1, k + 1) + fx(i + 1, j, k + 1))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c01 = c001 * (1 - dx) + c101 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c11 = c011 * (1 - dx) + c111 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
-    c1 = c01 * (1 - dy) + c11 * dy
-    intfx = c0 * (1 - dz) + c1 * dz
+      c000 = 0.25 * (fx(i, j, k) + fx(i, j - 1, k) + &
+                     fx(i, j, k - 1) + fx(i, j - 1, k - 1))
+      c100 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j - 1, k) + &
+                     fx(i + 1, j, k - 1) + fx(i + 1, j - 1, k - 1))
+      c001 = 0.25 * (fx(i, j, k) + fx(i, j, k + 1) + &
+                     fx(i, j - 1, k) + fx(i, j - 1, k + 1))
+      c101 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j, k + 1) + &
+                     fx(i + 1, j - 1, k) + fx(i + 1, j - 1, k + 1))
+      c010 = 0.25 * (fx(i, j, k) + fx(i, j + 1, k) + &
+                     fx(i, j, k - 1) + fx(i, j + 1, k - 1))
+      c110 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j, k - 1) + &
+                     fx(i + 1, j + 1, k - 1) + fx(i + 1, j + 1, k))
+      c011 = 0.25 * (fx(i, j, k) + fx(i, j + 1, k) + &
+                     fx(i, j + 1, k + 1) + fx(i, j, k + 1))
+      c111 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j + 1, k) + &
+                     fx(i + 1, j + 1, k + 1) + fx(i + 1, j, k + 1))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c01 = c001 * (1 - dx) + c101 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c11 = c011 * (1 - dx) + c111 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
+      c1 = c01 * (1 - dy) + c11 * dy
+      intfx = c0 * (1 - dz) + c1 * dz
 #endif
+    end if
 
     ! b_y
+    if ((comp_ .eq. 2) .or. (comp_ .le. 0)) then
 #ifdef oneD
-    c0 = 0.5 * (fy(i - 1, j, k) + fy(i, j, k))
-    c1 = 0.5 * (fy(i, j, k) + fy(i + 1, j, k))
-    intfy = c0 * (1 - dx) + c1 * dx
+      c0 = 0.5 * (fy(i - 1, j, k) + fy(i, j, k))
+      c1 = 0.5 * (fy(i, j, k) + fy(i + 1, j, k))
+      intfy = c0 * (1 - dx) + c1 * dx
 #elif twoD
-    c000 = 0.5 * (fy(i - 1, j, k) + fy(i, j, k))
-    c100 = 0.5 * (fy(i, j, k) + fy(i + 1, j, k))
-    c010 = 0.5 * (fy(i - 1, j + 1, k) + fy(i, j + 1, k))
-    c110 = 0.5 * (fy(i, j + 1, k) + fy(i + 1, j + 1, k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    intfy = c00 * (1 - dy) + c10 * dy
+      c000 = 0.5 * (fy(i - 1, j, k) + fy(i, j, k))
+      c100 = 0.5 * (fy(i, j, k) + fy(i + 1, j, k))
+      c010 = 0.5 * (fy(i - 1, j + 1, k) + fy(i, j + 1, k))
+      c110 = 0.5 * (fy(i, j + 1, k) + fy(i + 1, j + 1, k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      intfy = c00 * (1 - dy) + c10 * dy
 #elif threeD
-    c000 = 0.25 * (fy(i - 1, j, k - 1) + fy(i - 1, j, k) + &
-                   fy(i, j, k - 1) + fy(i, j, k))
-    c100 = 0.25 * (fy(i, j, k - 1) + fy(i, j, k) + &
-                   fy(i + 1, j, k - 1) + fy(i + 1, j, k))
-    c001 = 0.25 * (fy(i - 1, j, k) + fy(i - 1, j, k + 1) + &
-                   fy(i, j, k) + fy(i, j, k + 1))
-    c101 = 0.25 * (fy(i, j, k) + fy(i, j, k + 1) + &
-                   fy(i + 1, j, k) + fy(i + 1, j, k + 1))
-    c010 = 0.25 * (fy(i - 1, j + 1, k - 1) + fy(i - 1, j + 1, k) + &
-                   fy(i, j + 1, k - 1) + fy(i, j + 1, k))
-    c110 = 0.25 * (fy(i, j + 1, k - 1) + fy(i, j + 1, k) + &
-                   fy(i + 1, j + 1, k - 1) + fy(i + 1, j + 1, k))
-    c011 = 0.25 * (fy(i - 1, j + 1, k) + fy(i - 1, j + 1, k + 1) + &
-                   fy(i, j + 1, k) + fy(i, j + 1, k + 1))
-    c111 = 0.25 * (fy(i, j + 1, k) + fy(i, j + 1, k + 1) + &
-                   fy(i + 1, j + 1, k) + fy(i + 1, j + 1, k + 1))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c01 = c001 * (1 - dx) + c101 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c11 = c011 * (1 - dx) + c111 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
-    c1 = c01 * (1 - dy) + c11 * dy
-    intfy = c0 * (1 - dz) + c1 * dz
+      c000 = 0.25 * (fy(i - 1, j, k - 1) + fy(i - 1, j, k) + &
+                     fy(i, j, k - 1) + fy(i, j, k))
+      c100 = 0.25 * (fy(i, j, k - 1) + fy(i, j, k) + &
+                     fy(i + 1, j, k - 1) + fy(i + 1, j, k))
+      c001 = 0.25 * (fy(i - 1, j, k) + fy(i - 1, j, k + 1) + &
+                     fy(i, j, k) + fy(i, j, k + 1))
+      c101 = 0.25 * (fy(i, j, k) + fy(i, j, k + 1) + &
+                     fy(i + 1, j, k) + fy(i + 1, j, k + 1))
+      c010 = 0.25 * (fy(i - 1, j + 1, k - 1) + fy(i - 1, j + 1, k) + &
+                     fy(i, j + 1, k - 1) + fy(i, j + 1, k))
+      c110 = 0.25 * (fy(i, j + 1, k - 1) + fy(i, j + 1, k) + &
+                     fy(i + 1, j + 1, k - 1) + fy(i + 1, j + 1, k))
+      c011 = 0.25 * (fy(i - 1, j + 1, k) + fy(i - 1, j + 1, k + 1) + &
+                     fy(i, j + 1, k) + fy(i, j + 1, k + 1))
+      c111 = 0.25 * (fy(i, j + 1, k) + fy(i, j + 1, k + 1) + &
+                     fy(i + 1, j + 1, k) + fy(i + 1, j + 1, k + 1))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c01 = c001 * (1 - dx) + c101 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c11 = c011 * (1 - dx) + c111 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
+      c1 = c01 * (1 - dy) + c11 * dy
+      intfy = c0 * (1 - dz) + c1 * dz
 #endif
+    end if
 
     ! b_z
+    if ((comp_ .eq. 3) .or. (comp_ .le. 0)) then
 #ifdef oneD
-    c0 = 0.5 * (fz(i - 1, j, k) + fz(i, j, k))
-    c1 = 0.5 * (fz(i, j, k) + fz(i + 1, j, k))
-    intfz = c0 * (1 - dx) + c1 * dx
+      c0 = 0.5 * (fz(i - 1, j, k) + fz(i, j, k))
+      c1 = 0.5 * (fz(i, j, k) + fz(i + 1, j, k))
+      intfz = c0 * (1 - dx) + c1 * dx
 #elif twoD
-    c000 = 0.25 * (fz(i - 1, j - 1, k) + fz(i - 1, j, k) + &
-                   fz(i, j - 1, k) + fz(i, j, k))
-    c100 = 0.25 * (fz(i, j - 1, k) + fz(i, j, k) + &
-                   fz(i + 1, j - 1, k) + fz(i + 1, j, k))
-    c010 = 0.25 * (fz(i - 1, j, k) + fz(i - 1, j + 1, k) + &
-                   fz(i, j, k) + fz(i, j + 1, k))
-    c110 = 0.25 * (fz(i, j, k) + fz(i, j + 1, k) + &
-                   fz(i + 1, j, k) + fz(i + 1, j + 1, k))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    intfz = c00 * (1 - dy) + c10 * dy
+      c000 = 0.25 * (fz(i - 1, j - 1, k) + fz(i - 1, j, k) + &
+                     fz(i, j - 1, k) + fz(i, j, k))
+      c100 = 0.25 * (fz(i, j - 1, k) + fz(i, j, k) + &
+                     fz(i + 1, j - 1, k) + fz(i + 1, j, k))
+      c010 = 0.25 * (fz(i - 1, j, k) + fz(i - 1, j + 1, k) + &
+                     fz(i, j, k) + fz(i, j + 1, k))
+      c110 = 0.25 * (fz(i, j, k) + fz(i, j + 1, k) + &
+                     fz(i + 1, j, k) + fz(i + 1, j + 1, k))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      intfz = c00 * (1 - dy) + c10 * dy
 #elif threeD
-    c000 = 0.25 * (fz(i - 1, j - 1, k) + fz(i - 1, j, k) + &
-                   fz(i, j - 1, k) + fz(i, j, k))
-    c100 = 0.25 * (fz(i, j - 1, k) + fz(i, j, k) + &
-                   fz(i + 1, j - 1, k) + fz(i + 1, j, k))
-    c001 = 0.25 * (fz(i - 1, j - 1, k + 1) + fz(i - 1, j, k + 1) + &
-                   fz(i, j - 1, k + 1) + fz(i, j, k + 1))
-    c101 = 0.25 * (fz(i, j - 1, k + 1) + fz(i, j, k + 1) + &
-                   fz(i + 1, j - 1, k + 1) + fz(i + 1, j, k + 1))
-    c010 = 0.25 * (fz(i - 1, j, k) + fz(i - 1, j + 1, k) + &
-                   fz(i, j, k) + fz(i, j + 1, k))
-    c110 = 0.25 * (fz(i, j, k) + fz(i, j + 1, k) + &
-                   fz(i + 1, j, k) + fz(i + 1, j + 1, k))
-    c011 = 0.25 * (fz(i - 1, j, k + 1) + fz(i - 1, j + 1, k + 1) + &
-                   fz(i, j, k + 1) + fz(i, j + 1, k + 1))
-    c111 = 0.25 * (fz(i, j, k + 1) + fz(i, j + 1, k + 1) + &
-                   fz(i + 1, j, k + 1) + fz(i + 1, j + 1, k + 1))
-    c00 = c000 * (1 - dx) + c100 * dx
-    c01 = c001 * (1 - dx) + c101 * dx
-    c10 = c010 * (1 - dx) + c110 * dx
-    c11 = c011 * (1 - dx) + c111 * dx
-    c0 = c00 * (1 - dy) + c10 * dy
-    c1 = c01 * (1 - dy) + c11 * dy
-    intfz = c0 * (1 - dz) + c1 * dz
+      c000 = 0.25 * (fz(i - 1, j - 1, k) + fz(i - 1, j, k) + &
+                     fz(i, j - 1, k) + fz(i, j, k))
+      c100 = 0.25 * (fz(i, j - 1, k) + fz(i, j, k) + &
+                     fz(i + 1, j - 1, k) + fz(i + 1, j, k))
+      c001 = 0.25 * (fz(i - 1, j - 1, k + 1) + fz(i - 1, j, k + 1) + &
+                     fz(i, j - 1, k + 1) + fz(i, j, k + 1))
+      c101 = 0.25 * (fz(i, j - 1, k + 1) + fz(i, j, k + 1) + &
+                     fz(i + 1, j - 1, k + 1) + fz(i + 1, j, k + 1))
+      c010 = 0.25 * (fz(i - 1, j, k) + fz(i - 1, j + 1, k) + &
+                     fz(i, j, k) + fz(i, j + 1, k))
+      c110 = 0.25 * (fz(i, j, k) + fz(i, j + 1, k) + &
+                     fz(i + 1, j, k) + fz(i + 1, j + 1, k))
+      c011 = 0.25 * (fz(i - 1, j, k + 1) + fz(i - 1, j + 1, k + 1) + &
+                     fz(i, j, k + 1) + fz(i, j + 1, k + 1))
+      c111 = 0.25 * (fz(i, j, k + 1) + fz(i, j + 1, k + 1) + &
+                     fz(i + 1, j, k + 1) + fz(i + 1, j + 1, k + 1))
+      c00 = c000 * (1 - dx) + c100 * dx
+      c01 = c001 * (1 - dx) + c101 * dx
+      c10 = c010 * (1 - dx) + c110 * dx
+      c11 = c011 * (1 - dx) + c111 * dx
+      c0 = c00 * (1 - dy) + c10 * dy
+      c1 = c01 * (1 - dy) + c11 * dy
+      intfz = c0 * (1 - dz) + c1 * dz
 #endif
+    end if
   end subroutine interpFromFaces
 
   subroutine depositCurrentsFromSingleParticle(s, tile, p, x1, y1, z1, &

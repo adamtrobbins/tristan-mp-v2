@@ -60,18 +60,27 @@ contains
 
   subroutine prtlToSetWeighted(ti, tj, tk, &
                                sp_arr, n_sp, &
-                               set, set_size, set_weight)
+                               set, set_size, set_weight, num_copies)
     implicit none
     integer, intent(in) :: ti, tj, tk
     integer, intent(in) :: n_sp ! # of species in set
     integer, intent(in) :: sp_arr(n_sp)
     integer, intent(out) :: set_size
     real, intent(out) :: set_weight
+    integer, optional, intent(in) :: num_copies
     type(spec_ind_pair), allocatable, intent(out) :: set(:)
     integer :: set_size_
     type(spec_ind_pair), allocatable :: set_(:)
     integer :: s, si, i, p, q
     real :: wei, wei_split
+    integer :: num_copies_
+    if (present(num_copies)) then
+      num_copies_ = num_copies
+    else
+      num_copies_ = 1
+    end if
+    if (num_copies_ .le. 0) num_copies_ = 1
+    if (allocated(set)) deallocate (set)
 
     ! computing number of particles in the set
     set_size_ = 0
@@ -81,7 +90,7 @@ contains
         set_size_ = set_size_ + CEILING(species(s) % prtl_tile(ti, tj, tk) % weight(p))
       end do
     end do
-    allocate (set_(set_size_))
+    allocate (set_(set_size_ * num_copies_))
     ! assigning particles in the set
     i = 1
     set_weight = 0.0
@@ -92,7 +101,7 @@ contains
         ! evenly distribute the weight (this avoids creating tiny weight particles via splitting):
         wei_split = wei / CEILING(wei)
         set_weight = set_weight + wei
-        do q = 1, CEILING(wei)
+        do q = 1, (CEILING(wei) * num_copies_)
           set_(i) % spec = s
           set_(i) % index = p
           set_(i) % wei = wei_split
@@ -128,7 +137,7 @@ contains
                                    sp_arr_2, n_sp_2, &
                                    coupled_pairs, num_couples, &
                                    num_group_1, num_group_2, &
-                                   wei_group_1, wei_group_2)
+                                   wei_group_1, wei_group_2, clone_sets)
     implicit none
     integer, intent(in) :: ti, tj, tk
     integer, intent(in) :: n_sp_1, n_sp_2 ! # of species in set #1 and #2
@@ -141,10 +150,17 @@ contains
     type(couple), allocatable, intent(out) :: coupled_pairs(:)
     integer, optional, intent(out) :: num_group_1, num_group_2
     real, optional, intent(out) :: wei_group_1, wei_group_2
+    logical, optional, intent(in) :: clone_sets
 
     ! auxiliary variables
     integer :: common_species
     logical :: pairing_correctQ, same_setsQ
+    logical :: clone_sets_
+    if (present(clone_sets)) then
+      clone_sets_ = clone_sets
+    else
+      clone_sets_ = .false.
+    end if
 
     ! check the number of common elements
     common_species = 0
@@ -184,6 +200,17 @@ contains
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1, wei_1)
       call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2, wei_2)
+
+      if (clone_sets_) then
+        if ((wei_1 .ge. (1.1 * wei_2)) .and. (wei_2 .ge. 1.0)) then
+          call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2, wei_2, &
+                               & num_copies=CEILING(wei_1 / wei_2))
+        else if ((wei_2 .ge. (1.1 * wei_1)) .and. (wei_1 .ge. 1.0)) then
+          call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1, wei_1, &
+                  & num_copies=CEILING(wei_2 / wei_1))
+        end if
+      end if
+
       ! now we can simply work with `set_1` and `set_2`
       num_couples = min(num_1, num_2)
       if ((num_1 .eq. 1) .and. (num_2 .eq. 1)) then

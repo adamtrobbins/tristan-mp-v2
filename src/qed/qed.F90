@@ -85,6 +85,7 @@ contains
     implicit none
     integer :: s
     character(len=STR_MAX) :: var_name
+    real :: Pmax
 
     call getInput('compton', 'interval', Compton_interval, 1)
     call getInput('compton', 'algorithm', Compton_algorithm, 2)
@@ -93,6 +94,8 @@ contains
     end if
     call getInput('compton', 'el_recoil', Compton_el_recoil, .true.)
     call getInput('compton', 'Thomson_lim', Thomson_lim, 1d-6)
+    call getInput('compton', 'nph_over_ne', Compton_nph_over_ne, 1.0)
+    call getInput('compton', 'clone_sets', Compton_clone_sets, .true.)
 
     do s = 1, nspec
       write (var_name, "(A7,I1)") "compton", s
@@ -104,6 +107,15 @@ contains
         end if
       end if
     end do
+    if (mpi_rank .eq. 0) then
+      Pmax = 2.0 * QED_tau0 * REAL(Compton_interval) * CC
+      if (Compton_nph_over_ne .ge. 1.0) then
+        Pmax = Pmax * Compton_nph_over_ne
+      else
+        Pmax = Pmax / Compton_nph_over_ne
+      end if
+      print *, '  Reference max. probability for Compton scattering (MC algorithm) =', Pmax
+    end if
   end subroutine initializeComptonScattering
 #endif
 

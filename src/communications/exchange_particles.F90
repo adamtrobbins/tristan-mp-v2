@@ -25,7 +25,7 @@ contains
     integer(kind=MPI_ADDRESS_KIND), dimension(0:2) :: offsets
     integer(kind=MPI_ADDRESS_KIND) :: extent_int2, extent_real, lb
 
-    call getInput('grid', 'max_buff', max_buffsize, 100)
+    call getInput('grid', 'max_buff', max_buffsize, 32)
 
     call reallocateEnrouteArray(this_meshblock % ptr)
 
@@ -60,6 +60,7 @@ contains
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
+
     call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
     call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
 
@@ -300,6 +301,9 @@ contains
               ! proc # 8
               mpi_recvfrom = this_meshblock % ptr % neighbor(-ind1, -ind2, -ind3) % ptr % rnk ! 7
               call MPI_RECV(cnt_recv_enroute, 1, MPI_INTEGER, mpi_recvfrom, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+              if (cnt_recv_enroute .ge. size(recv_enroute % enroute)) then
+                call throwError('ERROR: particle had rcv array too small.')
+              end if
               call MPI_RECV(recv_enroute % enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE, &
                             mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
               if (cnt_recv_enroute .gt. 0) then
@@ -1150,6 +1154,9 @@ contains
                                       payload1=species(s) % prtl_tile(ti, tj, tk) % payload1(p), &
                                       payload2=species(s) % prtl_tile(ti, tj, tk) % payload2(p), &
                                       payload3=species(s) % prtl_tile(ti, tj, tk) % payload3(p), &
+#endif
+#ifdef DEBUG
+                                      called_from='`moveParticleBetweenTiles`', &
 #endif
                                       ind=species(s) % prtl_tile(ti, tj, tk) % ind(p), &
                                       proc=species(s) % prtl_tile(ti, tj, tk) % proc(p), &

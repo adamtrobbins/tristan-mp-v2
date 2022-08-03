@@ -8,10 +8,14 @@ module m_writehistory
   use m_fields
   use m_readinput, only: getInput
   use m_helpers
+  use m_restart, only: rst_simulation
+#ifdef QED
+  use m_qednamespace
+#endif
   implicit none
 
   ! real, private :: Etot_0
-  ! logical, private :: first_step = .true.
+  logical, private :: first_step = .true.
 
 contains
   subroutine initializeHistory()
@@ -26,187 +30,118 @@ contains
     implicit none
     integer, intent(in) :: step
     if (.false.) print *, step
-    ! real :: e_energy, b_energy, Eprt1, Eprt2, Etot
-    ! real :: lec_e, ion_e, massive_e, massless_e
-    ! real :: global_e_energy, global_b_energy
-    ! real, allocatable :: prtl_energy(:)
-    ! real, allocatable :: global_prtl_energy(:)
-    ! integer :: ierr, s, column_width
-    ! logical :: photons_present
-    ! character :: vert_div, hor_div
-    ! character(len=STR_MAX) :: FMT, dummy1, dummy2, dummy3, dummy4, filename
-    ! procedure(getFMT), pointer :: get_fmt_ptr => null()
+    real :: e_energy, b_energy, Eprt1, Eprt2, Etot
+    real :: lec_e, ion_e, massive_e, massless_e
+    real :: global_e_energy, global_b_energy
+    real, allocatable :: prtl_energy(:)
+    real, allocatable :: global_prtl_energy(:)
+    real, allocatable :: prtl_num(:)
+    real, allocatable :: global_prtl_num(:)
+    integer :: ierr, s, column_width
+    logical :: photons_present
+    character :: vert_div, hor_div
+    character(len=STR_MAX) :: FMT, dummy1, dummy2, dummy3, dummy4, filename
+    procedure(getFMT), pointer :: get_fmt_ptr => null()
+    real :: volume
 
-    ! get_fmt_ptr => getFMTForRealScientific
+    get_fmt_ptr => getFMTForRealScientific
 
-    ! allocate (global_prtl_energy(nspec))
+    allocate (global_prtl_energy(nspec))
+    allocate (global_prtl_num(nspec))
+    global_prtl_energy(:) = 0
+    global_prtl_num(:) = 0
 
-    ! call computeEnergyInBox(e_energy, b_energy, prtl_energy)
+    call computeEnergyInBox(e_energy, b_energy, prtl_energy, prtl_num)
 
-    ! call MPI_REDUCE(e_energy, global_e_energy, 1, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    ! call MPI_REDUCE(b_energy, global_b_energy, 1, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    ! call MPI_REDUCE(prtl_energy, global_prtl_energy, nspec, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(e_energy, global_e_energy, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(b_energy, global_b_energy, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(prtl_energy, global_prtl_energy, nspec, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(prtl_num, global_prtl_num, nspec, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
 
-    ! if (mpi_rank .eq. 0) then
-    !   global_e_energy = global_e_energy * B_norm**2 / 2
-    !   global_b_energy = global_b_energy * B_norm**2 / 2
-    !   do s = 1, nspec
-    !     if (species(s) % m_sp .ne. 0) then
-    !       global_prtl_energy(s) = global_prtl_energy(s) * unit_ch * CC**2 * species(s) % m_sp
-    !     else
-    !       global_prtl_energy(s) = global_prtl_energy(s) * unit_ch * CC**2
-    !     end if
-    !   end do
+    if (mpi_rank .eq. 0) then
+      ! mean (volume averaged) energy density in units of n_0 m_e c^2:
+      volume = REAL(global_mesh % sx) * REAL(global_mesh % sy) * REAL(global_mesh % sz)
+      global_e_energy = global_e_energy * (B_norm * CCINV**2 * c_omp)**2 / 2 / volume
+      global_b_energy = global_b_energy * (B_norm * CCINV**2 * c_omp)**2 / 2 / volume
+      do s = 1, nspec
+        global_prtl_num(s) = global_prtl_num(s) / ppc0 / volume
+        if (species(s) % m_sp .ne. 0) then
+          global_prtl_energy(s) = global_prtl_energy(s) * species(s) % m_sp / ppc0 / volume
+        else
+          global_prtl_energy(s) = global_prtl_energy(s) / ppc0 / volume
+        end if
+      end do
 
-    !   ! if photons are present -- save massive/massless
-    !   ! ... otherwise -- electrons/ions
-    !   photons_present = .false.
-    !   do s = 1, nspec
-    !     if ((species(s) % m_sp .eq. 0) .and. (species(s) % ch_sp .eq. 0)) then
-    !       photons_present = .true.
-    !     end if
-    !   end do
+      filename = trim(output_dir_name)//'/history'
+      column_width = 13
 
-    !   if (.not. photons_present) then
-    !     ! only save electron/ion energies
-    !     lec_e = 0
-    !     ion_e = 0
-    !     do s = 1, nspec
-    !       if (species(s) % ch_sp .lt. 0) then
-    !         lec_e = lec_e + global_prtl_energy(s)
-    !       else
-    !         ion_e = ion_e + global_prtl_energy(s)
-    !       end if
-    !     end do
-    !     Eprt1 = lec_e
-    !     Eprt2 = ion_e
-    !   else
-    !     ! save massive/massless energies
-    !     massive_e = 0
-    !     massless_e = 0
-    !     do s = 1, nspec
-    !       if ((species(s) % m_sp .ne. 0) .or. (species(s) % ch_sp .ne. 0)) then
-    !         massive_e = massive_e + global_prtl_energy(s)
-    !       else
-    !         massless_e = massless_e + global_prtl_energy(s)
-    !       end if
-    !     end do
-    !     Eprt1 = massive_e
-    !     Eprt2 = massless_e
-    !   end if
+      if (first_step .and. (.not. rst_simulation)) then
+        first_step = .false.
+        open (UNIT_history, file=filename, status="replace", form="formatted")
 
-    !   Etot = Eprt1 + Eprt2 + global_e_energy + global_b_energy
+        FMT = "(A7,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//")"
+        write (UNIT_history, FMT, advance='no') '[time]', '[E^2]', '[B^2]'
+        do s = 1, nspec
+          FMT = "(A"//trim(STR(column_width))//")"
+          write (UNIT_history, FMT, advance='no') '[Esp'//trim(STR(s))//']'
+        end do
+        do s = 1, nspec - 1
+          FMT = "(A"//trim(STR(column_width))//")"
+          write (UNIT_history, FMT, advance='no') '[Nsp'//trim(STR(s))//']'
+        end do
+        FMT = "(A"//trim(STR(column_width))//")"
+        write (UNIT_history, FMT) '[Nsp'//trim(STR(nspec))//']'
 
-    !   filename = trim(output_dir_name)//'/history'
-    !   column_width = 13
-    !   vert_div = '|'
-    !   hor_div = '='
+        close (UNIT_history)
+      end if  ! first_step
 
-    !   if (first_step) then
-    !     first_step = .false.
-    !     Etot_0 = Etot
-    !     open (UNIT_history, file=filename, status="replace", form="formatted")
-    !     do s = 1, column_width * 5
-    !       FMT(s:s) = hor_div
-    !     end do
-    !     write (UNIT_history, '(A)') FMT(1:column_width * 5)
+      open (UNIT_history, file=filename, status="old", position="append", form="formatted")
 
-    !     write (UNIT_history, '(A10,A'//trim(STR(column_width * 3))//',A3)') vert_div, ' ', vert_div
+      dummy1 = get_fmt_ptr(global_e_energy, column_width)
+      dummy2 = get_fmt_ptr(global_b_energy, column_width)
+      FMT = "(I7,"//trim(dummy1)//","//trim(dummy2)//")"
+      write (UNIT_history, FMT, advance='no') step, global_e_energy, global_b_energy
+      do s = 1, nspec
+        dummy1 = get_fmt_ptr(global_prtl_energy(s), column_width)
+        FMT = "("//trim(dummy1)//")"
+        write (UNIT_history, FMT, advance='no') global_prtl_energy(s)
+      end do
+      do s = 1, nspec - 1
+        dummy1 = get_fmt_ptr(global_prtl_num(s), column_width)
+        FMT = "("//trim(dummy1)//")"
+        write (UNIT_history, FMT, advance='no') global_prtl_num(s)
+      end do
+      dummy1 = get_fmt_ptr(global_prtl_num(nspec), column_width)
+      FMT = "("//trim(dummy1)//")"
+      write (UNIT_history, FMT) global_prtl_num(nspec)
 
-    !     FMT = "(A7,A3,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A3)"
-    !     write (UNIT_history, FMT) '[time]', vert_div, '[E^2]', '[B^2]', '[E^2+B^2]', vert_div
+      close (UNIT_history)
+    end if  !  mpi_rank = 0
 
-    !     FMT = "(A10,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A" &
-    !           //trim(STR(column_width))//",A3,A"//trim(STR(column_width))//")"
-    !     write (UNIT_history, FMT) vert_div, '[% Etot]', '[% Etot]', '[% Etot]', vert_div, '[Etot]'
+    if (allocated(global_prtl_energy)) deallocate (global_prtl_energy)
+    if (allocated(prtl_energy)) deallocate (prtl_energy)
+    if (allocated(global_prtl_num)) deallocate (global_prtl_num)
+    if (allocated(prtl_num)) deallocate (prtl_num)
 
-    !     write (UNIT_history, '(A10,A'//trim(STR(column_width * 3))//',A3)') vert_div, ' ', vert_div
-
-    !     FMT = "(A10,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A" &
-    !           //trim(STR(column_width))//",A3,A"//trim(STR(column_width))//")"
-    !     if (.not. photons_present) then
-    !       write (UNIT_history, FMT) vert_div, '[lecs]', '[ions]', '[tot part]', vert_div, '[% dEtot]'
-    !     else
-    !       write (UNIT_history, FMT) vert_div, '[massive]', '[massless]', '[tot part]', vert_div, '[% dEtot]'
-    !     end if
-
-    !     FMT = "(A10,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A3)"
-    !     write (UNIT_history, FMT) vert_div, '[% Etot]', '[% Etot]', '[% Etot]', vert_div
-
-    !     write (UNIT_history, '(A10,A'//trim(STR(column_width * 3))//',A3)') vert_div, ' ', vert_div
-
-    !     do s = 1, column_width * 5
-    !       FMT(s:s) = hor_div
-    !     end do
-    !     write (UNIT_history, '(A)') FMT(1:column_width * 5)
-
-    !     close (UNIT_history)
-    !   end if
-
-    !   open (UNIT_history, file=filename, status="old", position="append", form="formatted")
-
-    !   write (UNIT_history, '(A10,A'//trim(STR(column_width * 3))//',A3)') vert_div, ' ', vert_div
-
-    !   dummy1 = get_fmt_ptr(column_width)
-    !   dummy2 = get_fmt_ptr(column_width)
-    !   dummy3 = get_fmt_ptr(column_width)
-    !   FMT = "(I7,A3,"//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//",A3)"
-    !   write (UNIT_history, FMT) step, vert_div, &
-    !     global_e_energy, global_b_energy, &
-    !     global_e_energy + global_b_energy, vert_div
-
-    !   dummy1 = get_fmt_ptr(column_width - 1)
-    !   dummy2 = get_fmt_ptr(column_width - 1)
-    !   dummy3 = get_fmt_ptr(column_width - 1)
-    !   dummy4 = get_fmt_ptr(column_width)
-    !   FMT = "(A10,"//trim(dummy1)//",A1,"//trim(dummy2)//",A1,"//trim(dummy3)//",A1,A3,"//trim(dummy4)//")"
-    !   write (UNIT_history, FMT) vert_div, global_e_energy * 100 / Etot, '%', &
-    !     global_b_energy * 100 / Etot, '%', &
-    !     (global_e_energy + global_b_energy) * 100 / Etot, '%', &
-    !     vert_div, Etot
-
-    !   write (UNIT_history, '(A10,A'//trim(STR(column_width * 3))//',A3)') vert_div, ' ', vert_div
-
-    !   dummy1 = get_fmt_ptr(column_width)
-    !   dummy2 = get_fmt_ptr(column_width)
-    !   dummy3 = get_fmt_ptr(column_width)
-    !   dummy4 = get_fmt_ptr(column_width - 1)
-    !   FMT = "(A10,"//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//",A3,"//trim(dummy4)//",A1)"
-    !   write (UNIT_history, FMT) vert_div, Eprt1, Eprt2, Eprt1 + Eprt2, vert_div, &
-    !     (Etot - Etot_0) * 100 / Etot_0, '%'
-
-    !   dummy1 = get_fmt_ptr(column_width - 1)
-    !   dummy2 = get_fmt_ptr(column_width - 1)
-    !   dummy3 = get_fmt_ptr(column_width - 1)
-    !   FMT = "(A10,"//trim(dummy1)//",A1,"//trim(dummy2)//",A1,"//trim(dummy3)//",A1,A3)"
-    !   write (UNIT_history, FMT) vert_div, Eprt1 * 100 / Etot, '%', &
-    !     Eprt2 * 100 / Etot, '%', &
-    !     (Eprt1 + Eprt2) * 100 / Etot, '%', vert_div
-
-    !   write (UNIT_history, '(A10,A'//trim(STR(column_width * 3))//',A3)') vert_div, ' ', vert_div
-
-    !   do s = 1, column_width * 5
-    !     FMT(s:s) = hor_div
-    !   end do
-    !   write (UNIT_history, '(A)') FMT(1:column_width * 5)
-
-    !   close (UNIT_history)
-    ! end if
     call printDiag("writeHistory()", 2)
   end subroutine writeHistory
 
-  subroutine computeEnergyInBox(e_energy, b_energy, prtl_energy)
+  subroutine computeEnergyInBox(e_energy, b_energy, prtl_energy, prtl_num)
     implicit none
     real, intent(out) :: e_energy, b_energy
     real, allocatable, intent(out) :: prtl_energy(:)
-    real :: gamma, ex0, ey0, ez0, bx0, by0, bz0
+    real, allocatable, intent(out) :: prtl_num(:)
+    real :: gamma, ex0, ey0, ez0, bx0, by0, bz0, wei
     integer :: s, ti, tj, tk, p
     integer(kind=2) :: i, j, k
 
     allocate (prtl_energy(nspec))
+    allocate (prtl_num(nspec))
 
     do s = 1, nspec
       prtl_energy(s) = 0
+      prtl_num(s) = 0
+      if (.not. species(s) % output_sp_hist) cycle
       if (species(s) % m_sp .eq. 0) then
         do ti = 1, species(s) % tile_nx
           do tj = 1, species(s) % tile_ny
@@ -215,8 +150,12 @@ contains
                 gamma = species(s) % prtl_tile(ti, tj, tk) % u(p)**2 + &
                         species(s) % prtl_tile(ti, tj, tk) % v(p)**2 + &
                         species(s) % prtl_tile(ti, tj, tk) % w(p)**2
-                prtl_energy(s) = prtl_energy(s) + sqrt(gamma) * &
-                                 species(s) % prtl_tile(ti, tj, tk) % weight(p)
+                wei = species(s) % prtl_tile(ti, tj, tk) % weight(p)
+#ifdef COMPTONSCATTERING
+                wei = wei * Compton_nph_over_ne
+#endif
+                prtl_energy(s) = prtl_energy(s) + sqrt(gamma) * wei
+                prtl_num(s) = prtl_num(s) + wei
               end do
             end do
           end do
@@ -231,6 +170,7 @@ contains
                         species(s) % prtl_tile(ti, tj, tk) % w(p)**2
                 prtl_energy(s) = prtl_energy(s) + sqrt(gamma) * &
                                  species(s) % prtl_tile(ti, tj, tk) % weight(p)
+                prtl_num(s) = prtl_num(s) + species(s) % prtl_tile(ti, tj, tk) % weight(p)
               end do
             end do
           end do

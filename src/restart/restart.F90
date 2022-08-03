@@ -12,12 +12,14 @@ module m_restart
   use m_fields
   use m_particlelogistics, only: allocateParticlesOnEmptyTile
   use m_helpers
+  use m_userfile, only: readUsrRestart, writeUsrRestart
   implicit none
 
   ! # of cpu simultaneously accessing filesystem
   integer :: rst_cpu_group
   logical :: rst_simulation = .false.
   logical :: rst_separate, rst_enable = .false.
+  logical :: rst_tlim_enable = .false.
   integer :: rst_interval, rst_start
 
   private :: writeFldRestart
@@ -27,6 +29,7 @@ contains
     implicit none
     call getInput('restart', 'do_restart', rst_simulation, .false.)
     call getInput('restart', 'enable', rst_enable, .false.)
+    call getInput('restart', 'tlim_enable', rst_tlim_enable, .false.)
     call getInput('restart', 'start', rst_start, 0)
     call getInput('restart', 'interval', rst_interval, 10000)
     call getInput('restart', 'rewrite', rst_separate, .false.)
@@ -53,9 +56,9 @@ contains
 
     ! determine the directory to write
     if (rst_separate) then
-      write (stepchar, "(i5.5)") INT(timestep / rst_interval)
+      write (stepchar, "(i6.6)") INT(timestep)
     else
-      write (stepchar, "(i5.5)") 0
+      write (stepchar, "(i6.6)") 0
     end if
     rst_dir = trim(restart_dir_name)//'/step_'//trim(stepchar)
 
@@ -87,10 +90,12 @@ contains
       end do
       call writeFldRestart(timestep, rst_dir)
       call writePrtlRestart(timestep, rst_dir)
+      call writeUsrRestart(timestep, rst_dir)
     else
       call MPI_RECV(dummy, 1, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, istat, ierr)
       call writeFldRestart(timestep, rst_dir)
       call writePrtlRestart(timestep, rst_dir)
+      call writeUsrRestart(timestep, rst_dir)
       dummy(1) = 2
       call MPI_SEND(dummy, 1, MPI_INTEGER, 0, 2, MPI_COMM_WORLD, ierr)
     end if
@@ -141,6 +146,7 @@ contains
     open (UNIT_restart_prtl, file=filename, status="replace", form="unformatted")
     do s = 1, nspec
       write (UNIT_restart_prtl) species(s) % cntr_sp
+      write (UNIT_restart_prtl) species(s) % m_sp, species(s) % ch_sp
       write (UNIT_restart_prtl) species(s) % tile_sx, species(s) % tile_sy, species(s) % tile_sz
       write (UNIT_restart_prtl) species(s) % tile_nx, species(s) % tile_ny, species(s) % tile_nz
       do ti = 1, species(s) % tile_nx
@@ -228,6 +234,7 @@ contains
     open (UNIT_restart_prtl, file=filename, form="unformatted")
     do s = 1, nspec
       read (UNIT_restart_prtl) species(s) % cntr_sp
+      read (UNIT_restart_prtl) species(s) % m_sp, species(s) % ch_sp
       ! check that the tile sizes are the same
       read (UNIT_restart_prtl) dummy_int1, dummy_int2, dummy_int3
       if ((dummy_int1 .ne. species(s) % tile_sx) .or. &
@@ -321,6 +328,8 @@ contains
       end do
     end do
     close (UNIT_restart_prtl)
+
+    call readUsrRestart()
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 

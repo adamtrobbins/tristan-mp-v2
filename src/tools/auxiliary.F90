@@ -14,7 +14,9 @@ module m_aux
 
   interface STR
     module procedure intToStr
+    module procedure int8ToStr
     module procedure realToStr
+    module procedure real8ToStr
   end interface STR
 
   type :: generic_var
@@ -53,7 +55,7 @@ module m_aux
   type(simulation_params) :: sim_params
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: intToStr, realToStr
+  private :: intToStr, realToStr, int8ToStr, real8ToStr
   !...............................................................!
 contains
   subroutine initializeSimulationParameters()
@@ -129,29 +131,29 @@ contains
     end do
   end subroutine printWarnings
 
-    function getFMTForReal(value, w) result(FMT)
+  function getFMTForReal(value, w) result(FMT)
     implicit none
-    real, intent(in)              :: value
-    character(len=STR_MAX)        :: FMT
+    real, intent(in) :: value
+    character(len=STR_MAX) :: FMT
     integer, intent(in), optional :: w
-    integer                       :: w_
-    character(len=10)             :: dummy
+    integer :: w_
+    character(len=10) :: dummy
     if (.not. present(w)) then
       w_ = 10
     else
       w_ = w
     end if
-    write(dummy, '(I10)') w_
+    write (dummy, '(I10)') w_
 
     if ((abs(value) .ge. 100000) .or.&
       & ((abs(value) .lt. 1e-2) .and.&
         & (abs(value) .ne. 0.0))) then
-      FMT = 'ES' // trim(dummy) // '.3'
+      FMT = 'ES'//trim(dummy)//'.3'
     else
-      FMT = 'F' // trim(dummy) // '.3'
+      FMT = 'F'//trim(dummy)//'.3'
     end if
   end function getFMTForReal
-  
+
   function getFMTForRealScientific(w) result(FMT)
     implicit none
     character(len=STR_MAX) :: FMT
@@ -223,24 +225,24 @@ contains
     end if
 
     write (msg_str, '(A15)') msg
-    
+
     if (.not. present(fullstep)) then
-        FMT = "(1X,A15,ES14.6,ES12.4,ES11.3)"
-        !FMT = "(1X,A15" // &
-                !trim(getFMTForReal(dt_mean, 14)) // "," // &
-                !trim(getFMTForReal(dt_min, 12)) // "," // &
-                !trim(getFMTForReal(dt_max, 11)) // &
-               !")"
-        print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max
+      FMT = "(1X,A15,ES14.6,ES12.4,ES11.3)"
+      !FMT = "(1X,A15" // &
+      !trim(getFMTForReal(dt_mean, 14)) // "," // &
+      !trim(getFMTForReal(dt_min, 12)) // "," // &
+      !trim(getFMTForReal(dt_max, 11)) // &
+      !")"
+      print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max
     else
-        FMT = "(3X,A13,ES14.6,ES12.4,ES11.3,ES19.2)"
-        !FMT = "(3X,A13" // &
-                !trim(getFMTForReal(dt_mean, 14)) // "," // &
-                !trim(getFMTForReal(dt_min, 12)) // "," // &
-                !trim(getFMTForReal(dt_max, 11)) // "," // &
-                !trim(getFMTForReal(dt_mean * 100 / fullstep, 19)) // &
-               !")"
-        print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max, dt_mean * 100 / fullstep
+      FMT = "(3X,A13,ES14.6,ES12.4,ES11.3,ES19.2)"
+      !FMT = "(3X,A13" // &
+      !trim(getFMTForReal(dt_mean, 14)) // "," // &
+      !trim(getFMTForReal(dt_min, 12)) // "," // &
+      !trim(getFMTForReal(dt_max, 11)) // "," // &
+      !trim(getFMTForReal(dt_mean * 100 / fullstep, 19)) // &
+      !")"
+      print FMT, adjustl(msg_str), dt_mean, dt_min, dt_max, dt_mean * 100 / fullstep
     end if
   end subroutine printTime
 
@@ -275,6 +277,15 @@ contains
     string = trim(temp)
   end function intToStr
 
+  function int8ToStr(my_int) result(string)
+    implicit none
+    integer(kind=8), intent(in) :: my_int
+    character(:), allocatable :: string
+    character(len=STR_MAX) :: temp
+    write (temp, '(i0)') my_int
+    string = trim(temp)
+  end function int8ToStr
+
   function realToStr(my_real) result(string)
     implicit none
     real, intent(in) :: my_real
@@ -287,6 +298,19 @@ contains
     end if
     string = trim(temp)
   end function realToStr
+
+  function real8ToStr(my_real) result(string)
+    implicit none
+    real(kind=8), intent(in) :: my_real
+    character(:), allocatable :: string
+    character(len=STR_MAX) :: temp
+    if ((my_real .ge. 1000) .or. ((my_real .lt. 1e-2) .and. (my_real .ne. 0.0))) then
+      write (temp, '(ES10.2)') my_real
+    else
+      write (temp, '(F10.2)') my_real
+    end if
+    string = trim(temp)
+  end function real8ToStr
 
   function STRtoINT(my_str) result(my_int)
     implicit none
