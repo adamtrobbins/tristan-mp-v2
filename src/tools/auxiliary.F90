@@ -154,19 +154,20 @@ contains
     end if
   end function getFMTForReal
 
-  function getFMTForRealScientific(w) result(FMT)
+  function getFMTForRealScientific(value, w) result(FMT)
     implicit none
-    character(len=STR_MAX) :: FMT
+    real, intent(in)              :: value
+    character(len=STR_MAX)        :: FMT
     integer, intent(in), optional :: w
-    integer :: w_
-    character(len=10) :: dummy
+    integer                       :: w_
+    character(len=10)             :: dummy
     if (.not. present(w)) then
       w_ = 10
     else
       w_ = w
     end if
-    write (dummy, '(I10)') w_
-    FMT = 'ES'//trim(dummy)//'.3'
+    write(dummy, '(I10)') w_
+    FMT = 'ES' // trim(dummy) // '.3'
   end function getFMTForRealScientific
 
   subroutine printTimeHeader(tstep)

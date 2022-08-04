@@ -70,7 +70,8 @@ contains
     ! number of strided particles per each species
     do s = 1, nspec
       npart_stride(s) = 0
-      if (.not. species(s) % output_sp_prtl) cycle
+      if ((.not. species(s) % output_sp_prtl) .or. &
+          (species(s) % n_prtl_vars_sp .eq. 0)) cycle
       do ti = 1, species(s) % tile_nx
         do tj = 1, species(s) % tile_ny
           do tk = 1, species(s) % tile_nz
@@ -133,7 +134,7 @@ contains
         end do ! ti
       end if
 
-      do p = 1, n_prtl_vars
+      do p = 1, species(s) % n_prtl_vars_sp
         call h5screate_simple_f(dataset_rank, global_dims, filespace(p), error)
       end do
 

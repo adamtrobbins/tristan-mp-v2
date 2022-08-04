@@ -9,9 +9,7 @@ module m_writehistory
   use m_readinput, only: getInput
   use m_helpers
   use m_restart, only: rst_simulation
-#ifdef QED
   use m_qednamespace
-#endif
   implicit none
 
   ! real, private :: Etot_0
@@ -29,7 +27,6 @@ contains
   subroutine writeHistory(step)
     implicit none
     integer, intent(in) :: step
-    if (.false.) print *, step
     real :: e_energy, b_energy, Eprt1, Eprt2, Etot
     real :: lec_e, ion_e, massive_e, massless_e
     real :: global_e_energy, global_b_energy

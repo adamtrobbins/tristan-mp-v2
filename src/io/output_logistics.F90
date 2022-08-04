@@ -13,9 +13,7 @@ module m_outputlogistics
   use m_helpers, only: computeDensityGCA
 #endif
   use m_exchangearray, only: exchangeArray
-#ifdef QED
   use m_qednamespace
-#endif
 
   implicit none
 contains

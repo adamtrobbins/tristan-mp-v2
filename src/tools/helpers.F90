@@ -5,9 +5,7 @@ module m_helpers
   use m_domain
   use m_particles
   use m_fields
-#ifdef QED
   use m_qednamespace
-#endif
   implicit none
 contains
   logical function numbersAreClose(number1, number2)
