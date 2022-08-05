@@ -149,9 +149,9 @@ contains
       write (UNIT_restart_prtl) species(s) % m_sp, species(s) % ch_sp
       write (UNIT_restart_prtl) species(s) % tile_sx, species(s) % tile_sy, species(s) % tile_sz
       write (UNIT_restart_prtl) species(s) % tile_nx, species(s) % tile_ny, species(s) % tile_nz
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             write (UNIT_restart_prtl) species(s) % prtl_tile(ti, tj, tk) % spec
             write (UNIT_restart_prtl) species(s) % prtl_tile(ti, tj, tk) % maxptl_sp
             write (UNIT_restart_prtl) species(s) % prtl_tile(ti, tj, tk) % npart_sp
@@ -251,9 +251,9 @@ contains
       end if
 
       ! loop through all the tiles and read
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             read (UNIT_restart_prtl) species(s) % prtl_tile(ti, tj, tk) % spec
 
             ! reallocate the tile if necessary

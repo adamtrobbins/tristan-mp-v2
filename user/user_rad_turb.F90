@@ -20,9 +20,9 @@ module m_userfile
   !--- PRIVATE variables -----------------------------------------!
 
   integer, parameter, private :: n_modes = 8
-  complex, parameter, private :: ii = (0.0, 1.0)
+  complex(kind=4), parameter, private :: ii = (0.0, 1.0)
   real, dimension(n_modes), private :: kx_ant, ky_ant, kz_ant
-  complex, dimension(n_modes), private :: b_k
+  complex(kind=4), dimension(n_modes), private :: b_k
   real, private :: omega0, gamma0, deltaB, T0, eph0, L0, ppc_ph
   integer, private :: esc_interval
   real, private :: esc_prob
@@ -122,12 +122,12 @@ contains
   subroutine advanceBext()
     implicit none
     integer :: mode, ierr
-    complex :: u
+    complex(kind=4) :: u
     if (mpi_rank .eq. 0) then
       do mode = 1, n_modes / 2
-        u = CMPLX(random(dseed) - 0.5, random(dseed) - 0.5)
-        b_k(mode) = b_k(mode) * cexp(-(ii * CMPLX(omega0) + CMPLX(gamma0)))
-        b_k(mode) = b_k(mode) + CMPLX(deltaB * sqrt(12.0 * gamma0)) * u
+        u = CMPLX(random(dseed) - 0.5, random(dseed) - 0.5, kind=4)
+        b_k(mode) = b_k(mode) * cexp(-(ii * CMPLX(omega0, kind=4) + CMPLX(gamma0, kind=4)))
+        b_k(mode) = b_k(mode) + CMPLX(deltaB * sqrt(12.0 * gamma0), kind=4) * u
         b_k(mode + n_modes / 2) = CONJG(b_k(mode))
       end do
     end if
@@ -167,9 +167,9 @@ contains
     end do
 #ifdef PRTLPAYLOADS
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               ! initialize uniform displacements for photons at t=0
               if (s .eq. 3) then
@@ -230,7 +230,7 @@ contains
     kx_ant(8) = 0.0; ky_ant(8) = -2.0 * M_PI / ly; kz_ant(8) = 2.0 * M_PI / lz
     if (mpi_rank .eq. 0) then
       do mode = 1, n_modes / 2
-        b_k(mode) = CMPLX(deltaB) * cexp(ii * CMPLX(2.0 * M_PI * random(dseed)))
+        b_k(mode) = CMPLX(deltaB, kind=4) * cexp(ii * CMPLX(2.0 * M_PI * random(dseed), kind=4))
         b_k(mode + n_modes / 2) = CONJG(b_k(mode))
       end do
     end if
@@ -297,9 +297,9 @@ contains
             x_ = REAL(i + this_meshblock % ptr % x0)
             x_shift = x_ + 0.5
             k_dot_r = kx_ant(mode) * x_ + ky_ant(mode) * y_shift + kz_ant(mode) * z_shift
-            bx_ant(i, j, k) = bx_ant(i, j, k) + coef_x * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r)))
+            bx_ant(i, j, k) = bx_ant(i, j, k) + coef_x * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
             k_dot_r = kx_ant(mode) * x_shift + ky_ant(mode) * y_ + kz_ant(mode) * z_shift
-            by_ant(i, j, k) = by_ant(i, j, k) + coef_y * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r)))
+            by_ant(i, j, k) = by_ant(i, j, k) + coef_y * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
           end do
         end do
       end do
@@ -359,9 +359,9 @@ contains
     ! check escape condition every esc_interval steps:
     if (modulo(step, esc_interval) .eq. 0) then
       s = 3 ! photon species
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             s_esc = 4  ! the escaping photon species
             ! reset escaping species particle number:
             species(s_esc) % prtl_tile(ti, tj, tk) % npart_sp = 0

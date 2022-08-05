@@ -23,6 +23,23 @@ contains
     call getInput('problem', 'shift_gamma', shift_gamma)
   end subroutine userReadInput
 
+  subroutine userDeallocate()
+    implicit none
+  end subroutine userDeallocate
+
+  subroutine writeUsrRestart(timestep, rst_dir)
+    implicit none
+    integer, intent(in) :: timestep
+    character(len=STR_MAX), intent(in) :: rst_dir
+    character(len=STR_MAX) :: filename, mpichar
+  end subroutine writeUsrRestart
+
+  subroutine readUsrRestart()
+    implicit none
+    integer :: i1, i2, j1, j2, k1, k2
+    character(len=STR_MAX) :: filename, mpichar
+  end subroutine readUsrRestart
+
   function userSpatialDistribution(x_glob, y_glob, z_glob, &
                                    dummy1, dummy2, dummy3)
     real :: userSpatialDistribution

@@ -34,9 +34,9 @@ contains
     integer :: glob_nprt
     do s = 1, nspec
       nprt = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             nprt = nprt + species(s) % prtl_tile(ti, tj, tk) % npart_sp
           end do
         end do
@@ -301,9 +301,9 @@ contains
       lg_arr(:, :, :) = 0
     end if
 
-    do ti = 1, species(s) % tile_nx
+    do tk = 1, species(s) % tile_nz
       do tj = 1, species(s) % tile_ny
-        do tk = 1, species(s) % tile_nz
+        do ti = 1, species(s) % tile_nx
           pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
           pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
           pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -377,9 +377,9 @@ contains
     if (reset) then
       lg_arr(:, :, :) = 0
     end if
-    do ti = 1, species(s) % tile_nx
+    do tk = 1, species(s) % tile_nz
       do tj = 1, species(s) % tile_ny
-        do tk = 1, species(s) % tile_nz
+        do ti = 1, species(s) % tile_nx
           pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
           pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
           pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -471,9 +471,9 @@ contains
     if (reset) then
       lg_arr(:, :, :) = 0
     end if
-    do ti = 1, species(s) % tile_nx
+    do tk = 1, species(s) % tile_nz
       do tj = 1, species(s) % tile_ny
-        do tk = 1, species(s) % tile_nz
+        do ti = 1, species(s) % tile_nx
           pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
           pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
           pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -575,9 +575,9 @@ contains
     if (reset) then
       lg_arr(:, :, :) = 0
     end if
-    do ti = 1, species(s) % tile_nx
+    do tk = 1, species(s) % tile_nz
       do tj = 1, species(s) % tile_ny
-        do tk = 1, species(s) % tile_nz
+        do ti = 1, species(s) % tile_nx
           pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
           pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
           pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -682,9 +682,9 @@ contains
       ! this factor takes into account smoothing and mass of the species
       contrib = species(s) % m_sp / (2.0 * REAL(ds_) + 1.0)**pow
 
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -771,9 +771,9 @@ contains
       ! this factor takes into account smoothing and mass of the species
       contrib = species(s) % m_sp / (2.0 * REAL(ds_) + 1.0)**pow
 
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -844,9 +844,9 @@ contains
     if (reset) then
       lg_arr(:, :, :) = 0
     end if
-    do ti = 1, species(s) % tile_nx
+    do tk = 1, species(s) % tile_nz
       do tj = 1, species(s) % tile_ny
-        do tk = 1, species(s) % tile_nz
+        do ti = 1, species(s) % tile_nx
           pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
           pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
           pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -933,9 +933,9 @@ contains
       lg_arr(:, :, :) = 0
     end if
 
-    do ti = 1, species(s) % tile_nx
+    do tk = 1, species(s) % tile_nz
       do tj = 1, species(s) % tile_ny
-        do tk = 1, species(s) % tile_nz
+        do ti = 1, species(s) % tile_nx
           pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
           pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
           pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -1447,9 +1447,9 @@ contains
         end do
       end do
 
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
 
             if ((species(s) % prtl_tile(ti, tj, tk) % x1 .lt. 0) .or. &
                 (species(s) % prtl_tile(ti, tj, tk) % x2 .gt. this_meshblock % ptr % sx) .or. &

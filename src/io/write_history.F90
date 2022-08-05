@@ -27,17 +27,17 @@ contains
   subroutine writeHistory(step)
     implicit none
     integer, intent(in) :: step
-    real :: e_energy, b_energy, Eprt1, Eprt2, Etot
-    real :: lec_e, ion_e, massive_e, massless_e
-    real :: global_e_energy, global_b_energy
+    real :: e_energy(3), b_energy(3)
+    real :: global_e_energy(3), global_b_energy(3)
     real, allocatable :: prtl_energy(:)
     real, allocatable :: global_prtl_energy(:)
     real, allocatable :: prtl_num(:)
     real, allocatable :: global_prtl_num(:)
+    real :: Etot
     integer :: ierr, s, column_width
     logical :: photons_present
     character :: vert_div, hor_div
-    character(len=STR_MAX) :: FMT, dummy1, dummy2, dummy3, dummy4, filename
+    character(len=STR_MAX) :: FMT, dummy1, dummy2, dummy3, filename
     procedure(getFMT), pointer :: get_fmt_ptr => null()
     real :: volume
 
@@ -50,16 +50,16 @@ contains
 
     call computeEnergyInBox(e_energy, b_energy, prtl_energy, prtl_num)
 
-    call MPI_REDUCE(e_energy, global_e_energy, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(b_energy, global_b_energy, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(prtl_energy, global_prtl_energy, nspec, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-    call MPI_REDUCE(prtl_num, global_prtl_num, nspec, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(e_energy, global_e_energy, 3, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(b_energy, global_b_energy, 3, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(prtl_energy, global_prtl_energy, nspec, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(prtl_num, global_prtl_num, nspec, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
 
     if (mpi_rank .eq. 0) then
-      ! mean (volume averaged) energy density in units of n_0 m_e c^2:
+      ! mean energy densities in units of n_0 m_e c^2 and particle densities in units of n_0:
       volume = REAL(global_mesh % sx) * REAL(global_mesh % sy) * REAL(global_mesh % sz)
-      global_e_energy = global_e_energy * (B_norm * CCINV**2 * c_omp)**2 / 2 / volume
-      global_b_energy = global_b_energy * (B_norm * CCINV**2 * c_omp)**2 / 2 / volume
+      global_e_energy(:) = global_e_energy(:) * 0.5 * (B_norm * CCINV**2 * c_omp)**2 / volume
+      global_b_energy(:) = global_b_energy(:) * 0.5 * (B_norm * CCINV**2 * c_omp)**2 / volume
       do s = 1, nspec
         global_prtl_num(s) = global_prtl_num(s) / ppc0 / volume
         if (species(s) % m_sp .ne. 0) then
@@ -76,41 +76,54 @@ contains
         first_step = .false.
         open (UNIT_history, file=filename, status="replace", form="formatted")
 
-        FMT = "(A7,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//")"
-        write (UNIT_history, FMT, advance='no') '[time]', '[E^2]', '[B^2]'
+        FMT = "(A7,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A"//trim(STR(column_width))//")"
+        write (UNIT_history, FMT, advance='no') '[time]', '[Ex^2]', '[Ey^2]', '[Ez^2]'
+        FMT = "(A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A"//trim(STR(column_width))//")"
+        write (UNIT_history, FMT, advance='no') '[Bx^2]', '[By^2]', '[Bz^2]'
         do s = 1, nspec
           FMT = "(A"//trim(STR(column_width))//")"
           write (UNIT_history, FMT, advance='no') '[Esp'//trim(STR(s))//']'
         end do
-        do s = 1, nspec - 1
+        do s = 1, nspec
           FMT = "(A"//trim(STR(column_width))//")"
           write (UNIT_history, FMT, advance='no') '[Nsp'//trim(STR(s))//']'
         end do
         FMT = "(A"//trim(STR(column_width))//")"
-        write (UNIT_history, FMT) '[Nsp'//trim(STR(nspec))//']'
+        write (UNIT_history, FMT) '[Etot]'
 
         close (UNIT_history)
       end if  ! first_step
 
       open (UNIT_history, file=filename, status="old", position="append", form="formatted")
 
-      dummy1 = get_fmt_ptr(global_e_energy, column_width)
-      dummy2 = get_fmt_ptr(global_b_energy, column_width)
-      FMT = "(I7,"//trim(dummy1)//","//trim(dummy2)//")"
-      write (UNIT_history, FMT, advance='no') step, global_e_energy, global_b_energy
+      dummy1 = get_fmt_ptr(global_e_energy(1), column_width)
+      dummy2 = get_fmt_ptr(global_e_energy(2), column_width)
+      dummy3 = get_fmt_ptr(global_e_energy(3), column_width)
+      FMT = "(I7,"//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//")"
+      write (UNIT_history, FMT, advance='no') step, global_e_energy(1), global_e_energy(2), global_e_energy(3)
+      dummy1 = get_fmt_ptr(global_b_energy(1), column_width)
+      dummy2 = get_fmt_ptr(global_b_energy(2), column_width)
+      dummy3 = get_fmt_ptr(global_b_energy(3), column_width)
+      FMT = "("//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//")"
+      write (UNIT_history, FMT, advance='no') global_b_energy(1), global_b_energy(2), global_b_energy(3)
       do s = 1, nspec
         dummy1 = get_fmt_ptr(global_prtl_energy(s), column_width)
         FMT = "("//trim(dummy1)//")"
         write (UNIT_history, FMT, advance='no') global_prtl_energy(s)
       end do
-      do s = 1, nspec - 1
+      do s = 1, nspec
         dummy1 = get_fmt_ptr(global_prtl_num(s), column_width)
         FMT = "("//trim(dummy1)//")"
         write (UNIT_history, FMT, advance='no') global_prtl_num(s)
       end do
-      dummy1 = get_fmt_ptr(global_prtl_num(nspec), column_width)
+      Etot = global_e_energy(1) + global_e_energy(2) + global_e_energy(3) 
+      Etot = Etot + global_b_energy(1) + global_b_energy(2) + global_b_energy(3) 
+      do s = 1, nspec
+        Etot = Etot + global_prtl_energy(s)
+      end do
+      dummy1 = get_fmt_ptr(Etot, column_width)
       FMT = "("//trim(dummy1)//")"
-      write (UNIT_history, FMT) global_prtl_num(nspec)
+      write (UNIT_history, FMT) Etot
 
       close (UNIT_history)
     end if  !  mpi_rank = 0
@@ -125,10 +138,10 @@ contains
 
   subroutine computeEnergyInBox(e_energy, b_energy, prtl_energy, prtl_num)
     implicit none
-    real, intent(out) :: e_energy, b_energy
+    real, intent(out) :: e_energy(3), b_energy(3)
     real, allocatable, intent(out) :: prtl_energy(:)
     real, allocatable, intent(out) :: prtl_num(:)
-    real :: gamma, ex0, ey0, ez0, bx0, by0, bz0, wei
+    real :: gamma, wei
     integer :: s, ti, tj, tk, p
     integer(kind=2) :: i, j, k
 
@@ -140,9 +153,9 @@ contains
       prtl_num(s) = 0
       if (.not. species(s) % output_sp_hist) cycle
       if (species(s) % m_sp .eq. 0) then
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
               do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
                 gamma = species(s) % prtl_tile(ti, tj, tk) % u(p)**2 + &
                         species(s) % prtl_tile(ti, tj, tk) % v(p)**2 + &
@@ -158,9 +171,9 @@ contains
           end do
         end do
       else
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
               do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
                 gamma = 1.0 + species(s) % prtl_tile(ti, tj, tk) % u(p)**2 + &
                         species(s) % prtl_tile(ti, tj, tk) % v(p)**2 + &
@@ -175,15 +188,17 @@ contains
       end if
     end do
 
-    e_energy = 0
-    b_energy = 0
-    do i = 0, INT(this_meshblock % ptr % sx - 1, 2)
+    e_energy(:) = 0
+    b_energy(:) = 0
+    do k = 0, INT(this_meshblock % ptr % sz - 1, 2)
       do j = 0, INT(this_meshblock % ptr % sy - 1, 2)
-        do k = 0, INT(this_meshblock % ptr % sz - 1, 2)
-          call interpFromEdges(0.0, 0.0, 0.0, i, j, k, ex, ey, ez, ex0, ey0, ez0)
-          call interpFromFaces(0.0, 0.0, 0.0, i, j, k, bx, by, bz, bx0, by0, bz0)
-          e_energy = e_energy + (ex0**2 + ey0**2 + ez0**2)
-          b_energy = b_energy + (bx0**2 + by0**2 + bz0**2)
+        do i = 0, INT(this_meshblock % ptr % sx - 1, 2)
+          e_energy(1) = e_energy(1) + ex(i, j, k)**2
+          e_energy(2) = e_energy(2) + ey(i, j, k)**2
+          e_energy(3) = e_energy(3) + ez(i, j, k)**2
+          b_energy(1) = b_energy(1) + bx(i, j, k)**2
+          b_energy(2) = b_energy(2) + by(i, j, k)**2
+          b_energy(3) = b_energy(3) + bz(i, j, k)**2
         end do
       end do
     end do

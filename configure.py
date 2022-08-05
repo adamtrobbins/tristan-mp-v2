@@ -20,7 +20,7 @@ unit_choices = glob.glob(unit_directory + '*.F90')
 unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
 
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
-clusters = ['perseus', 'frontera', 'stellar']
+clusters = ['perseus', 'frontera', 'stellar', 'ginsburg']
 
 # system
 parser.add_argument('--cluster',
@@ -248,6 +248,9 @@ if (args['cluster'] is not None):
     elif args['cluster'] == 'stellar':
         args['mpi08'] = True
         args['avx512'] = True
+    elif args['cluster'] == 'ginsburg':
+        args['mpi'] = True
+        args['avx2'] = True
 
 # compilation command
 if args['hdf5']:

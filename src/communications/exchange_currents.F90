@@ -184,9 +184,9 @@ contains
     end if
 
     send_cnt = 1
-    do i = imin, imax
+    do k = kmin, kmax
       do j = jmin, jmax
-        do k = kmin, kmax
+        do i = imin, imax
           send_EB(send_cnt + 0) = jx(i, j, k)
           send_EB(send_cnt + 1) = jy(i, j, k)
           send_EB(send_cnt + 2) = jz(i, j, k)
@@ -280,9 +280,9 @@ contains
     end if
 
     send_cnt = 1
-    do i = imin, imax
+    do k = kmin, kmax
       do j = jmin, jmax
-        do k = kmin, kmax
+        do i = imin, imax
           if (.not. fill_ghosts) then
             ! add to existing values
             jx_buff(i, j, k) = jx_buff(i, j, k) + recv_fld(send_cnt + 0)
@@ -330,9 +330,9 @@ contains
       jz_buff(:, :, :) = 0.0
     end if
 
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -421,9 +421,9 @@ contains
 
     ! exchange the ghost cells + the real cells
     cntr = 0
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -501,9 +501,9 @@ contains
           !     in 3D: 26 directions, in 2D: 8, in 1D: 2
           mpi_offset = (cntr - 1) * sendrecv_offsetsz
           send_cnt = 1
-          do i = imin, imax
+          do k = kmin, kmax
             do j = jmin, jmax
-              do k = kmin, kmax
+              do i = imin, imax
                 send_fld(mpi_offset + send_cnt + 0) = jx(i, j, k)
                 send_fld(mpi_offset + send_cnt + 1) = jy(i, j, k)
                 send_fld(mpi_offset + send_cnt + 2) = jz(i, j, k)
@@ -527,9 +527,9 @@ contains
     do while (.not. quit_loop)
       quit_loop = .true.
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -621,9 +621,9 @@ contains
 
                 ! copy `recv_fld` to ghost cells and active cells
                 send_cnt = 1
-                do i = imin, imax
+                do k = kmin, kmax
                   do j = jmin, jmax
-                    do k = kmin, kmax
+                    do i = imin, imax
                       if (.not. fill_ghosts) then
                         ! add to existing values
                         jx_buff(i, j, k) = jx_buff(i, j, k) + recv_fld(send_cnt + 0)

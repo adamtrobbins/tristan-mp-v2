@@ -92,9 +92,9 @@ contains
       end if
 #endif
 
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             call createEmptyTile(s, ti, tj, tk, maxptl_array(s))
           end do
         end do
@@ -465,9 +465,9 @@ contains
     implicit none
     integer :: s, ti, tj, tk
     do s = 1, nspec ! loop over species
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             if (species(s) % prtl_tile(ti, tj, tk) % npart_sp .ge. species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.7) then
               ! increase the tile size
               if (resize_tiles) then
@@ -789,9 +789,9 @@ contains
     implicit none
     integer :: s, p, ti, tj, tk
     do s = 1, nspec ! loop over species
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             ! FIX1 try to vectorize this
             p = 1
             do while (p .le. species(s) % prtl_tile(ti, tj, tk) % npart_sp)
@@ -801,9 +801,9 @@ contains
                 p = p + 1
               end if
             end do ! p
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
     end do ! s
     call printDiag("clearGhostParticles()", 2)
   end subroutine clearGhostParticles
@@ -895,9 +895,9 @@ contains
     integer, intent(in) :: shift
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               species(s) % prtl_tile(ti, tj, tk) % xi(p) = species(s) % prtl_tile(ti, tj, tk) % xi(p) + INT(shift, 2)
             end do
@@ -912,9 +912,9 @@ contains
     integer, intent(in) :: shift
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               species(s) % prtl_tile(ti, tj, tk) % yi(p) = species(s) % prtl_tile(ti, tj, tk) % yi(p) + INT(shift, 2)
             end do
@@ -929,9 +929,9 @@ contains
     integer, intent(in) :: shift
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               species(s) % prtl_tile(ti, tj, tk) % zi(p) = species(s) % prtl_tile(ti, tj, tk) % zi(p) + INT(shift, 2)
             end do
@@ -990,9 +990,9 @@ contains
           maxptl_tmpar(ti_, tj_, tk_) = maxptl_tmpar(ti_, tj_, tk_) + 1
         end do
 
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
 
               maxptl_ = max(maxptl_tmpar(ti, tj, tk), min_tile_nprt)
               maxptl_ = maxptl_ * (species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz)
@@ -1007,9 +1007,9 @@ contains
 
       else
 
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
 
               call createEmptyTile(s, ti, tj, tk, maxptl_array(s), meshblock)
 
@@ -1153,9 +1153,9 @@ contains
     do s = 1, nspec
       ! count number of particles
       npart = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             npart = npart + species(s) % prtl_tile(ti, tj, tk) % npart_sp
           end do
         end do
@@ -1167,9 +1167,9 @@ contains
 
       ! copy particles to backup array
       prtl_backup(s) % cnt = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               prtl_backup(s) % cnt = prtl_backup(s) % cnt + 1
               call copyToEnroute(s, ti, tj, tk, p, prtl_backup(s) % enroute(prtl_backup(s) % cnt))

@@ -1,5 +1,4 @@
 module m_particledownsampling
-#ifdef DOWNSAMPLING
 
   use m_globalnamespace
   use m_aux
@@ -9,6 +8,7 @@ module m_particledownsampling
   use m_particles
   use m_particlelogistics
   use m_particlebinning
+#ifdef DOWNSAMPLING
   implicit none
 
   ! Auxiliary type for a group of merging particles
@@ -63,9 +63,9 @@ contains
       if (species(s) % dwn_sp .and. species(s) % ch_sp .ne. 0) then
         ! merging of charged particles based on cells
 
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
 
 #ifdef DEBUG
               nbinned = 0
@@ -139,9 +139,9 @@ contains
         end do ! loop ti
       else if (species(s) % dwn_sp .and. species(s) % ch_sp .eq. 0) then
         ! merging of photons based on tiles
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
               if (species(s) % prtl_tile(ti, tj, tk) % npart_sp .gt. 5) then
                 ! decide whether to use cartesian OR spherical binning
                 if (dwn_cartesian_bins) then

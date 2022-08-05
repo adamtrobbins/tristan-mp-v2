@@ -94,48 +94,34 @@ contains
     end do
   end subroutine tabulateMaxwellian
 
+  ! FIX: add tabulated Maxwellian
   subroutine generateFromMaxwellian(maxw, u_, v_, w_)
     implicit none
     type(maxwellian), intent(inout) :: maxw
     real, intent(out) :: u_, v_, w_
     real :: U = 0.0, ETA = 0.0, X1, X2, X3, X4, X5, X6, X7, X8, dx1, dx2, BETA, gamma
     logical :: flag
-    integer :: iter
+    integer :: iter, dim_
     u_ = 0.0; v_ = 0.0; w_ = 0.0
     if (maxw % temperature .le. t_crit) then
-      if (maxw % dimension .ge. 1) then
+      do dim_ = 1, maxw % dimension
         X8 = 1.0; X1 = 1.0; X2 = 1.0
-        do while ((X8 .gt. 0.27597) .and. ((X8 .gt. 0.27846) .or. (X1 .lt. 1e-16) .or. (X2**2 .gt. -4 * log(X1) * X1**2)))
+        do while ((X8 .gt. 0.27597) .and. &
+                  ((X8 .gt. 0.27846) .or. (X1 .lt. 1e-16) .or. (X2**2 .gt. -4 * log(X1) * X1**2)))
           X1 = random(dseed)
           X2 = 1.7156 * (random(dseed) - 0.5)
           X3 = X1 - 0.449871
           X4 = abs(X2) + 0.386595
           X8 = X3**2 + X4 * (0.196 * X4 - 0.25472 * X3)
         end do
-        u_ = X2 / X1 * sqrt(maxw % temperature)
-      end if
-      if (maxw % dimension .ge. 2) then
-        X8 = 1.0; X1 = 1.0; X2 = 1.0
-        do while ((X8 .gt. 0.27597) .and. ((X8 .gt. 0.27846) .or. (X1 .lt. 1e-16) .or. (X2**2 .gt. -4 * log(X1) * X1**2)))
-          X1 = random(dseed)
-          X2 = 1.7156 * (random(dseed) - 0.5)
-          X3 = X1 - 0.449871
-          X4 = abs(X2) + 0.386595
-          X8 = X3**2 + X4 * (0.196 * X4 - 0.25472 * X3)
-        end do
-        v_ = X2 / X1 * sqrt(maxw % temperature)
-      end if
-      if (maxw % dimension .ge. 3) then
-        X8 = 1.0; X1 = 1.0; X2 = 1.0
-        do while ((X8 .gt. 0.27597) .and. ((X8 .gt. 0.27846) .or. (X1 .lt. 1e-16) .or. (X2**2 .gt. -4 * log(X1) * X1**2)))
-          X1 = random(dseed)
-          X2 = 1.7156 * (random(dseed) - 0.5)
-          X3 = X1 - 0.449871
-          X4 = abs(X2) + 0.386595
-          X8 = X3**2 + X4 * (0.196 * X4 - 0.25472 * X3)
-        end do
-        w_ = X2 / X1 * sqrt(maxw % temperature)
-      end if
+        if (dim_ .eq. 1) then
+          u_ = X2 / X1 * sqrt(maxw % temperature)
+        else if (dim_ .eq. 2) then
+          v_ = X2 / X1 * sqrt(maxw % temperature)
+        else if (dim_ .eq. 3) then
+          w_ = X2 / X1 * sqrt(maxw % temperature)
+        end if
+      end do
     else
       ETA = 0.0; U = 0.0
       do while (ETA**2 - U**2 .le. 1)
@@ -148,13 +134,11 @@ contains
       end do
       if (maxw % dimension .eq. 1) then
         u_ = U * SIGN(1.0, 0.5 - random(dseed))
-      end if
-      if (maxw % dimension .eq. 2) then
+      else if (maxw % dimension .eq. 2) then
         X1 = 2.0 * M_PI * random(dseed)
         u_ = U * cos(X1)
         v_ = U * sin(X1)
-      end if
-      if (maxw % dimension .eq. 3) then
+      else if (maxw % dimension .eq. 3) then
         X1 = 1.0 - 2.0 * random(dseed)
         X2 = 2.0 * M_PI * random(dseed)
         w_ = U * X1

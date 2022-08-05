@@ -72,17 +72,17 @@ contains
       npart_stride(s) = 0
       if ((.not. species(s) % output_sp_prtl) .or. &
           (species(s) % n_prtl_vars_sp .eq. 0)) cycle
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               if (particleIsEligible(s, ti, tj, tk, p)) then
                 npart_stride(s) = npart_stride(s) + 1
               end if
             end do ! p
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
     end do ! s
 
     call MPI_ALLGATHER(npart_stride, nspec, MPI_INTEGER, &
@@ -117,9 +117,9 @@ contains
 
       if (npart_stride(s) .gt. 0) then
         j = 1
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
               do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
                 if (particleIsEligible(s, ti, tj, tk, p)) then
                   stride_indices_arr(j) = p
@@ -129,9 +129,9 @@ contains
                   j = j + 1
                 end if
               end do ! particles
-            end do ! tk
+            end do ! ti
           end do ! tj
-        end do ! ti
+        end do ! tk
       end if
 
       do p = 1, species(s) % n_prtl_vars_sp

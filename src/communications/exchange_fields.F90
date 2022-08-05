@@ -122,9 +122,9 @@ contains
     end if
 
     send_cnt = 1
-    do i = imin, imax
+    do k = kmin, kmax
       do j = jmin, jmax
-        do k = kmin, kmax
+        do i = imin, imax
           if (exchangeE) then
             send_EB(offset + send_cnt + 0) = ex(i, j, k)
             send_EB(offset + send_cnt + 1) = ey(i, j, k)
@@ -193,9 +193,9 @@ contains
 
     ! copy `recv_fld` to ghost cells
     cnt = 1
-    do i = imin, imax
+    do k = kmin, kmax
       do j = jmin, jmax
-        do k = kmin, kmax
+        do i = imin, imax
           if (exchangeE) then
             ex(i, j, k) = recv_fld(cnt + 0)
             ey(i, j, k) = recv_fld(cnt + 1)
@@ -234,9 +234,9 @@ contains
     end if
 
     ! looping through all send directions
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -305,9 +305,9 @@ contains
     allocate (mpi_recvflags(sendrecv_neighbors))
 
     cntr = 0
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -353,9 +353,9 @@ contains
           !     in 3D: 26 directions, in 2D: 8, in 1D: 2
           mpi_offset = (cntr - 1) * sendrecv_offsetsz
           send_cnt = 1
-          do i = imin, imax
+          do k = kmin, kmax
             do j = jmin, jmax
-              do k = kmin, kmax
+              do i = imin, imax
                 if (exchangeE) then
                   send_fld(mpi_offset + send_cnt + 0) = ex(i, j, k)
                   send_fld(mpi_offset + send_cnt + 1) = ey(i, j, k)
@@ -387,9 +387,9 @@ contains
     do while (.not. quit_loop)
       quit_loop = .true.
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -449,9 +449,9 @@ contains
 
                 ! copy `recv_fld` to ghost cells
                 send_cnt = 1
-                do i = imin, imax
+                do k = kmin, kmax
                   do j = jmin, jmax
-                    do k = kmin, kmax
+                    do i = imin, imax
                       if (exchangeE) then
                         ex(i, j, k) = recv_fld(send_cnt + 0)
                         ey(i, j, k) = recv_fld(send_cnt + 1)

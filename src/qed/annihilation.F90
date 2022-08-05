@@ -65,9 +65,9 @@ contains
       ! ... so picking just a random `s0`
       s0 = ann_electrons(1)
       ! loop over all tiles
-      do ti = 1, species(s0) % tile_nx
+      do tk = 1, species(s0) % tile_nz
         do tj = 1, species(s0) % tile_ny
-          do tk = 1, species(s0) % tile_nz
+          do ti = 1, species(s0) % tile_nx
             if ((Annihilation_sporadic) .and. (random(dseed) * Annihilation_interval .gt. 1.0)) then
               cycle
             end if

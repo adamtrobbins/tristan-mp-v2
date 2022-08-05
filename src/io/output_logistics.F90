@@ -241,9 +241,9 @@ contains
       emax = 0.0
       if (spec_log_bins) emax = -10.0
       do s = 1, nspec
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
               do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
                 u_ = species(s) % prtl_tile(ti, tj, tk) % u(p)
                 v_ = species(s) % prtl_tile(ti, tj, tk) % v(p)
@@ -300,9 +300,9 @@ contains
 #endif
 
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               x_g = REAL(this_meshblock % ptr % x0 + species(s) % prtl_tile(ti, tj, tk) % xi(p)) + &
                     species(s) % prtl_tile(ti, tj, tk) % dx(p)
