@@ -23,9 +23,7 @@ public: $(PUBLIC)
 
 ${PUBDIR}/%: ${ROOTDIR}/%
 	@mkdir -p $(dir ${@})
-	@./unifdef $< -o $@ -f undefs.f -B -t
-
-# @./unifdef $< -o $@ -f undefs.f -B -t || :
+	@-./unifdef $< -o $@ -f undefs.f -B -t
 
 clean:
 	@echo "Cleaning ..."
