@@ -350,10 +350,12 @@ contains
 
       !-------------------------------------------------
       ! Restart
-      wall_t(1) = MPI_WTIME()
-      call MPI_BCAST(wall_t, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      if ((wall_t_max .gt. 0) .and. ((wall_t(1) - wall_t_start(1)) .gt. wall_t_max)) then
-        tmax_exceeded = .true.
+      if ((wall_t_max .gt. 0) .and. (modulo(timestep, t_max_check_interval) .eq. 0)) then
+        wall_t(1) = MPI_WTIME()
+        call MPI_BCAST(wall_t, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+        if ((wall_t(1) - wall_t_start(1)) .gt. wall_t_max) then
+          tmax_exceeded = .true.
+        end if
       end if
       if (((rst_enable) .and.&
         & (timestep .ge. rst_start) .and.&

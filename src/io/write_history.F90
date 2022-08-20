@@ -128,11 +128,6 @@ contains
       close (UNIT_history)
     end if  !  mpi_rank = 0
 
-    if (allocated(global_prtl_energy)) deallocate (global_prtl_energy)
-    if (allocated(prtl_energy)) deallocate (prtl_energy)
-    if (allocated(global_prtl_num)) deallocate (global_prtl_num)
-    if (allocated(prtl_num)) deallocate (prtl_num)
-
     call printDiag("writeHistory()", 2)
   end subroutine writeHistory
 
