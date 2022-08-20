@@ -164,26 +164,14 @@ contains
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
-  subroutine writeUsrRestart(timestep, rst_dir)
+  subroutine writeUsrRestart(rst_file)
     implicit none
-    integer, intent(in) :: timestep
-    character(len=STR_MAX), intent(in) :: rst_dir
-    character(len=STR_MAX) :: filename, mpichar
-    write (mpichar, "(i8.8)") mpi_rank
-    filename = trim(rst_dir)//'/usr.rst.'//trim(mpichar)
-    open (UNIT_restart_usr, file=filename, status="replace", form="unformatted")
-    close (UNIT_restart_usr)
+    integer, intent(in) :: rst_file
   end subroutine writeUsrRestart
 
-  subroutine readUsrRestart()
+  subroutine readUsrRestart(rst_file)
     implicit none
-    integer :: i1, i2, j1, j2, k1, k2
-    character(len=STR_MAX) :: filename, mpichar
-    write (mpichar, "(i8.8)") mpi_rank
-    filename = trim(restart_from)//'/usr.rst.'//trim(mpichar)
-    open (UNIT_restart_usr, file=filename, form="unformatted")
-    rewind (UNIT_restart_usr)
-    close (UNIT_restart_usr)
+    integer, intent(in) :: rst_file
   end subroutine readUsrRestart
 
   !--- user-specific output -----------------------------------!

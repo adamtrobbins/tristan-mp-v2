@@ -20,8 +20,7 @@ module m_globalnamespace
   integer, parameter :: sprec = kind(1.0e0)
   integer, parameter :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40, UNIT_warn = 80
   integer, parameter :: UNIT_params = 50, UNIT_usrout = 90
-  integer, parameter :: UNIT_restart_fld = 60, UNIT_restart_prtl = 70
-  integer, parameter :: UNIT_restart_usr = 100
+  integer, parameter :: UNIT_restart = 60
 
   ! algorithm specific parameters
   real :: CC, CCINV, CORR

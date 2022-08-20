@@ -378,6 +378,7 @@ contains
     end if
 
     maxptl_on_tile = INT(maxptl / INT(species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz, 8), 4)
+    maxptl_on_tile = ((maxptl_on_tile + 15) / 16) * 16
 
     species(s) % prtl_tile(ti, tj, tk) % spec = s
 
@@ -415,6 +416,7 @@ contains
 
     tile % npart_sp = 0
     tile % maxptl_sp = sz
+    tile % maxptl_sp = ((tile % maxptl_sp + 15) / 16) * 16
 
     if (allocated(tile % xi)) deallocate (tile % xi)
     if (allocated(tile % yi)) deallocate (tile % yi)
@@ -505,6 +507,7 @@ contains
       ! decrease twice
       tile % maxptl_sp = INT(tile % maxptl_sp * 0.5)
     end if
+    tile % maxptl_sp = ((tile % maxptl_sp + 15) / 16) * 16
 
 #ifndef LOWMEM
     if (tile % npart_sp .gt. tile % maxptl_sp) then

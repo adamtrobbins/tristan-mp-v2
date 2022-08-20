@@ -23,8 +23,9 @@ module m_initialize
   use m_particlelogistics, only: initializeParticles
   use m_exchangeparts, only: initializePrtlExchange
   use m_currentdeposit, only: resetCurrents
+  use m_exchangefields
 
-  use m_userfile, only: userReadInput, userInitParticles, userInitFields
+  use m_userfile, only: userReadInput, userInitParticles, userInitFields, userFieldBoundaryConditions
 
 #ifdef SLB
   use m_userfile, only: user_slb_load_ptr => userSLBload
@@ -129,6 +130,8 @@ contains
 
     if (.not. rst_simulation) then
       call userInitFields()
+      call userFieldBoundaryConditions(0, updateE=.true., updateB=.true.)
+      call exchangeFields(exchangeE=.true., exchangeB=.true.)
       call userInitParticles()
       call printDiag("userInitialize()", 1)
     else

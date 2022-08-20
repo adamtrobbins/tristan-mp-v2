@@ -444,22 +444,16 @@ contains
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
-  subroutine writeUsrRestart(timestep, rst_dir)
+  subroutine writeUsrRestart(rst_file)
     implicit none
-    integer, intent(in) :: timestep
-    character(len=STR_MAX), intent(in) :: rst_dir
-    character(len=STR_MAX) :: filename, mpichar
-
-    write (mpichar, "(i8.8)") mpi_rank
-    filename = trim(rst_dir)//'/usr.rst.'//trim(mpichar)
-    open (UNIT_restart_usr, file=filename, status="replace", form="unformatted")
-    write (UNIT_restart_usr) kx_ant, ky_ant, kz_ant
-    write (UNIT_restart_usr) b_k
-    close (UNIT_restart_usr)
+    integer, intent(in) :: rst_file
+    write (rst_file) kx_ant, ky_ant, kz_ant
+    write (rst_file) b_k
   end subroutine writeUsrRestart
 
-  subroutine readUsrRestart()
+  subroutine readUsrRestart(rst_file)
     implicit none
+    integer, intent(in) :: rst_file
     integer :: i1, i2, j1, j2, k1, k2
     character(len=STR_MAX) :: filename, mpichar
     i1 = -NGHOST; i2 = this_meshblock % ptr % sx - 1 + NGHOST
@@ -471,13 +465,8 @@ contains
 #elif twoD
     k1 = 0; k2 = 0
 #endif
-    write (mpichar, "(i8.8)") mpi_rank
-    filename = trim(restart_from)//'/usr.rst.'//trim(mpichar)
-    open (UNIT_restart_usr, file=filename, form="unformatted")
-    rewind (UNIT_restart_usr)
-    read (UNIT_restart_usr) kx_ant, ky_ant, kz_ant
-    read (UNIT_restart_usr) b_k
-    close (UNIT_restart_usr)
+    read (rst_file) kx_ant, ky_ant, kz_ant
+    read (rst_file) b_k
     ! make arrays for the external fields:
     call userDeallocate()
     allocate (bx_ant(i1:i2, j1:j2, k1:k2))

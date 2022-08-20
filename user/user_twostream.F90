@@ -27,17 +27,14 @@ contains
     implicit none
   end subroutine userDeallocate
 
-  subroutine writeUsrRestart(timestep, rst_dir)
+  subroutine writeUsrRestart(rst_file)
     implicit none
-    integer, intent(in) :: timestep
-    character(len=STR_MAX), intent(in) :: rst_dir
-    character(len=STR_MAX) :: filename, mpichar
+    integer, intent(in) :: rst_file
   end subroutine writeUsrRestart
 
-  subroutine readUsrRestart()
+  subroutine readUsrRestart(rst_file)
     implicit none
-    integer :: i1, i2, j1, j2, k1, k2
-    character(len=STR_MAX) :: filename, mpichar
+    integer, intent(in) :: rst_file
   end subroutine readUsrRestart
 
   function userSpatialDistribution(x_glob, y_glob, z_glob, &

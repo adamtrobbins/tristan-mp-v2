@@ -103,10 +103,10 @@ contains
 #endif
 
       !-------------------------------------------------
-      ! User defined boundary conditions for B-field
-      call startTimer(9)
-      call userFieldBoundaryConditions(timestep, updateE=.true., updateB=.true.)
-      call flushTimer(9)
+      ! User defined boundary conditions for B-field; not necessary
+      !call startTimer(9)
+      !call userFieldBoundaryConditions(timestep, updateE=.true., updateB=.true.)
+      !call flushTimer(9)
       !.................................................
 
       !-------------------------------------------------
@@ -119,10 +119,10 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! Exchanging `E` and `B`-fields
-      call startTimer(6)
-      call exchangeFields(exchangeE=.true., exchangeB=.true.)
-      call flushTimer(6)
+      ! Exchanging `E` and `B`-fields; not necessary
+      !call startTimer(6)
+      !call exchangeFields(exchangeE=.true., exchangeB=.true.)
+      !call flushTimer(6)
       !.................................................
 
       !-------------------------------------------------
@@ -209,12 +209,12 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! Exchanging `E`-fields
-      call startTimer(6)
-      if (enable_fieldsolver) then
-        call exchangeFields(exchangeE=.true., exchangeB=.false.)
-      end if
-      call flushTimer(6)
+      ! Exchanging `E`-fields; not necessary
+      !call startTimer(6)
+      !if (enable_fieldsolver) then
+      !  call exchangeFields(exchangeE=.true., exchangeB=.false.)
+      !end if
+      !call flushTimer(6)
       !.................................................
 
       !-------------------------------------------------
