@@ -76,8 +76,8 @@ contains
 
     if (.false.) print *, timestep
 
-    iy = this_meshblock % ptr % sx + 2 * NGHOST
-    iz = iy * (this_meshblock % ptr % sy + 2 * NGHOST)
+    iy = ubound(ex, 1) - lbound(ex, 1) + 1
+    iz = iy * (ubound(ex, 2) - lbound(ex, 2) + 1)
 
 #ifdef RADIATION
     if (rad_dens_lim .gt. 0) then

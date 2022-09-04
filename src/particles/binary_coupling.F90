@@ -213,42 +213,13 @@ contains
 
       ! now we can simply work with `set_1` and `set_2`
       num_couples = min(num_1, num_2)
-      if ((num_1 .eq. 1) .and. (num_2 .eq. 1)) then
-        ! check most simple case
-        if ((set_1(num_1) % spec .eq. set_2(num_2) % spec) .and. &
-            (set_1(num_1) % index .eq. set_2(num_2) % index)) then
-          ! cannot pair a single particle to itself
-          num_couples = 0
-        else
-          ! trivial pairing
-          allocate (coupled_pairs(num_couples))
-          coupled_pairs(1) % part_1 = set_1(num_1)
-          coupled_pairs(1) % part_2 = set_2(num_2)
-        end if
-      else
-        ! if pairing is non trivial
-        allocate (coupled_pairs(num_couples))
-        pairing_correctQ = .false.
-        do while (.not. pairing_correctQ)
-          ! on average this will be performed `e~3` times ...
-          !     ... (if there are common elements in set #1 and #2)
-          call shuffleSet(set_1, num_1)
-          call shuffleSet(set_2, num_2)
-          pairing_correctQ = .true.
-          do i = 1, num_couples
-            if ((set_1(i) % spec .eq. set_2(i) % spec) .and. &
-                (set_1(i) % index .eq. set_2(i) % index)) then
-              ! check if the particle is coupled to itself
-              pairing_correctQ = .false.
-              exit
-            end if
-          end do
-        end do
-        do i = 1, num_couples
-          coupled_pairs(i) % part_1 = set_1(i)
-          coupled_pairs(i) % part_2 = set_2(i)
-        end do
-      end if
+      allocate (coupled_pairs(num_couples))
+      call shuffleSet(set_1, num_1)
+      call shuffleSet(set_2, num_2)
+      do i = 1, num_couples
+        coupled_pairs(i) % part_1 = set_1(i)
+        coupled_pairs(i) % part_2 = set_2(i)
+      end do
       ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     end if
 

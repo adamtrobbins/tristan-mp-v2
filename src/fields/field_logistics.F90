@@ -19,7 +19,7 @@ contains
   subroutine reallocateFields(meshblock)
     implicit none
     type(mesh), intent(in) :: meshblock
-    integer :: i1, i2, j1, j2, k1, k2
+    integer :: i1, i2, j1, j2, k1, k2, size_x
     i1 = -NGHOST; i2 = meshblock % sx - 1 + NGHOST
     j1 = -NGHOST; j2 = meshblock % sy - 1 + NGHOST
     k1 = -NGHOST; k2 = meshblock % sz - 1 + NGHOST
@@ -31,19 +31,22 @@ contains
     k1 = 0; k2 = 0
 #endif
 
-    allocate (ex(i1:i2, j1:j2, k1:k2))
-    allocate (ey(i1:i2, j1:j2, k1:k2))
-    allocate (ez(i1:i2, j1:j2, k1:k2))
-    allocate (bx(i1:i2, j1:j2, k1:k2))
-    allocate (by(i1:i2, j1:j2, k1:k2))
-    allocate (bz(i1:i2, j1:j2, k1:k2))
-    allocate (jx(i1:i2, j1:j2, k1:k2))
-    allocate (jy(i1:i2, j1:j2, k1:k2))
-    allocate (jz(i1:i2, j1:j2, k1:k2))
-    allocate (jx_buff(i1:i2, j1:j2, k1:k2))
-    allocate (jy_buff(i1:i2, j1:j2, k1:k2))
-    allocate (jz_buff(i1:i2, j1:j2, k1:k2))
-    allocate (lg_arr(i1:i2, j1:j2, k1:k2))
+    size_x = i2 - i1 + 1
+    size_x = ((size_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
+
+    allocate (ex(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (ey(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (ez(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (bx(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (by(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (bz(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (jx(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (jy(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (jz(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (jx_buff(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (jy_buff(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (jz_buff(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (lg_arr(i1:i1 + size_x - 1, j1:j2, k1:k2))
 
     allocate (sm_arr(0:meshblock % sx - 1, 0:meshblock % sy - 1, 0:meshblock % sz - 1))
   end subroutine reallocateFields
@@ -67,6 +70,8 @@ contains
     ! 26 (~30) directions to send/recv in 3D
     sendrecv_buffsz = sendrecv_offsetsz * 30
 #endif
+    sendrecv_offsetsz = ((sendrecv_offsetsz + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
+    sendrecv_buffsz = ((sendrecv_buffsz + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     allocate (send_fld(sendrecv_buffsz))
     allocate (recv_fld(sendrecv_offsetsz))

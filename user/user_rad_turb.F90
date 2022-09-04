@@ -25,7 +25,6 @@ module m_userfile
   complex(kind=4), dimension(n_modes), private :: b_k
   real, private :: omega0, gamma0, deltaB, T0, eph0, L0, ppc_ph
   integer, private :: esc_interval
-  real, private :: esc_prob
   real, allocatable, private :: bx_ant(:, :, :), by_ant(:, :, :)
   !...............................................................!
 
@@ -44,17 +43,12 @@ contains
     call getInput('problem', 'L0', L0, 1.0)
     call getInput('problem', 'ppc_ph', ppc_ph, ppc0)
     call getInput('problem', 'esc_interval', esc_interval, 4)
-    call getInput('problem', 'esc_prob', esc_prob, 1.0)
 #ifdef COMPTONSCATTERING
     Compton_nph_over_ne = Compton_nph_over_ne * ppc0 / ppc_ph
     if (mpi_rank .eq. 0) then
       print *, '  Rescaled nph/ne =', Compton_nph_over_ne
     end if
 #endif
-    esc_prob = esc_prob * REAL(esc_interval)
-    if (mpi_rank .eq. 0) then
-      print *, '  Rescaled esc_prob =', esc_prob
-    end if
   end subroutine userReadInput
 
 #ifdef PRTLPAYLOADS
@@ -195,7 +189,7 @@ contains
   subroutine userInitFields()
     implicit none
     integer :: mode
-    integer :: i1, i2, j1, j2, k1, k2
+    integer :: i1, i2, j1, j2, k1, k2, size_x
     real :: lx, ly, lz
     real :: ierr
 #ifdef DEBUG
@@ -214,9 +208,11 @@ contains
 #elif twoD
     k1 = 0; k2 = 0
 #endif
+    size_x = i2 - i1 + 1
+    size_x = ((size_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
     call userDeallocate()
-    allocate (bx_ant(i1:i2, j1:j2, k1:k2))
-    allocate (by_ant(i1:i2, j1:j2, k1:k2))
+    allocate (bx_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (by_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
     lx = REAL(global_mesh % sx)
     ly = REAL(global_mesh % sy)
     lz = REAL(global_mesh % sz)
@@ -265,7 +261,7 @@ contains
       end do
     end do
     db_rms = 0.0
-    call MPI_REDUCE(db_sq, db_rms, 1, MPI_REAL, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(db_sq, db_rms, 1, default_mpi_real, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
     db_rms = sqrt(db_rms)
     if (mpi_rank .eq. 0) then
       print *, "antenna amplitude at t=0, dB_rms / B0 = ", db_rms
@@ -285,17 +281,17 @@ contains
     if (step .gt. 0) call advanceBext()
     bx_ant(:, :, :) = 0.0; by_ant(:, :, :) = 0.0
     ! initialize the external field for this time step:
-    do mode = 1, n_modes
-      coef_x = ky_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
-      coef_y = -kx_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
-      do k = -NGHOST, this_meshblock % ptr % sz - 1 + NGHOST
-        z_shift = REAL(k + this_meshblock % ptr % z0) + 0.5
-        do j = -NGHOST, this_meshblock % ptr % sy - 1 + NGHOST
-          y_ = REAL(j + this_meshblock % ptr % y0)
-          y_shift = y_ + 0.5
-          do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
-            x_ = REAL(i + this_meshblock % ptr % x0)
-            x_shift = x_ + 0.5
+    do k = -NGHOST, this_meshblock % ptr % sz - 1 + NGHOST
+      z_shift = REAL(k + this_meshblock % ptr % z0) + 0.5
+      do j = -NGHOST, this_meshblock % ptr % sy - 1 + NGHOST
+        y_ = REAL(j + this_meshblock % ptr % y0)
+        y_shift = y_ + 0.5
+        do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
+          x_ = REAL(i + this_meshblock % ptr % x0)
+          x_shift = x_ + 0.5
+          do mode = 1, n_modes
+            coef_x = ky_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
+            coef_y = -kx_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
             k_dot_r = kx_ant(mode) * x_ + ky_ant(mode) * y_shift + kz_ant(mode) * z_shift
             bx_ant(i, j, k) = bx_ant(i, j, k) + coef_x * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
             k_dot_r = kx_ant(mode) * x_shift + ky_ant(mode) * y_ + kz_ant(mode) * z_shift
@@ -370,8 +366,7 @@ contains
               ! check if distance traveled matches escape condition:
               if (((abs(species(s) % prtl_tile(ti, tj, tk) % payload1(p)) .gt. (L0 * 0.5 * REAL(global_mesh % sx))) .or. &
                    (abs(species(s) % prtl_tile(ti, tj, tk) % payload2(p)) .gt. (L0 * 0.5 * REAL(global_mesh % sy))) .or. &
-                   (abs(species(s) % prtl_tile(ti, tj, tk) % payload3(p)) .gt. (L0 * 0.5 * REAL(global_mesh % sz)))) .and. &
-                  (random(dseed) .le. esc_prob)) then
+                   (abs(species(s) % prtl_tile(ti, tj, tk) % payload3(p)) .gt. (L0 * 0.5 * REAL(global_mesh % sz))))) then
 
                 ! "move" photon to species=s_esc that represents the escaping population:
                 species(s_esc) % prtl_tile(ti, tj, tk) % npart_sp = species(s_esc) % prtl_tile(ti, tj, tk) % npart_sp + 1
@@ -454,7 +449,7 @@ contains
   subroutine readUsrRestart(rst_file)
     implicit none
     integer, intent(in) :: rst_file
-    integer :: i1, i2, j1, j2, k1, k2
+    integer :: i1, i2, j1, j2, k1, k2, size_x
     character(len=STR_MAX) :: filename, mpichar
     i1 = -NGHOST; i2 = this_meshblock % ptr % sx - 1 + NGHOST
     j1 = -NGHOST; j2 = this_meshblock % ptr % sy - 1 + NGHOST
@@ -465,12 +460,14 @@ contains
 #elif twoD
     k1 = 0; k2 = 0
 #endif
+    size_x = i2 - i1 + 1
+    size_x = ((size_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
     read (rst_file) kx_ant, ky_ant, kz_ant
     read (rst_file) b_k
     ! make arrays for the external fields:
     call userDeallocate()
-    allocate (bx_ant(i1:i2, j1:j2, k1:k2))
-    allocate (by_ant(i1:i2, j1:j2, k1:k2))
+    allocate (bx_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (by_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
   end subroutine readUsrRestart
 
   !--- user-specific output -----------------------------------!

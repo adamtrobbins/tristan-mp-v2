@@ -101,7 +101,7 @@ contains
   end subroutine findCnt
 
   subroutine bufferSendArray(ind1, ind2, ind3, fill_ghosts, send_cnt)
-    integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
+    integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k, idiff
     integer, intent(in) :: ind1, ind2, ind3
     logical, intent(in) :: fill_ghosts
     integer, intent(out) :: send_cnt
@@ -184,14 +184,15 @@ contains
     end if
 
     send_cnt = 1
+    idiff = imax - imin
     do k = kmin, kmax
       do j = jmin, jmax
-        do i = imin, imax
-          send_EB(send_cnt + 0) = jx(i, j, k)
-          send_EB(send_cnt + 1) = jy(i, j, k)
-          send_EB(send_cnt + 2) = jz(i, j, k)
-          send_cnt = send_cnt + 3
-        end do
+        send_EB(send_cnt:send_cnt + idiff) = jx(imin:imax, j, k)
+        send_cnt = send_cnt + idiff + 1
+        send_EB(send_cnt:send_cnt + idiff) = jy(imin:imax, j, k)
+        send_cnt = send_cnt + idiff + 1
+        send_EB(send_cnt:send_cnt + idiff) = jz(imin:imax, j, k)
+        send_cnt = send_cnt + idiff + 1
       end do
     end do
     send_cnt = send_cnt - 1
@@ -199,7 +200,7 @@ contains
 
   subroutine extractRecvArray(ind1, ind2, ind3, fill_ghosts)
     implicit none
-    integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k
+    integer :: imin, imax, jmin, jmax, kmin, kmax, i, j, k, idiff
     integer :: send_cnt
     integer, intent(in) :: ind1, ind2, ind3
     logical, intent(in) :: fill_ghosts
@@ -280,22 +281,26 @@ contains
     end if
 
     send_cnt = 1
+    idiff = imax - imin
     do k = kmin, kmax
       do j = jmin, jmax
-        do i = imin, imax
-          if (.not. fill_ghosts) then
-            ! add to existing values
-            jx_buff(i, j, k) = jx_buff(i, j, k) + recv_fld(send_cnt + 0)
-            jy_buff(i, j, k) = jy_buff(i, j, k) + recv_fld(send_cnt + 1)
-            jz_buff(i, j, k) = jz_buff(i, j, k) + recv_fld(send_cnt + 2)
-          else
-            ! overwrite the existing values
-            jx(i, j, k) = recv_fld(send_cnt + 0)
-            jy(i, j, k) = recv_fld(send_cnt + 1)
-            jz(i, j, k) = recv_fld(send_cnt + 2)
-          end if
-          send_cnt = send_cnt + 3
-        end do
+        if (.not. fill_ghosts) then
+          ! add to existing values
+          jx_buff(imin:imax, j, k) = jx_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+          send_cnt = send_cnt + idiff + 1
+          jy_buff(imin;imax, j, k) = jy_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+          send_cnt = send_cnt + idiff + 1
+          jz_buff(imin:imax, j, k) = jz_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+          send_cnt = send_cnt + idiff + 1
+        else
+          ! overwrite the existing values
+          jx(imin:imax, j, k) = recv_fld(send_cnt:send_cnt + idiff)
+          send_cnt = send_cnt + idiff + 1
+          jy(imin:imax, j, k) = recv_fld(send_cnt:send_cnt + idiff)
+          send_cnt = send_cnt + idiff + 1
+          jz(imin:imax, j, k) = recv_fld(send_cnt:send_cnt + idiff)
+          send_cnt = send_cnt + idiff + 1
+        end if
       end do
     end do
 
@@ -382,7 +387,7 @@ contains
   ! non-blocking MPI communication
   subroutine exchangeCurrents(fill_ghosts_Q)
     implicit none
-    integer :: i, j, k, imin, imax, jmin, jmax, kmin, kmax
+    integer :: i, j, k, imin, imax, jmin, jmax, kmin, kmax, idiff, loc
     integer :: ind1, ind2, ind3, cntr, n_cntr
     integer :: send_cnt, recv_cnt, ierr
     integer :: mpi_sendto, mpi_recvfrom, mpi_sendtag, mpi_recvtag
@@ -501,14 +506,17 @@ contains
           !     in 3D: 26 directions, in 2D: 8, in 1D: 2
           mpi_offset = (cntr - 1) * sendrecv_offsetsz
           send_cnt = 1
+          idiff = imax - imin
+          loc = mpi_offset + send_cnt
           do k = kmin, kmax
             do j = jmin, jmax
-              do i = imin, imax
-                send_fld(mpi_offset + send_cnt + 0) = jx(i, j, k)
-                send_fld(mpi_offset + send_cnt + 1) = jy(i, j, k)
-                send_fld(mpi_offset + send_cnt + 2) = jz(i, j, k)
-                send_cnt = send_cnt + 3
-              end do
+              send_fld(loc:loc + idiff) = jx(imin:imax, j, k)
+              loc = loc + idiff + 1
+              send_fld(loc:loc + idiff) = jy(imin:imax, j, k)
+              loc = loc + idiff + 1
+              send_fld(loc:loc + idiff) = jz(imin:imax, j, k)
+              loc = loc + idiff + 1
+              send_cnt = send_cnt + 3 * (idiff + 1)
             end do
           end do
           send_cnt = send_cnt - 1
@@ -621,24 +629,29 @@ contains
 
                 ! copy `recv_fld` to ghost cells and active cells
                 send_cnt = 1
+                idiff = imax - imin
                 do k = kmin, kmax
                   do j = jmin, jmax
-                    do i = imin, imax
-                      if (.not. fill_ghosts) then
-                        ! add to existing values
-                        jx_buff(i, j, k) = jx_buff(i, j, k) + recv_fld(send_cnt + 0)
-                        jy_buff(i, j, k) = jy_buff(i, j, k) + recv_fld(send_cnt + 1)
-                        jz_buff(i, j, k) = jz_buff(i, j, k) + recv_fld(send_cnt + 2)
-                      else
-                        ! overwrite the existing values
-                        jx(i, j, k) = recv_fld(send_cnt + 0)
-                        jy(i, j, k) = recv_fld(send_cnt + 1)
-                        jz(i, j, k) = recv_fld(send_cnt + 2)
-                      end if
-                      send_cnt = send_cnt + 3
-                    end do
+                    if (.not. fill_ghosts) then
+                      ! add to existing values
+                      jx_buff(imin:imax, j, k) = jx_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+                      send_cnt = send_cnt + idiff + 1
+                      jy_buff(imin:imax, j, k) = jy_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+                      send_cnt = send_cnt + idiff + 1
+                      jz_buff(imin:imax, j, k) = jz_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+                      send_cnt = send_cnt + idiff + 1
+                    else
+                      ! overwrite the existing values
+                      jx(imin:imax, j, k) = recv_fld(send_cnt:send_cnt + idiff)
+                      send_cnt = send_cnt + idiff + 1
+                      jy(imin:imax, j, k) = recv_fld(send_cnt:send_cnt + idiff)
+                      send_cnt = send_cnt + idiff + 1
+                      jz(imin:imax, j, k) = recv_fld(send_cnt:send_cnt + idiff)
+                      send_cnt = send_cnt + idiff + 1
+                    end if
                   end do
                 end do
+
               end if ! if receive is ready
             end if ! if receive hasn't been done yet
           end do ! ind3

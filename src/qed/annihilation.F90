@@ -102,9 +102,9 @@ contains
             end if
 
             ! initialize cell-based bins
-            do pi = 1, nx_bin
+            do pk = 1, nz_bin
               do pj = 1, ny_bin
-                do pk = 1, nz_bin
+                do pi = 1, nx_bin
                   lec_cell_bins(pi, pj, pk) % npart = 0
                   allocate (lec_cell_bins(pi, pj, pk) % prtls(npart_lec))
                   pos_cell_bins(pi, pj, pk) % npart = 0
@@ -152,9 +152,9 @@ contains
             ! at this point positrons and electrons on a tile are distributed ...
             ! ... into groups based on their cells
             ! loop over all cells on a tile
-            do pi = 1, nx_bin
+            do pk = 1, nz_bin
               do pj = 1, ny_bin
-                do pk = 1, nz_bin
+                do pi = 1, nx_bin
                   if ((lec_cell_bins(pi, pj, pk) % npart .ge. 1) .and. (pos_cell_bins(pi, pj, pk) % npart .ge. 1)) then
                     call pairAnnihilationWithGroups(lec_cell_bins(pi, pj, pk), pos_cell_bins(pi, pj, pk))
                   end if

@@ -136,9 +136,9 @@ contains
         end do
       end do
       ! allocate the corresponding buffer arrays for each direction
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             call reallocateEnroute(send_x, send_y, send_z, enroute_bot % get(send_x, send_y, send_z) % cnt + 1)
           end do
         end do
@@ -266,9 +266,9 @@ contains
       ! // particle crosses MPI blocks
 
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -370,9 +370,9 @@ contains
 #endif
 
 #ifdef LOWMEM
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             if (allocated(enroute_bot % get(send_x, send_y, send_z) % enroute)) then
               deallocate (enroute_bot % get(send_x, send_y, send_z) % enroute)
             end if
@@ -453,9 +453,9 @@ contains
         end do
       end do
       ! allocate the corresponding buffer arrays for each direction
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             call reallocateEnroute(send_x, send_y, send_z, enroute_bot % get(send_x, send_y, send_z) % cnt + 1)
           end do
         end do
@@ -584,9 +584,9 @@ contains
 
       ! start sending //
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -664,9 +664,9 @@ contains
         ! try to receive while not done
         quit_loop = .true.
         cntr = 0
-        do ind1 = -1, 1
+        do ind3 = -1, 1
           do ind2 = -1, 1
-            do ind3 = -1, 1
+            do ind1 = -1, 1
               if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
               if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -711,9 +711,9 @@ contains
       end do ! global loop
 
 #ifdef LOWMEM
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             if (allocated(enroute_bot % get(send_x, send_y, send_z) % enroute)) then
               deallocate (enroute_bot % get(send_x, send_y, send_z) % enroute)
             end if
@@ -794,9 +794,9 @@ contains
         end do
       end do
       ! allocate the corresponding buffer arrays for each direction
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             call reallocateEnroute(send_x, send_y, send_z, &
                                    enroute_bot % get(send_x, send_y, send_z) % cnt + 1)
           end do
@@ -976,9 +976,9 @@ contains
 
       ! start sending //
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -1032,9 +1032,9 @@ contains
         ! try to receive while not done
         quit_loop = .true.
         cntr = 0
-        do ind1 = -1, 1
+        do ind3 = -1, 1
           do ind2 = -1, 1
-            do ind3 = -1, 1
+            do ind1 = -1, 1
               if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
               if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -1107,9 +1107,9 @@ contains
 #endif
 
 #ifdef LOWMEM
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             if (allocated(enroute_bot % get(send_x, send_y, send_z) % enroute)) then
               deallocate (enroute_bot % get(send_x, send_y, send_z) % enroute)
             end if

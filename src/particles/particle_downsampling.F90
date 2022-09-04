@@ -82,9 +82,9 @@ contains
               if (allocated(downsampling_tile)) deallocate (downsampling_tile)
               allocate (downsampling_tile)
 
-              do pi = 1, nx_bin
+              do pk = 1, nz_bin
                 do pj = 1, ny_bin
-                  do pk = 1, nz_bin
+                  do pi = 1, nx_bin
 
                     call allocateParticlesOnEmptyTile(downsampling_tile, position_grid(pi, pj, pk) % npart)
 
@@ -134,9 +134,9 @@ contains
 
               if (allocated(downsampling_tile)) deallocate (downsampling_tile)
 
-            end do ! loop tk
+            end do ! loop ti
           end do ! loop tj
-        end do ! loop ti
+        end do ! loop tk
       else if (species(s) % dwn_sp .and. species(s) % ch_sp .eq. 0) then
         ! merging of photons based on tiles
         do tk = 1, species(s) % tile_nz
@@ -375,9 +375,9 @@ contains
     real :: px_mid, py_mid, pz_mid
 
     ! loop through all the bins
-    do pi = 1, dwn_n_mom_bins
+    do pk = 1, dwn_n_mom_bins
       do pj = 1, dwn_n_mom_bins
-        do pk = 1, dwn_n_mom_bins
+        do pi = 1, dwn_n_mom_bins
           npart = momentum_bins(pi, pj, pk) % npart
 
           if (npart .gt. 5) then

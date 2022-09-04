@@ -152,9 +152,9 @@ contains
     do f = 1, n_fld_vars
       call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
       ! Create dataset by interpolating fields
-      do i1 = 0, INT(blocks(1) - 1, 2)
+      do k1 = 0, INT(blocks(3) - 1, 2)
         do j1 = 0, INT(blocks(2) - 1, 2)
-          do k1 = 0, INT(blocks(3) - 1, 2)
+          do i1 = 0, INT(blocks(1) - 1, 2)
             i = INT(starts(1) + i1 * output_flds_istep, 2)
             j = INT(starts(2) + j1 * output_flds_istep, 2)
             k = INT(starts(3) + k1 * output_flds_istep, 2)
@@ -256,9 +256,9 @@ contains
         if (rnk .eq. mpi_rank) then
           ! Prepare fields to output
           call prepareFieldForOutput(fld_vars(f), writing_lgarrQ)
-          do i1 = 0, blocks(1) - 1
+          do k1 = 0, blocks(3) - 1
             do j1 = 0, blocks(2) - 1
-              do k1 = 0, blocks(3) - 1
+              do i1 = 0, blocks(1) - 1
                 i = starts(1) + i1 * output_flds_istep
                 j = starts(2) + j1 * output_flds_istep
                 k = starts(3) + k1 * output_flds_istep

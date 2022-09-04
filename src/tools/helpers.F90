@@ -86,20 +86,20 @@ contains
 #endif
       if (present(containedQ)) then
 #ifdef oneD
-        containedQ = ((x_glob .ge. REAL(this_meshblock % ptr % x0)) .and. &
-                      (x_glob .lt. REAL(this_meshblock % ptr % x0 + this_meshblock % ptr % sx)))
+        containedQ = ((x_loc .ge. 0) .and. &
+                      (x_loc .lt. REAL(this_meshblock % ptr % sx)))
 #elif twoD
-        containedQ = ((x_glob .ge. REAL(this_meshblock % ptr % x0)) .and. &
-                      (x_glob .lt. REAL(this_meshblock % ptr % x0 + this_meshblock % ptr % sx)) .and. &
-                      (y_glob .ge. REAL(this_meshblock % ptr % y0)) .and. &
-                      (y_glob .lt. REAL(this_meshblock % ptr % y0 + this_meshblock % ptr % sy)))
+        containedQ = ((x_loc .ge. 0) .and. &
+                      (x_loc .lt. REAL(this_meshblock % ptr % sx)) .and. &
+                      (y_loc .ge. 0) .and. &
+                      (y_loc .lt. REAL(this_meshblock % ptr % sy)))
 #elif threeD
-        containedQ = ((x_glob .ge. REAL(this_meshblock % ptr % x0)) .and. &
-                      (x_glob .lt. REAL(this_meshblock % ptr % x0 + this_meshblock % ptr % sx)) .and. &
-                      (y_glob .ge. REAL(this_meshblock % ptr % y0)) .and. &
-                      (y_glob .lt. REAL(this_meshblock % ptr % y0 + this_meshblock % ptr % sy)) .and. &
-                      (z_glob .ge. REAL(this_meshblock % ptr % z0)) .and. &
-                      (z_glob .lt. REAL(this_meshblock % ptr % z0 + this_meshblock % ptr % sz)))
+        containedQ = ((x_loc .ge. 0) .and. &
+                      (x_loc .lt. REAL(this_meshblock % ptr % sx)) .and. &
+                      (y_loc .ge. 0) .and. &
+                      (y_loc .lt. REAL(this_meshblock % ptr % sy)) .and. &
+                      (z_loc .ge. 0) .and. &
+                      (z_loc .lt. REAL(this_meshblock % ptr % sz)))
 #endif
       end if
     end if
@@ -199,9 +199,9 @@ contains
     integer :: rnk
     integer :: ind1, ind2, ind3, inds(3)
     do rnk = 0, mpi_size - 1
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             inds(1) = ind1; inds(2) = ind2; inds(3) = ind3
             call assignNeighbor(rnk, inds, mblocks)
           end do
@@ -233,9 +233,9 @@ contains
     integer :: ind1, ind2, ind3
     integer :: cntr
     cntr = 0
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle

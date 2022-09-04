@@ -50,16 +50,9 @@ contains
       do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
           do ti = 1, species(s) % tile_nx
-            if (Compton_algorithm .eq. 1) then
-              ! TODO: not yet implemented...
-              !call comptonOnTile_bin(ti, tj, tk,&
-              !                & compton_species_1(1 : si_1), si_1,&
-              !                & compton_species_2(1 : si_2), si_2)
-            else if (Compton_algorithm .eq. 2) then
-              call comptonOnTile_mc(ti, tj, tk, &
-                                    compton_species_1(1:si_1), si_1, &
-                                    compton_species_2(1:si_2), si_2)
-            end if
+            call comptonOnTile_mc(ti, tj, tk, &
+                                  compton_species_1(1:si_1), si_1, &
+                                  compton_species_2(1:si_2), si_2)
           end do
         end do
       end do
@@ -153,11 +146,7 @@ contains
       ! P_corr = P_corr * REAL(num_pairs) / REAL(num_pairs_max)
       ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-      if (Compton_nph_over_ne .ge. 1.0) then
-        P_corr = P_corr * Compton_nph_over_ne
-      else
-        P_corr = P_corr / Compton_nph_over_ne
-      end if
+      P_corr = P_corr * max(Compton_nph_over_ne, 1.0 / Compton_nph_over_ne)
 
       do el_ph = 1, num_pairs
         ! "extract" the el-photon pair:

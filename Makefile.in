@@ -23,7 +23,7 @@ BUILD_DIR := build/
 EXECUTABLE := $(BIN_DIR)$(EXE_FILE)
 
 SRC_FILES := $(shell find $(SRC_DIR) -name '*.F90') $(addprefix $(USR_DIR), $(USER_FILE).F90)
-INC_FILES := $(shell find $(SRC_DIR) -name '*.F08') 
+INC_FILES := $(shell find $(SRC_DIR) -name '*.F08')
 OBJ_FILES := $(patsubst %.F90,%.o,$(SRC_FILES))
 OBJ_FILES := $(addprefix $(BUILD_DIR),$(OBJ_FILES))
 
@@ -31,17 +31,17 @@ OBJ_FILES := $(addprefix $(BUILD_DIR),$(OBJ_FILES))
 
 all : depend $(EXECUTABLE)
 
-include Makefile.depend
+-include Makefile.depend
 
 depend Makefile.depend:
-	@-./extern/makedepf90 $(SRC_FILES) -B $(BUILD_DIR) > Makefile.depend
+	@-./extern/makedepf90 $(SRC_FILES) -DUSROUTPUT -DQED -B $(BUILD_DIR) > Makefile.depend
 
 $(EXECUTABLE): $(OBJ_FILES)
 	@echo Linking $(EXECUTABLE)
 	@mkdir -p $(@D)
 	@$(FC) $(FFLAGS) $(PFLAGS) $(OBJ_FILES) -o $(EXECUTABLE)
 	@echo [OK]: executable created at $(EXECUTABLE)
-	
+
 
 $(BUILD_DIR)%.o: %.F90
 	@mkdir -p $(@D)
@@ -53,3 +53,4 @@ clean :
 	@rm -f $(EXECUTABLE) $(OBJ_FILES)
 	@rm -rf $(BIN_DIR) $(BUILD_DIR)
 	@rm -f Makefile.depend
+

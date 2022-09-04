@@ -378,7 +378,7 @@ contains
     end if
 
     maxptl_on_tile = INT(maxptl / INT(species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz, 8), 4)
-    maxptl_on_tile = ((maxptl_on_tile + 15) / 16) * 16
+    maxptl_on_tile = ((maxptl_on_tile + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     species(s) % prtl_tile(ti, tj, tk) % spec = s
 
@@ -416,7 +416,7 @@ contains
 
     tile % npart_sp = 0
     tile % maxptl_sp = sz
-    tile % maxptl_sp = ((tile % maxptl_sp + 15) / 16) * 16
+    tile % maxptl_sp = ((tile % maxptl_sp + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     if (allocated(tile % xi)) deallocate (tile % xi)
     if (allocated(tile % yi)) deallocate (tile % yi)
@@ -507,7 +507,7 @@ contains
       ! decrease twice
       tile % maxptl_sp = INT(tile % maxptl_sp * 0.5)
     end if
-    tile % maxptl_sp = ((tile % maxptl_sp + 15) / 16) * 16
+    tile % maxptl_sp = ((tile % maxptl_sp + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
 #ifndef LOWMEM
     if (tile % npart_sp .gt. tile % maxptl_sp) then
@@ -749,9 +749,6 @@ contains
 #endif
 
     call globalToLocalCoords(x_g, y_g, z_g, x_loc, y_loc, z_loc, containedQ=contained_flag)
-    x_loc = x_loc + TINYXYZ
-    y_loc = y_loc + TINYXYZ
-    z_loc = z_loc + TINYXYZ
     ! check if the coordinate is within the current MPI domain
     if (contained_flag) then
       ! transform coordinates
@@ -1064,6 +1061,7 @@ contains
 #elif threeD
     buffsize = MAX0(meshblock % sx, meshblock % sy, meshblock % sz)**2 * multiplier
 #endif
+    buffsize = ((buffsize + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     if (allocated(recv_enroute % enroute)) then
       old_buffsize = recv_enroute % max
@@ -1086,9 +1084,9 @@ contains
 
 #ifndef LOWMEM
 
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -1110,6 +1108,7 @@ contains
           else
             buffsize = buffsize_xyz
           end if
+          buffsize = ((buffsize + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
           if (allocated(enroute_bot % get(ind1, ind2, ind3) % enroute)) then
             ! reallocate
             old_buffsize = enroute_bot % get(ind1, ind2, ind3) % max
