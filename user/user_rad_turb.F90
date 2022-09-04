@@ -189,7 +189,7 @@ contains
   subroutine userInitFields()
     implicit none
     integer :: mode
-    integer :: i1, i2, j1, j2, k1, k2, size_x
+    integer :: i1, i2, j1, j2, k1, k2, shape_x
     real :: lx, ly, lz
     real :: ierr
 #ifdef DEBUG
@@ -208,11 +208,11 @@ contains
 #elif twoD
     k1 = 0; k2 = 0
 #endif
-    size_x = i2 - i1 + 1
-    size_x = ((size_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
+    shape_x = i2 - i1 + 1
+    shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
     call userDeallocate()
-    allocate (bx_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
-    allocate (by_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (bx_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
+    allocate (by_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
     lx = REAL(global_mesh % sx)
     ly = REAL(global_mesh % sy)
     lz = REAL(global_mesh % sz)
@@ -449,7 +449,7 @@ contains
   subroutine readUsrRestart(rst_file)
     implicit none
     integer, intent(in) :: rst_file
-    integer :: i1, i2, j1, j2, k1, k2, size_x
+    integer :: i1, i2, j1, j2, k1, k2, shape_x
     character(len=STR_MAX) :: filename, mpichar
     i1 = -NGHOST; i2 = this_meshblock % ptr % sx - 1 + NGHOST
     j1 = -NGHOST; j2 = this_meshblock % ptr % sy - 1 + NGHOST
@@ -460,14 +460,14 @@ contains
 #elif twoD
     k1 = 0; k2 = 0
 #endif
-    size_x = i2 - i1 + 1
-    size_x = ((size_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
+    shape_x = i2 - i1 + 1
+    shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
     read (rst_file) kx_ant, ky_ant, kz_ant
     read (rst_file) b_k
     ! make arrays for the external fields:
     call userDeallocate()
-    allocate (bx_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
-    allocate (by_ant(i1:i1 + size_x - 1, j1:j2, k1:k2))
+    allocate (bx_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
+    allocate (by_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
   end subroutine readUsrRestart
 
   !--- user-specific output -----------------------------------!

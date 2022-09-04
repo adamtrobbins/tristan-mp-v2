@@ -1328,7 +1328,7 @@ contains
     implicit none
     ! this is an ultimate function that checks that all the implicit assertions are satisfied
     integer, dimension(3) :: field_shape
-    integer :: s, ti, tj, tk, p, i, j, k, dummy1, dummy2, ierr
+    integer :: s, ti, tj, tk, p, i, j, k, dummy1, dummy2, ierr, shape_x
     integer(kind=2), pointer, contiguous :: pt_xi(:), pt_yi(:), pt_zi(:)
     real, pointer, contiguous :: pt_dx(:), pt_dy(:), pt_dz(:)
     real, pointer, contiguous :: pt_ux(:), pt_uy(:), pt_uz(:)
@@ -1353,12 +1353,14 @@ contains
 #endif
 
     ! 2. check field dimensions
+    shape_x = this_meshblock % ptr % sx + 2 * NGHOST
+    shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 #ifdef oneD
-    field_shape = (/this_meshblock % ptr % sx + 2 * NGHOST, 1, 1/)
+    field_shape = (/shape_x, 1, 1/)
 #elif twoD
-    field_shape = (/this_meshblock % ptr % sx + 2 * NGHOST, this_meshblock % ptr % sy + 2 * NGHOST, 1/)
+    field_shape = (/shape_x, this_meshblock % ptr % sy + 2 * NGHOST, 1/)
 #elif threeD
-    field_shape = (/this_meshblock % ptr % sx + 2 * NGHOST, this_meshblock % ptr % sy + 2 * NGHOST, this_meshblock % ptr % sz + 2 * NGHOST/)
+    field_shape = (/shape_x, this_meshblock % ptr % sy + 2 * NGHOST, this_meshblock % ptr % sz + 2 * NGHOST/)
 #endif
 
     if (.not. arraysAreEqual(shape(ex), field_shape)) then
