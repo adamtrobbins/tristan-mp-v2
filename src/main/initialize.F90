@@ -378,6 +378,7 @@ contains
 #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
+    call getInput('grid', 'shrink_tiles', shrink_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
 
     call printDiag("initializeSimulation()", 1)

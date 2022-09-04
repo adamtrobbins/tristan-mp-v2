@@ -38,7 +38,7 @@ module m_globalnamespace
 
   ! simulation parameters
   integer :: start_timestep = 0, final_timestep, warning_count = 0
-  logical :: resize_tiles
+  logical :: resize_tiles, shrink_tiles
   integer :: min_tile_nprt = 100, max_buffsize = 32
   integer :: t_max_check_interval = 10
   character(len=STR_MAX) :: input_file_name = 'input', &

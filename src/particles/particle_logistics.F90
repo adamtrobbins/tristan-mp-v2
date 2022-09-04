@@ -477,10 +477,10 @@ contains
               else
                 print *, "DANGER: `maxptl_sp` in tiles too low, consider increasing `maxptl` or turning on `resize_tiles`."
               end if
-            else if ((species(s) % prtl_tile(ti, tj, tk) % npart_sp .lt. (species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.3)) .and. &
+            else if ((species(s) % prtl_tile(ti, tj, tk) % npart_sp .lt. (species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.1)) .and. &
                      ((species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.5) .gt. min_tile_nprt)) then
               ! decrease the tile size
-              if (resize_tiles) then
+              if (resize_tiles .and. shrink_tiles) then
                 call reallocTileSize(species(s) % prtl_tile(ti, tj, tk), .false.)
               end if
             end if
