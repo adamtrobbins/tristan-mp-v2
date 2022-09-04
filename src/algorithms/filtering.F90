@@ -73,16 +73,9 @@ contains
 #if defined(oneD) || defined(twoD) || defined(threeD)
   subroutine filterInX(arr, do_n_times)
     implicit none
-#ifdef oneD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-#elif twoD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-#elif threeD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-#endif
+    real, intent(inout) :: arr(this_meshblock % ptr % i1:this_meshblock % ptr % i2, &
+                               this_meshblock % ptr % j1:this_meshblock % ptr % j2, &
+                               this_meshblock % ptr % k1:this_meshblock % ptr % k2)
     integer, intent(in) :: do_n_times
     real :: tmp2, tmp1
     integer :: i, j, k, n_pass
@@ -146,16 +139,9 @@ contains
 #if defined(twoD) || defined(threeD)
   subroutine filterInY(arr, do_n_times)
     implicit none
-#ifdef oneD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-#elif twoD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-#elif threeD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-#endif
+    real, intent(inout) :: arr(this_meshblock % ptr % i1:this_meshblock % ptr % i2, &
+                               this_meshblock % ptr % j1:this_meshblock % ptr % j2, &
+                               this_meshblock % ptr % k1:this_meshblock % ptr % k2)
     integer, intent(in) :: do_n_times
     real :: tmp2, tmp1
     integer :: i, j, k, n_pass
@@ -216,16 +202,9 @@ contains
 #if defined(threeD)
   subroutine filterInZ(arr, do_n_times)
     implicit none
-#ifdef oneD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, 0:0, 0:0)
-#elif twoD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-#elif threeD
-    real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
-                               -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
-#endif
+    real, intent(inout) :: arr(this_meshblock % ptr % i1:this_meshblock % ptr % i2, &
+                               this_meshblock % ptr % j1:this_meshblock % ptr % j2, &
+                               this_meshblock % ptr % k1:this_meshblock % ptr % k2)
     integer, intent(in) :: do_n_times
     real :: tmp2, tmp1
     integer :: i, j, k, n_pass

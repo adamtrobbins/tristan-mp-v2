@@ -18,7 +18,7 @@ contains
 
   subroutine reallocateFields(meshblock)
     implicit none
-    type(mesh), intent(in) :: meshblock
+    type(mesh), intent(inout) :: meshblock
     integer :: i1, i2, j1, j2, k1, k2, shape_x
     i1 = -NGHOST; i2 = meshblock % sx - 1 + NGHOST
     j1 = -NGHOST; j2 = meshblock % sy - 1 + NGHOST
@@ -33,20 +33,28 @@ contains
 
     shape_x = i2 - i1 + 1
     shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
+    i2 = i1 + shape_x - 1
 
-    allocate (ex(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (ey(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (ez(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (bx(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (by(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (bz(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (jx(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (jy(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (jz(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (jx_buff(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (jy_buff(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (jz_buff(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (lg_arr(i1:i1 + shape_x - 1, j1:j2, k1:k2))
+    meshblock % i1 = i1
+    meshblock % i2 = i2
+    meshblock % j1 = j1
+    meshblock % j2 = j2
+    meshblock % k1 = k1
+    meshblock % k2 = k2
+
+    allocate (ex(i1:i2, j1:j2, k1:k2))
+    allocate (ey(i1:i2, j1:j2, k1:k2))
+    allocate (ez(i1:i2, j1:j2, k1:k2))
+    allocate (bx(i1:i2, j1:j2, k1:k2))
+    allocate (by(i1:i2, j1:j2, k1:k2))
+    allocate (bz(i1:i2, j1:j2, k1:k2))
+    allocate (jx(i1:i2, j1:j2, k1:k2))
+    allocate (jy(i1:i2, j1:j2, k1:k2))
+    allocate (jz(i1:i2, j1:j2, k1:k2))
+    allocate (jx_buff(i1:i2, j1:j2, k1:k2))
+    allocate (jy_buff(i1:i2, j1:j2, k1:k2))
+    allocate (jz_buff(i1:i2, j1:j2, k1:k2))
+    allocate (lg_arr(i1:i2, j1:j2, k1:k2))
 
     allocate (sm_arr(0:meshblock % sx - 1, 0:meshblock % sy - 1, 0:meshblock % sz - 1))
   end subroutine reallocateFields

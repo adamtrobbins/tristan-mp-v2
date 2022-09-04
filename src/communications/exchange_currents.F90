@@ -288,7 +288,7 @@ contains
           ! add to existing values
           jx_buff(imin:imax, j, k) = jx_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
           send_cnt = send_cnt + idiff + 1
-          jy_buff(imin;imax, j, k) = jy_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
+          jy_buff(imin:imax, j, k) = jy_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
           send_cnt = send_cnt + idiff + 1
           jz_buff(imin:imax, j, k) = jz_buff(imin:imax, j, k) + recv_fld(send_cnt:send_cnt + idiff)
           send_cnt = send_cnt + idiff + 1

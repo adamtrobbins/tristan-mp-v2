@@ -189,30 +189,25 @@ contains
   subroutine userInitFields()
     implicit none
     integer :: mode
-    integer :: i1, i2, j1, j2, k1, k2, shape_x
+    integer :: i1, i2, j1, j2, k1, k2
     real :: lx, ly, lz
     real :: ierr
 #ifdef DEBUG
     integer :: i, j, k, im1, jm1, km1
     real :: check_x, check_y, check_z, db_sq, db_rms
 #endif
-    i1 = -NGHOST; i2 = this_meshblock % ptr % sx - 1 + NGHOST
-    j1 = -NGHOST; j2 = this_meshblock % ptr % sy - 1 + NGHOST
-    k1 = -NGHOST; k2 = this_meshblock % ptr % sz - 1 + NGHOST
+    i1 = this_meshblock % ptr % i1
+    i2 = this_meshblock % ptr % i2
+    j1 = this_meshblock % ptr % j1
+    j2 = this_meshblock % ptr % j2
+    k1 = this_meshblock % ptr % k1
+    k2 = this_meshblock % ptr % k2
     ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
     bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 1.0 ! guide field in z direction
     jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
-#ifdef oneD
-    j1 = 0; j2 = 0
-    k1 = 0; k2 = 0
-#elif twoD
-    k1 = 0; k2 = 0
-#endif
-    shape_x = i2 - i1 + 1
-    shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
     call userDeallocate()
-    allocate (bx_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (by_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
+    allocate (bx_ant(i1:i2, j1:j2, k1:k2))
+    allocate (by_ant(i1:i2, j1:j2, k1:k2))
     lx = REAL(global_mesh % sx)
     ly = REAL(global_mesh % sy)
     lz = REAL(global_mesh % sz)
@@ -449,25 +444,20 @@ contains
   subroutine readUsrRestart(rst_file)
     implicit none
     integer, intent(in) :: rst_file
-    integer :: i1, i2, j1, j2, k1, k2, shape_x
+    integer :: i1, i2, j1, j2, k1, k2
     character(len=STR_MAX) :: filename, mpichar
-    i1 = -NGHOST; i2 = this_meshblock % ptr % sx - 1 + NGHOST
-    j1 = -NGHOST; j2 = this_meshblock % ptr % sy - 1 + NGHOST
-    k1 = -NGHOST; k2 = this_meshblock % ptr % sz - 1 + NGHOST
-#ifdef oneD
-    j1 = 0; j2 = 0
-    k1 = 0; k2 = 0
-#elif twoD
-    k1 = 0; k2 = 0
-#endif
-    shape_x = i2 - i1 + 1
-    shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
+    i1 = this_meshblock % ptr % i1
+    i2 = this_meshblock % ptr % i2
+    j1 = this_meshblock % ptr % j1
+    j2 = this_meshblock % ptr % j2
+    k1 = this_meshblock % ptr % k1
+    k2 = this_meshblock % ptr % k2
     read (rst_file) kx_ant, ky_ant, kz_ant
     read (rst_file) b_k
     ! make arrays for the external fields:
     call userDeallocate()
-    allocate (bx_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
-    allocate (by_ant(i1:i1 + shape_x - 1, j1:j2, k1:k2))
+    allocate (bx_ant(i1:i2, j1:j2, k1:k2))
+    allocate (by_ant(i1:i2, j1:j2, k1:k2))
   end subroutine readUsrRestart
 
   !--- user-specific output -----------------------------------!
