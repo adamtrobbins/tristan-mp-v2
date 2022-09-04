@@ -229,7 +229,7 @@ makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
 makefile_options['WARNING_FLAGS'] = ''
-makefile_options['DEFS'] = '-DSTR_MAX=280 -DTINYXYZ=1e-6 -DTINYREAL=1e-3 -DTINYFLD=1e-8 -DTINYWEI=1e-6 -DM_PI=3.141592653589793 -DVEC_LEN=16'
+makefile_options['DEFS'] = '-DSTR_MAX=280 -DTINYXYZ=1e-6 -DTINYREAL=1e-3 -DTINYFLD=1e-8 -DTINYWEI=1e-6 -DM_PI=3.141592653589793 -DVEC_LEN=16 '
 
 # specific cluster:
 specific_cluster = False
@@ -377,8 +377,7 @@ if args['compton']:
 if args['annihilation']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DPAIRANNIHILATION '
 
-makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + \
-    str(args['nghosts']) + '_2 '
+makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:
