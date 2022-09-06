@@ -38,9 +38,9 @@ contains
       ! assuming all tiles are equal
       s = bw_species_1(1)
       ! loop through all the tiles
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             if (BW_algorithm .eq. 1) then
               call bwOnTile_bin(ti, tj, tk, &
                                 bw_species_1(1:si_1), si_1, &
@@ -65,9 +65,9 @@ contains
       ! assuming all tiles are equal
       s = bw_species_1(1)
       ! loop through all the tiles
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             if (BW_algorithm .eq. 1) then
               call bwOnTile_bin(ti, tj, tk, &
                                 bw_species_1(1:si_1), si_1, &

@@ -23,8 +23,9 @@ module m_initialize
   use m_particlelogistics, only: initializeParticles
   use m_exchangeparts, only: initializePrtlExchange
   use m_currentdeposit, only: resetCurrents
+  use m_exchangefields
 
-  use m_userfile, only: userReadInput, userInitParticles, userInitFields
+  use m_userfile, only: userReadInput, userInitParticles, userInitFields, userFieldBoundaryConditions
 
 #ifdef SLB
   use m_userfile, only: user_slb_load_ptr => userSLBload
@@ -37,7 +38,7 @@ module m_initialize
   use m_writeusroutput, only: initializeUsrOutput
 #endif
 
-  use m_restart, only: initializeRestart, restartSimulation, rst_simulation, rst_enable
+  use m_restart, only: initializeRestart, restartSimulation, rst_simulation, rst_enable, rst_tlim_enable
 
   use m_particlebinning
 
@@ -128,8 +129,10 @@ contains
     call initializeRandomSeed(mpi_rank)
 
     if (.not. rst_simulation) then
-      call userInitParticles()
       call userInitFields()
+      call userFieldBoundaryConditions(0, updateE=.true., updateB=.true.)
+      call exchangeFields(exchangeE=.true., exchangeB=.true.)
+      call userInitParticles()
       call printDiag("userInitialize()", 1)
     else
       call restartSimulation()
@@ -353,6 +356,7 @@ contains
   subroutine initializeSimulation()
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
+    call getInput('time', 'wall_t_max', wall_t_max, 0.0d0)
     call getInput('algorithm', 'nfilter', nfilter, 16)
     call getInput('algorithm', 'c', CC, 0.45)
     call getInput('algorithm', 'corr', CORR, 1.025)
@@ -374,6 +378,7 @@ contains
 #endif
 
     call getInput('grid', 'resize_tiles', resize_tiles, .false.)
+    call getInput('grid', 'shrink_tiles', shrink_tiles, .false.)
     call getInput('grid', 'min_tile_nprt', min_tile_nprt, 100)
 
     call printDiag("initializeSimulation()", 1)
@@ -391,7 +396,13 @@ contains
     if (mpi_rank .eq. 0) then
 #ifdef IFPORT
       result = makedirqq(trim(output_dir_name))
-      if (rst_enable) then
+      output_dir_spec = trim(output_dir_name)//'/spec'
+      output_dir_flds = trim(output_dir_name)//'/flds'
+      output_dir_prtl = trim(output_dir_name)//'/prtl'
+      result = makedirqq(trim(output_dir_spec))
+      result = makedirqq(trim(output_dir_flds))
+      result = makedirqq(trim(output_dir_prtl))
+      if (rst_enable .or. rst_tlim_enable) then
         result = makedirqq(trim(restart_dir_name))
       end if
       if (slice_output_enable) then
@@ -399,7 +410,13 @@ contains
       end if
 #else
       call system('mkdir -p '//trim(output_dir_name))
-      if (rst_enable) then
+      output_dir_spec = trim(output_dir_name)//'/spec'
+      output_dir_flds = trim(output_dir_name)//'/flds'
+      output_dir_prtl = trim(output_dir_name)//'/prtl'
+      call system('mkdir -p '//trim(output_dir_spec))
+      call system('mkdir -p '//trim(output_dir_flds))
+      call system('mkdir -p '//trim(output_dir_prtl))
+      if (rst_enable .or. rst_tlim_enable) then
         call system('mkdir -p '//trim(restart_dir_name))
       end if
       if (slice_output_enable) then

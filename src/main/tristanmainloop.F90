@@ -8,7 +8,7 @@ module m_mainloop
   use m_writeslice, only: writeSlices
   use m_writetot, only: writeTotOutput
   use m_writehistory, only: writeHistory
-  use m_restart, only: writeRestart, rst_enable, rst_interval, rst_start
+  use m_restart, only: writeRestart, rst_enable, rst_interval, rst_start, rst_tlim_enable
   use m_fldsolver
   use m_mover
   use m_currentdeposit
@@ -46,6 +46,8 @@ module m_mainloop
   !--- PRIVATE variables -----------------------------------------!
   integer, private :: timestep
   real(kind=8), private :: timers(20), d_timers(20)
+  real(kind=8), private :: wall_t_start(1), wall_t(1)
+  logical, private :: tmax_exceeded
   !...............................................................!
 contains
   subroutine mainloop()
@@ -69,7 +71,20 @@ contains
     ! 11 = particle downsampling substep [*]
     ! 12 = adaptive load balancing substep [*]
 
+    tmax_exceeded = .false.
+    wall_t_start(1) = MPI_WTIME()
+    call MPI_BCAST(wall_t_start, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    if (wall_t_max .gt. 0) then
+      call printDiag(" ***Simulation will run for "//STR(wall_t_max)//" seconds***", 0)
+    end if
+
     do timestep = start_timestep, final_timestep
+
+      if (tmax_exceeded) then
+        call printDiag(" ***Maximum wall clock time exceeded, exiting main loop!***", 0)
+        exit
+      end if
+
       call printDiag("", 20)
       call printDiag("Starting timestep # "//STR(timestep), 0)
       timers(:) = 0d0
@@ -88,10 +103,10 @@ contains
 #endif
 
       !-------------------------------------------------
-      ! User defined boundary conditions for B-field
-      call startTimer(9)
-      call userFieldBoundaryConditions(timestep, updateE=.true., updateB=.true.)
-      call flushTimer(9)
+      ! User defined boundary conditions for B-field; not necessary
+      !call startTimer(9)
+      !call userFieldBoundaryConditions(timestep, updateE=.true., updateB=.true.)
+      !call flushTimer(9)
       !.................................................
 
       !-------------------------------------------------
@@ -104,10 +119,10 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! Exchanging `E` and `B`-fields
-      call startTimer(6)
-      call exchangeFields(exchangeE=.true., exchangeB=.true.)
-      call flushTimer(6)
+      ! Exchanging `E` and `B`-fields; not necessary
+      !call startTimer(6)
+      !call exchangeFields(exchangeE=.true., exchangeB=.true.)
+      !call flushTimer(6)
       !.................................................
 
       !-------------------------------------------------
@@ -194,12 +209,12 @@ contains
       !.................................................
 
       !-------------------------------------------------
-      ! Exchanging `E`-fields
-      call startTimer(6)
-      if (enable_fieldsolver) then
-        call exchangeFields(exchangeE=.true., exchangeB=.false.)
-      end if
-      call flushTimer(6)
+      ! Exchanging `E`-fields; not necessary
+      !call startTimer(6)
+      !if (enable_fieldsolver) then
+      !  call exchangeFields(exchangeE=.true., exchangeB=.false.)
+      !end if
+      !call flushTimer(6)
       !.................................................
 
       !-------------------------------------------------
@@ -335,10 +350,18 @@ contains
 
       !-------------------------------------------------
       ! Restart
-      if ((rst_enable) .and. &
-          (timestep .ge. rst_start) .and. &
-          (modulo(timestep - rst_start, rst_interval) .eq. 0) .and. &
-          (timestep .gt. 0)) then
+      if ((wall_t_max .gt. 0) .and. (modulo(timestep, t_max_check_interval) .eq. 0)) then
+        wall_t(1) = MPI_WTIME()
+        call MPI_BCAST(wall_t, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+        if ((wall_t(1) - wall_t_start(1)) .gt. wall_t_max) then
+          tmax_exceeded = .true.
+        end if
+      end if
+      if (((rst_enable) .and.&
+        & (timestep .ge. rst_start) .and.&
+        & (modulo(timestep - rst_start, rst_interval) .eq. 0) .and.&
+        & (timestep .gt. 0)) .or. &
+        & ((tmax_exceeded) .and. (rst_tlim_enable))) then
         call startTimer(5)
         call writeRestart(timestep)
         call flushTimer(5)
@@ -417,9 +440,9 @@ contains
     allocate (nprt_sp(nspec), nprt_sp_global(nspec, mpi_size))
     nprt_sp(:) = 0
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             nprt_sp(s) = nprt_sp(s) + species(s) % prtl_tile(ti, tj, tk) % npart_sp
           end do
         end do

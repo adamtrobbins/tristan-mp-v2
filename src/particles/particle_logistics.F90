@@ -49,8 +49,16 @@ contains
       call getInput('particles', var_name, species(s) % deposit_sp, (species(s) % ch_sp .ne. 0))
       write (var_name, "(A4,I1)") "move", s
       call getInput('particles', var_name, species(s) % move_sp, .true.)
-      write (var_name, "(A6,I1)") "output", s
-      call getInput('particles', var_name, species(s) % output_sp, .true.)
+      write (var_name, "(A11,I1)") "output_hist", s
+      call getInput('particles', var_name, species(s) % output_sp_hist, .true.)
+      write (var_name, "(A10,I1)") "output_fld", s
+      call getInput('particles', var_name, species(s) % output_sp_fld, .true.)
+      write (var_name, "(A11,I1)") "output_prtl", s
+      call getInput('particles', var_name, species(s) % output_sp_prtl, .true.)
+      write (var_name, "(A12,I1)") "flds_at_prtl", s
+      call getInput('particles', var_name, species(s) % flds_at_prtl_sp, .false.)
+      write (var_name, "(A12,I1)") "dens_at_prtl", s
+      call getInput('particles', var_name, species(s) % dens_at_prtl_sp, .false.)
 
       if ((species(s) % m_sp .eq. 0) .and. (species(s) % ch_sp .ne. 0)) then
         call throwError('ERROR: massless charged particles are not allowed')
@@ -84,9 +92,9 @@ contains
       end if
 #endif
 
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             call createEmptyTile(s, ti, tj, tk, maxptl_array(s))
           end do
         end do
@@ -108,6 +116,9 @@ contains
 #ifdef PRTLPAYLOADS
                                           payload1, payload2, payload3, &
 #endif
+#ifdef DEBUG
+                                          called_from, &
+#endif
                                           ind, proc, weight)
     ! DEP_PRT [particle-dependent]
     implicit none
@@ -122,6 +133,9 @@ contains
 
 #ifdef PRTLPAYLOADS
     real, intent(in) :: payload1, payload2, payload3
+#endif
+#ifdef DEBUG
+    character(len=*), intent(in) :: called_from
 #endif
 
     integer, intent(in) :: ind, proc
@@ -146,14 +160,14 @@ contains
     ! ... of that tile and that the tile exists
 #ifdef DEBUG
     if ((s .le. 0) .or. (s .gt. nspec)) then
-      call throwError('Wrong species in `createParticleFromAttributes`.')
+      call throwError('Wrong species in `createParticleFromAttributes` called from '//trim(called_from))
     end if
     if ((ti .gt. species(s) % tile_nx) .or. &
         (tj .gt. species(s) % tile_ny) .or. &
         (tk .gt. species(s) % tile_nz)) then
       print *, mpi_rank, xi, yi, zi, ti, tj, tk
       print *, species(s) % tile_nx, species(s) % tile_ny, species(s) % tile_nz
-      call throwError('ERROR: wrong ti, tj, tk in `createParticleFromAttributes`')
+      call throwError('ERROR: wrong ti/tj/tk in `createParticleFromAttributes` called from '//trim(called_from))
     end if
     if ((xi .lt. species(s) % prtl_tile(ti, tj, tk) % x1) .or. &
         (xi .ge. species(s) % prtl_tile(ti, tj, tk) % x2) .or. &
@@ -171,15 +185,23 @@ contains
       print *, ti, tj, tk
       print *, species(s) % tile_nx, species(s) % tile_ny, species(s) % tile_nz
       print *, species(s) % tile_sx, species(s) % tile_sy, species(s) % tile_sz
-      call throwError('ERROR: wrong ti, tj, tk in `createParticleFromAttributes` according to x1,x2,etc')
+      call throwError('ERROR: wrong xi/yi/zi in `createParticleFromAttributes` called from '//trim(called_from))
+    end if
+    if ((dx .lt. 0) .or. (dx .gt. 1) .or. &
+        (dy .lt. 0) .or. (dy .gt. 1) .or. &
+        (dz .lt. 0) .or. (dz .gt. 1)) then
+      call throwError('ERROR: wrong dx/dy/dz in `createParticleFromAttributes` called from '//trim(called_from))
+    end if
+    if (abs(proc) .gt. 10 * mpi_size) then
+      call throwError('ERROR: proc wrong in `createParticleFromAttributes` called from '//trim(called_from))
     end if
 #endif
-    if (species(s) % prtl_tile(ti, tj, tk) % npart_sp .eq. species(s) % prtl_tile(ti, tj, tk) % maxptl_sp) then
+    if (species(s) % prtl_tile(ti, tj, tk) % npart_sp .ge. species(s) % prtl_tile(ti, tj, tk) % maxptl_sp) then
       write (dummy_string, '(I5)') s
       if (resize_tiles) then
         call reallocTileSize(species(s) % prtl_tile(ti, tj, tk), .true.)
       else
-        call throwError('ERROR: npart_sp > maxptl_sp in createParticleFromAttributes for species #'//trim(dummy_string))
+        call throwError('ERROR: npart_sp >= maxptl_sp in createParticleFromAttributes for species #'//trim(dummy_string))
       end if
     end if
 
@@ -356,6 +378,7 @@ contains
     end if
 
     maxptl_on_tile = INT(maxptl / INT(species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz, 8), 4)
+    maxptl_on_tile = ((maxptl_on_tile + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     species(s) % prtl_tile(ti, tj, tk) % spec = s
 
@@ -393,6 +416,7 @@ contains
 
     tile % npart_sp = 0
     tile % maxptl_sp = sz
+    tile % maxptl_sp = ((tile % maxptl_sp + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     if (allocated(tile % xi)) deallocate (tile % xi)
     if (allocated(tile % yi)) deallocate (tile % yi)
@@ -443,9 +467,9 @@ contains
     implicit none
     integer :: s, ti, tj, tk
     do s = 1, nspec ! loop over species
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             if (species(s) % prtl_tile(ti, tj, tk) % npart_sp .ge. species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.7) then
               ! increase the tile size
               if (resize_tiles) then
@@ -453,10 +477,10 @@ contains
               else
                 print *, "DANGER: `maxptl_sp` in tiles too low, consider increasing `maxptl` or turning on `resize_tiles`."
               end if
-            else if ((species(s) % prtl_tile(ti, tj, tk) % npart_sp .lt. (species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.3)) .and. &
+            else if ((species(s) % prtl_tile(ti, tj, tk) % npart_sp .lt. (species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.1)) .and. &
                      ((species(s) % prtl_tile(ti, tj, tk) % maxptl_sp * 0.5) .gt. min_tile_nprt)) then
               ! decrease the tile size
-              if (resize_tiles) then
+              if (resize_tiles .and. shrink_tiles) then
                 call reallocTileSize(species(s) % prtl_tile(ti, tj, tk), .false.)
               end if
             end if
@@ -483,6 +507,7 @@ contains
       ! decrease twice
       tile % maxptl_sp = INT(tile % maxptl_sp * 0.5)
     end if
+    tile % maxptl_sp = ((tile % maxptl_sp + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
 #ifndef LOWMEM
     if (tile % npart_sp .gt. tile % maxptl_sp) then
@@ -618,7 +643,13 @@ contains
 
   ! Subroutine to create brand new particles
   subroutine createParticle(s, xi, yi, zi, dx, dy, dz, u, v, w, &
-                            ind, proc, weight)
+                            ind, proc, &
+#ifdef PRTLPAYLOADS
+                            weight, payload1, payload2, payload3 &
+#else
+                            weight &
+#endif
+                            )
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: s
@@ -629,8 +660,12 @@ contains
     integer :: ind_, proc_
     real :: weight_
 #ifdef PRTLPAYLOADS
-    real :: payload1, payload2, payload3
-    payload1 = 0.0; payload2 = 0.0; payload3 = 0.0
+    real, optional, intent(in) :: payload1, payload2, payload3
+    real :: payload1_, payload2_, payload3_
+    payload1_ = 0.0; payload2_ = 0.0; payload3_ = 0.0
+    if (present(payload1)) payload1_ = payload1
+    if (present(payload2)) payload2_ = payload2
+    if (present(payload3)) payload3_ = payload3
 #endif
     if (present(ind) .and. present(proc)) then
       ! moving particle from one tile/meshblock to another
@@ -658,12 +693,21 @@ contains
                                       u_eff=u, v_eff=v, w_eff=w, u_par=0.0, u_perp=0.0, &
 #endif
 #ifdef PRTLPAYLOADS
-                                      payload1=payload1, payload2=payload2, payload3=payload3, &
+                                      payload1=payload1_, payload2=payload2_, payload3=payload3_, &
+#endif
+#ifdef DEBUG
+                                      called_from='`createParticle`', &
 #endif
                                       ind=ind_, proc=proc_, weight=weight_)
   end subroutine createParticle
 
-  subroutine injectParticleGlobally(s, x_glob, y_glob, z_glob, u, v, w, weight)
+  subroutine injectParticleGlobally(s, x_glob, y_glob, z_glob, u, v, w, &
+#ifdef PRTLPAYLOADS
+                                    weight, payload1, payload2, payload3 &
+#else
+                                    weight &
+#endif
+                                    )
     ! DEP_PRT [particle-dependent]
     implicit none
     integer, intent(in) :: s
@@ -675,6 +719,14 @@ contains
     real :: weight_
     real, optional, intent(in) :: weight
     logical :: contained_flag
+#ifdef PRTLPAYLOADS
+    real, optional, intent(in) :: payload1, payload2, payload3
+    real :: payload1_, payload2_, payload3_
+    payload1_ = 0.0; payload2_ = 0.0; payload3_ = 0.0
+    if (present(payload1)) payload1_ = payload1
+    if (present(payload2)) payload2_ = payload2
+    if (present(payload3)) payload3_ = payload3
+#endif
 
     if (present(weight)) then
       weight_ = weight
@@ -697,14 +749,16 @@ contains
 #endif
 
     call globalToLocalCoords(x_g, y_g, z_g, x_loc, y_loc, z_loc, containedQ=contained_flag)
-    x_loc = x_loc + TINYXYZ
-    y_loc = y_loc + TINYXYZ
-    z_loc = z_loc + TINYXYZ
     ! check if the coordinate is within the current MPI domain
     if (contained_flag) then
       ! transform coordinates
       call localToCellBasedCoords(x_loc, y_loc, z_loc, xi_, yi_, zi_, dx_, dy_, dz_)
+#ifdef PRTLPAYLOADS
+      call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w, weight=weight_, &
+                        & payload1=payload1_, payload2=payload2_, payload3=payload3_)
+#else
       call createParticle(s, xi_, yi_, zi_, dx_, dy_, dz_, u, v, w, weight=weight_)
+#endif
     end if
   end subroutine injectParticleGlobally
 
@@ -735,9 +789,9 @@ contains
     implicit none
     integer :: s, p, ti, tj, tk
     do s = 1, nspec ! loop over species
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             ! FIX1 try to vectorize this
             p = 1
             do while (p .le. species(s) % prtl_tile(ti, tj, tk) % npart_sp)
@@ -747,9 +801,9 @@ contains
                 p = p + 1
               end if
             end do ! p
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
     end do ! s
     call printDiag("clearGhostParticles()", 2)
   end subroutine clearGhostParticles
@@ -799,6 +853,16 @@ contains
     enroute % payload2 = species(spec_id) % prtl_tile(ti, tj, tk) % payload2(prtl_id)
     enroute % payload3 = species(spec_id) % prtl_tile(ti, tj, tk) % payload3(prtl_id)
 #endif
+#ifdef DEBUG
+    if ((enroute % dx .lt. 0) .or. (enroute % dx .gt. 1) .or. &
+        (enroute % dy .lt. 0) .or. (enroute % dy .gt. 1) .or. &
+        (enroute % dz .lt. 0) .or. (enroute % dz .gt. 1)) then
+      call throwError('ERROR: wrong dx/dy/dz in `copyToEnroute`')
+    end if
+    if (abs(enroute % proc) .gt. 10 * mpi_size) then
+      call throwError('ERROR: proc wrong in `copyToEnroute`')
+    end if
+#endif
   end subroutine copyToEnroute
 
   subroutine copyFromEnroute(enroute, spec_id)
@@ -820,6 +884,9 @@ contains
 #ifdef PRTLPAYLOADS
                                       enroute % payload1, enroute % payload2, enroute % payload3, &
 #endif
+#ifdef DEBUG
+                                      '`copyFromEnroute`', &
+#endif
                                       enroute % ind, enroute % proc, enroute % weight)
   end subroutine copyFromEnroute
 
@@ -828,9 +895,9 @@ contains
     integer, intent(in) :: shift
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               species(s) % prtl_tile(ti, tj, tk) % xi(p) = species(s) % prtl_tile(ti, tj, tk) % xi(p) + INT(shift, 2)
             end do
@@ -845,9 +912,9 @@ contains
     integer, intent(in) :: shift
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               species(s) % prtl_tile(ti, tj, tk) % yi(p) = species(s) % prtl_tile(ti, tj, tk) % yi(p) + INT(shift, 2)
             end do
@@ -862,9 +929,9 @@ contains
     integer, intent(in) :: shift
     integer :: s, ti, tj, tk, p
     do s = 1, nspec
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               species(s) % prtl_tile(ti, tj, tk) % zi(p) = species(s) % prtl_tile(ti, tj, tk) % zi(p) + INT(shift, 2)
             end do
@@ -923,9 +990,9 @@ contains
           maxptl_tmpar(ti_, tj_, tk_) = maxptl_tmpar(ti_, tj_, tk_) + 1
         end do
 
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
 
               maxptl_ = max(maxptl_tmpar(ti, tj, tk), min_tile_nprt)
               maxptl_ = maxptl_ * (species(s) % tile_nx * species(s) % tile_ny * species(s) % tile_nz)
@@ -940,9 +1007,9 @@ contains
 
       else
 
-        do ti = 1, species(s) % tile_nx
+        do tk = 1, species(s) % tile_nz
           do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
+            do ti = 1, species(s) % tile_nx
 
               call createEmptyTile(s, ti, tj, tk, maxptl_array(s), meshblock)
 
@@ -994,6 +1061,7 @@ contains
 #elif threeD
     buffsize = MAX0(meshblock % sx, meshblock % sy, meshblock % sz)**2 * multiplier
 #endif
+    buffsize = ((buffsize + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 
     if (allocated(recv_enroute % enroute)) then
       old_buffsize = recv_enroute % max
@@ -1016,9 +1084,9 @@ contains
 
 #ifndef LOWMEM
 
-    do ind1 = -1, 1
+    do ind3 = -1, 1
       do ind2 = -1, 1
-        do ind3 = -1, 1
+        do ind1 = -1, 1
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -1040,6 +1108,7 @@ contains
           else
             buffsize = buffsize_xyz
           end if
+          buffsize = ((buffsize + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
           if (allocated(enroute_bot % get(ind1, ind2, ind3) % enroute)) then
             ! reallocate
             old_buffsize = enroute_bot % get(ind1, ind2, ind3) % max
@@ -1086,9 +1155,9 @@ contains
     do s = 1, nspec
       ! count number of particles
       npart = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             npart = npart + species(s) % prtl_tile(ti, tj, tk) % npart_sp
           end do
         end do
@@ -1100,9 +1169,9 @@ contains
 
       ! copy particles to backup array
       prtl_backup(s) % cnt = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               prtl_backup(s) % cnt = prtl_backup(s) % cnt + 1
               call copyToEnroute(s, ti, tj, tk, p, prtl_backup(s) % enroute(prtl_backup(s) % cnt))

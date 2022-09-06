@@ -24,6 +24,9 @@ module m_qednamespace
   integer :: Compton_interval, Compton_algorithm
   logical :: Compton_el_recoil
   real(kind=8) :: Thomson_lim
+  real :: Compton_nph_over_ne
+  logical :: Compton_clone_sets
+  logical :: Compton_cool_el
 #endif
 
 #ifdef PAIRANNIHILATION

@@ -15,6 +15,7 @@ module m_domain
     integer :: rnk          ! rank of the cpu that takes care of the current meshblock
     integer :: x0, y0, z0   ! global coordinates (in cells) of the corner
     integer :: sx, sy, sz   ! # of cells in each dimension
+    integer :: i1, i2, j1, j2, k1, k2 ! array limits (including ghost cells)
     ! pointers to the neighboring meshblocks
     type(meshptr), dimension(-1:1, -1:1, -1:1) :: neighbor
   end type mesh

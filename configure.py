@@ -20,7 +20,7 @@ unit_choices = glob.glob(unit_directory + '*.F90')
 unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
 
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
-clusters = ['perseus', 'frontera', 'stellar']
+clusters = ['perseus', 'frontera', 'stellar', 'ginsburg']
 
 # system
 parser.add_argument('--cluster',
@@ -137,6 +137,11 @@ parser.add_argument('-vay',
                     default=False,
                     help='enable Vay pusher')
 
+parser.add_argument('-blinne',
+                    action='store_true',
+                    default=False,
+                    help='enable Blinne field solver')
+
 parser.add_argument('-payload',
                     action='store_true',
                     default=False,
@@ -224,7 +229,7 @@ makefile_options['COMPILER_COMMAND'] = ''
 makefile_options['COMPILER_FLAGS'] = ''
 makefile_options['PREPROCESSOR_FLAGS'] = ''
 makefile_options['WARNING_FLAGS'] = ''
-makefile_options['DEFS'] = '-DSTR_MAX=280 -DTINYXYZ=1e-6 -DTINYREAL=1e-3 -DTINYFLD=1e-8 -DTINYWEI=1e-6 -DM_PI=3.141592653589793 '
+makefile_options['DEFS'] = '-DSTR_MAX=280 -DTINYXYZ=1e-6 -DTINYREAL=1e-3 -DTINYFLD=1e-8 -DTINYWEI=1e-6 -DM_PI=3.141592653589793 -DVEC_LEN=16 '
 
 # specific cluster:
 specific_cluster = False
@@ -243,6 +248,9 @@ if (args['cluster'] is not None):
     elif args['cluster'] == 'stellar':
         args['mpi08'] = True
         args['avx512'] = True
+    elif args['cluster'] == 'ginsburg':
+        args['mpi'] = True
+        args['avx2'] = True
 
 # compilation command
 if args['hdf5']:
@@ -335,6 +343,8 @@ if args['gca'] != 'OFF':
         str(args['gca']) + ' '
 if args['vay']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DVAY '
+if args['blinne']:
+    makefile_options['PREPROCESSOR_FLAGS'] += '-DBLINNE '
 if args['payload']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DPRTLPAYLOADS '
 if args['usroutput']:
@@ -367,8 +377,7 @@ if args['compton']:
 if args['annihilation']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DPAIRANNIHILATION '
 
-makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + \
-    str(args['nghosts']) + '_2 '
+makefile_options['PREPROCESSOR_FLAGS'] += '-DNGHOST=' + str(args['nghosts']) + ' '
 
 # Step 3. Create new files, finish up
 with open(makefile_input, 'r') as current_file:

@@ -32,9 +32,9 @@ contains
 
     do s = 1, nspec ! loop over species
       if ((species(s) % ch_sp .eq. 0) .or. (.not. species(s) % deposit_sp)) cycle
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi

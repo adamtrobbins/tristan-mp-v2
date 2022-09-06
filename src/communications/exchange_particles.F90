@@ -25,7 +25,7 @@ contains
     integer(kind=MPI_ADDRESS_KIND), dimension(0:2) :: offsets
     integer(kind=MPI_ADDRESS_KIND) :: extent_int2, extent_real, lb
 
-    call getInput('grid', 'max_buff', max_buffsize, 100)
+    call getInput('grid', 'max_buff', max_buffsize, 32)
 
     call reallocateEnrouteArray(this_meshblock % ptr)
 
@@ -60,6 +60,7 @@ contains
     offsets(0) = 0
     offsets(1) = blockcounts(0) * extent_int2 + offsets(0)
     offsets(2) = blockcounts(1) * extent_real + offsets(1)
+
     call MPI_TYPE_CREATE_STRUCT(3, blockcounts, offsets, oldtypes, myMPI_ENROUTE, ierr)
     call MPI_TYPE_COMMIT(myMPI_ENROUTE, ierr)
 
@@ -100,9 +101,9 @@ contains
 
 #ifdef LOWMEM
       enroute_bot % get(:, :, :) % cnt = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -135,9 +136,9 @@ contains
         end do
       end do
       ! allocate the corresponding buffer arrays for each direction
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             call reallocateEnroute(send_x, send_y, send_z, enroute_bot % get(send_x, send_y, send_z) % cnt + 1)
           end do
         end do
@@ -146,9 +147,9 @@ contains
 
       enroute_bot % get(:, :, :) % cnt = 0
       ! particle crosses MPI blocks //
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -259,15 +260,15 @@ contains
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
             pt_proc => null()
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
       ! // particle crosses MPI blocks
 
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -300,6 +301,9 @@ contains
               ! proc # 8
               mpi_recvfrom = this_meshblock % ptr % neighbor(-ind1, -ind2, -ind3) % ptr % rnk ! 7
               call MPI_RECV(cnt_recv_enroute, 1, MPI_INTEGER, mpi_recvfrom, mpi_tag2, MPI_COMM_WORLD, istat, ierr)
+              if (cnt_recv_enroute .ge. size(recv_enroute % enroute)) then
+                call throwError('ERROR: particle had rcv array too small.')
+              end if
               call MPI_RECV(recv_enroute % enroute(1:cnt_recv_enroute), cnt_recv_enroute, myMPI_ENROUTE, &
                             mpi_recvfrom, mpi_tag, MPI_COMM_WORLD, istat, ierr)
               if (cnt_recv_enroute .gt. 0) then
@@ -317,9 +321,9 @@ contains
       end do
 
       ! particle moves between tiles within a single MPI block //
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -336,15 +340,15 @@ contains
             end do ! particles
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_proc => null()
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
       ! // particle moves between tiles within a single MPI block
 
 #ifdef DEBUG
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -366,9 +370,9 @@ contains
 #endif
 
 #ifdef LOWMEM
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             if (allocated(enroute_bot % get(send_x, send_y, send_z) % enroute)) then
               deallocate (enroute_bot % get(send_x, send_y, send_z) % enroute)
             end if
@@ -414,9 +418,9 @@ contains
 
 #ifdef LOWMEM
       enroute_bot % get(:, :, :) % cnt = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -449,9 +453,9 @@ contains
         end do
       end do
       ! allocate the corresponding buffer arrays for each direction
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             call reallocateEnroute(send_x, send_y, send_z, enroute_bot % get(send_x, send_y, send_z) % cnt + 1)
           end do
         end do
@@ -460,9 +464,9 @@ contains
 
       enroute_bot % get(:, :, :) % cnt = 0
       ! particle crosses MPI blocks //
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -573,16 +577,16 @@ contains
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
             pt_proc => null()
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
       ! // particle crosses MPI blocks
 
       ! start sending //
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -604,9 +608,9 @@ contains
       ! // start sending
 
       ! particle moves between tiles within a single MPI block //
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -623,15 +627,15 @@ contains
             end do ! particles
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_proc => null()
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
       ! // particle moves between tiles within a single MPI block
 
 #ifdef DEBUG
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -660,9 +664,9 @@ contains
         ! try to receive while not done
         quit_loop = .true.
         cntr = 0
-        do ind1 = -1, 1
+        do ind3 = -1, 1
           do ind2 = -1, 1
-            do ind3 = -1, 1
+            do ind1 = -1, 1
               if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
               if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -707,9 +711,9 @@ contains
       end do ! global loop
 
 #ifdef LOWMEM
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             if (allocated(enroute_bot % get(send_x, send_y, send_z) % enroute)) then
               deallocate (enroute_bot % get(send_x, send_y, send_z) % enroute)
             end if
@@ -755,9 +759,9 @@ contains
 
 #ifdef LOWMEM
       enroute_bot % get(:, :, :) % cnt = 0
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -790,9 +794,9 @@ contains
         end do
       end do
       ! allocate the corresponding buffer arrays for each direction
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             call reallocateEnroute(send_x, send_y, send_z, &
                                    enroute_bot % get(send_x, send_y, send_z) % cnt + 1)
           end do
@@ -802,9 +806,9 @@ contains
 
       enroute_bot % get(:, :, :) % cnt = 0
       ! particle crosses MPI blocks //
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -965,16 +969,16 @@ contains
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_dx => null(); pt_dy => null(); pt_dz => null()
             pt_proc => null()
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
       ! // particle crosses MPI blocks
 
       ! start sending //
       cntr = 0
-      do ind1 = -1, 1
+      do ind3 = -1, 1
         do ind2 = -1, 1
-          do ind3 = -1, 1
+          do ind1 = -1, 1
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -996,9 +1000,9 @@ contains
       ! // start sending
 
       ! particle moves between tiles within a single MPI block //
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -1015,9 +1019,9 @@ contains
             end do ! particles
             pt_xi => null(); pt_yi => null(); pt_zi => null()
             pt_proc => null()
-          end do ! tk
+          end do ! ti
         end do ! tj
-      end do ! ti
+      end do ! tk
       ! // particle moves between tiles within a single MPI block
 
       ! wait to send & receive all the MPI calls and write data to memory
@@ -1028,9 +1032,9 @@ contains
         ! try to receive while not done
         quit_loop = .true.
         cntr = 0
-        do ind1 = -1, 1
+        do ind3 = -1, 1
           do ind2 = -1, 1
-            do ind3 = -1, 1
+            do ind1 = -1, 1
               if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
               if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
@@ -1074,9 +1078,9 @@ contains
       end do ! global loop
 
 #ifdef DEBUG
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
+          do ti = 1, species(s) % tile_nx
             pt_xi => species(s) % prtl_tile(ti, tj, tk) % xi
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
@@ -1103,9 +1107,9 @@ contains
 #endif
 
 #ifdef LOWMEM
-      do send_x = -1, 1
+      do send_z = -1, 1
         do send_y = -1, 1
-          do send_z = -1, 1
+          do send_x = -1, 1
             if (allocated(enroute_bot % get(send_x, send_y, send_z) % enroute)) then
               deallocate (enroute_bot % get(send_x, send_y, send_z) % enroute)
             end if
@@ -1150,6 +1154,9 @@ contains
                                       payload1=species(s) % prtl_tile(ti, tj, tk) % payload1(p), &
                                       payload2=species(s) % prtl_tile(ti, tj, tk) % payload2(p), &
                                       payload3=species(s) % prtl_tile(ti, tj, tk) % payload3(p), &
+#endif
+#ifdef DEBUG
+                                      called_from='`moveParticleBetweenTiles`', &
 #endif
                                       ind=species(s) % prtl_tile(ti, tj, tk) % ind(p), &
                                       proc=species(s) % prtl_tile(ti, tj, tk) % proc(p), &

@@ -47,19 +47,12 @@ contains
       ! assuming all tiles are equal
       s = compton_species_1(1)
       ! loop through all the tiles
-      do ti = 1, species(s) % tile_nx
+      do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
-          do tk = 1, species(s) % tile_nz
-            if (Compton_algorithm .eq. 1) then
-              ! TODO: not yet implemented...
-              !call comptonOnTile_bin(ti, tj, tk,&
-              !                & compton_species_1(1 : si_1), si_1,&
-              !                & compton_species_2(1 : si_2), si_2)
-            else if (Compton_algorithm .eq. 2) then
-              call comptonOnTile_mc(ti, tj, tk, &
-                                    compton_species_1(1:si_1), si_1, &
-                                    compton_species_2(1:si_2), si_2)
-            end if
+          do ti = 1, species(s) % tile_nx
+            call comptonOnTile_mc(ti, tj, tk, &
+                                  compton_species_1(1:si_1), si_1, &
+                                  compton_species_2(1:si_2), si_2)
           end do
         end do
       end do
@@ -91,10 +84,10 @@ contains
     type(couple), allocatable :: el_photon_pairs(:)
     integer :: num_pairs, el_ph, s1, s2, p1, p2
     real :: rnd, P_12
-    integer :: tile_x, tile_y, tile_z, num_pairs_max
-    real :: P_corr, P_max, ppt0
+    integer :: tile_x, tile_y, tile_z, num_scatter_max
+    real :: P_corr, P_el, P_ph, ppt0
     logical :: KleinNishina
-    integer :: num_1, num_2
+    integer :: num_1, num_2, num_copies
     real(kind=8) :: el_gamma, pel_x, pel_y, pel_z
     real(kind=8) :: eph, kph_x, kph_y, kph_z
     real(kind=8) :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
@@ -104,172 +97,198 @@ contains
     real :: u_ph_new, v_ph_new, w_ph_new
     real :: wei_split, wei_1, wei_2, wei_split_tot
     real :: wei_split_el, wei_split_ph
+    logical :: cool_el
 
     ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2, &
                                el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2)
-    ! the particles that form the pair list have already been abstractly split ...
-    ! ... the 'splitting' is done only within the list of pairs at this stage ...
-    ! ... actual weight > 1 particles have not (yet) been split.
-    if (num_pairs .gt. 0) then
-      ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      ! calculate prob. correction factor:
-      tile_x = species(1) % prtl_tile(ti, tj, tk) % x2 - &
-               species(1) % prtl_tile(ti, tj, tk) % x1
-      tile_y = species(1) % prtl_tile(ti, tj, tk) % y2 - &
-               species(1) % prtl_tile(ti, tj, tk) % y1
-      tile_z = species(1) % prtl_tile(ti, tj, tk) % z2 - &
-               species(1) % prtl_tile(ti, tj, tk) % z1
-      ! reference # pairs on a tile:
-      ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
-      ! make it independent of ppt0 & qed step:
-      P_corr = (3.0 / 8.0) * QED_tau0 * REAL(Compton_interval) * CC / ppt0
-      ! match with binary pairing (multiply w/ maximum total weight of either set):
-      P_corr = P_corr * max(wei_1, wei_2)
-      ! correction for non-integer weights:
-      wei_split_tot = 0.0
-      do el_ph = 1, num_pairs
-        wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
-                                            el_photon_pairs(el_ph) % part_2 % wei)
-      end do
-      ! `min(wei_1, wei_2)` is what could be scattered in an ideal pairing world, ...
-      ! ... `wei_split_tot` is what is actually available to scatter due to ...
-      ! ... non-ideal pairing:
-      P_corr = P_corr * min(wei_1, wei_2) / wei_split_tot
-      ! reduce # pairs to loop over in dense regions:
-      ! if (num_pairs .gt. FLOOR(ppt0)) then
-      !   P_max = 2.0 * P_corr ! tight upper bound on max P_12 for Compton
-      !   num_pairs_max = CEILING(num_pairs * min(P_max, 1.0))
-      !   ! limit from below to ppt0 to avoid excessive undersampling:
-      !   num_pairs_max = max(num_pairs_max, FLOOR(ppt0))
-      ! else
-      ! num_pairs_max = num_pairs
-      ! endif
-      ! this assumes that each of the two undersampled sets has similar ...
-      ! ... mean weight as the original set (if this is not true ...
-      ! ... the undersampling is not justified in the first place):
-      ! P_corr = P_corr * REAL(num_pairs) / REAL(num_pairs_max)
-      ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-      do el_ph = 1, num_pairs
-        ! "extract" the el-photon pair:
-        s1 = el_photon_pairs(el_ph) % part_1 % spec
-        p1 = el_photon_pairs(el_ph) % part_1 % index
-        s2 = el_photon_pairs(el_ph) % part_2 % spec
-        p2 = el_photon_pairs(el_ph) % part_2 % index
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    ! calculate prob. correction factor:
+    tile_x = species(1) % prtl_tile(ti, tj, tk) % x2 - &
+             species(1) % prtl_tile(ti, tj, tk) % x1
+    tile_y = species(1) % prtl_tile(ti, tj, tk) % y2 - &
+             species(1) % prtl_tile(ti, tj, tk) % y1
+    tile_z = species(1) % prtl_tile(ti, tj, tk) % z2 - &
+             species(1) % prtl_tile(ti, tj, tk) % z1
+    ! reference # pairs on a tile:
+    ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
+    ! make it independent of ppt0 & qed step:
+    P_corr = QED_tau0 * REAL(Compton_interval) * CC / ppt0
+    wei_split_tot = 0.0
+    do el_ph = 1, num_pairs
+      wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
+                                          el_photon_pairs(el_ph) % part_2 % wei)
+    end do
+    ! correction to match binary pairing, correct for non-integer weights, etc:
+    P_corr = P_corr * wei_1 * wei_2 / wei_split_tot
+    ! the correction factors for a paired photon and electron/positron:
+    P_ph = P_corr
+    P_el = P_corr * Compton_nph_over_ne
+    ! single scattering per particle - reduce number of random samples to minimum:
+    num_scatter_max = CEILING(2.0 * REAL(num_pairs) * max(P_ph, P_el))
+    ! if multiple scatterings per particle are possible attempt to pair particles 
+    ! from the smaller set multiple times:
+    if (num_scatter_max .gt. num_pairs) then
+      num_copies = max(num_1, num_2) / num_pairs
+      num_copies = min(CEILING(REAL(num_scatter_max) / REAL(num_pairs)), num_copies)
+      if (Compton_clone_sets .and. (num_copies .gt. 1)) then
+        num_scatter_max = num_copies * num_pairs
+      else
+        num_scatter_max = num_pairs
+      end if
+    end if
+    P_corr = wei_split_tot
+    wei_split_tot = 0.0
+    do el_ph = 1, num_scatter_max
+      wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
+                                          el_photon_pairs(el_ph) % part_2 % wei)
+    end do
+    P_corr = P_corr / wei_split_tot
+    P_ph = P_ph * P_corr
+    P_el = P_el * P_corr
+    ! electron cooling option:
+    cool_el = (((2.0 * P_el) .gt. 1.0) .and. Compton_cool_el)
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #ifdef DEBUG
-        if ((species(s1) % m_sp .ne. 1) .or. (abs(species(s1) % ch_sp) .ne. 1)) then
-          call throwError('Wrong particle assigned to electron/positron group in Compton particle coupling!')
-        end if
-        if ((species(s2) % m_sp .ne. 0) .or. (species(s2) % ch_sp .ne. 0)) then
-          call throwError('Wrong particle assigned to photon group in Compton particle coupling!')
-        end if
-#endif
-
-        u_el => species(s1) % prtl_tile(ti, tj, tk) % u(p1)
-        v_el => species(s1) % prtl_tile(ti, tj, tk) % v(p1)
-        w_el => species(s1) % prtl_tile(ti, tj, tk) % w(p1)
-        wei_el => species(s1) % prtl_tile(ti, tj, tk) % weight(p1)
-        u_ph => species(s2) % prtl_tile(ti, tj, tk) % u(p2)
-        v_ph => species(s2) % prtl_tile(ti, tj, tk) % v(p2)
-        w_ph => species(s2) % prtl_tile(ti, tj, tk) % w(p2)
-        wei_ph => species(s2) % prtl_tile(ti, tj, tk) % weight(p2)
-
-        pel_x = REAL(u_el, 8); pel_y = REAL(v_el, 8); pel_z = REAL(w_el, 8)
-        kph_x = REAL(u_ph, 8); kph_y = REAL(v_ph, 8); kph_z = REAL(w_ph, 8)
-
-        el_gamma = sqrt(1.0d0 + pel_x**2 + pel_y**2 + pel_z**2)
-        eph = sqrt(kph_x**2 + kph_y**2 + kph_z**2)
-
-        ! boost photon momentum into electron frame:
-        call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
-                         eph, kph_x, kph_y, kph_z, &
-                         eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
-
-        ! compute cross section:
-        call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
-        ! to match the optical depth with the binary pairing case:
-        P_12 = P_12 * P_corr
-#ifdef DEBUG
-        if ((P_12 .lt. 0.0) .or. (P_12 .gt. 1.0)) then
-          print *, 'P_12 = ', P_12
-          print *, eph, wei_ph, kph_x, kph_y, kph_z
-          call throwError('Compton cross section P_12 out of bounds!')
-        end if
+    if ((P_ph .lt. 0.0) .or. ((2.0 * P_ph) .gt. 1.0)) then
+      print *, 'max(P_ph) = ', 2.0 * P_ph
+      call throwError('Maximum photon Compton scattering probability out of bounds!')
+    end if
+    if (((P_el .lt. 0.0) .or. ((2.0 * P_el) .gt. 1.0)) .and. &
+          Compton_el_recoil .and. (.not. cool_el)) then
+      print *, 'max(P_el) = ', 2.0 * P_el
+      call throwError('Maximum electron Compton scattering probability out of bounds!')
+    end if
 #else
-        if ((P_12 .gt. 1.0)) then
-          call addWarning(3)
+    if ((P_ph .gt. 0.5) .or. ((P_el .gt. 0.5) .and. (.not. cool_el) .and. Compton_el_recoil)) then
+      call addWarning(2)
+    end if
+    if (cool_el) call addWarning(4)
+#endif
+
+    do el_ph = 1, num_scatter_max
+      ! "extract" the el-photon pair:
+      s1 = el_photon_pairs(el_ph) % part_1 % spec
+      p1 = el_photon_pairs(el_ph) % part_1 % index
+      s2 = el_photon_pairs(el_ph) % part_2 % spec
+      p2 = el_photon_pairs(el_ph) % part_2 % index
+
+#ifdef DEBUG
+      if ((species(s1) % m_sp .ne. 1) .or. (abs(species(s1) % ch_sp) .ne. 1)) then
+        call throwError('Wrong particle assigned to electron/positron group in Compton particle coupling!')
+      end if
+      if ((species(s2) % m_sp .ne. 0) .or. (species(s2) % ch_sp .ne. 0)) then
+        call throwError('Wrong particle assigned to photon group in Compton particle coupling!')
+      end if
+#endif
+
+      u_el => species(s1) % prtl_tile(ti, tj, tk) % u(p1)
+      v_el => species(s1) % prtl_tile(ti, tj, tk) % v(p1)
+      w_el => species(s1) % prtl_tile(ti, tj, tk) % w(p1)
+      wei_el => species(s1) % prtl_tile(ti, tj, tk) % weight(p1)
+      u_ph => species(s2) % prtl_tile(ti, tj, tk) % u(p2)
+      v_ph => species(s2) % prtl_tile(ti, tj, tk) % v(p2)
+      w_ph => species(s2) % prtl_tile(ti, tj, tk) % w(p2)
+      wei_ph => species(s2) % prtl_tile(ti, tj, tk) % weight(p2)
+
+      pel_x = REAL(u_el, 8); pel_y = REAL(v_el, 8); pel_z = REAL(w_el, 8)
+      kph_x = REAL(u_ph, 8); kph_y = REAL(v_ph, 8); kph_z = REAL(w_ph, 8)
+
+      el_gamma = sqrt(1.0d0 + pel_x**2 + pel_y**2 + pel_z**2)
+      eph = sqrt(kph_x**2 + kph_y**2 + kph_z**2)
+
+      ! boost photon momentum into electron frame:
+      call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
+                       eph, kph_x, kph_y, kph_z, &
+                       eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
+
+      ! compute cross section:
+      call computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
+#ifdef DEBUG
+      if ((P_12 .lt. 0.0) .or. (P_12 .gt. 2.0)) then
+        print *, 'P_12 = ', P_12
+        print *, eph, wei_ph, kph_x, kph_y, kph_z
+        call throwError('Compton cross section P_12 out of bounds!')
+      end if
+#endif
+
+      rnd = random(dseed)
+      if (rnd .le. (P_12 * max(P_ph, P_el))) then
+        ! scatter the photon in the electron rest frame:
+        call scatterPhoton(KleinNishina, eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
+
+        ! boost back into lab frame:
+        pel_x = -pel_x; pel_y = -pel_y; pel_z = -pel_z
+        call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
+                         eph_RF, kph_RF_x, kph_RF_y, kph_RF_z, &
+                         eph, kph_x, kph_y, kph_z)
+        u_ph_new = REAL(kph_x)
+        v_ph_new = REAL(kph_y)
+        w_ph_new = REAL(kph_z)
+        ! obtain the recoil on the electron via momentum conservation:
+        u_el_new = u_el + u_ph - u_ph_new
+        v_el_new = v_el + v_ph - v_ph_new
+        w_el_new = w_el + w_ph - w_ph_new
+
+        wei_split_el = el_photon_pairs(el_ph) % part_1 % wei
+        wei_split_ph = el_photon_pairs(el_ph) % part_2 % wei
+        ! within some numeric tolerance, check if the split weight ...
+        ! ... matches the original particle weight:
+        if (abs(wei_el - wei_split_el) .le. TINYWEI) wei_split_el = wei_el
+        if (abs(wei_ph - wei_split_ph) .le. TINYWEI) wei_split_ph = wei_ph
+
+        ! take the smaller of the two weights for the scattering:
+        wei_split = min(wei_split_el, wei_split_ph)
+#ifdef DEBUG
+        if (wei_split .le. TINYWEI) then
+          call throwError('ERROR: Weight of to-be splitted particle in Compton <= 0!')
+        end if
+        if ((wei_split - wei_el .gt. TINYWEI) .or. &
+            (wei_split - wei_ph .gt. TINYWEI)) then
+          print *, wei_split_el, wei_split_ph, wei_split
+          print *, wei_el, wei_ph
+          call throwError('ERROR: Weight of to-be splitted particle in Compton exceeds initial particle weight!')
         end if
 #endif
-
-        rnd = random(dseed)
-        if (rnd .le. P_12) then
-          ! scatter the photon in the electron rest frame:
-          call scatterPhoton(KleinNishina, eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
-
-          ! boost back into lab frame:
-          pel_x = -pel_x; pel_y = -pel_y; pel_z = -pel_z
-          call boostPhoton(el_gamma, pel_x, pel_y, pel_z, &
-                           eph_RF, kph_RF_x, kph_RF_y, kph_RF_z, &
-                           eph, kph_x, kph_y, kph_z)
-          u_ph_new = REAL(kph_x)
-          v_ph_new = REAL(kph_y)
-          w_ph_new = REAL(kph_z)
-          ! obtain the recoil on the electron via momentum conservation:
-          u_el_new = u_el + u_ph - u_ph_new
-          v_el_new = v_el + v_ph - v_ph_new
-          w_el_new = w_el + w_ph - w_ph_new
-
-          wei_split_el = el_photon_pairs(el_ph) % part_1 % wei
-          wei_split_ph = el_photon_pairs(el_ph) % part_2 % wei
-          ! within some numeric tolerance, check if the split weight ...
-          ! ... matches the original particle weight:
-          if (abs(wei_el - wei_split_el) .le. TINYWEI) wei_split_el = wei_el
-          if (abs(wei_ph - wei_split_ph) .le. TINYWEI) wei_split_ph = wei_ph
-
-          ! take the smaller of the two weights for the scattering:
-          wei_split = min(wei_split_el, wei_split_ph)
+        ! el update:
+        if (Compton_el_recoil .and. (rnd .le. (P_12 * P_el))) then
+          if (cool_el) then
+            ! TO DO
+          else if (abs(wei_el - wei_split) .le. TINYWEI) then
+            u_el = u_el_new
+            v_el = v_el_new
+            w_el = w_el_new
+          else ! split electron:
+            wei_el = wei_el - wei_split
+            ! this is done for safety but is not supposed to happen:
+            if (wei_el .le. TINYWEI) then
 #ifdef DEBUG
-          if (wei_split .le. TINYWEI) then
-            call throwError('ERROR: Weight of to-be splitted particle in Compton <= 0!')
-          end if
-          if ((wei_split - wei_el .gt. TINYWEI) .or. &
-              (wei_split - wei_ph .gt. TINYWEI)) then
-            print *, wei_split_el, wei_split_ph, wei_split
-            print *, wei_el, wei_ph
-            call throwError('ERROR: Weight of to-be splitted particle in Compton exceeds initial particle weight!')
-          end if
+              call throwError('ERROR: Electron weight after splitting in Compton <= 0!')
 #endif
-          ! el update:
-          if (Compton_el_recoil) then
-            if (wei_el .eq. wei_split) then
-              u_el = u_el_new
-              v_el = v_el_new
-              w_el = w_el_new
-            else ! split electron:
-              wei_el = wei_el - wei_split
-              ! this is done for safety but is not supposed to happen:
-              if (wei_el .le. TINYWEI) then
-                species(s1) % prtl_tile(ti, tj, tk) % proc(p1) = -1
-              end if
-              call createParticle(s1, species(s1) % prtl_tile(ti, tj, tk) % xi(p1), &
-                                  species(s1) % prtl_tile(ti, tj, tk) % yi(p1), &
-                                  species(s1) % prtl_tile(ti, tj, tk) % zi(p1), &
-                                  species(s1) % prtl_tile(ti, tj, tk) % dx(p1), &
-                                  species(s1) % prtl_tile(ti, tj, tk) % dy(p1), &
-                                  species(s1) % prtl_tile(ti, tj, tk) % dz(p1), &
-                                  u_el_new, v_el_new, w_el_new, weight=wei_split)
+              species(s1) % prtl_tile(ti, tj, tk) % proc(p1) = -1
             end if
+            call createParticle(s1, species(s1) % prtl_tile(ti, tj, tk) % xi(p1), &
+                                species(s1) % prtl_tile(ti, tj, tk) % yi(p1), &
+                                species(s1) % prtl_tile(ti, tj, tk) % zi(p1), &
+                                species(s1) % prtl_tile(ti, tj, tk) % dx(p1), &
+                                species(s1) % prtl_tile(ti, tj, tk) % dy(p1), &
+                                species(s1) % prtl_tile(ti, tj, tk) % dz(p1), &
+                                u_el_new, v_el_new, w_el_new, weight=wei_split)
           end if
-          ! photon update:
-          if (wei_ph .eq. wei_split) then
+        end if
+        ! photon update:
+        if (rnd .le. (P_12 * P_ph)) then
+          if (abs(wei_ph - wei_split) .le. TINYWEI) then
             u_ph = u_ph_new
             v_ph = v_ph_new
             w_ph = w_ph_new
           else ! split photon:
             wei_ph = wei_ph - wei_split
             if (wei_ph .le. TINYWEI) then
+#ifdef DEBUG
+              call throwError('ERROR: Photon weight after splitting in Compton <= 0!')
+#endif
               species(s2) % prtl_tile(ti, tj, tk) % proc(p2) = -1
             end if
             call createParticle(s2, species(s2) % prtl_tile(ti, tj, tk) % xi(p2), &
@@ -281,11 +300,10 @@ contains
                                 u_ph_new, v_ph_new, w_ph_new, weight=wei_split)
           end if
         end if
-        u_el => null(); v_el => null(); w_el => null(); wei_el => null()
-        u_ph => null(); v_ph => null(); w_ph => null(); wei_ph => null()
-      end do
-
-    end if
+      end if
+      u_el => null(); v_el => null(); w_el => null(); wei_el => null()
+      u_ph => null(); v_ph => null(); w_ph => null(); wei_ph => null()
+    end do
   end subroutine comptonOnTile_mc
 
   subroutine computeComptonCrossSection(eph, eph_RF, el_gamma, P_12, KleinNishina)
@@ -298,15 +316,15 @@ contains
     ! note: f_KN is normalized to sigma_T
     if (eph_RF .lt. Thomson_lim) then
       KleinNishina = .false.  ! use classical Thomson cross-section
-      f_KN = (8.0d0 / 3.0d0)
+      f_KN = 1.0d0
     else if (eph_RF .lt. low_eph_lim) then
       ! correctly handle the eph_RF << 1 limit using 2nd order expansion of f_KN:
       KleinNishina = .true.  ! Klein-Nishina
-      f_KN = (1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2) * (8.0d0 / 3.0d0)
+      f_KN = 1.0d0 - 2.0d0 * eph_RF + 5.2d0 * eph_RF**2
     else
       KleinNishina = .true.
       over_eph_RF = 1.0d0 / eph_RF
-      f_KN = over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
+      f_KN = 0.375d0 * over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
                             log(1.0d0 + 2.0d0 * eph_RF) + 0.5d0 + &
                             4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
     end if
