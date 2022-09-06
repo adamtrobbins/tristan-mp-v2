@@ -271,26 +271,29 @@ contains
     integer, optional, intent(in) :: step
     integer :: i, j, k, im1, jm1, km1, mode
     real :: x_, y_, z_shift, x_shift, y_shift
-    real :: k_dot_r, coef_x, coef_y
+    real :: k_dot_r
+    real, dimension(n_modes) :: coef_x, coef_y
+    do mode = 1, n_modes
+      coef_x(mode) = ky_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
+      coef_y(mode) = -kx_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
+    end do
     ! update the coefficients:
     if (step .gt. 0) call advanceBext()
     bx_ant(:, :, :) = 0.0; by_ant(:, :, :) = 0.0
     ! initialize the external field for this time step:
-    do k = -NGHOST, this_meshblock % ptr % sz - 1 + NGHOST
+    do k = this_meshblock % ptr % k1, this_meshblock % ptr % k2
       z_shift = REAL(k + this_meshblock % ptr % z0) + 0.5
-      do j = -NGHOST, this_meshblock % ptr % sy - 1 + NGHOST
+      do j = this_meshblock % ptr % j1, this_meshblock % ptr % j2
         y_ = REAL(j + this_meshblock % ptr % y0)
         y_shift = y_ + 0.5
-        do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
+        do i = this_meshblock % ptr % i1, this_meshblock % ptr % i2
           x_ = REAL(i + this_meshblock % ptr % x0)
           x_shift = x_ + 0.5
           do mode = 1, n_modes
-            coef_x = ky_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
-            coef_y = -kx_ant(mode) / sqrt(REAL(n_modes) * (kx_ant(mode)**2 + ky_ant(mode)**2))
             k_dot_r = kx_ant(mode) * x_ + ky_ant(mode) * y_shift + kz_ant(mode) * z_shift
-            bx_ant(i, j, k) = bx_ant(i, j, k) + coef_x * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
+            bx_ant(i, j, k) = bx_ant(i, j, k) + coef_x(mode) * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
             k_dot_r = kx_ant(mode) * x_shift + ky_ant(mode) * y_ + kz_ant(mode) * z_shift
-            by_ant(i, j, k) = by_ant(i, j, k) + coef_y * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
+            by_ant(i, j, k) = by_ant(i, j, k) + coef_y(mode) * REAL(ii * b_k(mode) * cexp(ii * CMPLX(k_dot_r, kind=4)))
           end do
         end do
       end do
@@ -387,9 +390,10 @@ contains
                 costh = 2.0 * random(dseed) - 1.0
                 phi = 2.0 * M_PI * random(dseed)
                 eph = eph0 * planck_sample(random(dseed))
-                species(s) % prtl_tile(ti, tj, tk) % u(p) = eph * sqrt(1.0 - costh**2) * cos(phi)
-                species(s) % prtl_tile(ti, tj, tk) % v(p) = eph * sqrt(1.0 - costh**2) * sin(phi)
                 species(s) % prtl_tile(ti, tj, tk) % w(p) = eph * costh
+                costh = sqrt(1.0 - costh**2)
+                species(s) % prtl_tile(ti, tj, tk) % u(p) = eph * costh * cos(phi)
+                species(s) % prtl_tile(ti, tj, tk) % v(p) = eph * costh * sin(phi)
                 ! reset position:
                 !xg = (random(dseed) - 0.5) * REAL(global_mesh % sx)
                 !yg = (random(dseed) - 0.5) * REAL(global_mesh % sy)

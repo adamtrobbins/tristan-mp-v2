@@ -26,6 +26,7 @@ module m_qednamespace
   real(kind=8) :: Thomson_lim
   real :: Compton_nph_over_ne
   logical :: Compton_clone_sets
+  logical :: Compton_cool_el
 #endif
 
 #ifdef PAIRANNIHILATION

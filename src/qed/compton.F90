@@ -84,10 +84,10 @@ contains
     type(couple), allocatable :: el_photon_pairs(:)
     integer :: num_pairs, el_ph, s1, s2, p1, p2
     real :: rnd, P_12
-    integer :: tile_x, tile_y, tile_z, num_pairs_max
-    real :: P_corr, P_max, P_el, P_ph, ppt0
+    integer :: tile_x, tile_y, tile_z, num_scatter_max
+    real :: P_corr, P_el, P_ph, ppt0
     logical :: KleinNishina
-    integer :: num_1, num_2
+    integer :: num_1, num_2, num_copies
     real(kind=8) :: el_gamma, pel_x, pel_y, pel_z
     real(kind=8) :: eph, kph_x, kph_y, kph_z
     real(kind=8) :: eph_RF, kph_RF_x, kph_RF_y, kph_RF_z
@@ -101,13 +101,7 @@ contains
 
     ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2, &
-                               el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2, Compton_clone_sets)
-    ! the particles that form the pair list have already been abstractly split ...
-    ! ... the 'splitting' is done only within the list of pairs at this stage ...
-    ! ... actual weight > 1 particles have not (yet) been split.
-    ! wei_1, wei_2 is the 'real' total weight of set 1 and 2, while num_pairs = min(num_1, num_2) indicates the number of 
-    ! 'abstract' particle pairings between set 1 and 2, which may be much larger than min(wei_1, wei_2)
-    ! because a particle can be paired multiple times
+                               el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2)
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! calculate prob. correction factor:
     tile_x = species(1) % prtl_tile(ti, tj, tk) % x2 - &
@@ -125,33 +119,55 @@ contains
       wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
                                           el_photon_pairs(el_ph) % part_2 % wei)
     end do
-    ! correction for to match binary pairing, correct for non-integer weights, etc.:
+    ! correction to match binary pairing, correct for non-integer weights, etc:
     P_corr = P_corr * wei_1 * wei_2 / wei_split_tot
-    ! electron scattering probability can differ if fiducial density of photons to
-    ! electrons is not unity:
+    ! the correction factors for a paired photon and electron/positron:
     P_ph = P_corr
-    P_el = P_corr * Compton_nph_over_ne 
-    cool_el = (2.0 * P_el .gt. 1.0) .and. Compton_cool_el  ! cool electrons if max probability > 1 
+    P_el = P_corr * Compton_nph_over_ne
+    ! single scattering per particle - reduce number of random samples to minimum:
+    num_scatter_max = CEILING(2.0 * REAL(num_pairs) * max(P_ph, P_el))
+    ! if multiple scatterings per particle are possible attempt to pair particles 
+    ! from the smaller set multiple times:
+    if (num_scatter_max .gt. num_pairs) then
+      num_copies = max(num_1, num_2) / num_pairs
+      num_copies = min(CEILING(REAL(num_scatter_max) / REAL(num_pairs)), num_copies)
+      if (Compton_clone_sets .and. (num_copies .gt. 1)) then
+        num_scatter_max = num_copies * num_pairs
+      else
+        num_scatter_max = num_pairs
+      end if
+    end if
+    P_corr = wei_split_tot
+    wei_split_tot = 0.0
+    do el_ph = 1, num_scatter_max
+      wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
+                                          el_photon_pairs(el_ph) % part_2 % wei)
+    end do
+    P_corr = P_corr / wei_split_tot
+    P_ph = P_ph * P_corr
+    P_el = P_el * P_corr
+    ! electron cooling option:
+    cool_el = (((2.0 * P_el) .gt. 1.0) .and. Compton_cool_el)
+    ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #ifdef DEBUG
-      if ((P_ph .lt. 0.0) .or. ((2.0 * P_ph) .gt. 1.0)) then
-        print *, 'max(P_ph) = ', 2.0 * P_ph
-        call throwError('Maximum photon Compton scattering probability out of bounds!')
-      end if
-      if ((P_el .lt. 0.0) .or. ((2.0 * P_el) .gt. 1.0)) then
-        print *, 'P_el = ', 2.0 * P_el
-        call throwError('Maximum electron Compton scattering probability out of bounds!')
-      end if
+    if ((P_ph .lt. 0.0) .or. ((2.0 * P_ph) .gt. 1.0)) then
+      print *, 'max(P_ph) = ', 2.0 * P_ph
+      call throwError('Maximum photon Compton scattering probability out of bounds!')
+    end if
+    if (((P_el .lt. 0.0) .or. ((2.0 * P_el) .gt. 1.0)) .and. &
+          Compton_el_recoil .and. (.not. cool_el)) then
+      print *, 'max(P_el) = ', 2.0 * P_el
+      call throwError('Maximum electron Compton scattering probability out of bounds!')
+    end if
 #else
-      if ((P_ph .gt. 0.5) .or. ((P_el .gt. 0.5) .and. (.not. cool_el))) then
-        call addWarning(2)
-      end if
-      if (cool_el) then
-        call addWarning(4)
-      end if
+    if ((P_ph .gt. 0.5) .or. ((P_el .gt. 0.5) .and. (.not. cool_el) .and. Compton_el_recoil)) then
+      call addWarning(2)
+    end if
+    if (cool_el) call addWarning(4)
 #endif
 
-    do el_ph = 1, num_pairs
+    do el_ph = 1, num_scatter_max
       ! "extract" the el-photon pair:
       s1 = el_photon_pairs(el_ph) % part_1 % spec
       p1 = el_photon_pairs(el_ph) % part_1 % index
@@ -197,12 +213,8 @@ contains
       end if
 #endif
 
-      ! to match the optical depth with the binary pairing case:
-      P_ph = P_12 * P_ph
-      P_el = P_12 * P_el
-
       rnd = random(dseed)
-      if (rnd .le. max(P_ph, P_el)) then
+      if (rnd .le. (P_12 * max(P_ph, P_el))) then
         ! scatter the photon in the electron rest frame:
         call scatterPhoton(KleinNishina, eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
 
@@ -240,8 +252,9 @@ contains
         end if
 #endif
         ! el update:
-        if (Compton_el_recoil .and. (rnd .le. P_el)) then
+        if (Compton_el_recoil .and. (rnd .le. (P_12 * P_el))) then
           if (cool_el) then
+            ! TO DO
           else if (abs(wei_el - wei_split) .le. TINYWEI) then
             u_el = u_el_new
             v_el = v_el_new
@@ -265,7 +278,7 @@ contains
           end if
         end if
         ! photon update:
-        if (rnd .le. P_ph) then
+        if (rnd .le. (P_12 * P_ph)) then
           if (abs(wei_ph - wei_split) .le. TINYWEI) then
             u_ph = u_ph_new
             v_ph = v_ph_new

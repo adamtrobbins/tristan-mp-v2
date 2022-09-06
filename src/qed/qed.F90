@@ -96,6 +96,7 @@ contains
     call getInput('compton', 'Thomson_lim', Thomson_lim, 1d-6)
     call getInput('compton', 'nph_over_ne', Compton_nph_over_ne, 1.0)
     call getInput('compton', 'clone_sets', Compton_clone_sets, .true.)
+    call getInput('compton', 'cool_el', Compton_cool_el, .false.)
 
     do s = 1, nspec
       write (var_name, "(A7,I1)") "compton", s
