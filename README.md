@@ -118,7 +118,9 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 __@TODO__
 
 ## Latest Releases
-
+* `v2.5.1` __Aug 2022__
+  * Minor configure bug when working with non-intel compilers
+  * Minor bug with `usroutput` flag
 * `v2.5` __Jul 2022__
   * Proper makefile/compilation command
   * Double precision option

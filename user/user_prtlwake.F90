@@ -10,7 +10,7 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private :: backgr_T, prtl_beta, pitch_angle
+  real, private :: backgr_T, prtl_beta, pitch_angle, backgr_N, B_Z
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -29,10 +29,12 @@ contains
     end do
 
     call getInput('problem', 'backgr_T', backgr_T)
+    call getInput('problem', 'backgr_N', backgr_N)
     call getInput('problem', 'PITCH', pitch_angle, 0.0)
     ! convert pitch angle to radians
     pitch_angle = pitch_angle * M_PI / 180.0
     call getInput('problem', 'prtl_beta', prtl_beta)
+    call getInput('problem', 'B_Z', B_Z, 0.0)
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob,&
@@ -62,39 +64,50 @@ contains
     real :: vx, vy, vz, gamma
     real :: xg, yg, zg
     integer :: npart
-    real :: nUP, sx_glob, sy_glob, rho_larmor
+    real :: nUP, sx_glob, sy_glob, sz_glob, rho_larmor
     type(region) :: back_region
     integer :: s, ti, tj, tk
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    nUP = 0.5 * ppc0
+    nUP = 0.5 * ppc0 * backgr_N
 
     sx_glob = REAL(global_mesh % sx)
     sy_glob = REAL(global_mesh % sy)
+    sz_glob = REAL(global_mesh % sz)
 
     back_region % x_min = 0.0
-    back_region % y_min = 0.0
     back_region % x_max = sx_glob
+
+#if defined(TWO_D) || defined(THREE_D)
+    back_region % y_min = 0.0
     back_region % y_max = sy_glob
+#endif
+
+#if defined(THREE_D)
+    back_region % z_min = 0.0
+    back_region % z_max = sz_glob
+#endif
 
     ! initialize all particle velocities to 0
-    if (backgr_T .eq. 0) then
-      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, 1e-5)
-      do s = 1, 2
-        do ti = 1, species(s) % tile_nx
-          do tj = 1, species(s) % tile_ny
-            do tk = 1, species(s) % tile_nz
-              npart = species(s) % prtl_tile(ti, tj, tk) % npart_sp
-              species(s) % prtl_tile(ti, tj, tk) % u(1:npart) = 0.0
-              species(s) % prtl_tile(ti, tj, tk) % v(1:npart) = 0.0
-              species(s) % prtl_tile(ti, tj, tk) % w(1:npart) = 0.0
+    if (backgr_N .ne. 0) then
+      if (backgr_T .eq. 0) then
+        call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, 1e-5)
+        do s = 1, 2
+          do ti = 1, species(s) % tile_nx
+            do tj = 1, species(s) % tile_ny
+              do tk = 1, species(s) % tile_nz
+                npart = species(s) % prtl_tile(ti, tj, tk) % npart_sp
+                species(s) % prtl_tile(ti, tj, tk) % u(1:npart) = 0.0
+                species(s) % prtl_tile(ti, tj, tk) % v(1:npart) = 0.0
+                species(s) % prtl_tile(ti, tj, tk) % w(1:npart) = 0.0
+              end do
             end do
           end do
         end do
-      end do
-    else
-      call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, backgr_T)
+      else
+        call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, nUP, backgr_T)
+      end if
     end if
 
     vx = prtl_beta * cos(pitch_angle)
@@ -102,11 +115,12 @@ contains
     vz = 0.0
     gamma = 1.0 / sqrt(1.0 - prtl_beta**2)
 
-    rho_larmor = c_omp * gamma * prtl_beta / sqrt(sigma)
+    !rho_larmor = c_omp * gamma * prtl_beta / sqrt(sigma)
 
-    xg = 0.5 * sx_glob
-    yg = (0.5 * sy_glob) - rho_larmor
-    zg = 0.5
+    xg = 0.1 * sx_glob
+    !yg = (0.5 * sy_glob) - rho_larmor
+    yg = 0.5 * sy_glob
+    zg = 0.5 * sz_glob
 
     vx = gamma * vx
     vy = gamma * vy
@@ -131,7 +145,7 @@ contains
     ! jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
 
     ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
-    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 1
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = B_Z
     jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
 
     ! ... dummy loop ...
