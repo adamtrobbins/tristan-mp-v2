@@ -72,6 +72,7 @@ contains
     warnings(1) % description = "Synchrotron cooling is too strong"
     warnings(2) % description = "QED probability too large"
     warnings(3) % description = "IC cooling is too strong"
+    warnings(4) % description = "Replacing Compton on tile w/ el cooling"
   end subroutine initializeWarnings
 
   subroutine printDiag(msg, level)

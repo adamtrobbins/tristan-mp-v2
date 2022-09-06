@@ -204,10 +204,10 @@ contains
       if (clone_sets_) then
         if ((wei_1 .ge. (1.1 * wei_2)) .and. (wei_2 .ge. 1.0)) then
           call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2, wei_2, &
-                               & num_copies=CEILING(wei_1 / wei_2))
+                               & num_copies=FLOOR(wei_1 / wei_2))
         else if ((wei_2 .ge. (1.1 * wei_1)) .and. (wei_1 .ge. 1.0)) then
           call prtlToSetWeighted(ti, tj, tk, sp_arr_1, n_sp_1, set_1, num_1, wei_1, &
-                  & num_copies=CEILING(wei_2 / wei_1))
+                  & num_copies=FLOOR(wei_2 / wei_1))
         end if
       end if
 
