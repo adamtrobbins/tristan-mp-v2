@@ -35,7 +35,7 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
-    real : Pmax
+    real :: Pmax
     call getInput('problem', 'omega0', omega0, 0.01)
     call getInput('problem', 'gamma0', gamma0, 0.001)
     call getInput('problem', 'deltaB', deltaB, 0.8)
