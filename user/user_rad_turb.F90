@@ -35,6 +35,7 @@ contains
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
+    real : Pmax
     call getInput('problem', 'omega0', omega0, 0.01)
     call getInput('problem', 'gamma0', gamma0, 0.001)
     call getInput('problem', 'deltaB', deltaB, 0.8)
@@ -46,7 +47,10 @@ contains
 #ifdef COMPTONSCATTERING
     Compton_nph_over_ne = Compton_nph_over_ne * ppc0 / ppc_ph
     if (mpi_rank .eq. 0) then
+      print *, '  ppc_ph/ppc_el =', ppc_ph / ppc0
       print *, '  Rescaled nph/ne =', Compton_nph_over_ne
+      Pmax = 2.0 * QED_tau0 * REAL(Compton_interval) * CC * max(Compton_nph_over_ne, 1.0)
+      print *, '  Rescaled max. probability for Compton scattering (MC algorithm) =', Pmax
     end if
 #endif
   end subroutine userReadInput

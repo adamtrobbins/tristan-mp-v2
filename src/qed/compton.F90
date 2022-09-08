@@ -85,7 +85,8 @@ contains
     integer :: num_pairs, el_ph, s1, s2, p1, p2
     real :: rnd, P_12
     integer :: tile_x, tile_y, tile_z, num_scatter_max
-    real :: P_corr, P_el, P_ph, ppt0
+    real :: P0, P_corr_el, P_corr_ph, P_el, P_ph, ppt0
+    real :: P_max_el, P_max_ph
     logical :: KleinNishina
     integer :: num_1, num_2, num_copies
     real(kind=8) :: el_gamma, pel_x, pel_y, pel_z
@@ -98,6 +99,7 @@ contains
     real :: wei_split, wei_1, wei_2, wei_split_tot
     real :: wei_split_el, wei_split_ph
     logical :: cool_el
+    real, parameter :: p_max = 1.0 + TINYREAL
 
     ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2, &
@@ -113,19 +115,20 @@ contains
     ! reference # pairs on a tile:
     ppt0 = ppc0 * REAL(tile_x * tile_y * tile_z)
     ! make it independent of ppt0 & qed step:
-    P_corr = QED_tau0 * REAL(Compton_interval) * CC / ppt0
+    P0 = QED_tau0 * REAL(Compton_interval) * CC / ppt0
     wei_split_tot = 0.0
     do el_ph = 1, num_pairs
       wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
                                           el_photon_pairs(el_ph) % part_2 % wei)
     end do
     ! correction to match binary pairing, correct for non-integer weights, etc:
-    P_corr = P_corr * wei_1 * wei_2 / wei_split_tot
+    P0 = P0 * wei_1 * wei_2 / wei_split_tot
     ! the correction factors for a paired photon and electron/positron:
-    P_ph = P_corr
-    P_el = P_corr * Compton_nph_over_ne
+    P_corr_ph = P0
+    P_corr_el = P0 * Compton_nph_over_ne
+    if (.not. Compton_el_recoil) P_corr_el = P_corr_ph
     ! single scattering per particle - reduce number of random samples to minimum:
-    num_scatter_max = CEILING(2.0 * REAL(num_pairs) * max(P_ph, P_el))
+    num_scatter_max = CEILING(2.0 * REAL(num_pairs) * max(P_corr_ph, P_corr_el))
     ! if multiple scatterings per particle are possible attempt to pair particles 
     ! from the smaller set multiple times:
     if (num_scatter_max .gt. num_pairs) then
@@ -137,31 +140,33 @@ contains
         num_scatter_max = num_pairs
       end if
     end if
-    P_corr = wei_split_tot
+    P0 = wei_split_tot
     wei_split_tot = 0.0
     do el_ph = 1, num_scatter_max
       wei_split_tot = wei_split_tot + min(el_photon_pairs(el_ph) % part_1 % wei, &
                                           el_photon_pairs(el_ph) % part_2 % wei)
     end do
-    P_corr = P_corr / wei_split_tot
-    P_ph = P_ph * P_corr
-    P_el = P_el * P_corr
+    P0 = P0 / wei_split_tot
+    P_corr_ph = P_corr_ph * P0
+    P_corr_el = P_corr_el * P0
+    P_max_ph = 2.0 * P_corr_ph
+    P_max_el = 2.0 * P_corr_el
     ! electron cooling option:
-    cool_el = (((2.0 * P_el) .gt. 1.0) .and. Compton_cool_el)
+    cool_el = ((P_max_el .gt. p_max) .and. Compton_cool_el)
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #ifdef DEBUG
-    if ((P_ph .lt. 0.0) .or. ((2.0 * P_ph) .gt. 1.0)) then
-      print *, 'max(P_ph) = ', 2.0 * P_ph
+    if ((P_max_ph .lt. 0) .or. (P_max_ph .gt. p_max)) then
+      print *, 'max(P_ph) = ', P_max_ph
       call throwError('Maximum photon Compton scattering probability out of bounds!')
     end if
-    if (((P_el .lt. 0.0) .or. ((2.0 * P_el) .gt. 1.0)) .and. &
+    if (((P_max_el .lt. 0) .or. (P_max_el .gt. p_max)) .and. &
           Compton_el_recoil .and. (.not. cool_el)) then
-      print *, 'max(P_el) = ', 2.0 * P_el
+      print *, 'max(P_el) = ', P_max_el
       call throwError('Maximum electron Compton scattering probability out of bounds!')
     end if
 #else
-    if ((P_ph .gt. 0.5) .or. ((P_el .gt. 0.5) .and. (.not. cool_el) .and. Compton_el_recoil)) then
+    if ((P_max_ph .gt. p_max) .or. ((P_max_el .gt. p_max) .and. (.not. cool_el) .and. Compton_el_recoil)) then
       call addWarning(2)
     end if
     if (cool_el) call addWarning(4)
@@ -214,7 +219,9 @@ contains
 #endif
 
       rnd = random(dseed)
-      if (rnd .le. (P_12 * max(P_ph, P_el))) then
+      P_ph = P_corr_ph * P_12
+      P_el = P_corr_el * P_12
+      if (rnd .le. max(P_ph, P_el)) then
         ! scatter the photon in the electron rest frame:
         call scatterPhoton(KleinNishina, eph_RF, kph_RF_x, kph_RF_y, kph_RF_z)
 
@@ -252,7 +259,7 @@ contains
         end if
 #endif
         ! el update:
-        if (Compton_el_recoil .and. (rnd .le. (P_12 * P_el))) then
+        if (Compton_el_recoil .and. (rnd .le. P_el)) then
           if (cool_el) then
             ! TO DO
           else if (abs(wei_el - wei_split) .le. TINYWEI) then
@@ -278,7 +285,7 @@ contains
           end if
         end if
         ! photon update:
-        if (rnd .le. (P_12 * P_ph)) then
+        if (rnd .le. P_ph) then
           if (abs(wei_ph - wei_split) .le. TINYWEI) then
             u_ph = u_ph_new
             v_ph = v_ph_new

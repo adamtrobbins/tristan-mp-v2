@@ -110,6 +110,7 @@ contains
     end do
     if (mpi_rank .eq. 0) then
       Pmax = 2.0 * QED_tau0 * REAL(Compton_interval) * CC * max(Compton_nph_over_ne, 1.0)
+      print *, '  Reference nph/ne =', Compton_nph_over_ne
       print *, '  Reference max. probability for Compton scattering (MC algorithm) =', Pmax
     end if
   end subroutine initializeComptonScattering

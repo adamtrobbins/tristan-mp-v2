@@ -22,8 +22,6 @@ contains
     call getInput('output', 'hst_interval', hst_interval, 1)
   end subroutine initializeHistory
 
-  ! FIX2 total E^2, total B^2, total E_kin
-  ! time, total mass, momenta, kinetic energies in three directions, total energy, and magnetic energies in three directions
   subroutine writeHistory(step)
     implicit none
     integer, intent(in) :: step

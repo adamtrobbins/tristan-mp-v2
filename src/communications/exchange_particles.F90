@@ -328,7 +328,6 @@ contains
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
             pt_proc => species(s) % prtl_tile(ti, tj, tk) % proc
-            ! FIX1 make sure this is vectorized
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               if (pt_proc(p) .eq. -1) cycle
               ti_p = FLOOR(REAL(pt_xi(p)) / REAL(species(s) % tile_sx)) + 1
@@ -1007,7 +1006,6 @@ contains
             pt_yi => species(s) % prtl_tile(ti, tj, tk) % yi
             pt_zi => species(s) % prtl_tile(ti, tj, tk) % zi
             pt_proc => species(s) % prtl_tile(ti, tj, tk) % proc
-            ! FIX1 make sure this is vectorized
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               if (pt_proc(p) .eq. -1) cycle
               ti_p = FLOOR(REAL(pt_xi(p)) / REAL(species(s) % tile_sx)) + 1

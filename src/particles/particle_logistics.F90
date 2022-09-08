@@ -792,7 +792,6 @@ contains
       do tk = 1, species(s) % tile_nz
         do tj = 1, species(s) % tile_ny
           do ti = 1, species(s) % tile_nx
-            ! FIX1 try to vectorize this
             p = 1
             do while (p .le. species(s) % prtl_tile(ti, tj, tk) % npart_sp)
               if (species(s) % prtl_tile(ti, tj, tk) % proc(p) .lt. 0) then
