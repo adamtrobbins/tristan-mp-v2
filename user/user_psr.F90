@@ -847,4 +847,6 @@ contains
   end function userExcludeParticles
 #endif
   !............................................................!
+
+#include "optional.F"
 end module m_userfile

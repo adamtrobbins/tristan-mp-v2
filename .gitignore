@@ -16,6 +16,7 @@
 !extern/
 !CITATION
 !LICENSE
+!test/
 extern/public/
 .vscode/*.log
 __pycache__
