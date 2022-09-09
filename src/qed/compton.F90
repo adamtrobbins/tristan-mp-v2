@@ -104,6 +104,7 @@ contains
     ! couple the electrons/positrons (group1) and photons (group2):
     call coupleParticlesOnTile(ti, tj, tk, sp_arr_1, n_sp_1, sp_arr_2, n_sp_2, &
                                el_photon_pairs, num_pairs, num_1, num_2, wei_1, wei_2)
+    if (num_pairs .eq. 0) return
     ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ! calculate prob. correction factor:
     tile_x = species(1) % prtl_tile(ti, tj, tk) % x2 - &
@@ -128,7 +129,7 @@ contains
     P_corr_el = P0 * Compton_nph_over_ne
     if (.not. Compton_el_recoil) P_corr_el = P_corr_ph
     ! single scattering per particle - reduce number of random samples to minimum:
-    num_scatter_max = CEILING(2.0 * REAL(num_pairs) * max(P_corr_ph, P_corr_el))
+    num_scatter_max = CEILING(2.0 * REAL(num_pairs) * max(P_corr_ph, P_corr_el) + TINYREAL)
     ! if multiple scatterings per particle are possible attempt to pair particles 
     ! from the smaller set multiple times:
     if (num_scatter_max .gt. num_pairs) then
