@@ -187,13 +187,15 @@ contains
       call prtlToSetWeighted(ti, tj, tk, sp_arr_2, n_sp_2, set_2, num_2, wei_2)
 
       num_couples = min(num_1, num_2)
-      allocate (coupled_pairs(max(num_1, num_2)))
-      call shuffleSet(set_1, num_1)
-      call shuffleSet(set_2, num_2)
-      do i = 1, max(num_1, num_2)
-        coupled_pairs(i) % part_1 = set_1(modulo(i-1, num_1)+1)
-        coupled_pairs(i) % part_2 = set_2(modulo(i-1, num_2)+1)
-      end do
+      if (num_couples .gt. 0) then
+        allocate (coupled_pairs(max(num_1, num_2)))
+        call shuffleSet(set_1, num_1)
+        call shuffleSet(set_2, num_2)
+        do i = 1, max(num_1, num_2)
+          coupled_pairs(i) % part_1 = set_1(modulo(i-1, num_1)+1)
+          coupled_pairs(i) % part_2 = set_2(modulo(i-1, num_2)+1)
+        end do
+      end if
       ! . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     end if
 
