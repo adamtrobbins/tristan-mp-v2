@@ -7,3 +7,7 @@ subroutine readUsrRestart(rst_file)
   implicit none
   integer, intent(in) :: rst_file
 end subroutine readUsrRestart
+
+subroutine userDeallocate()
+  implicit none
+end subroutine userDeallocate

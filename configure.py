@@ -18,6 +18,8 @@ user_choices = [choice[len(user_directory):-4] for choice in user_choices]
 unit_directory = 'unit/'
 unit_choices = glob.glob(unit_directory + '*.F90')
 unit_choices = [choice[len(unit_directory):-4] for choice in unit_choices]
+compiler_choices = ['intel', 'aocc', 'gcc']
+cpu_choices = ['intel', 'amd']
 
 rad_choices = ['no', 'sync', 'ic', 'sync+ic']
 clusters = ['perseus', 'frontera', 'stellar', 'ginsburg']
@@ -28,15 +30,24 @@ parser.add_argument('--cluster',
                     choices=clusters,
                     help='choose cluster-specific configurations.')
 
-cpu_group = parser.add_mutually_exclusive_group(required=False)
-cpu_group.add_argument('-intel',
-                       action='store_true',
-                       default=False,
-                       help='enable Intel cpu optimizations')
-cpu_group.add_argument('-amd',
-                       action='store_true',
-                       default=False,
-                       help='enable AMD cpu optimizations')
+parser.add_argument('--compiler',
+                    default='gcc',
+                    choices=compiler_choices,
+                    help='choose compiler vendor.')
+
+parser.add_argument('--cpu',
+                    default='intel',
+                    choices=cpu_choices,
+                    help='choose cpu vendor.')
+# cpu_group = parser.add_mutually_exclusive_group(required=False)
+# cpu_group.add_argument('-intel',
+                       # action='store_true',
+                       # default=False,
+                       # help='enable Intel cpu optimizations')
+# cpu_group.add_argument('-amd',
+                       # action='store_true',
+                       # default=False,
+                       # help='enable AMD cpu optimizations')
 
 parser.add_argument('-hdf5',
                     action='store_true',
@@ -257,7 +268,7 @@ if args['hdf5']:
     makefile_options['COMPILER_COMMAND'] += 'h5pfc '
     makefile_options['PREPROCESSOR_FLAGS'] += '-DHDF5 '
 else:
-    makefile_options['COMPILER_COMMAND'] += 'mpif90 ' if not args['intel'] else 'mpiifort '
+    makefile_options['COMPILER_COMMAND'] += 'mpif90 ' if not args['compiler'] == 'intel' else 'mpiifort '
 if args['ifport']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DIFPORT '
 if args['lowmem']:
@@ -279,17 +290,18 @@ if args['debug'] != 'OFF':
     if int(args['debug']) >= 0:
         makefile_options['PREPROCESSOR_FLAGS'] += '-DDEBUG '
     if int(args['debug']) >= 1:
-        if args['intel'] or args['amd']:
+        if args['compiler'] == 'intel':
             makefile_options['COMPILER_FLAGS'] += '-traceback -fpe0 '
         else:
             makefile_options['COMPILER_FLAGS'] += '-fbacktrace -ffpe-trap=invalid,zero,overflow,underflow,denormal '
-    if int(args['debug']) >= 2 and (args['intel'] or args['amd']):
+        # @TODO: add aocc
+    if int(args['debug']) >= 2 and (args['compiler'] == 'intel'):
         makefile_options['COMPILER_FLAGS'] += '-check all -check noarg_temp_created '
 else:
     makefile_options['COMPILER_FLAGS'] += '-Ofast '
 
 if args['double']:
-    if args['intel'] or args['amd']:
+    if args['compiler'] == 'intel':
         makefile_options['COMPILER_FLAGS'] += '-r8 '
     else:
         makefile_options['COMPILER_FLAGS'] += '-fdefault-real-8 '
@@ -302,7 +314,7 @@ if args['test']:
     makefile_options['PREPROCESSOR_FLAGS'] += '-DTESTMODE '
 
 # compiler (+ optimization, vectorization etc)
-if args['intel']:
+if args['compiler'] == 'intel' and args['cpu'] == 'intel':
     makefile_options['MODULE'] = '-module '
     makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
     makefile_options['COMPILER_FLAGS'] += '-diag-disable 10397 -diag-disable 10346 '
@@ -310,7 +322,7 @@ if args['intel']:
         makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
     elif args['avx512']:
         makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX512 -qopt-zmm-usage:high '
-elif args['amd']:
+elif args['compiler'] == 'intel' and args['cpu'] == 'amd':
     makefile_options['MODULE'] = '-J '
     makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -fwhole-program -mavx2 -fopt-info-vec -fopt-info-vec-missed -ftree-vectorizer-verbose=5 '
 else:
@@ -419,7 +431,7 @@ print('  Pair annihilation:       ' +
 
 print('TECHNICAL ....................................................................')
 
-print('  Compiler:                ' + ('intel' if args['intel'] else 'gcc') +
+print('  Compiler:                ' + (args['compiler'] + f" [{args['cpu']}]") +
                                       (' [avx2]' if args['avx2'] else
                                        (' [avx512]' if args['avx512'] else '')
                                        ))
@@ -431,7 +443,7 @@ print('  Output:                  ' + (('HDF5' +
       (' (serial)' if args['serial'] else ' (parallel)')) if args['hdf5'] else 'N/A'))
 print('  User output:             ' + ('ON' if args['usroutput'] else 'OFF'))
 print('  MPI version:             ' +
-      ('old' if not args['mpi08'] else 'MPI_08'))
+      ('old' if args['mpi'] else 'MPI_08'))
 print('  `IFPORT` mkdir:          ' + ('ON' if args['ifport'] else 'OFF'))
 
 print('==============================================================================')
