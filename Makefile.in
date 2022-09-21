@@ -40,7 +40,7 @@ all : depend $(EXECUTABLE)
 -include Makefile.depend
 
 depend Makefile.depend:
-	${HIDE}-./extern/makedepf90 $(SRC_FILES) -DUSROUTPUT -DQED -B $(BUILD_DIR) > Makefile.depend
+	${HIDE}-./extern/makedepf90 $(SRC_FILES) $(PFLAGS) -B $(BUILD_DIR) > Makefile.depend
 
 $(EXECUTABLE): $(OBJ_FILES)
 	${HIDE}echo Linking $(EXECUTABLE)
