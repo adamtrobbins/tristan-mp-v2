@@ -307,7 +307,7 @@ if args['test']:
 if args['compiler'] == 'intel':
     makefile_options['MODULE'] = '-module '
     makefile_options['COMPILER_FLAGS'] += '-O3 -DSoA -ipo -qopenmp-simd -qopt-report=5 -qopt-streaming-stores auto '
-    makefile_options['COMPILER_FLAGS'] += '-diag-disable 10397 -diag-disable 10346 -diag-disable 8100 -diag-disable 6178'
+    makefile_options['COMPILER_FLAGS'] += '-diag-disable 10397 -diag-disable 10346 -diag-disable 8100 -diag-disable 6178 '
     if args['vector'] is not None:
         if args['vector'] == 'intel-avx2':
             makefile_options['COMPILER_FLAGS'] += '-xCORE-AVX2 '
