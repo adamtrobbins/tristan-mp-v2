@@ -131,8 +131,8 @@ contains
     if (.not. Compton_el_recoil) P_corr_el = P_corr_ph
     if (2.0 * max(P_corr_ph, P_corr_el) .le. p_lim) then
       ! at most one candidate scattering per particle for the larger set:
-      num_scatter_max = CEILING(2.0 * REAL(num_scatter_max) * max(P_corr_ph, P_corr_el) + TINYREAL)
-      num_scatter_max = min(num_scatter_max, max(num_1, num_2))
+      !num_scatter_max = CEILING(2.0 * REAL(num_scatter_max) * max(P_corr_ph, P_corr_el) + TINYREAL)
+      !num_scatter_max = min(num_scatter_max, max(num_1, num_2))
       num_iter = 1
     else
       ! multiple candidate scatterings per particle:
