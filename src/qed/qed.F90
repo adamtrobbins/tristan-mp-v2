@@ -98,7 +98,7 @@ contains
 
     do s = 1, nspec
       write (var_name, "(A7,I1)") "compton", s
-      call getInput('particles', var_name, species(s) % compton_sp, .false.)
+      call getInput('particles', var_name, species(s) % compton_sp, .true.)
       if (species(s) % compton_sp) then
         if (.not. (((species(s) % m_sp .eq. 0) .and. (species(s) % ch_sp .eq. 0)) .or. &
                    ((species(s) % m_sp .eq. 1.0) .and. (abs(species(s) % ch_sp) .eq. 1.0)))) then
