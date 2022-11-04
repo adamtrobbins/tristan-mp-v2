@@ -17,7 +17,7 @@ elemental subroutine usrSetPhPld(u0, v0, w0, over_e_temp, &
   !$omp declare simd(usrSetPhPld)
   real, intent(in) :: u0, v0, w0, over_e_temp
   real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
-  incr_pld1 = -1.0; incr_pld2 = -1.0; incr_pld3 = -1.0
+  incr_pld1 = 0.0; incr_pld2 = 0.0; incr_pld3 = 0.0
 end subroutine
 
 elemental subroutine usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, &
@@ -28,5 +28,5 @@ elemental subroutine usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, &
                       ex0, ey0, ez0, & 
                       bx0, by0, bz0
   real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
-  incr_pld1 = -1.0; incr_pld2 = -1.0; incr_pld3 = -1.0
+  incr_pld1 = 0.0; incr_pld2 = 0.0; incr_pld3 = 0.0
 end subroutine
