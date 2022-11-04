@@ -118,6 +118,11 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 __@TODO__
 
 ## Latest Releases
+* `v2.5.2` __Nov 2022__
+  * Compton module now has `nph_over_ne` to mimic high photon-to-lepton ratio
+  * `absorb_x` now takes care of absorbing boundary conditions, while `boundary_x` is for MPI
+  * New userfiles for compton-mediated turbulence and reconnection
+  * Minor non-critical bugs
 * `v2.5.1` __Aug 2022__
   * Minor configure bug when working with non-intel compilers
   * Minor bug with `usroutput` flag
