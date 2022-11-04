@@ -293,37 +293,31 @@ contains
       call throwError('ERROR: grid size is not evenly divisible by the number of cores')
     end if
 
-    call getInput('grid', 'abs_thick', ds_abs, 10.0)
     call getInput('grid', 'boundary_x', boundary_x, 1)
     call getInput('grid', 'boundary_y', boundary_y, 1)
     call getInput('grid', 'boundary_z', boundary_z, 1)
 #ifdef oneD
     boundary_y = 1
     boundary_z = 1
-    if (boundary_x .eq. 2) then
-#ifndef ABSORB
-      call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
-#endif
-    end if
 #elif twoD
     boundary_z = 1
-    if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2)) then
-      boundary_x = 2
-      boundary_y = 2
-#ifndef ABSORB
-      call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
 #endif
-    end if
-#elif threeD
-    if ((boundary_x .eq. 2) .or. (boundary_y .eq. 2) .or. (boundary_z .eq. 2)) then
-      boundary_x = 2
-      boundary_y = 2
-      boundary_z = 2
+
+    call getInput('grid', 'abs_thick', ds_abs, 10.0)
+    call getInput('grid', 'absorb_x', absorb_x, 0)
+    call getInput('grid', 'absorb_y', absorb_y, 0)
+    call getInput('grid', 'absorb_z', absorb_z, 0)
 #ifndef ABSORB
-      call throwError('ERROR. define `-DABSORB` flag during compilation for absorbing boundaries.')
-#endif
+    if (absorb_x .ne. 0 .or. absorb_y .ne. 0 .or. absorb_z .ne. 0) then
+      call throwError('ERROR: `absorb_x`, `absorb_y`, and `absorb_z` are only valid if ABSORB is defined')
     end if
 #endif
+
+    if ((absorb_x .eq. 2) .or. (absorb_y .eq. 2) .or. (absorb_z .eq. 2)) then
+      absorb_x = 2
+      absorb_y = 2
+      absorb_z = 2
+    end if
   end subroutine initializeDomain
 
   subroutine distributeMeshblocks()

@@ -238,7 +238,7 @@ contains
     implicit none
     real(kind=8) :: injector_x1, injector_x2
     real(kind=8) :: old_x1, old_x2
-    real :: x_glob
+    real :: x_glob, y_glob
     real :: vpart
     real :: nUP_elec, nUP_pos, nUP_ions
     real :: ux, uy, uz, gamma
@@ -257,13 +257,14 @@ contains
     integer :: nphotons
     real :: xg, yg, zg, kx, ky, kz, age, rand_costh, rand_phi
 
+    ! enable absorption 
     if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-      boundary_y = 0
+      absorb_y = 1
     end if
 
     if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-      call reassignNeighborsForAll(meshblocks)
-      open_boundaries = 0
+      !call reassignNeighborsForAll(meshblocks)
+      absorb_y = 1
     end if
 
 #ifdef RADIATION
@@ -359,32 +360,43 @@ contains
         end do
       end do
 
-      if (step .eq. 1) then
-        ! clear particles beyond injectors just once in the beginning
-        do s = 1, nspec
-          do ti = 1, species(s) % tile_nx
-            do tj = 1, species(s) % tile_ny
-              do tk = 1, species(s) % tile_nz
-                do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
-                  x_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % xi(p) + this_meshblock % ptr % x0) &
-                           + species(s) % prtl_tile(ti, tj, tk) % dx(p)
-
+      do s = 1, nspec
+        do ti = 1, species(s) % tile_nx
+          do tj = 1, species(s) % tile_ny
+            do tk = 1, species(s) % tile_nz
+              do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
+                x_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % xi(p) + this_meshblock % ptr % x0) &
+                         + species(s) % prtl_tile(ti, tj, tk) % dx(p)
+                y_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % yi(p) + this_meshblock % ptr % y0) &
+                         + species(s) % prtl_tile(ti, tj, tk) % dy(p)
+                ! * 
+                ! * clear particles beyond injectors just ONCE in the beginning
+                ! *
+                if (step .eq. 1) then
                   if ((x_glob .le. injector_sx * 0.9) .or. (x_glob .gt. global_mesh % sx - injector_sx * 0.9)) then
                     species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
-                  else if (s .eq. 3) then
-                    ! remove old photons
-                    age = REAL(step) - species(s) % prtl_tile(ti, tj, tk) % payload1(p)
-                    if (age .gt. ph_maxage) then
-                      species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
-                    end if 
                   end if
-                end do
+                end if
+
+                if (s .eq. 3) then
+                  ! remove old photons
+                  age = REAL(step) - species(s) % prtl_tile(ti, tj, tk) % payload1(p)
+                  if (age .gt. ph_maxage) then
+                    species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
+                  end if 
+                else
+                  ! remove plasma particles near y-boundaries
+                  if (absorb_y .eq. 1) then
+                    if ((y_glob .le. 0.5) .or. (y_glob .gt. global_mesh % sy - 0.5)) then
+                      species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
+                    end if
+                  end if
+                end if
               end do
             end do
           end do
         end do
-
-      end if
+      end do
     end if
 
     ! inject photons

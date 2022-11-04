@@ -42,6 +42,10 @@ module m_domain
   integer :: boundary_x, boundary_y, boundary_z
   integer :: sendrecv_neighbors
 
+#ifdef ABSORB
+  integer :: absorb_x, absorb_y, absorb_z
+#endif
+
   ! loadbalancing variables
   type(mesh), allocatable, target :: new_meshblocks(:)
 

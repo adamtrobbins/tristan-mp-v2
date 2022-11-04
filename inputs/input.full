@@ -31,13 +31,17 @@
   my0           = 64             # number of actual grid points in the y direction [*] if 2d+
   mz0           = 1              # number of actual grid points in the z direction [*] if 3d
 
-  # 1 = periodic, 0 = outflow, 2 = radial outflow ...
-  # ... if either is "2" all will be assigned to "2"
+  # 1 = periodic, 0 = open
   boundary_x    = 1              # boundary in x [1]
   boundary_y    = 1              # boundary in y [1]
   boundary_z    = 1              # boundary in z [1]
   abs_thick     = 20             # thickness of the absorption layer [10]
                                  # `abs_thick` used only when boundary is `1` or `2`
+  # absorbing layer 0 -- OFF, 1 -- regular, 2 -- radial outflow ...
+  # ... if either is "2" all will be assigned to "2"
+  absorb_x      = 1              # absorption in x [1]
+  absorb_y      = 1              # absorption in y [1]
+  absorb_z      = 1              # absorption in z [1]
 
   resize_tiles  = 0              # reallocate particle tiles if necessary [0]
   min_tile_nprt = 1000           # min # of allocated particles per tile [100]

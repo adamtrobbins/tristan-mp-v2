@@ -236,7 +236,7 @@ contains
       !-------------------------------------------------
       ! Particle downsampling
 #ifdef DOWNSAMPLING
-      call startTimer(1)
+      call startTimer(11)
       call exchangeParticles()
       call clearGhostParticles()
       call checkTileSizes()
