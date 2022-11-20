@@ -1,0 +1,3 @@
+[submodule "extern/tristan-v2-public"]
+	path = extern/tristan-v2-public
+	url = git@github.com:PrincetonUniversity/tristan-mp-v2.git

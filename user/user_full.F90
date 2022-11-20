@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 module m_userfile
   use m_globalnamespace
   use m_aux
@@ -9,9 +7,9 @@ module m_userfile
   use m_fields
   use m_thermalplasma
   use m_particlelogistics
-  #ifdef USROUTPUT
-    use m_writeusroutput
-  #endif
+#ifdef USROUTPUT
+  use m_writeusroutput
+#endif
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
@@ -27,28 +25,46 @@ contains
     implicit none
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+#ifdef PRTLPAYLOADS
+  elemental subroutine usrSetPhPld(u0, v0, w0, over_e_temp, incr_pld1, incr_pld2, incr_pld3)
+    !$omp declare simd(usrSetPhPld)
+    real, intent(in) :: u0, v0, w0, over_e_temp
+    real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
+  end subroutine
+  elemental subroutine usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, ex0, &
+                                   ey0, ez0, bx0, by0, bz0, incr_pld1, incr_pld2, incr_pld3)
+    !$omp declare simd(usrSetElPld)
+    real, intent(in) :: q_over_m, u0, v0, w0, over_e_temp, ex0, ey0, ez0, bx0, by0, bz0
+    real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
+  end subroutine
+#endif
+
+  subroutine userDeallocate()
+    implicit none
+  end subroutine userDeallocate
+
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
 
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
   subroutine userInitParticles()
     implicit none
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
   end subroutine userInitParticles
 
@@ -56,9 +72,9 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
@@ -99,11 +115,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -111,15 +127,15 @@ contains
     bx_ext = 0.0; by_ext = 0.0; bz_ext = 0.0
   end subroutine userExternalFields
 
-  #ifdef GCA
-    logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
-      implicit none
-      integer(kind=2), intent(in), optional   :: xi, yi, zi
-      real, intent(in), optional              :: dx, dy, dz, u, v, w
-      real, intent(in), optional              :: weight
-      userEnforceGCA = .false.
-    end function userEnforceGCA
-  #endif
+#ifdef GCA
+  logical function userEnforceGCA(xi, yi, zi, dx, dy, dz, u, v, w, weight)
+    implicit none
+    integer(kind=2), intent(in), optional :: xi, yi, zi
+    real, intent(in), optional :: dx, dy, dz, u, v, w
+    real, intent(in), optional :: weight
+    userEnforceGCA = .false.
+  end function userEnforceGCA
+#endif
   !............................................................!
 
   !--- boundaries ---------------------------------------------!
@@ -132,7 +148,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -148,19 +164,29 @@ contains
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
-  !--- user-specific output -----------------------------------!
-  #ifdef USROUTPUT
-    subroutine userOutput(step)
-      implicit none
-      integer, optional, intent(in) :: step
-      ! ... 
-    end subroutine userOutput
+  subroutine writeUsrRestart(rst_file)
+    implicit none
+    integer, intent(in) :: rst_file
+  end subroutine writeUsrRestart
 
-    logical function userExcludeParticles(s, ti, tj, tk, p)
-      implicit none
-      integer, intent(in)       :: s, ti, tj, tk, p
-      userExcludeParticles = .true.
-    end function userExcludeParticles
-  #endif
+  subroutine readUsrRestart(rst_file)
+    implicit none
+    integer, intent(in) :: rst_file
+  end subroutine readUsrRestart
+
+  !--- user-specific output -----------------------------------!
+#ifdef USROUTPUT
+  subroutine userOutput(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    ! ...
+  end subroutine userOutput
+
+  logical function userExcludeParticles(s, ti, tj, tk, p)
+    implicit none
+    integer, intent(in) :: s, ti, tj, tk, p
+    userExcludeParticles = .true.
+  end function userExcludeParticles
+#endif
   !............................................................!
 end module m_userfile

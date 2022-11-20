@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 ! Configuration for this userfile:
 ! ```
 !   $ python configure.py --nghosts=5 --user=user_two_bulbs -qed -bwpp
@@ -18,9 +16,9 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real      :: ph_energy_1, ph_energy_2
+  real :: ph_energy_1, ph_energy_2
 
-  private   :: ph_energy_1, ph_energy_2
+  private :: ph_energy_1, ph_energy_2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -34,38 +32,38 @@ contains
     call getInput('problem', 'ph_e2', ph_energy_2)
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
 
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
   subroutine userInitParticles()
     implicit none
-    real            :: xg, yg, zg, kx, ky, kz, U_, TH_
-    integer         :: ntot, n
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    real :: xg, yg, zg, kx, ky, kz, U_, TH_
+    integer :: ntot, n
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    ntot = (global_mesh%sx * global_mesh%sy * global_mesh%sz * ppc0) / 2
+    ntot = (global_mesh % sx * global_mesh % sy * global_mesh % sz * ppc0) / 2
 
     do n = 1, ntot
-      xg = random(dseed) * (global_mesh%sx)
-      yg = random(dseed) * (global_mesh%sy)
-      zg = random(dseed) * (global_mesh%sz)
+      xg = random(dseed) * (global_mesh % sx)
+      yg = random(dseed) * (global_mesh % sy)
+      zg = random(dseed) * (global_mesh % sz)
 
       U_ = 2 * (random(dseed) - 0.5)
       TH_ = 2 * M_PI * random(dseed)
@@ -76,9 +74,9 @@ contains
     end do
 
     do n = 1, ntot
-      xg = random(dseed) * (global_mesh%sx)
-      yg = random(dseed) * (global_mesh%sy)
-      zg = random(dseed) * (global_mesh%sz)
+      xg = random(dseed) * (global_mesh % sx)
+      yg = random(dseed) * (global_mesh % sy)
+      zg = random(dseed) * (global_mesh % sz)
 
       U_ = 2 * (random(dseed) - 0.5)
       TH_ = 2 * M_PI * random(dseed)
@@ -93,9 +91,9 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
@@ -136,11 +134,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -153,12 +151,12 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
-    integer                       :: i
-    real                          :: thet, rnd, u_, v_, w_
-    real                          :: x1_g, y1_g, x2_g, y2_g
-    real                          :: x1_l, y1_l, x2_l, y2_l
-    real                          :: dx_, dy_, dz_, x_, y_
-    integer(kind=2)               :: xi_, yi_, zi_
+    integer :: i
+    real :: thet, rnd, u_, v_, w_
+    real :: x1_g, y1_g, x2_g, y2_g
+    real :: x1_l, y1_l, x2_l, y2_l
+    real :: dx_, dy_, dz_, x_, y_
+    integer(kind=2) :: xi_, yi_, zi_
 
   end subroutine userParticleBoundaryConditions
 
@@ -166,7 +164,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -181,5 +179,7 @@ contains
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
+
+#include "optional.F"
 
 end module m_userfile

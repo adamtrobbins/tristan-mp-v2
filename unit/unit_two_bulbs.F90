@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 ! Configuration for this userfile:
 ! ```
 !   $ python configure.py --nghosts=5 --user=user_two_bulbs -qed -bwpp
@@ -18,8 +16,8 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  integer, private   :: ph_ndot1, ph_ndot2, inject_interval
-  real, private      :: ph_energy, del_x1, del_x2, wei_1, wei_2
+  integer, private :: ph_ndot1, ph_ndot2, inject_interval
+  real, private :: ph_energy, del_x1, del_x2, wei_1, wei_2
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -40,28 +38,28 @@ contains
     call getInput('problem', 'inj_interval', inject_interval, 100000)
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
 
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
   subroutine userInitParticles()
     implicit none
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
   end subroutine userInitParticles
 
@@ -69,9 +67,9 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
@@ -112,11 +110,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -129,16 +127,16 @@ contains
   subroutine userParticleBoundaryConditions(step)
     implicit none
     integer, optional, intent(in) :: step
-    integer                       :: i
-    real                          :: thet, rnd, u_, v_, w_
-    real                          :: x1_g, y1_g, x2_g, y2_g
-    real                          :: x1_l, y1_l, x2_l, y2_l
-    real                          :: dx_, dy_, dz_, x_, y_
-    integer(kind=2)               :: xi_, yi_, zi_
+    integer :: i
+    real :: thet, rnd, u_, v_, w_
+    real :: x1_g, y1_g, x2_g, y2_g
+    real :: x1_l, y1_l, x2_l, y2_l
+    real :: dx_, dy_, dz_, x_, y_
+    integer(kind=2) :: xi_, yi_, zi_
 
     if (step .lt. inject_interval) then
-      x1_g = global_mesh%sx * del_x1; y1_g = global_mesh%sy * 0.5
-      x2_g = global_mesh%sx * del_x2; y2_g = global_mesh%sy * 0.5
+      x1_g = global_mesh % sx * del_x1; y1_g = global_mesh % sy * 0.5
+      x2_g = global_mesh % sx * del_x2; y2_g = global_mesh % sy * 0.5
 
       dz_ = 0.5; zi_ = 0
 
@@ -151,7 +149,7 @@ contains
 
         x_ = x1_g
         y_ = y1_g
-        call injectParticleGlobally(1, x_, y_, zi_ + dz_, u_, v_, w_, weight = wei_1)
+        call injectParticleGlobally(1, x_, y_, zi_ + dz_, u_, v_, w_, weight=wei_1)
       end do
 
       do i = 1, ph_ndot2 * ppc0
@@ -163,7 +161,7 @@ contains
 
         x_ = x2_g
         y_ = y2_g
-        call injectParticleGlobally(2, x_, y_, zi_ + dz_, u_, v_, w_, weight = wei_2)
+        call injectParticleGlobally(2, x_, y_, zi_ + dz_, u_, v_, w_, weight=wei_2)
       end do
     end if
   end subroutine userParticleBoundaryConditions
@@ -172,7 +170,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -187,4 +185,6 @@ contains
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
+
+#include "optional.F"
 end module m_userfile

@@ -1,5 +1,3 @@
-#include "../src/defs.F90"
-
 ! Configuration for this userfile:
 ! ```
 !   $ python configure.py --nghosts=5 --user=unit_bw -qed -bwpp
@@ -31,42 +29,42 @@ contains
     call getInput('problem', 'temperature', background_T, 0.001)
   end subroutine userReadInput
 
-  function userSpatialDistribution(x_glob, y_glob, z_glob,&
-                                 & dummy1, dummy2, dummy3)
+  function userSpatialDistribution(x_glob, y_glob, z_glob, &
+                                   dummy1, dummy2, dummy3)
     real :: userSpatialDistribution
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
-  function userSLBload(x_glob, y_glob, z_glob,&
-                     & dummy1, dummy2, dummy3)
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
     real :: userSLBload
     ! global coordinates
-    real, intent(in), optional  :: x_glob, y_glob, z_glob
+    real, intent(in), optional :: x_glob, y_glob, z_glob
     ! global box dimensions
-    real, intent(in), optional  :: dummy1, dummy2, dummy3
+    real, intent(in), optional :: dummy1, dummy2, dummy3
     return
   end function
 
   subroutine userInitParticles()
     implicit none
-    type(region)    :: back_region
-    integer         :: n, npart, s, ti, tj, tk
-    real            :: x_, y_, z_, u_, v_, w_
-    procedure (spatialDistribution), pointer :: spat_distr_ptr => null()
+    type(region) :: back_region
+    integer :: n, npart, s, ti, tj, tk
+    real :: x_, y_, z_, u_, v_, w_
+    procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    back_region%x_min = 0.0
-    back_region%x_max = REAL(global_mesh%sx)
-    #if defined(twoD) || defined (threeD)
-      back_region%y_min = 0.0
-      back_region%y_max = REAL(global_mesh%sy)
-    #endif
-    #if defined(threeD)
-      back_region%z_min = 0.0
-      back_region%z_max = REAL(global_mesh%sz)
-    #endif
+    back_region % x_min = 0.0
+    back_region % x_max = REAL(global_mesh % sx)
+#if defined(twoD) || defined (threeD)
+    back_region % y_min = 0.0
+    back_region % y_max = REAL(global_mesh % sy)
+#endif
+#if defined(threeD)
+    back_region % z_min = 0.0
+    back_region % z_max = REAL(global_mesh % sz)
+#endif
     call fillRegionWithThermalPlasma(back_region, (/1, 2/), 2, ppc0, background_T)
     ! s = 1
     ! do ti = 1, species(s)%tile_nx
@@ -94,9 +92,9 @@ contains
     implicit none
     integer :: i, j, k
     integer :: i_glob, j_glob, k_glob
-    ex(:,:,:) = 0; ey(:,:,:) = 0; ez(:,:,:) = 0
-    bx(:,:,:) = 0; by(:,:,:) = 0; bz(:,:,:) = 0
-    jx(:,:,:) = 0; jy(:,:,:) = 0; jz(:,:,:) = 0
+    ex(:, :, :) = 0; ey(:, :, :) = 0; ez(:, :, :) = 0
+    bx(:, :, :) = 0; by(:, :, :) = 0; bz(:, :, :) = 0
+    jx(:, :, :) = 0; jy(:, :, :) = 0; jz(:, :, :) = 0
     ! ... dummy loop ...
     ! do i = 0, this_meshblock%ptr%sx - 1
     !   i_glob = i + this_meshblock%ptr%x0
@@ -137,11 +135,11 @@ contains
     ! end do
   end subroutine userDriveParticles
 
-  subroutine userExternalFields(xp, yp, zp,&
-                              & ex_ext, ey_ext, ez_ext,&
-                              & bx_ext, by_ext, bz_ext)
+  subroutine userExternalFields(xp, yp, zp, &
+                                ex_ext, ey_ext, ez_ext, &
+                                bx_ext, by_ext, bz_ext)
     implicit none
-    real, intent(in)  :: xp, yp, zp
+    real, intent(in) :: xp, yp, zp
     real, intent(out) :: ex_ext, ey_ext, ez_ext
     real, intent(out) :: bx_ext, by_ext, bz_ext
     ! some functions of xp, yp, zp
@@ -160,7 +158,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
-    logical                       :: updateE_, updateB_
+    logical :: updateE_, updateB_
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -175,4 +173,6 @@ contains
     end if
   end subroutine userFieldBoundaryConditions
   !............................................................!
+
+#include "optional.F"
 end module m_userfile
