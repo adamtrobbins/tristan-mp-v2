@@ -11,6 +11,7 @@ module m_compton
 
   real(kind=8), parameter :: low_eph_lim = 2d-3
   real, parameter :: p_lim = 0.1
+  integer, private :: current_step
 
   !--- PRIVATE variables/functions -------------------------------!
   private :: comptonOnTile_bin, comptonOnTile_mc, scatterPhoton
@@ -18,11 +19,14 @@ module m_compton
   private :: low_eph_lim
   !...............................................................!
 contains
-  subroutine comptonScattering()
+  subroutine comptonScattering(timestep)
     implicit none
+    integer, intent(in) :: timestep
     integer :: compton_species_1(20), compton_species_2(20)
     integer :: s, si_1, si_2
     integer :: ti, tj, tk
+
+    current_step = timestep
 
     ! find all the species that participate in Compton scattering
     si_1 = 0; si_2 = 0
@@ -302,6 +306,11 @@ contains
           end if
           ! photon update:
           if (rnd .le. P_ph) then
+#ifdef PRTLPAYLOADS
+            species(s2) % prtl_tile(ti, tj, tk) % payload2(p2) = REAL(current_step)
+            species(s2) % prtl_tile(ti, tj, tk) % payload3(p2) = &
+              species(s2) % prtl_tile(ti, tj, tk) % payload3(p2) + 1.0
+#endif
             if (abs(wei_ph - wei_split) .le. TINYWEI) then
               u_ph = u_ph_new
               v_ph = v_ph_new

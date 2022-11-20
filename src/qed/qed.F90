@@ -147,7 +147,7 @@ contains
 
 #ifdef COMPTONSCATTERING
     if (modulo(timestep, Compton_interval) .eq. 0) then
-      call comptonScattering()
+      call comptonScattering(timestep)
     end if
 #endif
 

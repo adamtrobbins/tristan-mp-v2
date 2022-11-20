@@ -411,7 +411,13 @@ contains
       kx = ph_energy * sqrt(1.0 - rand_costh**2) * cos(rand_phi)
       ky = ph_energy * sqrt(1.0 - rand_costh**2) * sin(rand_phi)
       kz = ph_energy * rand_costh
-      call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz, 1.0, REAL(step))
+      call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz, 1.0, REAL(step), -1.0, 0.0)
+      !                                                           ----------   ---  --- 
+      !                                                              ^          ^    ^
+      !                                                              |          |    |
+      !                                                   creation time         |    number of scatterings
+      !                                                                         |
+      !                                                                      last scattering timestep
     end do
 
   end subroutine userParticleBoundaryConditions
