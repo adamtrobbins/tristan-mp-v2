@@ -258,14 +258,14 @@ contains
     real :: xg, yg, zg, kx, ky, kz, age, rand_costh, rand_phi
 
     ! enable absorption 
-    if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-      absorb_y = 1
-    end if
+    !if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
+      !absorb_y = 1
+    !end if
 
-    if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
+    !if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
       !call reassignNeighborsForAll(meshblocks)
-      absorb_y = 1
-    end if
+      !absorb_y = 1
+    !end if
 
 #ifdef RADIATION
     if (step .lt. no_cooling) then
@@ -384,13 +384,13 @@ contains
                   if (age .gt. ph_maxage) then
                     species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
                   end if 
-                else
-                  ! remove plasma particles near y-boundaries
-                  if (absorb_y .eq. 1) then
-                    if ((y_glob .le. 0.5) .or. (y_glob .gt. global_mesh % sy - 0.5)) then
-                      species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
-                    end if
-                  end if
+                !else
+                  !! remove plasma particles near y-boundaries
+                  !if (absorb_y .eq. 1) then
+                    !if ((y_glob .le. 0.5) .or. (y_glob .gt. global_mesh % sy - 0.5)) then
+                      !species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
+                    !end if
+                  !end if
                 end if
               end do
             end do
@@ -444,7 +444,8 @@ contains
       updateB_ = .true.
     end if
 
-    if ((step .ge. open_boundaries) .and. (boundary_y .ne. 1)) then
+    if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
+      absorb_y = 1
       boundary_y = 0
       call reassignNeighborsForAll(meshblocks)
     end if
