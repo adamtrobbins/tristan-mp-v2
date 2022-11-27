@@ -118,6 +118,9 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 __@TODO__
 
 ## Latest Releases
+* `v2.6r1` __Nov 2022__
+  * New absorption treatment with target B-field specified in the userfile
+  * Fieldsolvers separated into different files
 * `v2.5.2` __Nov 2022__
   * Compton module now has `nph_over_ne` to mimic high photon-to-lepton ratio
   * `absorb_x` now takes care of absorbing boundary conditions, while `boundary_x` is for MPI
@@ -185,7 +188,8 @@ __@TODO__
 
 ---
 
-We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>`, increment the:
+We employ [semantic versioning](https://semver.org/) for this code. Given a version number `v<MAJOR>.<MINOR>.<PATCH>r<CANDIDATE>`, increment the:
 - `MAJOR` version when you make incompatible changes,
 - `MINOR` version when you add functionality in a backwards compatible manner, and
 - `PATCH` version when you make backwards compatible bug fixes.
+- `CANDIDATE`: release candidate for "nightly" builds
