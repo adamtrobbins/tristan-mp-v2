@@ -24,6 +24,7 @@ module m_userfile
   integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy
   logical, private :: perturb, simple_bc
   real, private :: ph_energy, ph_fraction, ph_maxage
+  real, private :: bguide
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -48,6 +49,8 @@ contains
     call getInput('problem', 'perturb', perturb, .false.)
     call getInput('problem', 'simple_bc', simple_bc, .true.)
     call getInput('problem', 'no_cooling', no_cooling, -1)
+
+    call getInput('problem', 'bguide', bguide, 0.0)
 
     call getInput('problem', 'ph_energy', ph_energy, 0.01)
     call getInput('problem', 'ph_fraction', ph_fraction, 0.1)
@@ -131,7 +134,7 @@ contains
         call throwError('ERROR: `shift_beta` >= 1 in `userInitParticles()`')
       end if
       shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
-      current_sheet_T = 0.5 * sigma / nCS_over_nUP
+      current_sheet_T = 0.5 * sigma * (1.0 + bguide**2) / nCS_over_nUP
 
       if (boundary_x .eq. 1) then
         back_region % x_min = sx_glob * cs_x1 - 10 * current_width
@@ -191,6 +194,7 @@ contains
         by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
       end if
     end do
+    bz(:, :, :) = bguide
   end subroutine userInitFields
   !............................................................!
 
@@ -257,14 +261,14 @@ contains
     integer :: nphotons
     real :: xg, yg, zg, kx, ky, kz, age, rand_costh, rand_phi
 
-    ! enable absorption 
+    ! enable absorption
     !if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-      !absorb_y = 1
+    !absorb_y = 1
     !end if
 
     !if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-      !call reassignNeighborsForAll(meshblocks)
-      !absorb_y = 1
+    !call reassignNeighborsForAll(meshblocks)
+    !absorb_y = 1
     !end if
 
 #ifdef RADIATION
@@ -369,7 +373,7 @@ contains
                          + species(s) % prtl_tile(ti, tj, tk) % dx(p)
                 y_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % yi(p) + this_meshblock % ptr % y0) &
                          + species(s) % prtl_tile(ti, tj, tk) % dy(p)
-                ! * 
+                ! *
                 ! * clear particles beyond injectors just ONCE in the beginning
                 ! *
                 if (step .eq. 1) then
@@ -383,13 +387,13 @@ contains
                   age = REAL(step) - species(s) % prtl_tile(ti, tj, tk) % payload1(p)
                   if (age .gt. ph_maxage) then
                     species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
-                  end if 
-                !else
+                  end if
+                  !else
                   !! remove plasma particles near y-boundaries
                   !if (absorb_y .eq. 1) then
-                    !if ((y_glob .le. 0.5) .or. (y_glob .gt. global_mesh % sy - 0.5)) then
-                      !species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
-                    !end if
+                  !if ((y_glob .le. 0.5) .or. (y_glob .gt. global_mesh % sy - 0.5)) then
+                  !species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
+                  !end if
                   !end if
                 end if
               end do
@@ -400,25 +404,27 @@ contains
     end if
 
     ! inject photons
-    ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
-    nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
-    do n = 1, nphotons
-      xg = random(dseed) * REAL(global_mesh % sx)
-      yg = random(dseed) * REAL(global_mesh % sy)
-      zg = 0.5
-      rand_costh = 2.0 * random(dseed) - 1.0
-      rand_phi = 2.0 * M_PI * random(dseed)
-      kx = ph_energy * sqrt(1.0 - rand_costh**2) * cos(rand_phi)
-      ky = ph_energy * sqrt(1.0 - rand_costh**2) * sin(rand_phi)
-      kz = ph_energy * rand_costh
-      call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz, 1.0, REAL(step), -1.0, 0.0)
-      !                                                           ----------   ---  --- 
-      !                                                              ^          ^    ^
-      !                                                              |          |    |
-      !                                                   creation time         |    number of scatterings
-      !                                                                         |
-      !                                                                      last scattering timestep
-    end do
+    if (nspec .ge. 3) then
+      ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
+      nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
+      do n = 1, nphotons
+        xg = random(dseed) * REAL(global_mesh % sx)
+        yg = random(dseed) * REAL(global_mesh % sy)
+        zg = 0.5
+        rand_costh = 2.0 * random(dseed) - 1.0
+        rand_phi = 2.0 * M_PI * random(dseed)
+        kx = ph_energy * sqrt(1.0 - rand_costh**2) * cos(rand_phi)
+        ky = ph_energy * sqrt(1.0 - rand_costh**2) * sin(rand_phi)
+        kz = ph_energy * rand_costh
+        call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz, 1.0, REAL(step), -1.0, 0.0)
+        !                                                           ----------   ---  ---
+        !                                                              ^          ^    ^
+        !                                                              |          |    |
+        !                                                   creation time         |    number of scatterings
+        !                                                                         |
+        !                                                                      last scattering timestep
+      end do
+    end if
 
   end subroutine userParticleBoundaryConditions
 
@@ -469,23 +475,23 @@ contains
             if (i_glob .le. injector_i1_glob) then
               if (simple_bc) then
                 bx(i, :, :) = 0.0
-                bz(i, :, :) = 0.0
+                bz(i, :, :) = bguide
                 by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
               else
                 delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
                 bx(i, :, :) = tanh(delta_x) * bx(i, :, :)
-                bz(i, :, :) = tanh(delta_x) * bz(i, :, :)
+                bz(i, :, :) = tanh(delta_x) * bz(i, :, :) + (1.0 - tanh(delta_x)) * bguide
                 by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) + tanh(delta_x) * by(i, :, :)
               end if
             else if (i_glob .ge. injector_i2_glob) then
               if (simple_bc) then
                 bx(i, :, :) = 0.0
-                bz(i, :, :) = 0.0
+                bz(i, :, :) = bguide
                 by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
               else
                 delta_x = 4.0 * REAL(global_mesh % sx - 1 - i_glob) / MAX(REAL(global_mesh % sx - 1 - injector_i2_glob), 0.1)
                 bx(i, :, :) = tanh(delta_x) * bx(i, :, :)
-                bz(i, :, :) = tanh(delta_x) * bz(i, :, :)
+                bz(i, :, :) = tanh(delta_x) * bz(i, :, :) + (1.0 - tanh(delta_x)) * bguide
                 by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) + tanh(delta_x) * by(i, :, :)
               end if
             end if
@@ -525,7 +531,56 @@ contains
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
-#include "optional.F"
+  subroutine writeUsrRestart(rst_file)
+    implicit none
+    integer, intent(in) :: rst_file
+  end subroutine writeUsrRestart
+
+  subroutine readUsrRestart(rst_file)
+    implicit none
+    integer, intent(in) :: rst_file
+  end subroutine readUsrRestart
+
+  subroutine userDeallocate()
+    implicit none
+  end subroutine userDeallocate
+
+#ifdef ABSORB
+  subroutine userTargetBfield(i, j, k, bx_target, by_target, bz_target)
+    implicit none
+    integer, intent(in) :: i, j, k
+    real, intent(out) :: bx_target, by_target, bz_target
+    integer :: i_glob
+    real :: x_glob
+    i_glob = i + this_meshblock % ptr % x0
+    
+    bx_target = 0.0
+
+    x_glob = REAL(i_glob) + 0.5
+    by_target = tanh((x_glob - cs_x * REAL(global_mesh % sx)) / current_width)
+    
+    bz_target = bguide
+  end subroutine userTargetBfield
+#endif
+
+  elemental subroutine usrSetPhPld(u0, v0, w0, over_e_temp, &
+                                   incr_pld1, incr_pld2, incr_pld3)
+    !$omp declare simd(usrSetPhPld)
+    real, intent(in) :: u0, v0, w0, over_e_temp
+    real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
+    incr_pld1 = 0.0; incr_pld2 = 0.0; incr_pld3 = 0.0
+  end subroutine
+
+  elemental subroutine usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, &
+                                   ex0, ey0, ez0, bx0, by0, bz0, &
+                                   incr_pld1, incr_pld2, incr_pld3)
+    !$omp declare simd(usrSetElPld)
+    real, intent(in) :: q_over_m, u0, v0, w0, over_e_temp, &
+                        ex0, ey0, ez0, &
+                        bx0, by0, bz0
+    real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
+    incr_pld1 = 0.0; incr_pld2 = 0.0; incr_pld3 = 0.0
+  end subroutine
 
   !--- user-specific output -----------------------------------!
 #ifdef USROUTPUT
