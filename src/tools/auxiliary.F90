@@ -289,7 +289,7 @@ contains
 
   function realToStr(my_real) result(string)
     implicit none
-    real, intent(in) :: my_real
+    real(kind=4), intent(in) :: my_real
     character(:), allocatable :: string
     character(len=STR_MAX) :: temp
     if ((abs(my_real) .ge. 1000.0) .or. ((abs(my_real) .lt. 1e-2) .and. (abs(my_real) .gt. 0.0))) then
