@@ -15,20 +15,20 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private :: nCS_over_nUP, current_width, upstream_T, cs_x, cs_x1, cs_x2
+  real, private :: nCS_over_nUP, current_width, upstream_T, cs_x
   real, private :: boost_y_Gamma, boost_y_beta
   real, private :: injector_sx, measure_x
   real(kind=8), private :: injector_x1_fld, injector_x2_fld
   real, private :: fraction_ions
   integer, private :: injector_reset_interval, open_boundaries, no_cooling
-  integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy
-  logical, private :: perturb, simple_bc
+  integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy, ph_index
+  logical, private :: perturb, simple_bc, fake_photons
   real, private :: ph_energy, ph_fraction, ph_maxage
   real, private :: bguide
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution
+  private :: userSpatialDistribution, generateRandomVelocity, injectPhoton
   !...............................................................!
 contains
   !--- initialization -----------------------------------------!
@@ -42,8 +42,8 @@ contains
     end if
     call getInput('problem', 'cs_lecs', cs_lecs, 1)
     call getInput('problem', 'cs_ions', cs_ions, 2)
-    call getInput('problem', 'up_lecs', up_lecs, 1)
-    call getInput('problem', 'up_ions', up_ions, 2)
+    call getInput('problem', 'up_lecs', up_lecs, 3)
+    call getInput('problem', 'up_ions', up_ions, 4)
     call getInput('problem', 'measure_x', measure_x, 0.2)
     call getInput('problem', 'open_boundaries', open_boundaries, -1)
     call getInput('problem', 'perturb', perturb, .false.)
@@ -51,20 +51,16 @@ contains
     call getInput('problem', 'no_cooling', no_cooling, -1)
 
     call getInput('problem', 'bguide', bguide, 0.0)
+    call getInput('problem', 'fake_photons', fake_photons, .false.)
 
+    call getInput('problem', 'ph_index', ph_index, 5)
     call getInput('problem', 'ph_energy', ph_energy, 0.01)
-    call getInput('problem', 'ph_fraction', ph_fraction, 0.1)
+    call getInput('problem', 'ph_fraction', ph_fraction, -1.0)
     call getInput('problem', 'ph_maxage', ph_maxage, 10000.0)
     if (current_width .lt. 0.0) then
       call throwError("ERROR: `current_width` has to be > 0.")
     end if
-    if (boundary_x .eq. 1) then
-      ! double periodic
-      cs_x1 = 0.25; cs_x2 = 0.75
-    else
-      ! single current sheet
-      cs_x = 0.5
-    end if
+    cs_x = 0.5
   end subroutine userReadInput
 
   function userSLBload(x_glob, y_glob, z_glob, &
@@ -110,6 +106,7 @@ contains
     real :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
     integer :: s, ti, tj, tk, p
     real :: ux, uy, uz, gamma
+    integer :: n, ncells, nphotons
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
@@ -136,41 +133,32 @@ contains
       shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
       current_sheet_T = 0.5 * sigma * (1.0 + bguide**2) / nCS_over_nUP
 
-      if (boundary_x .eq. 1) then
-        back_region % x_min = sx_glob * cs_x1 - 10 * current_width
-        back_region % x_max = sx_glob * cs_x1 + 10 * current_width
-        back_region % y_min = 0
-        back_region % y_max = sy_glob
+      back_region % x_min = sx_glob * cs_x - 10 * current_width
+      back_region % x_max = sx_glob * cs_x + 10 * current_width
+      back_region % y_min = 0
+      back_region % y_max = sy_glob
+      if (perturb) then
         call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
                                          shift_gamma=shift_gamma, shift_dir=3, &
                                          spat_distr_ptr=spat_distr_ptr, &
-                                         dummy1=cs_x1 * sx_glob, dummy2=current_width)
-
-        back_region % x_min = sx_glob * cs_x2 - 10 * current_width
-        back_region % x_max = sx_glob * cs_x2 + 10 * current_width
-        call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
-                                         shift_gamma=shift_gamma, shift_dir=-3, &
-                                         spat_distr_ptr=spat_distr_ptr, &
-                                         dummy1=cs_x2 * sx_glob, dummy2=current_width)
-
+                                         dummy1=cs_x * sx_glob, dummy2=current_width, dummy3=cs_x * sy_glob)
       else
-        back_region % x_min = sx_glob * cs_x - 10 * current_width
-        back_region % x_max = sx_glob * cs_x + 10 * current_width
-        back_region % y_min = 0
-        back_region % y_max = sy_glob
-        if (perturb) then
-          call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
-                                           shift_gamma=shift_gamma, shift_dir=3, &
-                                           spat_distr_ptr=spat_distr_ptr, &
-                                           dummy1=cs_x * sx_glob, dummy2=current_width, dummy3=cs_x * sy_glob)
-        else
-          call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
-                                           shift_gamma=shift_gamma, shift_dir=3, &
-                                           spat_distr_ptr=spat_distr_ptr, &
-                                           dummy1=cs_x * sx_glob, dummy2=current_width)
-        end if
+        call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
+                                         shift_gamma=shift_gamma, shift_dir=3, &
+                                         spat_distr_ptr=spat_distr_ptr, &
+                                         dummy1=cs_x * sx_glob, dummy2=current_width)
       end if
     end if
+
+    if ((ph_fraction .gt. 0.0) .and. fake_photons) then
+      ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
+      nphotons = INT(REAL(ph_fraction * ph_maxage, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
+      do n = 1, nphotons
+        call injectPhoton(0)
+      end do
+      species(ph_index) % move_sp = .false.
+    end if
+
   end subroutine userInitParticles
 
   subroutine userInitFields()
@@ -187,12 +175,7 @@ contains
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob) + 0.5
-      if (boundary_x .eq. 1) then
-        by(i, :, :) = tanh((x_glob - cs_x1 * sx_glob) / current_width) - &
-                      tanh((x_glob - cs_x2 * sx_glob) / current_width) - 1.0
-      else
-        by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
-      end if
+      by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
     end do
     bz(:, :, :) = bguide
   end subroutine userInitFields
@@ -259,25 +242,17 @@ contains
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
 
     integer :: nphotons
-    real :: xg, yg, zg, kx, ky, kz, age, rand_costh, rand_phi
-
-    ! enable absorption
-    !if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-    !absorb_y = 1
-    !end if
-
-    !if ((step .ge. open_boundaries) .and. (open_boundaries .gt. 0)) then
-    !call reassignNeighborsForAll(meshblocks)
-    !absorb_y = 1
-    !end if
+    real :: xg, yg, zg, age, kx, ky, kz
 
 #ifdef RADIATION
+    species(cs_lecs) % cool_sp = .false.
+    species(cs_ions) % cool_sp = .false.
     if (step .lt. no_cooling) then
-      species(1) % cool_sp = .false.
-      species(2) % cool_sp = .false.
+      species(up_lecs) % cool_sp = .false.
+      species(up_ions) % cool_sp = .false.
     else
-      species(1) % cool_sp = .true.
-      species(2) % cool_sp = .true.
+      species(up_lecs) % cool_sp = .true.
+      species(up_ions) % cool_sp = .true.
     end if
 #endif
 
@@ -289,7 +264,7 @@ contains
       nUP_elec = 0.5 * ppc0
       nUP_pos = 0.5 * ppc0
 
-      call computeDensity(1, reset=.true., ds=0, charge=.false.)
+      call computeDensity(up_lecs, reset=.true., ds=0, charge=.false.)
 
       old_x1_glob = INT(old_x1) + 1
       old_x2_glob = INT(old_x2)
@@ -343,9 +318,9 @@ contains
                   dx = random(dseed); dy = random(dseed)
                   dz = 0.5
                   ! inject electron
-                  call createParticle(1, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_lecs, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
                   ! inject ions/positron
-                  call createParticle(2, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_ions, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
                   addedelectron = addedelectron + 1
                 end do
                 if (random(dseed) .lt. density_frac) then
@@ -354,8 +329,8 @@ contains
                   ! in each cell with probability 0.3
                   dx = random(dseed); dy = random(dseed)
                   dz = 0.5
-                  call createParticle(1, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
-                  call createParticle(2, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_lecs, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_ions, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
                   addedelectron = addedelectron + 1
                 end if
               end if
@@ -382,19 +357,25 @@ contains
                   end if
                 end if
 
-                if (s .eq. 3) then
+                ! dynamic photons
+                if ((s .eq. ph_index) .and. (.not. fake_photons)) then
                   ! remove old photons
                   age = REAL(step) - species(s) % prtl_tile(ti, tj, tk) % payload1(p)
                   if (age .gt. ph_maxage) then
                     species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
                   end if
-                  !else
-                  !! remove plasma particles near y-boundaries
-                  !if (absorb_y .eq. 1) then
-                  !if ((y_glob .le. 0.5) .or. (y_glob .gt. global_mesh % sy - 0.5)) then
-                  !species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
-                  !end if
-                  !end if
+                end if
+
+                ! photons as static background
+                if ((s .eq. ph_index) .and. fake_photons) then
+                  ! reset scattered photon momentum
+                  if (species(s) % prtl_tile(ti, tj, tk) % payload2(p) .ge. 0.0) then
+                    call generateRandomVelocity(kx, ky, kz)
+                    species(s) % prtl_tile(ti, tj, tk) % payload2(p) = -1.0
+                    species(s) % prtl_tile(ti, tj, tk) % u(p) = kx
+                    species(s) % prtl_tile(ti, tj, tk) % v(p) = ky
+                    species(s) % prtl_tile(ti, tj, tk) % w(p) = kz
+                  end if
                 end if
               end do
             end do
@@ -404,39 +385,58 @@ contains
     end if
 
     ! inject photons
-    if (nspec .ge. 3) then
+    ! (only if photons modeled dynamically)
+    if ((ph_fraction .gt. 0) .and. (.not. fake_photons)) then
       ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
       nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
       do n = 1, nphotons
-        xg = random(dseed) * REAL(global_mesh % sx)
-        yg = random(dseed) * REAL(global_mesh % sy)
-        zg = 0.5
-        rand_costh = 2.0 * random(dseed) - 1.0
-        rand_phi = 2.0 * M_PI * random(dseed)
-        kx = ph_energy * sqrt(1.0 - rand_costh**2) * cos(rand_phi)
-        ky = ph_energy * sqrt(1.0 - rand_costh**2) * sin(rand_phi)
-        kz = ph_energy * rand_costh
-        call injectParticleGlobally(3, xg, yg, zg, kx, ky, kz, 1.0, REAL(step), -1.0, 0.0)
-        !                                                           ----------   ---  ---
-        !                                                              ^          ^    ^
-        !                                                              |          |    |
-        !                                                   creation time         |    number of scatterings
-        !                                                                         |
-        !                                                                      last scattering timestep
+        call injectPhoton(step)
       end do
     end if
 
   end subroutine userParticleBoundaryConditions
 
+  subroutine generateRandomVelocity(kx, ky, kz)
+    implicit none
+    real, intent(out) :: kx, ky, kz
+    real :: rand_costh, rand_phi
+    rand_costh = 2.0 * random(dseed) - 1.0
+    rand_phi = 2.0 * M_PI * random(dseed)
+    kx = ph_energy * sqrt(1.0 - rand_costh**2) * cos(rand_phi)
+    ky = ph_energy * sqrt(1.0 - rand_costh**2) * sin(rand_phi)
+    kz = ph_energy * rand_costh
+  end subroutine generateRandomVelocity
+
+  subroutine injectPhoton(step)
+    implicit none
+    integer, optional, intent(in) :: step
+    real :: xg, yg, zg, kx, ky, kz
+
+    xg = random(dseed) * REAL(global_mesh % sx)
+    yg = random(dseed) * REAL(global_mesh % sy)
+    zg = 0.5
+    call generateRandomVelocity(kx, ky, kz)
+    call injectParticleGlobally(ph_index, xg, yg, zg, &
+                                kx, ky, kz, &
+                                1.0, REAL(step), -1.0, 0.0)
+    !                                ----------   ---  ---
+    !                                   ^          ^    ^
+    !                                   |          |    |
+    !                        creation time         |    number of scatterings
+    !                                              |
+    !                                           last scattering timestep
+  end subroutine injectPhoton
+
   subroutine userFieldBoundaryConditions(step, updateE, updateB)
     implicit none
-    real :: sx_glob, x_glob, delta_x
+    real :: sx_glob, x_glob, delta_x, y_glob
     real(kind=8) :: injector_x1, injector_x2
     integer :: i, j, k
-    integer :: i_glob, injector_i1_glob, injector_i2_glob
+    integer :: i_glob, injector_i1_glob, injector_i2_glob, j_glob
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
     logical :: updateE_, updateB_
+    real :: lambda, bx_target, by_target, bz_target, ex_target, ey_target, ez_target
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -457,6 +457,9 @@ contains
     end if
 
     if (boundary_x .ne. 1) then
+      ! --------------------------------------------------------------------------
+      !                        boundaries near the injector
+      ! --------------------------------------------------------------------------
 
       injector_x1 = REAL(injector_sx, 8) - 1.0d-7
       injector_x2 = REAL(global_mesh % sx, 8) - REAL(injector_sx, 8) + 1.0d-7
@@ -475,24 +478,24 @@ contains
             if (i_glob .le. injector_i1_glob) then
               if (simple_bc) then
                 bx(i, :, :) = 0.0
-                bz(i, :, :) = bguide
                 by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
+                bz(i, :, :) = bguide
               else
                 delta_x = 4.0 * REAL(i_glob) / MAX(REAL(injector_i1_glob), 0.1)
                 bx(i, :, :) = tanh(delta_x) * bx(i, :, :)
-                bz(i, :, :) = tanh(delta_x) * bz(i, :, :) + (1.0 - tanh(delta_x)) * bguide
                 by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) + tanh(delta_x) * by(i, :, :)
+                bz(i, :, :) = tanh(delta_x) * bz(i, :, :) + (1.0 - tanh(delta_x)) * bguide
               end if
             else if (i_glob .ge. injector_i2_glob) then
               if (simple_bc) then
                 bx(i, :, :) = 0.0
-                bz(i, :, :) = bguide
                 by(i, :, :) = tanh((x_glob - cs_x * sx_glob) / current_width)
+                bz(i, :, :) = bguide
               else
                 delta_x = 4.0 * REAL(global_mesh % sx - 1 - i_glob) / MAX(REAL(global_mesh % sx - 1 - injector_i2_glob), 0.1)
                 bx(i, :, :) = tanh(delta_x) * bx(i, :, :)
-                bz(i, :, :) = tanh(delta_x) * bz(i, :, :) + (1.0 - tanh(delta_x)) * bguide
                 by(i, :, :) = (1.0 - tanh(delta_x)) * tanh((x_glob - cs_x * sx_glob) / current_width) + tanh(delta_x) * by(i, :, :)
+                bz(i, :, :) = tanh(delta_x) * bz(i, :, :) + (1.0 - tanh(delta_x)) * bguide
               end if
             end if
           end do
@@ -528,6 +531,64 @@ contains
         end if
       end if
     end if
+
+#ifndef ABSORB
+    ! lambda2=1.*ksupp*(1.*(yfld2-jglob)/(yfld2-yfld1))**3
+    ! do i=istr,ifin
+    !     bxpred=1*binit*recrate*tanh(2.*pi*(jglob-myhalf)*dstripe)
+    !     bypred=Binit*tanh(2.*pi*(i-mxhalf)*dstripe)
+    !     bzpred=binit*btheta
+    !     expred=0.
+    !     eypred=-recrate*binit*btheta*tanh(2.*pi*(i-mxhalf)*dstripe)
+    !     ezpred=1*recrate*binit
+    !     bx(i,j,:)=exp(-lambda2)*bx(i,j,:)+(1.-exp(-lambda2))*bxpred
+    !     by(i,j,:)=exp(-lambda2)*by(i,j,:)+(1.-exp(-lambda2))*bypred
+    !     bz(i,j,:)=exp(-lambda2)*bz(i,j,:)+(1.-exp(-lambda2))*bzpred
+    !     ex(i,j,:)=exp(-lambda2)*ex(i,j,:)+(1.-exp(-lambda2))*expred
+    !     ey(i,j,:)=exp(-lambda2)*ey(i,j,:)+(1.-exp(-lambda2))*eypred
+    !     ez(i,j,:)=exp(-lambda2)*ez(i,j,:)+(1.-exp(-lambda2))*ezpred
+    ! enddo
+
+    ! --------------------------------------------------------------------------
+    !                 user-defined absorbing boundary conditions
+    ! --------------------------------------------------------------------------
+    if (boundary_y .ne. 1) then
+      do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
+        do j = -NGHOST, this_meshblock % ptr % sy - 1 + NGHOST
+          i_glob = i + this_meshblock % ptr % x0
+          j_glob = j + this_meshblock % ptr % y0
+          x_glob = REAL(i_glob) + 0.5
+          y_glob = REAL(j_glob) + 0.5
+
+          bx_target = 0.1 * tanh((y_glob - 0.5 * REAL(global_mesh % sy)) / current_width)
+          by_target = tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / current_width)
+          bz_target = bguide
+          ex_target = 0.0
+          ey_target = -0.1 * bguide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / current_width)
+          ez_target = 0.1
+
+          if (y_glob .lt. ds_abs) then
+            lambda = (2.0 * CC / ds_abs) * abs((ds_abs - y_glob) / ds_abs)**3.0
+          else if (y_glob .gt. REAL(global_mesh % sy) - ds_abs) then
+            lambda = (2.0 * CC / ds_abs) * abs((REAL(global_mesh % sy) - ds_abs - y_glob) / ds_abs)**3.0
+          end if
+
+          if ((y_glob .lt. ds_abs) .or. (y_glob .gt. REAL(global_mesh % sy) - ds_abs)) then
+            if (updateB_) then
+              bx(i, j, :) = exp(-lambda) * bx(i, j, :) + (1.0 - exp(-lambda)) * bx_target
+              by(i, j, :) = exp(-lambda) * by(i, j, :) + (1.0 - exp(-lambda)) * by_target
+              bz(i, j, :) = exp(-lambda) * bz(i, j, :) + (1.0 - exp(-lambda)) * bz_target
+            end if
+            if (updateE_) then
+              ex(i, j, :) = exp(-lambda) * ex(i, j, :) + (1.0 - exp(-lambda)) * ex_target
+              ey(i, j, :) = exp(-lambda) * ey(i, j, :) + (1.0 - exp(-lambda)) * ey_target
+              ez(i, j, :) = exp(-lambda) * ez(i, j, :) + (1.0 - exp(-lambda)) * ez_target
+            end if
+          end if
+        end do
+      end do
+    end if
+#endif
   end subroutine userFieldBoundaryConditions
   !............................................................!
 
@@ -544,24 +605,6 @@ contains
   subroutine userDeallocate()
     implicit none
   end subroutine userDeallocate
-
-#ifdef ABSORB
-  subroutine userTargetBfield(i, j, k, bx_target, by_target, bz_target)
-    implicit none
-    integer, intent(in) :: i, j, k
-    real, intent(out) :: bx_target, by_target, bz_target
-    integer :: i_glob
-    real :: x_glob
-    i_glob = i + this_meshblock % ptr % x0
-    
-    bx_target = 0.0
-
-    x_glob = REAL(i_glob) + 0.5
-    by_target = tanh((x_glob - cs_x * REAL(global_mesh % sx)) / current_width)
-    
-    bz_target = bguide
-  end subroutine userTargetBfield
-#endif
 
   elemental subroutine usrSetPhPld(u0, v0, w0, over_e_temp, &
                                    incr_pld1, incr_pld2, incr_pld3)
@@ -582,53 +625,4 @@ contains
     incr_pld1 = 0.0; incr_pld2 = 0.0; incr_pld3 = 0.0
   end subroutine
 
-  !--- user-specific output -----------------------------------!
-#ifdef USROUTPUT
-  subroutine userOutput(step)
-    implicit none
-    integer, optional, intent(in) :: step
-    integer :: root_rank = 0
-    real, allocatable :: y_bins(:), ExB_arr(:), ExB_arr_global(:)
-    ! real                          :: dr, x_glob, y_glob, z_glob, r_glob
-    real :: dummy_x, dummy_y, dummy_z, dummy
-    ! real, allocatable             :: sum_ExBr_f(:), sum_f(:), sum_ExBr_f_global(:), sum_f_global(:)
-    ! integer                       :: ri, rnum = 50, i, j, k, ierr
-    integer :: x_bin, yi, ynum, i, j, k, ierr
-
-    ynum = INT(global_mesh % sy)
-
-    ! allocate(y_bins(ynum))
-    allocate (ExB_arr(ynum))
-    allocate (ExB_arr_global(ynum))
-    ExB_arr(:) = 0.0
-
-    if (this_meshblock % ptr % x0 .eq. 0) then
-      x_bin = INT(measure_x * global_mesh % sx)
-      i = x_bin; k = 0
-      do j = 0, this_meshblock % ptr % sy - 1
-        dummy_x = -(ez(i, j, k) * by(i, j, k)) + ey(i, j, k) * bz(i, j, k)
-        dummy = bx(i, j, k)**2 + by(i, j, k)**2 + bz(i, j, k)**2
-
-        yi = j + this_meshblock % ptr % y0
-        ExB_arr(yi + 1) = dummy_x / dummy
-      end do
-    end if
-
-    call MPI_REDUCE(ExB_arr, ExB_arr_global, ynum, default_mpi_real, MPI_SUM, root_rank, MPI_COMM_WORLD, ierr)
-
-    if (mpi_rank .eq. root_rank) then
-      call writeUsrOutputTimestep(step)
-      ! call writeUsrOutputArray('y', y_bins)
-      call writeUsrOutputArray('ExB', ExB_arr_global)
-      call writeUsrOutputEnd()
-    end if
-  end subroutine userOutput
-
-  logical function userExcludeParticles(s, ti, tj, tk, p)
-    implicit none
-    integer, intent(in) :: s, ti, tj, tk, p
-    userExcludeParticles = .true.
-  end function userExcludeParticles
-#endif
-  !............................................................!
 end module m_userfile

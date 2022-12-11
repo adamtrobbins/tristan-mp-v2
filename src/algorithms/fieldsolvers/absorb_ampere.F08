@@ -1,5 +1,4 @@
 #ifdef oneD
-    ! @TODO: not done properly
     k = 0
     zg = 0.0
     j = 0
@@ -34,39 +33,29 @@
         im1 = i - 1
         xg = REAL(i + this_meshblock % ptr % x0)
 
-        lam = lambdaAbsorb(xg + 0.5, yg, zg)
-        ex(i, j, k) = ex(i, j, k) - lam * ex(i, j, k) + &
-                      const * (-bz(i, jm1, k) + bz(i, j, k))
+        lam = 0.5 * lambdaAbsorb(xg + 0.5, yg, zg)
+        lam1 = (1.0 + lam) / (1.0 - lam)
+        lam2 = 1.0 / (1.0 - lam)
+        ex(i, j, k) = lam1 * ex(i, j, k) + lam2 * const * &
+                      (-bz(i, jm1, k) + bz(i, j, k)) - &
+                      2.0 * lam * lam2 * ex_target
 
-        lam = lambdaAbsorb(xg, yg + 0.5, zg)
-        ey(i, j, k) = ey(i, j, k) - lam * ey(i, j, k) + &
-                      const * (bz(im1, j, k) - bz(i, j, k))
+        lam = 0.5 * lambdaAbsorb(xg, yg + 0.5, zg)
+        lam1 = (1.0 + lam) / (1.0 - lam)
+        lam2 = 1.0 / (1.0 - lam)
+        ey(i, j, k) = lam1 * ey(i, j, k) + lam2 * const * &
+                      (bz(im1, j, k) - bz(i, j, k)) - &
+                      2.0 * lam * lam2 * ey_target
 
-        lam = lambdaAbsorb(xg, yg, zg)
-        ez(i, j, k) = ez(i, j, k) - lam * ez(i, j, k) + &
-                      const * (bx(i, jm1, k) - bx(i, j, k) - by(im1, j, k) + by(i, j, k))
-
-        ! lam = 0.5 * lambdaAbsorb(xg + 0.5, yg, zg)
-        ! lam1 = (1.0 + lam) / (1.0 - lam)
-        ! lam2 = 1.0 / (1.0 - lam)
-        ! ex(i, j, k) = lam1 * ex(i, j, k) + lam2 * const * &
-        !               (-bz(i, jm1, k) + bz(i, j, k))
-
-        ! lam = 0.5 * lambdaAbsorb(xg, yg + 0.5, zg)
-        ! lam1 = (1.0 + lam) / (1.0 - lam)
-        ! lam2 = 1.0 / (1.0 - lam)
-        ! ey(i, j, k) = lam1 * ey(i, j, k) + lam2 * const * &
-        !               (bz(im1, j, k) - bz(i, j, k))
-
-        ! lam = 0.5 * lambdaAbsorb(xg, yg, zg)
-        ! lam1 = (1.0 + lam) / (1.0 - lam)
-        ! lam2 = 1.0 / (1.0 - lam)
-        ! ez(i, j, k) = lam1 * ez(i, j, k) + lam2 * const * &
-        !               (bx(i, jm1, k) - bx(i, j, k) - by(im1, j, k) + by(i, j, k))
+        lam = 0.5 * lambdaAbsorb(xg, yg, zg)
+        lam1 = (1.0 + lam) / (1.0 - lam)
+        lam2 = 1.0 / (1.0 - lam)
+        ez(i, j, k) = lam1 * ez(i, j, k) + lam2 * const * &
+                      (bx(i, jm1, k) - bx(i, j, k) - by(im1, j, k) + by(i, j, k)) - &
+                      2.0 * lam * lam2 * ez_target
       end do
     end do
 #elif threeD
-    ! @TODO: not done properly
     do k = 0, this_meshblock % ptr % sz - 1
       km1 = k - 1
       zg = REAL(k + this_meshblock % ptr % z0)
