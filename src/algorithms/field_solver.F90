@@ -3,9 +3,6 @@ module m_fldsolver
   use m_aux
   use m_domain
   use m_fields
-#ifdef ABSORB
-  use m_userfile, only: userTargetBfield
-#endif
   implicit none
 
   !--- PRIVATE functions -----------------------------------------!
@@ -18,7 +15,6 @@ contains
     real :: const
 #ifdef ABSORB
     real :: lam, lam1, lam2, xg, yg, zg
-    real :: bx_target, by_target, bz_target
 #endif
 
 #ifdef BLINNE
@@ -95,8 +91,8 @@ contains
     real :: K_abs
     real :: gr_max, gr_bound, gc_x, gc_y, gc_z, radius
     lambdaAbsorb = 0.0
+    K_abs = CC / 3.0
     if (absorb_x .eq. 2) then
-      K_abs = CC / 3.0
       ! radial open boundaries (in all directions)
 #ifdef oneD
       gc_x = global_mesh % sx * 0.5
@@ -123,15 +119,14 @@ contains
         lambdaAbsorb = -MIN(K_abs * ((radius - gr_bound) / ds_abs)**3, K_abs)
       end if
     else
-      K_abs = 4.0 * CC / ds_abs
       ! simple cartesian open boundaries
 #if defined(oneD) || defined (twoD) || defined (threeD)
       if (absorb_x .eq. 1) then
         ! open boundaries in x direction
         if (x0 .lt. ds_abs) then
-          lambdaAbsorb = K_abs * ((ds_abs - x0) / ds_abs)**3
+          lambdaAbsorb = -K_abs * ((ds_abs - x0) / ds_abs)**3
         else if (x0 .gt. global_mesh % sx - ds_abs) then
-          lambdaAbsorb = K_abs * ((x0 - (global_mesh % sx - 1.0 - ds_abs)) / ds_abs)**3
+          lambdaAbsorb = -K_abs * ((x0 - (global_mesh % sx - 1.0 - ds_abs)) / ds_abs)**3
         end if
       end if
 #endif
@@ -139,9 +134,9 @@ contains
       if (absorb_y .eq. 1) then
         ! open boundaries in y direction
         if (y0 .lt. ds_abs) then
-          lambdaAbsorb = K_abs * ((ds_abs - y0) / ds_abs)**3
+          lambdaAbsorb = -K_abs * ((ds_abs - y0) / ds_abs)**3
         else if (y0 .gt. global_mesh % sy - ds_abs) then
-          lambdaAbsorb = K_abs * ((y0 - (global_mesh % sy - 1.0 - ds_abs)) / ds_abs)**3
+          lambdaAbsorb = -K_abs * ((y0 - (global_mesh % sy - 1.0 - ds_abs)) / ds_abs)**3
         end if
       end if
 #endif
@@ -149,9 +144,9 @@ contains
       if (absorb_z .eq. 0) then
         ! open boundaries in z direction
         if (z0 .lt. ds_abs) then
-          lambdaAbsorb = K_abs * ((ds_abs - z0) / ds_abs)**3
+          lambdaAbsorb = -K_abs * ((ds_abs - z0) / ds_abs)**3
         else if (z0 .gt. global_mesh % sz - ds_abs) then
-          lambdaAbsorb = K_abs * ((z0 - (global_mesh % sz - 1.0 - ds_abs)) / ds_abs)**3
+          lambdaAbsorb = -K_abs * ((z0 - (global_mesh % sz - 1.0 - ds_abs)) / ds_abs)**3
         end if
       end if
 #endif

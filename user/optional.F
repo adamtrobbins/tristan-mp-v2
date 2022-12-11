@@ -12,17 +12,6 @@ subroutine userDeallocate()
   implicit none
 end subroutine userDeallocate
 
-#ifdef ABSORB
-subroutine userTargetBfield(i, j, k, bx_target, by_target, bz_target)
-  implicit none
-  integer, intent(in) :: i, j, k
-  real, intent(out) :: bx_target, by_target, bz_target
-  bx_target = 0.0
-  by_target = 0.0
-  bz_target = 0.0
-end subroutine userTargetBfield
-#endif
-
 elemental subroutine usrSetPhPld(u0, v0, w0, over_e_temp, &
                                  incr_pld1, incr_pld2, incr_pld3)
   !$omp declare simd(usrSetPhPld)
