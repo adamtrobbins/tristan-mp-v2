@@ -350,7 +350,7 @@ contains
   subroutine initializeSimulation()
     implicit none
     call getInput('time', 'last', final_timestep, 1000)
-    call getInput('time', 'wall_t_max', wall_t_max, 0.0d0)
+    call getInput('time', 'wall_t_max', wall_t_max, real(0,8))
     call getInput('algorithm', 'nfilter', nfilter, 16)
     call getInput('algorithm', 'c', CC, 0.45)
     call getInput('algorithm', 'corr', CORR, 1.025)
