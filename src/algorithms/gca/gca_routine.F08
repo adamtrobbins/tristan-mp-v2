@@ -48,8 +48,8 @@ lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
 dx = dx_; dy = dy_; dz = dz_
 
 #ifndef DEBUG
-include "interp_efield.F08"
-include "interp_bfield.F08"
+#include "interp_efield.F08"
+#include "interp_bfield.F08"
 #else
 call interpFromEdges(dx, dy, dz, pt_xi(p), pt_yi(p), pt_zi(p), &
                      ex, ey, ez, ex0, ey0, ez0)
