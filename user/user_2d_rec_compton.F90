@@ -22,13 +22,14 @@ module m_userfile
   real, private :: fraction_ions
   integer, private :: injector_reset_interval, open_boundaries, no_cooling
   integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy, ph_index
-  logical, private :: perturb, simple_bc, fake_photons
-  real, private :: ph_energy, ph_fraction, ph_maxage
+  logical, private :: perturb, simple_bc, fake_photons, use_planckian
+  real, private :: ph_energy, ph_fraction, ph_maxage, ph_temperature
   real, private :: bguide
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution, generateRandomVelocity, injectPhoton
+  private :: userSpatialDistribution, generateRandomDirection, generateRandomMomentum
+  private :: injectPhoton, planckSample
   !...............................................................!
 contains
   !--- initialization -----------------------------------------!
@@ -46,16 +47,30 @@ contains
     call getInput('problem', 'up_ions', up_ions, 4)
     call getInput('problem', 'measure_x', measure_x, 0.2)
     call getInput('problem', 'open_boundaries', open_boundaries, -1)
-    call getInput('problem', 'perturb', perturb, .false.)
-    call getInput('problem', 'simple_bc', simple_bc, .true.)
+    call getInput('problem', 'perturb', perturb, .true.)
+    call getInput('problem', 'simple_bc', simple_bc, .false.)
     call getInput('problem', 'no_cooling', no_cooling, -1)
 
     call getInput('problem', 'bguide', bguide, 0.0)
     call getInput('problem', 'fake_photons', fake_photons, .false.)
 
     call getInput('problem', 'ph_index', ph_index, 5)
-    call getInput('problem', 'ph_energy', ph_energy, 0.01)
+    ! energy for the monoenergetic photon distribution (delta function)
+    call getInput('problem', 'ph_energy', ph_energy, -1.0)
+    ! temperature for the Planckian photon distribution
+    call getInput('problem', 'ph_temperature', ph_temperature, -1.0)
     call getInput('problem', 'ph_fraction', ph_fraction, -1.0)
+
+    if ((ph_energy .lt. 0.0) .and. (ph_temperature .lt. 0.0)) then
+      call throwError("ERROR: either `ph_energy` or `ph_temperature` have to be > 0.")
+    end if
+    if ((ph_energy .gt. 0.0) .and. (ph_temperature .gt. 0.0)) then
+      if (mpi_rank .eq. 0) then
+        print *, "WARNING: both `ph_energy` and `ph_temperature` are > 0. Picking Planckian distribution and ignoring `ph_energy`."
+      end if
+    end if
+    use_planckian = (ph_temperature .gt. 0.0)
+
     call getInput('problem', 'ph_maxage', ph_maxage, 10000.0)
     if (current_width .lt. 0.0) then
       call throwError("ERROR: `current_width` has to be > 0.")
@@ -87,10 +102,12 @@ contains
     if (present(x_glob) .and. present(y_glob) .and. &
         present(dummy1) .and. present(dummy2)) then
       if (present(dummy3) .and. (dummy3 .ne. 0.0)) then
+        ! underdensity at the center
         rad2 = (x_glob - dummy1)**2 + (y_glob - dummy3)**2
         userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2 * &
                                   (1.0 - exp(-rad2 / (5.0 * dummy2)**2))
       else
+        ! uniform current layer
         userSpatialDistribution = 1.0 / (cosh((x_glob - dummy1) / dummy2))**2
       end if
     else
@@ -150,13 +167,15 @@ contains
       end if
     end if
 
-    if ((ph_fraction .gt. 0.0) .and. fake_photons) then
-      ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
-      nphotons = INT(REAL(ph_fraction * ph_maxage, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
-      do n = 1, nphotons
-        call injectPhoton(0)
-      end do
-      species(ph_index) % move_sp = .false.
+    if (fake_photons) then
+      if (ph_fraction .gt. 0.0) then
+        ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
+        nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
+        do n = 1, nphotons
+          call injectPhoton(0)
+        end do
+        species(ph_index) % move_sp = .false.
+      end if
     end if
 
   end subroutine userInitParticles
@@ -226,7 +245,6 @@ contains
     real(kind=8) :: injector_x1, injector_x2
     real(kind=8) :: old_x1, old_x2
     real :: x_glob, y_glob
-    real :: vpart
     real :: nUP_elec, nUP_pos, nUP_ions
     real :: ux, uy, uz, gamma
     integer :: s, ti, tj, tk, p, nUP_tot
@@ -256,6 +274,9 @@ contains
     end if
 #endif
 
+    !
+    ! Moving injector boundary conditions
+    !
     if (boundary_x .ne. 1) then
       old_x1 = REAL(injector_sx, 8) - 1.0d-7
       old_x2 = REAL(global_mesh % sx, 8) - REAL(injector_sx, 8) + 1.0d-7
@@ -312,15 +333,14 @@ contains
                 ! underdensity
                 density_int = INT(nUP_elec - lg_arr(i, j, k))
                 density_frac = (nUP_elec - lg_arr(i, j, k)) - REAL(density_int)
-                vpart = 0.0
                 do n = 1, density_int
                   ! inject integer amount of particles
                   dx = random(dseed); dy = random(dseed)
                   dz = 0.5
                   ! inject electron
-                  call createParticle(up_lecs, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_lecs, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, 0.0, 0.0, 0.0)
                   ! inject ions/positron
-                  call createParticle(up_ions, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_ions, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, 0.0, 0.0, 0.0)
                   addedelectron = addedelectron + 1
                 end do
                 if (random(dseed) .lt. density_frac) then
@@ -329,8 +349,8 @@ contains
                   ! in each cell with probability 0.3
                   dx = random(dseed); dy = random(dseed)
                   dz = 0.5
-                  call createParticle(up_lecs, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
-                  call createParticle(up_ions, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, vpart, 0.0, 0.0)
+                  call createParticle(up_lecs, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, 0.0, 0.0, 0.0)
+                  call createParticle(up_ions, INT(i, 2), INT(j, 2), INT(k, 2), dx, dy, dz, 0.0, 0.0, 0.0)
                   addedelectron = addedelectron + 1
                 end if
               end if
@@ -339,6 +359,9 @@ contains
         end do
       end do
 
+      !
+      ! Clearing and resetting particles
+      !
       do s = 1, nspec
         do ti = 1, species(s) % tile_nx
           do tj = 1, species(s) % tile_ny
@@ -348,33 +371,38 @@ contains
                          + species(s) % prtl_tile(ti, tj, tk) % dx(p)
                 y_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % yi(p) + this_meshblock % ptr % y0) &
                          + species(s) % prtl_tile(ti, tj, tk) % dy(p)
-                ! *
-                ! * clear particles beyond injectors just ONCE in the beginning
-                ! *
+                ! clear particles beyond injectors just ONCE in the beginning
                 if (step .eq. 1) then
                   if ((x_glob .le. injector_sx * 0.9) .or. (x_glob .gt. global_mesh % sx - injector_sx * 0.9)) then
                     species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
                   end if
                 end if
 
-                ! dynamic photons
-                if ((s .eq. ph_index) .and. (.not. fake_photons)) then
-                  ! remove old photons
-                  age = REAL(step) - species(s) % prtl_tile(ti, tj, tk) % payload1(p)
-                  if (age .gt. ph_maxage) then
+#ifndef ABSORB
+                ! remove particles within the absorbing layer manually (with a given probability)
+                if ((y_glob .lt. ds_abs) .or. (y_glob .ge. global_mesh % sy - ds_abs)) then
+                  if (random(dseed) .lt. CC / ds_abs) then
                     species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
                   end if
                 end if
+#endif
 
-                ! photons as static background
-                if ((s .eq. ph_index) .and. fake_photons) then
-                  ! reset scattered photon momentum
-                  if (species(s) % prtl_tile(ti, tj, tk) % payload2(p) .ge. 0.0) then
-                    call generateRandomVelocity(kx, ky, kz)
-                    species(s) % prtl_tile(ti, tj, tk) % payload2(p) = -1.0
-                    species(s) % prtl_tile(ti, tj, tk) % u(p) = kx
-                    species(s) % prtl_tile(ti, tj, tk) % v(p) = ky
-                    species(s) % prtl_tile(ti, tj, tk) % w(p) = kz
+                if (s .eq. ph_index) then
+                  if (.not. fake_photons) then ! * * * * dynamic photons
+                    ! remove old photons
+                    age = REAL(step) - species(s) % prtl_tile(ti, tj, tk) % payload1(p)
+                    if (age .gt. ph_maxage) then
+                      species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
+                    end if
+                  else ! * * * * photons as static background
+                    ! reset scattered photon momenta
+                    if (species(s) % prtl_tile(ti, tj, tk) % payload2(p) .ge. 0.0) then
+                      call generateRandomMomentum(kx, ky, kz)
+                      species(s) % prtl_tile(ti, tj, tk) % payload2(p) = -1.0
+                      species(s) % prtl_tile(ti, tj, tk) % u(p) = kx
+                      species(s) % prtl_tile(ti, tj, tk) % v(p) = ky
+                      species(s) % prtl_tile(ti, tj, tk) % w(p) = kz
+                    end if
                   end if
                 end if
               end do
@@ -386,26 +414,58 @@ contains
 
     ! inject photons
     ! (only if photons modeled dynamically)
-    if ((ph_fraction .gt. 0) .and. (.not. fake_photons)) then
-      ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
-      nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
-      do n = 1, nphotons
-        call injectPhoton(step)
-      end do
+    if (.not. fake_photons) then
+      if (ph_fraction .gt. 0) then
+        ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
+        nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8))
+        do n = 1, nphotons
+          call injectPhoton(step)
+        end do
+      end if
     end if
 
   end subroutine userParticleBoundaryConditions
 
-  subroutine generateRandomVelocity(kx, ky, kz)
+  real function planckSample(rnd)
+    implicit none
+    real, intent(in) :: rnd
+    real :: prob, n
+    real :: rnd = random(dseed)
+    n = 0.0
+    prob = 0.0
+    do while ((prob .lt. rnd) .and. (n .lt. 40.0))
+      n = n + 1.0
+      prob = prob + 1.0 / (1.20206 * n**3)
+    end do
+    planck_sample = -log(random(dseed) * random(dseed) * random(dseed) + 1e-16) / n
+    return
+  end function planckSample
+
+  subroutine generateRandomDirection(kx, ky, kz)
     implicit none
     real, intent(out) :: kx, ky, kz
     real :: rand_costh, rand_phi
     rand_costh = 2.0 * random(dseed) - 1.0
     rand_phi = 2.0 * M_PI * random(dseed)
-    kx = ph_energy * sqrt(1.0 - rand_costh**2) * cos(rand_phi)
-    ky = ph_energy * sqrt(1.0 - rand_costh**2) * sin(rand_phi)
-    kz = ph_energy * rand_costh
-  end subroutine generateRandomVelocity
+    kx = sqrt(1.0 - rand_costh**2) * cos(rand_phi)
+    ky = sqrt(1.0 - rand_costh**2) * sin(rand_phi)
+    kz = rand_costh
+  end subroutine generateRandomDirection
+
+  subroutine generateRandomMomentum(kx, ky, kz)
+    implicit none
+    real, intent(out) :: kx, ky, kz
+    real :: energy
+    call generateRandomDirection(kx, ky, kz)
+    if (use_planckian) then
+      energy = ph_temperature * planckSample(random(dseed))
+    else
+      energy = ph_energy
+    end if
+    kx = kx * energy
+    ky = ky * energy
+    kz = kz * energy
+  end subroutine generateRandomMomentum
 
   subroutine injectPhoton(step)
     implicit none
@@ -415,7 +475,7 @@ contains
     xg = random(dseed) * REAL(global_mesh % sx)
     yg = random(dseed) * REAL(global_mesh % sy)
     zg = 0.5
-    call generateRandomVelocity(kx, ky, kz)
+    call generateRandomMomentum(kx, ky, kz)
     call injectParticleGlobally(ph_index, xg, yg, zg, &
                                 kx, ky, kz, &
                                 1.0, REAL(step), -1.0, 0.0)
@@ -436,7 +496,8 @@ contains
     integer, optional, intent(in) :: step
     logical, optional, intent(in) :: updateE, updateB
     logical :: updateE_, updateB_
-    real :: lambda, bx_target, by_target, bz_target, ex_target, ey_target, ez_target
+    real :: lambdaIJ, lambdaIpJ, lambdaIJp, lambdaIpJp
+    real :: bx_target, by_target, bz_target, ex_target, ey_target, ez_target
 
     if (present(updateE)) then
       updateE_ = updateE
@@ -533,22 +594,6 @@ contains
     end if
 
 #ifndef ABSORB
-    ! lambda2=1.*ksupp*(1.*(yfld2-jglob)/(yfld2-yfld1))**3
-    ! do i=istr,ifin
-    !     bxpred=1*binit*recrate*tanh(2.*pi*(jglob-myhalf)*dstripe)
-    !     bypred=Binit*tanh(2.*pi*(i-mxhalf)*dstripe)
-    !     bzpred=binit*btheta
-    !     expred=0.
-    !     eypred=-recrate*binit*btheta*tanh(2.*pi*(i-mxhalf)*dstripe)
-    !     ezpred=1*recrate*binit
-    !     bx(i,j,:)=exp(-lambda2)*bx(i,j,:)+(1.-exp(-lambda2))*bxpred
-    !     by(i,j,:)=exp(-lambda2)*by(i,j,:)+(1.-exp(-lambda2))*bypred
-    !     bz(i,j,:)=exp(-lambda2)*bz(i,j,:)+(1.-exp(-lambda2))*bzpred
-    !     ex(i,j,:)=exp(-lambda2)*ex(i,j,:)+(1.-exp(-lambda2))*expred
-    !     ey(i,j,:)=exp(-lambda2)*ey(i,j,:)+(1.-exp(-lambda2))*eypred
-    !     ez(i,j,:)=exp(-lambda2)*ez(i,j,:)+(1.-exp(-lambda2))*ezpred
-    ! enddo
-
     ! --------------------------------------------------------------------------
     !                 user-defined absorbing boundary conditions
     ! --------------------------------------------------------------------------
@@ -557,32 +602,44 @@ contains
         do j = -NGHOST, this_meshblock % ptr % sy - 1 + NGHOST
           i_glob = i + this_meshblock % ptr % x0
           j_glob = j + this_meshblock % ptr % y0
-          x_glob = REAL(i_glob) + 0.5
-          y_glob = REAL(j_glob) + 0.5
+          x_glob = REAL(i_glob)
+          y_glob = REAL(j_glob)
 
-          bx_target = 0.1 * tanh((y_glob - 0.5 * REAL(global_mesh % sy)) / current_width)
-          by_target = tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / current_width)
+          ! i, j + 1/2
+          bx_target = 0.1 * tanh((y_glob + 0.5 - 0.5 * REAL(global_mesh % sy)) / current_width)
+          ! i + 1/2, j
+          by_target = tanh((x_glob + 0.5 - 0.5 * REAL(global_mesh % sx)) / current_width)
+          ! i + 1/2, j + 1/2
           bz_target = bguide
+          ! i + 1/2, j
           ex_target = 0.0
+          ! i, j + 1/2
           ey_target = -0.1 * bguide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / current_width)
+          ! i, j
           ez_target = 0.1
 
           if (y_glob .lt. ds_abs) then
-            lambda = (2.0 * CC / ds_abs) * abs((ds_abs - y_glob) / ds_abs)**3.0
+            lambdaIJ = (2.0 * CC / ds_abs) * abs((ds_abs - y_glob) / ds_abs)**3.0
+            lambdaIpJ = lambdaIJ
+            lambdaIJp = (2.0 * CC / ds_abs) * abs((ds_abs - y_glob - 0.5) / ds_abs)**3.0
+            lambdaIpJp = lambdaIJp
           else if (y_glob .gt. REAL(global_mesh % sy) - ds_abs) then
-            lambda = (2.0 * CC / ds_abs) * abs((REAL(global_mesh % sy) - ds_abs - y_glob) / ds_abs)**3.0
+            lambdaIJ = (2.0 * CC / ds_abs) * abs((REAL(global_mesh % sy) - ds_abs - y_glob) / ds_abs)**3.0
+            lambdaIpJ = lambdaIJ
+            lambdaIJp = (2.0 * CC / ds_abs) * abs((REAL(global_mesh % sy) - ds_abs - y_glob - 0.5) / ds_abs)**3.0
+            lambdaIpJp = lambdaIJp
           end if
 
           if ((y_glob .lt. ds_abs) .or. (y_glob .gt. REAL(global_mesh % sy) - ds_abs)) then
             if (updateB_) then
-              bx(i, j, :) = exp(-lambda) * bx(i, j, :) + (1.0 - exp(-lambda)) * bx_target
-              by(i, j, :) = exp(-lambda) * by(i, j, :) + (1.0 - exp(-lambda)) * by_target
-              bz(i, j, :) = exp(-lambda) * bz(i, j, :) + (1.0 - exp(-lambda)) * bz_target
+              bx(i, j, :) = exp(-lambdaIJp) * bx(i, j, :) + (1.0 - exp(-lambdaIJp)) * bx_target
+              by(i, j, :) = exp(-lambdaIpJ) * by(i, j, :) + (1.0 - exp(-lambdaIpJ)) * by_target
+              bz(i, j, :) = exp(-lambdaIpJp) * bz(i, j, :) + (1.0 - exp(-lambdaIpJp)) * bz_target
             end if
             if (updateE_) then
-              ex(i, j, :) = exp(-lambda) * ex(i, j, :) + (1.0 - exp(-lambda)) * ex_target
-              ey(i, j, :) = exp(-lambda) * ey(i, j, :) + (1.0 - exp(-lambda)) * ey_target
-              ez(i, j, :) = exp(-lambda) * ez(i, j, :) + (1.0 - exp(-lambda)) * ez_target
+              ex(i, j, :) = exp(-lambdaIpJ) * ex(i, j, :) + (1.0 - exp(-lambdaIpJ)) * ex_target
+              ey(i, j, :) = exp(-lambdaIJp) * ey(i, j, :) + (1.0 - exp(-lambdaIJp)) * ey_target
+              ez(i, j, :) = exp(-lambdaIJ) * ez(i, j, :) + (1.0 - exp(-lambdaIJ)) * ez_target
             end if
           end if
         end do
