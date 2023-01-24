@@ -10,6 +10,12 @@ module m_aux
       real, intent(in), optional :: x_glob, y_glob, z_glob
       real, intent(in), optional :: dummy1, dummy2, dummy3
     end function spatialDistribution
+    function spatialCloudDistribution(x_glob, y_glob, z_glob, &
+        dummy1, dummy2, dummy3)
+      real :: spatialCloudDistribution
+      real, intent(in), optional :: x_glob, y_glob, z_glob
+      real, intent(in), optional :: dummy1, dummy2, dummy3
+    end function spatialCloudDistribution
   end interface
 
   interface STR
@@ -38,25 +44,25 @@ module m_aux
   end type simulation_params
 
   abstract interface
-    function getFMT(value, w) result(FMT)
-      implicit none
-      real, intent(in) :: value
-      character(len=STR_MAX) :: FMT
-      integer, intent(in), optional :: w
-    end function getFMT
-  end interface
+  function getFMT(value, w) result(FMT)
+    implicit none
+    real, intent(in) :: value
+    character(len=STR_MAX) :: FMT
+    integer, intent(in), optional :: w
+  end function getFMT
+end interface
 
-  type :: warning
-    character(len=STR_MAX) :: description
-    integer :: counter = 0
-  end type warning
+type :: warning
+  character(len=STR_MAX) :: description
+  integer :: counter = 0
+end type warning
 
-  type(warning) :: warnings(100)
-  type(simulation_params) :: sim_params
+type(warning) :: warnings(100)
+type(simulation_params) :: sim_params
 
-  !--- PRIVATE functions -----------------------------------------!
-  private :: intToStr, realToStr, int8ToStr, real8ToStr
-  !...............................................................!
+!--- PRIVATE functions -----------------------------------------!
+private :: intToStr, realToStr, int8ToStr, real8ToStr
+!...............................................................!
 contains
   subroutine initializeSimulationParameters()
     implicit none
@@ -87,7 +93,7 @@ contains
       if (present(level)) then
         sz = sz + level * 3
         do i = 1, level * 3
-          dummy(i:i) = '.'
+        dummy(i:i) = '.'
         end do
       end if
       dummy = trim(dummy)//trim(msg)
@@ -109,8 +115,8 @@ contains
     integer :: warnings_global(100)
 
     do w = 1, 100
-      call MPI_REDUCE(warnings(w) % counter, warnings_global(w), 1, MPI_INTEGER, &
-                      MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
+    call MPI_REDUCE(warnings(w) % counter, warnings_global(w), 1, MPI_INTEGER, &
+      MPI_SUM, root_rnk, MPI_COMM_WORLD, ierr)
     end do
 
     if (mpi_rank .eq. root_rnk) then
@@ -118,16 +124,16 @@ contains
       write (UNIT_warn, *) '=================================================='
       write (UNIT_warn, *) 'Timestep = '//trim(STR(timestep))
       do w = 1, 100
-        if (warnings_global(w) .gt. 0) then
-          write (UNIT_warn, *) trim(warnings(w) % description)//' -> called '//trim(STR(warnings_global(w)))//' times'
-        end if
+      if (warnings_global(w) .gt. 0) then
+        write (UNIT_warn, *) trim(warnings(w) % description)//' -> called '//trim(STR(warnings_global(w)))//' times'
+      end if
       end do
       write (UNIT_warn, *) '..................................................'
       close (UNIT_warn)
     end if
 
     do w = 1, 100
-      warnings(w) % counter = 0
+    warnings(w) % counter = 0
     end do
   end subroutine printWarnings
 
@@ -147,7 +153,7 @@ contains
 
     if ((abs(value) .ge. 100000) .or.&
       & ((abs(value) .lt. 1e-2) .and.&
-        & (abs(value) .ne. 0.0))) then
+      & (abs(value) .ne. 0.0))) then
       FMT = 'ES'//trim(dummy)//'.3'
     else
       FMT = 'F'//trim(dummy)//'.3'
@@ -176,18 +182,18 @@ contains
     integer :: i
 
     do i = 1, 71
-      if (i .eq. 1) then
-        write (*, '(A2)', advance='no') ' -'
-      else if (i .eq. 71) then
-        print "(A)", '-'
-      else
-        write (*, '(A)', advance='no') '-'
-      end if
+    if (i .eq. 1) then
+      write (*, '(A2)', advance='no') ' -'
+    else if (i .eq. 71) then
+      print "(A)", '-'
+    else
+      write (*, '(A)', advance='no') '-'
+    end if
     end do
 
     write (*, "(1X,A10,I9)", advance='no') "Timestep: ", tstep
     do i = 1, 48
-      write (*, "(A)", advance='no') '.'
+    write (*, "(A)", advance='no') '.'
     end do
     print "(A4)", "[OK]"
     print "(1X,A71)", "[ROUTINE]          [TIME, ms]      [MIN  /  MAX, ms]      [FRACTION, %]"
@@ -198,13 +204,13 @@ contains
     integer :: i
 
     do i = 1, 71
-      if (i .eq. 1) then
-        write (*, '(A2)', advance='no') ' .'
-      else if (i .eq. 71) then
-        print "(A)", '.'
-      else
-        write (*, '(A)', advance='no') '.'
-      end if
+    if (i .eq. 1) then
+      write (*, '(A2)', advance='no') ' .'
+    else if (i .eq. 71) then
+      print "(A)", '.'
+    else
+      write (*, '(A)', advance='no') '.'
+    end if
     end do
   end subroutine printTimeFooter
 
@@ -326,8 +332,8 @@ contains
     arraysAreEqual = (size(array1) .eq. size(array2))
     if (arraysAreEqual) then
       do i = 1, size(array1)
-        arraysAreEqual = (array1(i) .eq. array2(i))
-        if (.not. arraysAreEqual) exit
+      arraysAreEqual = (array1(i) .eq. array2(i))
+      if (.not. arraysAreEqual) exit
       end do
     end if
   end function arraysAreEqual
@@ -350,7 +356,7 @@ contains
     real :: rnd
     rnd = 1.0
     do while (rnd .ge. 1.0)
-      rnd = REAL(randomNum(DSEED))
+    rnd = REAL(randomNum(DSEED))
     end do
     random = rnd
     return
@@ -373,9 +379,9 @@ contains
     kps = 0
     pps = 1
     do while (pps .ge. Lps)
-      kps = kps + 1
-      ups = random(dseed)
-      pps = pps * ups
+    kps = kps + 1
+    ups = random(dseed)
+    pps = pps * ups
     end do
     poisson = kps - 1
     return
@@ -399,19 +405,19 @@ contains
     allocate (lognorm(n_bins))
     sum = 0.0
     do i = 1, n_bins
-      x = random(dseed)
-      y = random(dseed)
-      z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
-      z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
-      lognorm(i) = z
-      sum = sum + z
+    x = random(dseed)
+    y = random(dseed)
+    z = sqrt(-2.0 * log(x)) * cos(2.0 * M_PI * y) ! now z has standard normal distribution
+    z = exp(0.0 + 1.0 * z) ! now z has lognormal distribution with certain sigma=1 and mu=0
+    lognorm(i) = z
+    sum = sum + z
     end do
 
     ! this allows having lognorm(max) != 1/
     !   in this case bins are not fixed in upper limit
     lognorm(1) = lognorm(1) / (n_bins + 1.)
     do i = 2, n_bins
-      lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
+    lognorm(i) = lognorm(i) / (n_bins + 1.) + lognorm(i - 1)
     end do
     ! /this allows having lognorm(max) != 1
   end subroutine log_normal
@@ -425,20 +431,20 @@ contains
     allocate (linnorm(n_bins))
     sum = 0.0
     do i = 1, n_bins
-      x = random(dseed)
-      linnorm(i) = x
-      sum = sum + x
+    x = random(dseed)
+    linnorm(i) = x
+    sum = sum + x
     end do
 
     ! this allows having linnorm(max) != 1/
     !   in this case bins are not fixed in upper limit
     linnorm(1) = linnorm(1) / (n_bins + 1.0)
     do i = 2, n_bins
-      linnorm(i) = linnorm(i) / (n_bins + 1.0) + linnorm(i - 1)
+    linnorm(i) = linnorm(i) / (n_bins + 1.0) + linnorm(i - 1)
     end do
 
     do i = 1, n_bins
-      linnorm(i) = 2.0 * linnorm(i)
+    linnorm(i) = 2.0 * linnorm(i)
     end do
     ! /this allows having linnorm(max) != 1
   end subroutine lin_normal
@@ -493,16 +499,16 @@ contains
     one_m_cos_phi = (1.0 - cos_phi)
 
     rx = (one_m_cos_phi * ux**2 + cos_phi) * rx_ + &
-         (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ + &
-         (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
+      (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ + &
+      (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
 
     ry = (one_m_cos_phi * ux * uy + sin_phi * uz) * rx_ + &
-         (one_m_cos_phi * uy**2 + cos_phi) * ry_ + &
-         (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
+      (one_m_cos_phi * uy**2 + cos_phi) * ry_ + &
+      (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
 
     rz = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ + &
-         (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ + &
-         (one_m_cos_phi * uz**2 + cos_phi) * rz_
+      (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ + &
+      (one_m_cos_phi * uz**2 + cos_phi) * rz_
   end subroutine rotateRandomlyIn3D
 
   subroutine rotateIn3D(rx, ry, rz, ax, ay, az, ang)
@@ -524,16 +530,16 @@ contains
     one_m_cos_phi = (1.0 - cos_phi)
 
     rx = (one_m_cos_phi * ux**2 + cos_phi) * rx_ + &
-         (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ + &
-         (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
+      (one_m_cos_phi * ux * uy - sin_phi * uz) * ry_ + &
+      (one_m_cos_phi * ux * uz + sin_phi * uy) * rz_
 
     ry = (one_m_cos_phi * ux * uy + sin_phi * uz) * rx_ + &
-         (one_m_cos_phi * uy**2 + cos_phi) * ry_ + &
-         (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
+      (one_m_cos_phi * uy**2 + cos_phi) * ry_ + &
+      (one_m_cos_phi * uy * uz - sin_phi * ux) * rz_
 
     rz = (one_m_cos_phi * ux * uz - sin_phi * uy) * rx_ + &
-         (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ + &
-         (one_m_cos_phi * uz**2 + cos_phi) * rz_
+      (one_m_cos_phi * uy * uz + sin_phi * ux) * ry_ + &
+      (one_m_cos_phi * uz**2 + cos_phi) * rz_
   end subroutine rotateIn3D
 
 end module m_aux

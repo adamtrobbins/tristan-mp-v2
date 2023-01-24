@@ -90,7 +90,6 @@
   stride        = 100            # particle stride [10]
   istep         = 4              # field downsampling [1]
   smooth_window = 2              # window for gaussian smoothing of the densities [2]
-  flds_at_prtl  = 1              # save fields at particle position [0]
   write_xdmf    = 1              # enable XDMF file writing (to open hdf5 in VisIt) [1]
   write_nablas  = 1              # write divE & curlB [0]
   write_T0i     = 1              # write T0i of the stress-energ tensor [0]
