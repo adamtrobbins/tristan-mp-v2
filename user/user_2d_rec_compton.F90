@@ -426,18 +426,18 @@ contains
 
   end subroutine userParticleBoundaryConditions
 
-  real function planckSample(rnd)
+  real function planckSample()
     implicit none
-    real, intent(in) :: rnd
     real :: prob, n
-    real :: rnd = random(dseed)
+    real :: rnd
+    rnd = random(dseed)
     n = 0.0
     prob = 0.0
     do while ((prob .lt. rnd) .and. (n .lt. 40.0))
       n = n + 1.0
       prob = prob + 1.0 / (1.20206 * n**3)
     end do
-    planck_sample = -log(random(dseed) * random(dseed) * random(dseed) + 1e-16) / n
+    planckSample = -log(random(dseed) * random(dseed) * random(dseed) + 1e-16) / n
     return
   end function planckSample
 
@@ -458,7 +458,7 @@ contains
     real :: energy
     call generateRandomDirection(kx, ky, kz)
     if (use_planckian) then
-      energy = ph_temperature * planckSample(random(dseed))
+      energy = ph_temperature * planckSample()
     else
       energy = ph_energy
     end if
