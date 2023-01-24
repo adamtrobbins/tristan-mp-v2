@@ -8,7 +8,7 @@
       ez(i, j, k) = ez(i, j, k) + const * &
                     (-by(im1, j, k) + by(i, j, k))
     end do
-#elif twoD
+#elif defined(twoD)
     k = 0
     do j = 0, this_meshblock % ptr % sy - 1
       jm1 = j - 1
@@ -22,7 +22,7 @@
                       (bx(i, jm1, k) - bx(i, j, k) - by(im1, j, k) + by(i, j, k))
       end do
     end do
-#elif threeD
+#elif defined(threeD)
     do k = 0, this_meshblock % ptr % sz - 1
       km1 = k - 1
       do j = 0, this_meshblock % ptr % sy - 1

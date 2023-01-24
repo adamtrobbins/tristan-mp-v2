@@ -205,7 +205,7 @@ contains
 #ifdef twoD
     real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
                                -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-#elif threeD
+#elif defined(threeD)
     real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST, &
                                -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, &
                                -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
@@ -224,7 +224,7 @@ contains
       jmin = -NGHOST + n_pass
       jmax = this_meshblock % ptr % sy - 1 + NGHOST - n_pass
       kmin = 0; kmax = 0
-#elif threeD
+#elif defined(threeD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass
@@ -270,7 +270,7 @@ contains
 #ifdef twoD
     real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST,&
                              & -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST, 0:0)
-#elif threeD
+#elif defined(threeD)
     real, intent(inout) :: arr(-NGHOST:this_meshblock % ptr % sx - 1 + NGHOST,&
                              & -NGHOST:this_meshblock % ptr % sy - 1 + NGHOST,&
                              & -NGHOST:this_meshblock % ptr % sz - 1 + NGHOST)
@@ -289,7 +289,7 @@ contains
       jmin = -NGHOST + n_pass
       jmax = this_meshblock % ptr % sy - 1 + NGHOST - n_pass
       kmin = 0; kmax = 0
-#elif threeD
+#elif defined(threeD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass

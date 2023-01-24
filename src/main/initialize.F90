@@ -299,7 +299,7 @@ contains
 #ifdef oneD
     boundary_y = 1
     boundary_z = 1
-#elif twoD
+#elif defined(twoD)
     boundary_z = 1
 #endif
 

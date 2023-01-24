@@ -18,11 +18,11 @@ contains
       call getInput('grid', 'tileX', species(s) % tile_sx)
       species(s) % tile_sy = 1
       species(s) % tile_sz = 1
-#elif twoD
+#elif defined(twoD)
       call getInput('grid', 'tileX', species(s) % tile_sx)
       call getInput('grid', 'tileY', species(s) % tile_sy)
       species(s) % tile_sz = 1
-#elif threeD
+#elif defined(threeD)
       call getInput('grid', 'tileX', species(s) % tile_sx)
       call getInput('grid', 'tileY', species(s) % tile_sy)
       call getInput('grid', 'tileZ', species(s) % tile_sz)
@@ -738,11 +738,11 @@ contains
     x_g = x_glob
     y_g = 0.5
     z_g = 0.5
-#elif twoD
+#elif defined(twoD)
     x_g = x_glob
     y_g = y_glob
     z_g = 0.5
-#elif threeD
+#elif defined(threeD)
     x_g = x_glob
     y_g = y_glob
     z_g = z_glob
@@ -1055,9 +1055,9 @@ contains
 
 #ifdef oneD
     buffsize = multiplier
-#elif twoD
+#elif defined(twoD)
     buffsize = MAX0(meshblock % sx, meshblock % sy, meshblock % sz) * multiplier
-#elif threeD
+#elif defined(threeD)
     buffsize = MAX0(meshblock % sx, meshblock % sy, meshblock % sz)**2 * multiplier
 #endif
     buffsize = ((buffsize + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
@@ -1089,7 +1089,7 @@ contains
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-#elif twoD
+#elif defined(twoD)
           if (ind3 .ne. 0) cycle
 #endif
           if ((ind2 .eq. 0) .and. (ind3 .eq. 0)) then

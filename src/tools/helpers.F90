@@ -88,12 +88,12 @@ contains
 #ifdef oneD
         containedQ = ((x_loc .ge. 0) .and. &
                       (x_loc .lt. REAL(this_meshblock % ptr % sx)))
-#elif twoD
+#elif defined(twoD)
         containedQ = ((x_loc .ge. 0) .and. &
                       (x_loc .lt. REAL(this_meshblock % ptr % sx)) .and. &
                       (y_loc .ge. 0) .and. &
                       (y_loc .lt. REAL(this_meshblock % ptr % sy)))
-#elif threeD
+#elif defined(threeD)
         containedQ = ((x_loc .ge. 0) .and. &
                       (x_loc .lt. REAL(this_meshblock % ptr % sx)) .and. &
                       (y_loc .ge. 0) .and. &
@@ -239,7 +239,7 @@ contains
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-#elif twoD
+#elif defined(twoD)
           if (ind3 .ne. 0) cycle
 #endif
           if (.not. associated(this_meshblock % ptr % neighbor(ind1, ind2, ind3) % ptr)) cycle
@@ -278,9 +278,9 @@ contains
 
 #ifdef oneD
     pow = 1_2
-#elif twoD
+#elif defined(twoD)
     pow = 2_2
-#elif threeD
+#elif defined(threeD)
     pow = 3_2
 #endif
 
@@ -366,9 +366,9 @@ contains
 
 #ifdef oneD
     pow = 1
-#elif twoD
+#elif defined(twoD)
     pow = 2
-#elif threeD
+#elif defined(threeD)
     pow = 3
 #endif
 
@@ -452,9 +452,9 @@ contains
 
 #ifdef oneD
     pow = 1_2
-#elif twoD
+#elif defined(twoD)
     pow = 2_2
-#elif threeD
+#elif defined(threeD)
     pow = 3_2
 #endif
 
@@ -559,9 +559,9 @@ contains
 
 #ifdef oneD
     pow = 1
-#elif twoD
+#elif defined(twoD)
     pow = 2
-#elif threeD
+#elif defined(threeD)
     pow = 3
 #endif
 
@@ -667,9 +667,9 @@ contains
 
 #ifdef oneD
     pow = 1_2
-#elif twoD
+#elif defined(twoD)
     pow = 2_2
-#elif threeD
+#elif defined(threeD)
     pow = 3_2
 #endif
 
@@ -756,9 +756,9 @@ contains
 
 #ifdef oneD
     pow = 1_2
-#elif twoD
+#elif defined(twoD)
     pow = 2_2
-#elif threeD
+#elif defined(threeD)
     pow = 3_2
 #endif
 
@@ -833,9 +833,9 @@ contains
 
 #ifdef oneD
     pow = 1_2
-#elif twoD
+#elif defined(twoD)
     pow = 2_2
-#elif threeD
+#elif defined(threeD)
     pow = 3_2
 #endif
 
@@ -913,9 +913,9 @@ contains
 
 #ifdef oneD
     pow = 1
-#elif twoD
+#elif defined(twoD)
     pow = 2
-#elif threeD
+#elif defined(threeD)
     pow = 3
 #endif
 
@@ -1067,7 +1067,7 @@ contains
       c0 = fz(i, j, k)
       c1 = fz(i + 1, j, k)
       intfz = c0 * (1 - dx) + c1 * dx
-#elif twoD
+#elif defined(twoD)
       c000 = fz(i, j, k)
       c100 = fz(i + 1, j, k)
       c010 = fz(i, j + 1, k)
@@ -1075,7 +1075,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfz = c00 * (1 - dy) + c10 * dy
-#elif threeD
+#elif defined(threeD)
       c000 = 0.5 * (fz(i, j, k) + fz(i, j, k - 1))
       c100 = 0.5 * (fz(i + 1, j, k) + fz(i + 1, j, k - 1))
       c010 = 0.5 * (fz(i, j + 1, k) + fz(i, j + 1, k - 1))
@@ -1126,7 +1126,7 @@ contains
       c0 = 0.5 * (fx(i, j, k) + fx(i, j, k))
       c1 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j, k))
       intfx = c0 * (1 - dx) + c1 * dx
-#elif twoD
+#elif defined(twoD)
       c000 = 0.5 * (fx(i, j, k) + fx(i, j - 1, k))
       c100 = 0.5 * (fx(i + 1, j, k) + fx(i + 1, j - 1, k))
       c010 = 0.5 * (fx(i, j, k) + fx(i, j + 1, k))
@@ -1134,7 +1134,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfx = c00 * (1 - dy) + c10 * dy
-#elif threeD
+#elif defined(threeD)
       c000 = 0.25 * (fx(i, j, k) + fx(i, j - 1, k) + &
                      fx(i, j, k - 1) + fx(i, j - 1, k - 1))
       c100 = 0.25 * (fx(i + 1, j, k) + fx(i + 1, j - 1, k) + &
@@ -1167,7 +1167,7 @@ contains
       c0 = 0.5 * (fy(i - 1, j, k) + fy(i, j, k))
       c1 = 0.5 * (fy(i, j, k) + fy(i + 1, j, k))
       intfy = c0 * (1 - dx) + c1 * dx
-#elif twoD
+#elif defined(twoD)
       c000 = 0.5 * (fy(i - 1, j, k) + fy(i, j, k))
       c100 = 0.5 * (fy(i, j, k) + fy(i + 1, j, k))
       c010 = 0.5 * (fy(i - 1, j + 1, k) + fy(i, j + 1, k))
@@ -1175,7 +1175,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfy = c00 * (1 - dy) + c10 * dy
-#elif threeD
+#elif defined(threeD)
       c000 = 0.25 * (fy(i - 1, j, k - 1) + fy(i - 1, j, k) + &
                      fy(i, j, k - 1) + fy(i, j, k))
       c100 = 0.25 * (fy(i, j, k - 1) + fy(i, j, k) + &
@@ -1208,7 +1208,7 @@ contains
       c0 = 0.5 * (fz(i - 1, j, k) + fz(i, j, k))
       c1 = 0.5 * (fz(i, j, k) + fz(i + 1, j, k))
       intfz = c0 * (1 - dx) + c1 * dx
-#elif twoD
+#elif defined(twoD)
       c000 = 0.25 * (fz(i - 1, j - 1, k) + fz(i - 1, j, k) + &
                      fz(i, j - 1, k) + fz(i, j, k))
       c100 = 0.25 * (fz(i, j - 1, k) + fz(i, j, k) + &
@@ -1220,7 +1220,7 @@ contains
       c00 = c000 * (1 - dx) + c100 * dx
       c10 = c010 * (1 - dx) + c110 * dx
       intfz = c00 * (1 - dy) + c10 * dy
-#elif threeD
+#elif defined(threeD)
       c000 = 0.25 * (fz(i - 1, j - 1, k) + fz(i - 1, j, k) + &
                      fz(i, j - 1, k) + fz(i, j, k))
       c100 = 0.25 * (fz(i, j - 1, k) + fz(i, j, k) + &
@@ -1274,13 +1274,13 @@ contains
     j1 = 0; j2 = 0
     k1 = 0; k2 = 0
     i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
-#elif twoD
+#elif defined(twoD)
     i1 = INT(FLOOR(x1), 2); i2 = INT(FLOOR(x2), 2)
     j1 = INT(FLOOR(y1), 2); j2 = INT(FLOOR(y2), 2)
     k1 = 0; k2 = 0
     i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
     j1p1 = j1 + 1_2; j2p1 = j2 + 1_2
-#elif threeD
+#elif defined(threeD)
     i1 = INT(FLOOR(x1), 2); i2 = INT(FLOOR(x2), 2)
     j1 = INT(FLOOR(y1), 2); j2 = INT(FLOOR(y2), 2)
     k1 = INT(FLOOR(z1), 2); k2 = INT(FLOOR(z2), 2)
@@ -1313,12 +1313,12 @@ contains
     if (this_meshblock % ptr % sx .lt. NGHOST) then
       call throwError('ERROR: ghost zones overflow the domain size in '//trim(STR(mpi_rank)))
     end if
-#elif twoD
+#elif defined(twoD)
     if ((this_meshblock % ptr % sx .lt. NGHOST) .or. &
         (this_meshblock % ptr % sy .lt. NGHOST)) then
       call throwError('ERROR: ghost zones overflow the domain size in '//trim(STR(mpi_rank)))
     end if
-#elif threeD
+#elif defined(threeD)
     if ((this_meshblock % ptr % sx .lt. NGHOST) .or. &
         (this_meshblock % ptr % sy .lt. NGHOST) .or. &
         (this_meshblock % ptr % sz .lt. NGHOST)) then
@@ -1331,9 +1331,9 @@ contains
     shape_x = ((shape_x + VEC_LEN - 1) / VEC_LEN) * VEC_LEN
 #ifdef oneD
     field_shape = (/shape_x, 1, 1/)
-#elif twoD
+#elif defined(twoD)
     field_shape = (/shape_x, this_meshblock % ptr % sy + 2 * NGHOST, 1/)
-#elif threeD
+#elif defined(threeD)
     field_shape = (/shape_x, this_meshblock % ptr % sy + 2 * NGHOST, this_meshblock % ptr % sz + 2 * NGHOST/)
 #endif
 

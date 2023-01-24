@@ -235,9 +235,9 @@ contains
                 ! use "fast" interpolation
 #ifdef oneD
                 lind = pt_xi(p)
-#elif twoD
+#elif defined(twoD)
                 lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy
-#elif threeD
+#elif defined(threeD)
                 lind = pt_xi(p) + (NGHOST + pt_yi(p)) * iy + (NGHOST + pt_zi(p)) * iz
 #endif
                 dx = pt_dx(p); dy = pt_dy(p); dz = pt_dz(p)

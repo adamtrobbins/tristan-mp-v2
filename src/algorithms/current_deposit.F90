@@ -73,13 +73,13 @@ contains
               j1 = 0; j2 = 0
               k1 = 0; k2 = 0
               i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
-#elif twoD
+#elif defined(twoD)
               i1 = INT(FLOOR(x1), 2); i2 = pt_xi(p)
               j1 = INT(FLOOR(y1), 2); j2 = pt_yi(p)
               k1 = 0; k2 = 0
               i1p1 = i1 + 1_2; i2p1 = i2 + 1_2
               j1p1 = j1 + 1_2; j2p1 = j2 + 1_2
-#elif threeD
+#elif defined(threeD)
               i1 = INT(FLOOR(x1), 2); i2 = pt_xi(p)
               j1 = INT(FLOOR(y1), 2); j2 = pt_yi(p)
               k1 = INT(FLOOR(z1), 2); k2 = pt_zi(p)

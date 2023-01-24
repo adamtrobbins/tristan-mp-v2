@@ -23,7 +23,7 @@
       bz(i, j, k) = lam1 * bz(i, j, k) + lam2 * const * &
                     (-ey(ip1, j, k) + ey(i, j, k))
     end do
-#elif twoD
+#elif defined(twoD)
     k = 0
     zg = 0.0
     do j = 0, this_meshblock % ptr % sy - 1
@@ -55,7 +55,7 @@
                       2.0 * lam * lam2 * bz_target
       end do
     end do
-#elif threeD
+#elif defined(threeD)
     do k = 0, this_meshblock % ptr % sz - 1
       kp1 = k + 1
       zg = REAL(k + this_meshblock % ptr % z0)

@@ -27,7 +27,7 @@ contains
 #ifdef oneD
     j1 = 0; j2 = 0
     k1 = 0; k2 = 0
-#elif twoD
+#elif defined(twoD)
     k1 = 0; k2 = 0
 #endif
 
@@ -69,11 +69,11 @@ contains
     sendrecv_offsetsz = NGHOST * max_n_fld
     ! 2 (~5) directions to send/recv in 1D
     sendrecv_buffsz = sendrecv_offsetsz * 5
-#elif twoD
+#elif defined(twoD)
     sendrecv_offsetsz = MAX0(meshblock % sx, meshblock % sy, meshblock % sz) * NGHOST * max_n_fld
     ! 8 (~10) directions to send/recv in 2D
     sendrecv_buffsz = sendrecv_offsetsz * 10
-#elif threeD
+#elif defined(threeD)
     sendrecv_offsetsz = MAX0(meshblock % sx, meshblock % sy, meshblock % sz)**2 * NGHOST * max_n_fld
     ! 26 (~30) directions to send/recv in 3D
     sendrecv_buffsz = sendrecv_offsetsz * 30

@@ -49,11 +49,11 @@ contains
 #ifdef oneD
     call getInput('output', 'spec_nx', spec_nx, 1)
     spec_ny = 1; spec_nz = 1
-#elif twoD
+#elif defined(twoD)
     call getInput('output', 'spec_nx', spec_nx, 1)
     call getInput('output', 'spec_ny', spec_ny, 1)
     spec_nz = 1
-#elif threeD
+#elif defined(threeD)
     call getInput('output', 'spec_nx', spec_nx, 1)
     call getInput('output', 'spec_ny', spec_ny, 1)
     call getInput('output', 'spec_nz', spec_nz, 1)
@@ -562,10 +562,10 @@ contains
     case ('curlBx')
 #ifdef oneD
       dx1 = 0.0; dx2 = 0.0
-#elif twoD
+#elif defined(twoD)
       dx1 = (bz(i, j, k) - bz(i, j - 1, k))
       dx2 = (bz(i - 1, j, k) - bz(i - 1, j - 1, k))
-#elif threeD
+#elif defined(threeD)
       dx1 = (bz(i, j, k) - bz(i, j - 1, k)) - (by(i, j, k) - by(i, j, k - 1))
       dx2 = (bz(i - 1, j, k) - bz(i - 1, j - 1, k)) - (by(i - 1, j, k) - by(i - 1, j, k - 1))
 #endif
@@ -574,10 +574,10 @@ contains
 #ifdef oneD
       dy1 = -(bz(i, j, k) - bz(i - 1, j, k))
       dy2 = dy1
-#elif twoD
+#elif defined(twoD)
       dy1 = -(bz(i, j, k) - bz(i - 1, j, k))
       dy2 = -(bz(i, j - 1, k) - bz(i - 1, j - 1, k))
-#elif threeD
+#elif defined(threeD)
       dy1 = (bx(i, j, k) - bx(i, j, k - 1)) - (bz(i, j, k) - bz(i - 1, j, k))
       dy2 = (bx(i, j - 1, k) - bx(i, j - 1, k - 1)) - (bz(i, j - 1, k) - bz(i - 1, j - 1, k))
 #endif
@@ -586,10 +586,10 @@ contains
 #ifdef oneD
       dz1 = (by(i, j, k) - by(i - 1, j, k))
       dz2 = dz1
-#elif twoD
+#elif defined(twoD)
       dz1 = (by(i, j, k) - by(i - 1, j, k)) - (bx(i, j, k) - bx(i, j - 1, k))
       dz2 = dz1
-#elif threeD
+#elif defined(threeD)
       dz1 = (by(i, j, k) - by(i - 1, j, k)) - (bx(i, j, k) - bx(i, j - 1, k))
       dz2 = (by(i, j, k - 1) - by(i - 1, j, k - 1)) - (bx(i, j, k - 1) - bx(i, j - 1, k - 1))
 #endif
@@ -628,10 +628,10 @@ contains
         if (output_dens_smooth .gt. 1) then
 #ifdef oneD
           sm_arr(i1, j1, k1) = 0.5 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k))
-#elif twoD
+#elif defined(twoD)
           sm_arr(i1, j1, k1) = 0.25 * (lg_arr(i, j, k) + lg_arr(i - 1, j, k) + &
                                        lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k))
-#elif threeD
+#elif defined(threeD)
           sm_arr(i1, j1, k1) = 0.125 * (lg_arr(i, j, k) + lg_arr(i - 1, j - 1, k - 1) + &
                                         lg_arr(i - 1, j, k) + lg_arr(i, j - 1, k) + lg_arr(i, j, k - 1) + &
                                         lg_arr(i - 1, j - 1, k) + lg_arr(i, j - 1, k - 1) + lg_arr(i - 1, j, k - 1))

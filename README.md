@@ -1,4 +1,4 @@
-# Tristan v2.5
+# Tristan v2.6
 
 For detailed tutorials and code description please visit our [wiki](https://princetonuniversity.github.io/tristan-v2/). If you are a new user testing the code on a new computer cluster, please consider contributing to [this chapter](https://princetonuniversity.github.io/tristan-v2/tristanv2-configure.html#cluster-specific-customization) about cluster-specific configuration to make the life easier for future generations.
 
@@ -118,6 +118,8 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 __@TODO__
 
 ## Latest Releases
+* `v2.6` __Jan 2023__
+  * Minor cleanup + bugfixes
 * `v2.6r1` __Nov 2022__
   * New absorption treatment with target B-field specified in the userfile
   * Fieldsolvers separated into different files

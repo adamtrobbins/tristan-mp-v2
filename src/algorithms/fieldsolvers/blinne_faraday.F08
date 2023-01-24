@@ -1,6 +1,6 @@
 #ifdef oneD
   call throwError("1D Blinne not implemented")
-#elif twoD
+#elif defined(twoD)
   k = 0
   do j = 0, this_meshblock % ptr % sy - 1
     jp1 = j + 1
@@ -28,6 +28,6 @@
                                           + ex(i, jp2, k) - ex(i, jm1, k)))
     end do
   end do
-#elif threeD
+#elif defined(threeD)
   call throwError("1D Blinne not implemented")
 #endif

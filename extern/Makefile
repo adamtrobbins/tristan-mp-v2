@@ -23,7 +23,7 @@ public: $(PUBLIC)
 
 ${PUBDIR}/%: ${ROOTDIR}/%
 	@mkdir -p $(dir ${@})
-	@-./unifdef $< -o $@ -f undefs.f -B -t
+	@-./unifdef $< -o $@ -U QED -U BWPAIRPRODUCTION -U COMPTONSCATTERING -U PAIRANNIHILATION -U GCA -B -t
 
 clean:
 	@echo "Cleaning ..."

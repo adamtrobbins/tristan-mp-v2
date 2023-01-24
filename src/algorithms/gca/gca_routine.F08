@@ -29,7 +29,7 @@ pt_zi_past(p) = pt_zi(p); pt_dz_past(p) = pt_dz(p)
 #ifdef oneD
 yi_ = 0_2; dy_ = 0.5
 zi_ = 0_2; dz_ = 0.5
-#elif twoD
+#elif defined(twoD)
 zi_ = 0_2; dz_ = 0.5
 #endif
 
@@ -40,9 +40,9 @@ Gamma_ = sqrt(1.0 + u0**2 + v0**2 + w0**2)
 ! compute fields at `t = n-1/2`
 #ifdef oneD
 lind = xi_
-#elif twoD
+#elif defined(twoD)
 lind = xi_ + (NGHOST + yi_) * iy
-#elif threeD
+#elif defined(threeD)
 lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
 #endif
 dx = dx_; dy = dy_; dz = dz_
@@ -205,9 +205,9 @@ else
     ! compute fields at `t = n+1`
 #ifdef oneD
     lind = xi_
-#elif twoD
+#elif defined(twoD)
     lind = xi_ + (NGHOST + yi_) * iy
-#elif threeD
+#elif defined(threeD)
     lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
 #endif
     dx = dx_; dy = dy_; dz = dz_
@@ -257,12 +257,12 @@ else
                 0.5 * (vE_y_n + vE_y_n1) * CC
   pt_w_eff(p) = 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC + &
                 0.5 * (vE_z_n + vE_z_n1) * CC
-#elif twoD
+#elif defined(twoD)
   pt_u_eff(p) = x_n1 - x_n
   pt_v_eff(p) = y_n1 - y_n
   pt_w_eff(p) = 0.5 * ((bz0_n / bb0_n) / Gamma_n + (bz0_n1 / bb0_n1) / Gamma_n1) * u_par * CC + &
                 0.5 * (vE_z_n + vE_z_n1) * CC
-#elif threeD
+#elif defined(threeD)
   pt_u_eff(p) = x_n1 - x_n
   pt_v_eff(p) = y_n1 - y_n
   pt_w_eff(p) = z_n1 - z_n
@@ -295,9 +295,9 @@ else
   ! interpolate fields at `t = n+1/2`
 #ifdef oneD
   lind = xi_
-#elif twoD
+#elif defined(twoD)
   lind = xi_ + (NGHOST + yi_) * iy
-#elif threeD
+#elif defined(threeD)
   lind = xi_ + (NGHOST + yi_) * iy + (NGHOST + zi_) * iz
 #endif
   dx = dx_; dy = dy_; dz = dz_

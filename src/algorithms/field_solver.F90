@@ -63,11 +63,11 @@ contains
     xmax = this_meshblock % ptr % sx - 1
     ymax = 0
     zmax = 0
-#elif twoD
+#elif defined(twoD)
     xmax = this_meshblock % ptr % sx - 1
     ymax = this_meshblock % ptr % sy - 1
     zmax = 0
-#elif threeD
+#elif defined(threeD)
     xmax = this_meshblock % ptr % sx - 1
     ymax = this_meshblock % ptr % sy - 1
     zmax = this_meshblock % ptr % sz - 1
@@ -99,13 +99,13 @@ contains
       gr_max = gc_x
       gr_bound = (gr_max - ds_abs)**2
       radius = (x0 - gc_x)**2
-#elif twoD
+#elif defined(twoD)
       gc_x = global_mesh % sx * 0.5
       gc_y = global_mesh % sy * 0.5
       gr_max = MIN(gc_x, gc_y)
       gr_bound = (gr_max - ds_abs)**2
       radius = (x0 - gc_x)**2 + (y0 - gc_y)**2
-#elif threeD
+#elif defined(threeD)
       gc_x = global_mesh % sx * 0.5
       gc_y = global_mesh % sy * 0.5
       gc_z = global_mesh % sz * 0.5

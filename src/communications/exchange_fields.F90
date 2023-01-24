@@ -51,7 +51,7 @@ contains
 #ifdef oneD
     jmin = 0; jmax = 0
     kmin = 0; kmax = 0
-#elif twoD
+#elif defined(twoD)
     kmin = 0; kmax = 0
 #endif
 
@@ -110,7 +110,7 @@ contains
 #ifdef oneD
     jmin = 0; jmax = 0
     kmin = 0; kmax = 0
-#elif twoD
+#elif defined(twoD)
     kmin = 0; kmax = 0
 #endif
 
@@ -183,7 +183,7 @@ contains
 #ifdef oneD
     jmin = 0; jmax = 0
     kmin = 0; kmax = 0
-#elif twoD
+#elif defined(twoD)
     kmin = 0; kmax = 0
 #endif
 
@@ -245,7 +245,7 @@ contains
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-#elif twoD
+#elif defined(twoD)
           if (ind3 .ne. 0) cycle
 #endif
           mpi_tag = 100 + (ind3 + 2) + 3 * (ind2 + 1) + 9 * (ind1 + 1)
@@ -316,7 +316,7 @@ contains
           if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
           if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-#elif twoD
+#elif defined(twoD)
           if (ind3 .ne. 0) cycle
 #endif
           if (.not. associated(this_meshblock % ptr % neighbor(ind1, ind2, ind3) % ptr)) cycle
@@ -350,7 +350,7 @@ contains
 #ifdef oneD
           jmin = 0; jmax = 0
           kmin = 0; kmax = 0
-#elif twoD
+#elif defined(twoD)
           kmin = 0; kmax = 0
 #endif
 
@@ -404,7 +404,7 @@ contains
             if ((ind1 .eq. 0) .and. (ind2 .eq. 0) .and. (ind3 .eq. 0)) cycle
 #ifdef oneD
             if ((ind2 .ne. 0) .or. (ind3 .ne. 0)) cycle
-#elif twoD
+#elif defined(twoD)
             if (ind3 .ne. 0) cycle
 #endif
             if (.not. associated(this_meshblock % ptr % neighbor(ind1, ind2, ind3) % ptr)) cycle
@@ -454,7 +454,7 @@ contains
 #ifdef oneD
                 jmin = 0; jmax = 0
                 kmin = 0; kmax = 0
-#elif twoD
+#elif defined(twoD)
                 kmin = 0; kmax = 0
 #endif
 

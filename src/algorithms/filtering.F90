@@ -89,13 +89,13 @@ contains
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = 0; jmax = 0
       kmin = 0; kmax = 0
-#elif twoD
+#elif defined(twoD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass
       jmax = this_meshblock % ptr % sy - 1 + NGHOST - n_pass
       kmin = 0; kmax = 0
-#elif threeD
+#elif defined(threeD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass
@@ -152,13 +152,13 @@ contains
     do n_pass = 1, do_n_times
 #ifdef oneD
       call throwError('ERROR: `filterInY()` called for a `1D` simulation.')
-#elif twoD
+#elif defined(twoD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass
       jmax = this_meshblock % ptr % sy - 1 + NGHOST - n_pass
       kmin = 0; kmax = 0
-#elif threeD
+#elif defined(threeD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass
@@ -215,9 +215,9 @@ contains
     do n_pass = 1, do_n_times
 #ifdef oneD
       call throwError('ERROR: `filterInZ()` called for a `1D` simulation.')
-#elif twoD
+#elif defined(twoD)
       call throwError('ERROR: `filterInZ()` called for a `2D` simulation.')
-#elif threeD
+#elif defined(threeD)
       imin = -NGHOST + n_pass
       imax = this_meshblock % ptr % sx - 1 + NGHOST - n_pass
       jmin = -NGHOST + n_pass

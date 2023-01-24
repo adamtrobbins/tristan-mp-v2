@@ -213,7 +213,7 @@ contains
 #ifdef oneD
     j1 = 0; j2 = 0
     k1 = 0; k2 = 0
-#elif twoD
+#elif defined(twoD)
     k1 = 0; k2 = 0
 #endif
     call userDeallocate()
@@ -457,7 +457,7 @@ contains
 #ifdef oneD
     j1 = 0; j2 = 0
     k1 = 0; k2 = 0
-#elif twoD
+#elif defined(twoD)
     k1 = 0; k2 = 0
 #endif
     read (rst_file) kx_ant, ky_ant, kz_ant

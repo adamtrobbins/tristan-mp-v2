@@ -8,7 +8,7 @@
       bz(i, j, k) = bz(i, j, k) + const * &
                     (-ey(ip1, j, k) + ey(i, j, k))
     end do
-#elif twoD
+#elif defined(twoD)
     k = 0
     do j = 0, this_meshblock % ptr % sy - 1
       jp1 = j + 1
@@ -22,7 +22,7 @@
                       (ex(i, jp1, k) - ex(i, j, k) - ey(ip1, j, k) + ey(i, j, k))
       end do
     end do
-#elif threeD
+#elif defined(threeD)
     do k = 0, this_meshblock % ptr % sz - 1
       kp1 = k + 1
       do j = 0, this_meshblock % ptr % sy - 1
