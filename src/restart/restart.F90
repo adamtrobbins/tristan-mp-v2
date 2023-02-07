@@ -10,7 +10,8 @@ module m_restart
   use m_domain
   use m_particles
   use m_fields
-  use m_particlelogistics, only: allocateParticlesOnEmptyTile
+  use m_particlelogistics, only: allocateParticlesOnEmptyTile, reallocateParticles
+  use m_fieldlogistics, only: deallocateFields, reallocateFields, reallocateFieldBuffers
   use m_helpers
   use m_userfile, only: readUsrRestart, writeUsrRestart
   implicit none
@@ -116,7 +117,7 @@ contains
     integer, intent(in) :: timestep
     character(len=STR_MAX), intent(in) :: rst_dir
     character(len=STR_MAX) :: filename, mpichar
-    integer :: s, ti, tj, tk, num
+    integer :: i, s, ti, tj, tk, num
 
     if (.false.) print *, timestep
 
@@ -207,7 +208,7 @@ contains
   subroutine restartSimulation()
     implicit none
     character(len=STR_MAX) :: mpichar, filename
-    integer :: s, ti, tj, tk, num, ierr
+    integer :: i, s, ti, tj, tk, num, ierr
     integer :: dummy_int1, dummy_int2, dummy_int3
     write (mpichar, "(i8.8)") mpi_rank
 
