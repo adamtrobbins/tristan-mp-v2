@@ -10,7 +10,7 @@ module m_restart
   use m_domain
   use m_particles
   use m_fields
-  use m_particlelogistics, only: allocateParticlesOnEmptyTile, reallocateParticles
+  use m_particlelogistics, only: allocateParticlesOnEmptyTile, reallocateParticles, deallocateParticleBackup, backupParticles
   use m_fieldlogistics, only: deallocateFields, reallocateFields, reallocateFieldBuffers
   use m_helpers
   use m_userfile, only: readUsrRestart, writeUsrRestart
@@ -240,7 +240,9 @@ contains
     call reallocateFields(this_meshblock % ptr)
     call reallocateFieldBuffers(this_meshblock % ptr)
     ! reallocate particles
+    call backupParticles()
     call reallocateParticles(this_meshblock % ptr)
+    call deallocateParticleBackup()
 
     ! loading fields
     read (UNIT_restart) ex, ey, ez, bx, by, bz
