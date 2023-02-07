@@ -126,9 +126,20 @@ contains
     filename = trim(rst_dir)//'/rst.'//trim(mpichar)
     open (UNIT_restart, file=filename, status="replace", form="unformatted")
 
-    ! write fields
+    ! write running params
     write (UNIT_restart) timestep, dseed, tot_output_index, slice_index
+
+    ! write meshblock sizes
+    write (UNIT_restart) mpi_size
+    do i = 1, mpi_size
+      write (UNIT_restart) meshblocks(i) % x0, meshblocks(i) % y0, meshblocks(i) % z0
+      write (UNIT_restart) meshblocks(i) % sx, meshblocks(i) % sy, meshblocks(i) % sz
+    end do
+
+    ! write fields
     write (UNIT_restart) ex, ey, ez, bx, by, bz
+
+    ! write constants
     write (UNIT_restart) CC, ppc0, c_omp, sigma
 
     ! write particles
@@ -209,10 +220,33 @@ contains
     open (UNIT_restart, file=filename, form="unformatted")
     rewind (UNIT_restart)
 
-    ! loading fields
+    ! loading running params
     read (UNIT_restart) start_timestep, dseed, tot_output_index, slice_index
+
+    ! loading meshblocks
+    read (UNIT_restart) dummy_int1
+    if (dummy_int1 .ne. mpi_size) then
+      call throwError('ERROR. Wrong number of MPI processes after the restart')
+    end if
+    do i = 1, mpi_size
+      read (UNIT_restart) meshblocks(i) % x0, meshblocks(i) % y0, meshblocks(i) % z0
+      read (UNIT_restart) meshblocks(i) % sx, meshblocks(i) % sy, meshblocks(i) % sz
+    end do
+
+    ! reallocate fields
+    call reassignNeighborsForAll(meshblocks)
+    call deallocateFields()
+    call reallocateFields(this_meshblock % ptr)
+    call reallocateFieldBuffers(this_meshblock % ptr)
+    ! reallocate particles
+    call reallocateParticles(this_meshblock % ptr)
+
+    ! loading fields
     read (UNIT_restart) ex, ey, ez, bx, by, bz
+
+    ! loading constants
     read (UNIT_restart) CC, ppc0, c_omp, sigma
+
     start_timestep = start_timestep + 1
     call renormalizeUnits()
 
