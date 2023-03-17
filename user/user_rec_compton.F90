@@ -292,6 +292,7 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     real :: t_inject
+    real(kind=8) :: nphotons_r
     integer :: nphotons, n, ncells
     integer :: s, ti, tj, tk
 
@@ -301,10 +302,14 @@ contains
       ! inject new photons
       t_inject = ph_maxdist / CC
       ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
-      nphotons = INT(REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8) / REAL(t_inject, 8))
+      nphotons_r = REAL(ph_fraction, 8) * REAL(ppc0, 8) * REAL(ncells, 8) / REAL(t_inject, 8)
+      nphotons = INT(nphotons_r)
       do n = 1, nphotons
         call injectPhoton(step)
       end do
+      if (random(dseed) .lt. (nphotons_r - REAL(nphotons, 8))) then
+        call injectPhoton(step)
+      end if
 
       ! remove escaping photons after output written
       species(ph_esc_index) % move_sp = .false.
