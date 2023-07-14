@@ -233,7 +233,7 @@ contains
       read (UNIT_restart) meshblocks(i) % x0, meshblocks(i) % y0, meshblocks(i) % z0
       read (UNIT_restart) meshblocks(i) % sx, meshblocks(i) % sy, meshblocks(i) % sz
     end do
-
+#ifdef ALB
     ! reallocate fields
     call reassignNeighborsForAll(meshblocks)
     call deallocateFields()
@@ -243,7 +243,7 @@ contains
     call backupParticles()
     call reallocateParticles(this_meshblock % ptr)
     call deallocateParticleBackup()
-
+#endif
     ! loading fields
     read (UNIT_restart) ex, ey, ez, bx, by, bz
 

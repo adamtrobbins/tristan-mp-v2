@@ -114,8 +114,8 @@ contains
         FMT = "("//trim(dummy1)//")"
         write (UNIT_history, FMT, advance='no') global_prtl_num(s)
       end do
-      Etot = global_e_energy(1) + global_e_energy(2) + global_e_energy(3) 
-      Etot = Etot + global_b_energy(1) + global_b_energy(2) + global_b_energy(3) 
+      Etot = global_e_energy(1) + global_e_energy(2) + global_e_energy(3)
+      Etot = Etot + global_b_energy(1) + global_b_energy(2) + global_b_energy(3)
       do s = 1, nspec
         Etot = Etot + global_prtl_energy(s)
       end do

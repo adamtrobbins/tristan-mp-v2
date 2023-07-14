@@ -310,6 +310,13 @@ contains
                     species(s) % prtl_tile(ti, tj, tk) % dy(p)
               z_g = REAL(this_meshblock % ptr % z0 + species(s) % prtl_tile(ti, tj, tk) % zi(p)) + &
                     species(s) % prtl_tile(ti, tj, tk) % dz(p)
+              ! @HACK (this should not go to production code)
+              ! >>>
+              if ((species(s) % m_sp .gt. 0) .and. (boundary_y .ne. 1) .and.&
+                & ((y_g .lt. 2.0 * ds_abs) .or. (y_g .ge. REAL(global_mesh % sy) - 2.0 * ds_abs))) then
+                cycle
+              end if
+              ! <<<
 
               ! find energy bin
               u_ = species(s) % prtl_tile(ti, tj, tk) % u(p)
