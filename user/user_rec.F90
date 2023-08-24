@@ -15,12 +15,12 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  real, private :: nCS_over_nUP, current_width, upstream_T
-  real, private :: injector_sx, measure_x
+  real, private :: cs_overdensity, cs_width, up_temperature
+  real, private :: injector_padding, measure_x
   real(kind=8), private :: injector_x1_fld, injector_x2_fld
   integer, private :: injector_reset_interval, open_boundaries
   integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy
-  real, private :: bguide
+  real, private :: b_guide
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -31,25 +31,25 @@ contains
   subroutine userReadInput()
     implicit none
     ! guide field
-    call getInput('problem', 'bguide', bguide, 0.0)
+    call getInput('problem', 'b_guide', b_guide, 0.0)
 
     ! current sheet
-    call getInput('problem', 'current_width', current_width)
-    call getInput('problem', 'nCS_nUP', nCS_over_nUP, 0.0)
+    call getInput('problem', 'cs_width', cs_width)
+    call getInput('problem', 'cs_overdensity', cs_overdensity, 0.0)
     call getInput('problem', 'cs_lecs', cs_lecs, 1)
     call getInput('problem', 'cs_ions', cs_ions, 2)
 
     ! upstream
-    call getInput('problem', 'upstream_T', upstream_T)
+    call getInput('problem', 'up_temperature', up_temperature)
     call getInput('problem', 'up_lecs', up_lecs, 3)
     call getInput('problem', 'up_ions', up_ions, 4)
 
     ! replenisher
     if (boundary_x .ne. 1) then
-      call getInput('problem', 'injector_sx', injector_sx)
-      if (injector_sx .lt. nfilter + 4) then
-        print *, 'WARNING: injector_sx < nfilter + 4, setting injector_sx = nfilter + 4'
-        injector_sx = nfilter + 4
+      call getInput('problem', 'injector_padding', injector_padding)
+      if (injector_padding .lt. nfilter + 4) then
+        print *, 'WARNING: injector_padding < nfilter + 4, setting injector_padding = nfilter + 4'
+        injector_padding = nfilter + 4
       end if
     end if
 
@@ -94,15 +94,14 @@ contains
     real :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
     integer :: s, ti, tj, tk, p
     real :: ux, uy, uz, gamma
-    integer :: n, ncells, nphotons
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
     nUP_elec = 0.5 * ppc0
-    nCS_elec = nUP_elec * nCS_over_nUP
+    nCS_elec = nUP_elec * cs_overdensity
 
     nUP_pos = 0.5 * ppc0
-    nCS_pos = nUP_pos * nCS_over_nUP
+    nCS_pos = nUP_pos * cs_overdensity
 
     sx_glob = REAL(global_mesh % sx)
     sy_glob = REAL(global_mesh % sy)
@@ -111,24 +110,24 @@ contains
     back_region % y_min = 0.0
     back_region % x_max = sx_glob
     back_region % y_max = sy_glob
-    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP_pos, upstream_T)
+    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP_pos, up_temperature)
 
-    if (nCS_over_nUP .ne. 0) then
-      shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
+    if (cs_overdensity .ne. 0) then
+      shift_beta = sqrt(sigma) * c_omp / (cs_width * cs_overdensity)
       if (shift_beta .ge. 1) then
         call throwError('ERROR: `shift_beta` >= 1 in `userInitParticles()`')
       end if
       shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
-      current_sheet_T = 0.5 * sigma * (1.0 + bguide**2) / nCS_over_nUP
+      current_sheet_T = 0.5 * sigma * (1.0 + b_guide**2) / cs_overdensity
 
-      back_region % x_min = sx_glob * 0.5 - 10 * current_width
-      back_region % x_max = sx_glob * 0.5 + 10 * current_width
+      back_region % x_min = sx_glob * 0.5 - 10 * cs_width
+      back_region % x_max = sx_glob * 0.5 + 10 * cs_width
       back_region % y_min = 0
       back_region % y_max = sy_glob
       call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
                                        shift_gamma=shift_gamma, shift_dir=3, &
                                        spat_distr_ptr=spat_distr_ptr, &
-                                       dummy1=0.5 * sx_glob, dummy2=current_width, dummy3=0.5 * sy_glob)
+                                       dummy1=0.5 * sx_glob, dummy2=cs_width, dummy3=0.5 * sy_glob)
     end if
   end subroutine userInitParticles
 
@@ -146,9 +145,9 @@ contains
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
-      by(i, :, :) = tanh(((x_glob + 0.5) - 0.5 * sx_glob) / current_width)
+      by(i, :, :) = tanh(((x_glob + 0.5) - 0.5 * sx_glob) / cs_width)
     end do
-    bz(:, :, :) = bguide
+    bz(:, :, :) = b_guide
   end subroutine userInitFields
   !............................................................!
 
@@ -188,14 +187,14 @@ contains
     integer :: i_glob
     integer :: imin_inj, imax_inj, imin_inj_local, imax_inj_local
     integer :: ncells
-    real :: x_glob, injector_sx_flds
+    real :: x_glob, injector_padding_flds
     real(kind=8) :: dens_imin, dens_imax
 
     call computeNpart(up_lecs, reset=.true., ds=0)
     call computeNpart(up_ions, reset=.false., ds=0)
 
-    imin_inj = INT(injector_sx)
-    imax_inj = global_mesh % sx - INT(injector_sx)
+    imin_inj = INT(injector_padding)
+    imax_inj = global_mesh % sx - INT(injector_padding)
 
     dens_imin = 0.0
     dens_imax = 0.0
@@ -218,7 +217,7 @@ contains
         imin_inj_region % x_max = REAL(imin_inj) + 1.0
         imin_inj_region % y_min = this_meshblock % ptr % y0
         imin_inj_region % y_max = this_meshblock % ptr % y0 + this_meshblock % ptr % sy
-        call fillRegionWithThermalPlasma(imin_inj_region, (/up_lecs, up_ions/), 2, 0.5 * REAL(ppc0 - dens_imin), upstream_T)
+        call fillRegionWithThermalPlasma(imin_inj_region, (/up_lecs, up_ions/), 2, 0.5 * REAL(ppc0 - dens_imin), up_temperature)
       end if
     end if
 
@@ -241,11 +240,11 @@ contains
         imax_inj_region % x_max = REAL(imax_inj)
         imax_inj_region % y_min = this_meshblock % ptr % y0
         imax_inj_region % y_max = this_meshblock % ptr % y0 + this_meshblock % ptr % sy
-        call fillRegionWithThermalPlasma(imax_inj_region, (/up_lecs, up_ions/), 2, 0.5 * REAL(ppc0 - dens_imax), upstream_T)
+        call fillRegionWithThermalPlasma(imax_inj_region, (/up_lecs, up_ions/), 2, 0.5 * REAL(ppc0 - dens_imax), up_temperature)
       end if
     end if
 
-    injector_sx_flds = REAL(injector_sx - nfilter)
+    injector_padding_flds = REAL(injector_padding - nfilter)
     do s = 1, nspec
       do ti = 1, species(s) % tile_nx
         do tj = 1, species(s) % tile_ny
@@ -253,16 +252,16 @@ contains
             do p = 1, species(s) % prtl_tile(ti, tj, tk) % npart_sp
               x_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % xi(p) + this_meshblock % ptr % x0) &
                        + species(s) % prtl_tile(ti, tj, tk) % dx(p)
-              if ((x_glob .lt. injector_sx)) then
+              if ((x_glob .lt. injector_padding)) then
                 species(s) % prtl_tile(ti, tj, tk) % u(p) = -0.1
                 species(s) % prtl_tile(ti, tj, tk) % v(p) = 0
                 species(s) % prtl_tile(ti, tj, tk) % w(p) = 0
-              else if (x_glob .ge. global_mesh % sx - injector_sx) then
+              else if (x_glob .ge. global_mesh % sx - injector_padding) then
                 species(s) % prtl_tile(ti, tj, tk) % u(p) = 0.1
                 species(s) % prtl_tile(ti, tj, tk) % v(p) = 0
                 species(s) % prtl_tile(ti, tj, tk) % w(p) = 0
               end if
-              if ((x_glob .lt. injector_sx_flds) .or. (x_glob .ge. global_mesh % sx - injector_sx_flds)) then
+              if ((x_glob .lt. injector_padding_flds) .or. (x_glob .ge. global_mesh % sx - injector_padding_flds)) then
                 species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
               end if
             end do
@@ -281,7 +280,7 @@ contains
     logical, optional, intent(in) :: updateE, updateB
     real :: lambdaIJ, lambdaIpJ, lambdaIJp, lambdaIpJp
     real :: bx_target, by_target, bz_target, ex_target, ey_target, ez_target
-    real :: kappa, injector_sx_flds
+    real :: kappa, injector_padding_flds
     real :: x1min, x1max, y1min, y1max, y2min, y2max
 
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
@@ -293,27 +292,27 @@ contains
     ! --------------------------------------------------------------------------
     !                        boundaries near the injector
     ! --------------------------------------------------------------------------
-    injector_sx_flds = REAL(injector_sx - nfilter)
-    x1min = injector_sx_flds
-    x1max = REAL(global_mesh % sx) - injector_sx_flds
+    injector_padding_flds = REAL(injector_padding - nfilter)
+    x1min = injector_padding_flds
+    x1max = REAL(global_mesh % sx) - injector_padding_flds
 
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
       kappa = 10.0
 
-      by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / current_width)
-      bz_target = bguide
+      by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
+      bz_target = b_guide
 
       if ((x_glob .lt. x1min) .or. (x_glob .ge. x1max)) then
         if (x_glob .lt. x1min) then
-          lambdaIJ = kappa * (abs(x1min - x_glob) / (1.5 * injector_sx_flds))**3
-          lambdaIpJ = kappa * (abs(x1min - (x_glob + 0.5)) / (1.5 * injector_sx_flds))**3
+          lambdaIJ = kappa * (abs(x1min - x_glob) / (1.5 * injector_padding_flds))**3
+          lambdaIpJ = kappa * (abs(x1min - (x_glob + 0.5)) / (1.5 * injector_padding_flds))**3
           lambdaIJp = lambdaIJ
           lambdaIpJp = lambdaIpJ
         else if (x_glob .ge. x1max) then
-          lambdaIJ = kappa * (abs(x_glob - x1max) / (1.5 * injector_sx_flds))**3
-          lambdaIpJ = kappa * (abs((x_glob + 0.5) - x1max) / (1.5 * injector_sx_flds))**3
+          lambdaIJ = kappa * (abs(x_glob - x1max) / (1.5 * injector_padding_flds))**3
+          lambdaIpJ = kappa * (abs((x_glob + 0.5) - x1max) / (1.5 * injector_padding_flds))**3
           lambdaIJp = lambdaIJ
           lambdaIpJp = lambdaIpJ
         end if
@@ -341,15 +340,15 @@ contains
           y_glob = REAL(j_glob)
 
           ! i, j + 1/2
-          bx_target = 0.1 * tanh(((y_glob + 0.5) - 0.5 * REAL(global_mesh % sy)) / current_width)
+          bx_target = 0.1 * tanh(((y_glob + 0.5) - 0.5 * REAL(global_mesh % sy)) / cs_width)
           ! i + 1/2, j
-          by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / current_width)
+          by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
           ! i + 1/2, j + 1/2
-          bz_target = bguide
+          bz_target = b_guide
           ! i + 1/2, j
           ex_target = 0.0
           ! i, j + 1/2
-          ey_target = -0.1 * bguide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / current_width)
+          ey_target = -0.1 * b_guide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / cs_width)
           ! i, j
           ez_target = 0.1
           !

@@ -1,4 +1,4 @@
-#!/home/hakobyan/Codes/tristan-v2/.venv/bin/python
+#!/burg/home/hh2941/.conda/envs/plotting/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
