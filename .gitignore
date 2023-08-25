@@ -11,14 +11,20 @@
 !Makefile.in
 !README.md
 !dev-requirements.txt
-!.vscode
 !docker
 !extern/
 !CITATION
 !LICENSE
-.vscode/*.log
 __pycache__
+.vscode
+extern/fprettify
 
 *.pyc
 .DS_Store
 .venv
+
+# media files
+*.png
+*.jpg
+*.mov
+*.mp4

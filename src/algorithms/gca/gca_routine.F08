@@ -116,12 +116,6 @@ if (sqrt(1.0 + u0**2 + v0**2 + w0**2) .gt. 1e8) then
   print *, 'bad particle!!!!', s, pt_ind(p), pt_proc(p), sqrt(1.0 + u0**2 + v0**2 + w0**2)
   call throwError('ERROR: runaway particle found!')
 end if
-! if ((pt_ind(p) .eq. 31731) .and. ((pt_proc(p) .eq. 283) .or. (pt_proc(p) .eq. 283 + 2 * mpi_size))) then
-!   dummy_ = sqrt(((x_ + this_meshblock%ptr%x0) - global_mesh%sx * 0.5)**2 +&
-!               & ((y_ + this_meshblock%ptr%y0) - global_mesh%sy * 0.5)**2 +&
-!               & ((z_ + this_meshblock%ptr%z0) - global_mesh%sz * 0.5)**2)
-!   print *, 'prtl:', pt_u(p), pt_v(p), pt_w(p), dummy_, uperp_g, pt_proc(p) .gt. mpi_size
-! end if
 #endif
 
 ! GCA/normal push condition . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -130,15 +124,31 @@ if (doNormalPushQ) then
   ! use normal push here
   ex0 = ex0_n; ey0 = ey0_n; ez0 = ez0_n
   bx0 = bx0_n; by0 = by0_n; bz0 = bz0_n
-#ifndef VAY
-#include "boris_push.F08"
-#else
-#include "vay_push.F08"
-#endif
+! IN:
+!     pt_u(p), pt_v(p), pt_w(p):      velocities
+!     ex0, ey0, ez0:                  electric field
+!     bx0, by0, bz0:                  magnetic field
+! IN (RADIATION):
+!     pt_xi(p), pt_yi(p), pt_zi(p):   coordinates
+!     pt_dx(p), pt_dy(p), pt_dz(p):   cell offsets
+!     u_init, v_init, w_init:         velocities before the push
+!     ex_rad, ey_rad, ez_rad:         electric field (backup)
+!     bx_rad, by_rad, bz_rad:         magnetic field (backup)
+! OUT:
+!     pt_u(p), pt_v(p), pt_w(p):      velocities
+! NOTE:
+!     fields ex0, ey0, ez0, bx0, by0, bz0 get modified
+#include "momentum_update.F08"
   pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
   over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
-  ! compute "effective" velocities for the deposit
+  ! IN:
+  !     over_e_temp:                    inverse of energy
+  !     pt_u(p), pt_v(p), pt_w(p):      velocities
+  ! OUT:
+  !     pt_xi(p), pt_yi(p), pt_zi(p):   coordinates
+  !     pt_dx(p), pt_dy(p), pt_dz(p):   cell offsets
 #include "position_update.F08"
+  ! compute "effective" velocities for the deposit
   pt_u_eff(p) = u0 * CC * over_e_temp
   pt_v_eff(p) = v0 * CC * over_e_temp
   pt_w_eff(p) = w0 * CC * over_e_temp

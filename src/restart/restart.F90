@@ -10,7 +10,8 @@ module m_restart
   use m_domain
   use m_particles
   use m_fields
-  use m_particlelogistics, only: allocateParticlesOnEmptyTile
+  use m_particlelogistics, only: allocateParticlesOnEmptyTile, reallocateParticles, deallocateParticleBackup, backupParticles
+  use m_fieldlogistics, only: deallocateFields, reallocateFields, reallocateFieldBuffers
   use m_helpers
   use m_userfile, only: readUsrRestart, writeUsrRestart
   implicit none
@@ -116,7 +117,7 @@ contains
     integer, intent(in) :: timestep
     character(len=STR_MAX), intent(in) :: rst_dir
     character(len=STR_MAX) :: filename, mpichar
-    integer :: s, ti, tj, tk, num
+    integer :: i, s, ti, tj, tk, num
 
     if (.false.) print *, timestep
 
@@ -126,9 +127,20 @@ contains
     filename = trim(rst_dir)//'/rst.'//trim(mpichar)
     open (UNIT_restart, file=filename, status="replace", form="unformatted")
 
-    ! write fields
+    ! write running params
     write (UNIT_restart) timestep, dseed, tot_output_index, slice_index
+
+    ! write meshblock sizes
+    write (UNIT_restart) mpi_size
+    do i = 1, mpi_size
+      write (UNIT_restart) meshblocks(i) % x0, meshblocks(i) % y0, meshblocks(i) % z0
+      write (UNIT_restart) meshblocks(i) % sx, meshblocks(i) % sy, meshblocks(i) % sz
+    end do
+
+    ! write fields
     write (UNIT_restart) ex, ey, ez, bx, by, bz
+
+    ! write constants
     write (UNIT_restart) CC, ppc0, c_omp, sigma
 
     ! write particles
@@ -196,7 +208,7 @@ contains
   subroutine restartSimulation()
     implicit none
     character(len=STR_MAX) :: mpichar, filename
-    integer :: s, ti, tj, tk, num, ierr
+    integer :: i, s, ti, tj, tk, num, ierr
     integer :: dummy_int1, dummy_int2, dummy_int3
     write (mpichar, "(i8.8)") mpi_rank
 
@@ -209,10 +221,35 @@ contains
     open (UNIT_restart, file=filename, form="unformatted")
     rewind (UNIT_restart)
 
-    ! loading fields
+    ! loading running params
     read (UNIT_restart) start_timestep, dseed, tot_output_index, slice_index
+
+    ! loading meshblocks
+    read (UNIT_restart) dummy_int1
+    if (dummy_int1 .ne. mpi_size) then
+      call throwError('ERROR. Wrong number of MPI processes after the restart')
+    end if
+    do i = 1, mpi_size
+      read (UNIT_restart) meshblocks(i) % x0, meshblocks(i) % y0, meshblocks(i) % z0
+      read (UNIT_restart) meshblocks(i) % sx, meshblocks(i) % sy, meshblocks(i) % sz
+    end do
+#ifdef ALB
+    ! reallocate fields
+    call reassignNeighborsForAll(meshblocks)
+    call deallocateFields()
+    call reallocateFields(this_meshblock % ptr)
+    call reallocateFieldBuffers(this_meshblock % ptr)
+    ! reallocate particles
+    call backupParticles()
+    call reallocateParticles(this_meshblock % ptr)
+    call deallocateParticleBackup()
+#endif
+    ! loading fields
     read (UNIT_restart) ex, ey, ez, bx, by, bz
+
+    ! loading constants
     read (UNIT_restart) CC, ppc0, c_omp, sigma
+
     start_timestep = start_timestep + 1
     call renormalizeUnits()
 

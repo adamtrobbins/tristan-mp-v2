@@ -306,11 +306,14 @@ contains
           end if
           ! photon update:
           if (rnd .le. P_ph) then
+            ! @HACK (this should not go to production code)
+            ! >>>
 #ifdef PRTLPAYLOADS
-            species(s2) % prtl_tile(ti, tj, tk) % payload2(p2) = REAL(current_step)
             species(s2) % prtl_tile(ti, tj, tk) % payload3(p2) = &
               species(s2) % prtl_tile(ti, tj, tk) % payload3(p2) + 1.0
+            ! species(s2) % prtl_tile(ti, tj, tk) % payload2(p2) = REAL(current_step)
 #endif
+            ! <<<
             if (abs(wei_ph - wei_split) .le. TINYWEI) then
               u_ph = u_ph_new
               v_ph = v_ph_new
@@ -358,8 +361,8 @@ contains
       KleinNishina = .true.
       over_eph_RF = 1.0d0 / eph_RF
       f_KN = 0.375d0 * over_eph_RF * ((1.0d0 - 2.0d0 * over_eph_RF - 2.0d0 * over_eph_RF**2) * &
-                            log(1.0d0 + 2.0d0 * eph_RF) + 0.5d0 + &
-                            4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
+                                      log(1.0d0 + 2.0d0 * eph_RF) + 0.5d0 + &
+                                      4.0d0 * over_eph_RF - 0.5d0 / (1.0d0 + 2.0d0 * eph_RF)**2)
     end if
     ! Cross section in the *lab* frame:
     P_12 = REAL(f_KN * eph_RF / (el_gamma * eph))
