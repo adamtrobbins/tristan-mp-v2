@@ -120,6 +120,8 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 __@TODO__
 
 ## Latest Releases
+* `v2.6.1` __Aug 2023__
+  * Fixed a buggy ordering of synchrotron cooling term and particle coordinate update (very minor correction)
 * `v2.6` __Jan 2023__
   * Minor cleanup + bugfixes
 * `v2.6r1` __Nov 2022__
