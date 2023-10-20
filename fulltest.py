@@ -73,7 +73,7 @@ elif options.cluster == "stellar":
         "hdf5/intel-2021.1/intel-mpi/1.10.6",
     ]
 elif options.cluster == "ginsburg":
-    modules = ["intel-parallel-studio/2020", "hdf5p/1.10.7", "mpich/ge/gcc/64/3.3.2"]
+    modules = ["intel-parallel-studio/2020", "hdf5p/1.10.7", "openmpi/gcc/64/4.1.5a1"]
 
 # global variables
 outdir = options.path

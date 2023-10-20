@@ -68,9 +68,8 @@ contains
 
 #ifdef RADIATION
     logical :: dummy_flag
-    integer(kind=2) :: xi_rad, yi_rad, zi_rad
     real :: ex_rad, ey_rad, ez_rad, bx_rad, by_rad, bz_rad
-    real :: u_init, v_init, w_init, dx_rad, dy_rad, dz_rad
+    real :: u_init, v_init, w_init
     integer, pointer, contiguous :: pt_ind(:)
 #endif
 
@@ -271,36 +270,39 @@ contains
 
                 ! save velocities before the push
                 u_init = pt_u(p); v_init = pt_v(p); w_init = pt_w(p)
-
-                ! save coordinates before the push
-                dx_rad = pt_dx(p); dy_rad = pt_dy(p); dz_rad = pt_dz(p)
-                xi_rad = pt_xi(p); yi_rad = pt_yi(p); zi_rad = pt_zi(p)
 #endif
 
 #ifndef GCA
                 ! . . . . simple Boris/Vay pusher . . . .
-                u0 = pt_u(p); v0 = pt_v(p); w0 = pt_w(p)
-                ! this "function" takes
-                ! ... the field quantities: `bx0`, `by0`, `bz0`, `ex0`, `ey0`, `ez0` ...
-                ! ... and the velocities: `u0`, `v0`, `w0` ...
-                ! ... and returns the updated velocities `u0`, `v0`, `w0`
-#ifndef VAY
-#include "boris_push.F08"
-#else
-#include "vay_push.F08"
-#endif
-                pt_u(p) = u0; pt_v(p) = v0; pt_w(p) = w0
+! IN:
+!     pt_u(p), pt_v(p), pt_w(p):      velocities
+!     ex0, ey0, ez0:                  electric field
+!     bx0, by0, bz0:                  magnetic field
+! IN (RADIATION):
+!     pt_xi(p), pt_yi(p), pt_zi(p):   coordinates
+!     pt_dx(p), pt_dy(p), pt_dz(p):   cell offsets
+!     u_init, v_init, w_init:         velocities before the push
+!     ex_rad, ey_rad, ez_rad:         electric field (backup)
+!     bx_rad, by_rad, bz_rad:         magnetic field (backup)
+! OUT:
+!     pt_u(p), pt_v(p), pt_w(p):      velocities
+! NOTE:
+!     fields ex0, ey0, ez0, bx0, by0, bz0 get modified
+#include "momentum_update.F08"
                 over_e_temp = 1.0 / sqrt(1.0 + pt_u(p)**2 + pt_v(p)**2 + pt_w(p)**2)
 #ifdef PRTLPAYLOADS
-                call usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, ex0, ey0, ez0, bx0, by0, bz0, incr_pld1, incr_pld2, incr_pld3)
+                ! !TODO: using ex0, ey0, ez0, bx0, by0, bz0 is not correct here
+                call usrSetElPld(q_over_m, pt_u(p), pt_v(p), pt_w(p), over_e_temp, ex0, ey0, ez0, bx0, by0, bz0, incr_pld1, incr_pld2, incr_pld3)
                 pt_pld1(p) = pt_pld1(p) + incr_pld1
                 pt_pld2(p) = pt_pld2(p) + incr_pld2
                 pt_pld3(p) = pt_pld3(p) + incr_pld3
 #endif
-                ! this "function" takes
-                ! ... inverse energy: `over_e_temp` ...
-                ! ... reads the velocities from: `pt_*(p)` ...
-                ! ... and updates the particle position `pt_*(p)`
+                ! IN:
+                !     over_e_temp:                    inverse of energy
+                !     pt_u(p), pt_v(p), pt_w(p):      velocities
+                ! OUT:
+                !     pt_xi(p), pt_yi(p), pt_zi(p):   coordinates
+                !     pt_dx(p), pt_dy(p), pt_dz(p):   cell offsets
 #include "position_update.F08"
 #else
                 ! . . . . hybrid Boris/GCA pusher . . . .
@@ -311,28 +313,6 @@ contains
 #include "gca_routine.F08"
 #endif
 
-                ! RADIATION >
-#ifdef RADIATION
-#ifdef SYNCHROTRON
-                if (species(s) % cool_sp) then
-                  call particleRadiateSync(timestep, s, &
-                                           pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init, &
-                                           dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p), &
-                                           bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad, &
-                                           index=pt_ind(p), proc=pt_proc(p))
-                end if
-#endif
-#ifdef INVERSECOMPTON
-                if (species(s) % cool_sp) then
-                  call particleRadiateIC(timestep, s, &
-                                         pt_u(p), pt_v(p), pt_w(p), u_init, v_init, w_init, &
-                                         dx_rad, dy_rad, dz_rad, xi_rad, yi_rad, zi_rad, pt_wei(p), &
-                                         bx_rad, by_rad, bz_rad, ex_rad, ey_rad, ez_rad, &
-                                         index=pt_ind(p), proc=pt_proc(p))
-                end if
-#endif
-#endif
-                ! </ RADIATION
               end do
               pt_xi => null(); pt_yi => null(); pt_zi => null()
               pt_dx => null(); pt_dy => null(); pt_dz => null()
