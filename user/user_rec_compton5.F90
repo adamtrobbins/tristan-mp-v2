@@ -149,7 +149,13 @@ contains
     call getInput('problem', 'ph_temperature', ph_temperature)
     ph_planck = (ph_temperature .gt. 0.0)
     ph_temperature = ABS(ph_temperature)
-    ph_Lbox = REAL(global_mesh % sy) / 2.0
+#if defined (twoD)
+    ph_Lbox = MAX(REAL(global_mesh % sx - 2 * injector_padding), &
+                  REAL(global_mesh % sy / 2.0))
+#elif defined (threeD)
+    ph_Lbox = MIN(REAL(global_mesh % sx - 2 * injector_padding), &
+                  REAL(global_mesh % sz / 2.0))
+#endif
   end subroutine userReadInput
 
   function userSpatialDistribution(x_glob, y_glob, z_glob, &
