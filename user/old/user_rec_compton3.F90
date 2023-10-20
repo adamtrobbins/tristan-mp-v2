@@ -17,21 +17,22 @@ module m_userfile
   implicit none
 
   !--- PRIVATE variables -----------------------------------------!
-  ! current sheet parameters
-  real, private :: cs_overdensity, cs_width, up_temperature, b_guide
-  integer, private :: top_lecs, btm_lecs, top_ions, btm_ions, cs_lecs, cs_ions
-  ! injector parameters
-  real, private :: injector_padding
+  real, private :: nCS_over_nUP, current_width, upstream_T
+  real, private :: injector_sx, measure_x
   real(kind=8), private :: injector_x1_fld, injector_x2_fld
-  integer, private :: open_bc_y_step
+  integer, private :: injector_reset_interval, open_boundaries
+  integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy
+  real, private :: bguide
   ! photon variables
-  integer, private :: ph_index, ph_index_esc
-  real, private :: ph_temperature, ph_fraction, ph_Lbox
-  logical, private :: ph_planck, ph_isotropic
+  integer, private :: ph_index, ph_EscInY_index, ph_EscInZ_index, ph_EscInX_index
+  real, private :: ph_temperature, ph_fraction, ph_injdistance
+  real, private :: ph_injector_x1, ph_injector_x2
+  logical, private :: ph_planck
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
-  private :: userSpatialDistribution, planckSample
+  private :: userSpatialDistribution
+  private :: planckSample
   !...............................................................!
 contains
   ! --- Utilities ------------------------------------------------!
@@ -50,13 +51,24 @@ contains
     return
   end function planckSample
 
-  subroutine generateRandomDirection(kx, ky, kz)
+  subroutine generateRandomDirection(kx, ky, kz, positive_kx)
     implicit none
     real, intent(out) :: kx, ky, kz
     real :: rand_costh, rand_phi
+    logical, optional, intent(in) :: positive_kx
 
     rand_costh = 2.0 * random(dseed) - 1.0
-    rand_phi = 2.0 * M_PI * random(dseed)
+
+    if (present(positive_kx)) then
+      if (positive_kx) then
+        rand_phi = M_PI * random(dseed) - M_PI * 0.5
+      else
+        ! only negative kx
+        rand_phi = M_PI * random(dseed) + M_PI * 0.5
+      end if
+    else
+      rand_phi = 2.0 * M_PI * random(dseed)
+    end if
 
     kx = sqrt(1.0 - rand_costh**2) * cos(rand_phi)
     ky = sqrt(1.0 - rand_costh**2) * sin(rand_phi)
@@ -68,95 +80,116 @@ contains
     integer, optional, intent(in) :: step
     real :: xg, yg, zg, kx, ky, kz, energy
 
-    ! inject in the midplane
-    xg = 0.5 * REAL(global_mesh % sx)
+    if (random(dseed) .lt. 0.5) then
+      xg = ph_injector_x1
+    else
+      xg = ph_injector_x2
+    end if
     yg = random(dseed) * REAL(global_mesh % sy)
-#if defined (twoD)
     zg = 0.5
-#elif defined (threeD)
-    zg = random(dseed) * REAL(global_mesh % sz)
-#endif
+
     if (ph_planck) then
-      ! planck distribution
       energy = ph_temperature * planckSample()
     else
-      ! monoenergetic
       energy = ph_temperature
     end if
 
-    if (ph_isotropic) then
-      ! isotropic
-      call generateRandomDirection(kx, ky, kz)
+    ! call generateRandomDirection(kx, ky, kz, xg .lt. REAL(global_mesh % sx) * 0.5)
+    if (xg .lt. REAL(global_mesh % sx) * 0.5) then
+      kx = 1.0
     else
-      ! beam
-      ! kx = random(dseed) - 0.5
-      if (random(dseed) .lt. 0.5) then
-        kx = 1.0
-      else
-        kx = -1.0
-      end if
-      ky = 0.0
-      kz = 0.0
+      kx = -1.0
     end if
-
+    ky = 0.0
+    kz = 0.0
     call injectParticleGlobally(ph_index, xg, yg, zg, &
                                 energy * kx, energy * ky, energy * kz, &
-                                1.0, & ! < weight
-                                0.0, 0.0, 0.0)
-    !    payload1 -- displacement in z
-    !    payload2 -- lifetime
-    !    payload3 -- # of scatterings
+                                1.0, 0.0, 0.0, 0.0)
   end subroutine injectPhoton
+
+  ! subroutine resetPhoton(step, s, ti, tj, tk, p)
+  !   implicit none
+  !   integer, intent(in) :: step, s, ti, tj, tk, p
+  !   real :: energy, kx, ky, kz
+  !   real :: xg, yg
+
+  !   xg = REAL(species(s) % prtl_tile(ti, tj, tk) % xi(p) + this_meshblock % ptr % x0) &
+  !        + species(s) % prtl_tile(ti, tj, tk) % dx(p)
+  !   yg = REAL(species(s) % prtl_tile(ti, tj, tk) % yi(p) + this_meshblock % ptr % y0) &
+  !        + species(s) % prtl_tile(ti, tj, tk) % dy(p)
+
+  !   if (ph_planck) then
+  !     energy = ph_temperature * planckSample()
+  !   else
+  !     energy = ph_temperature
+  !   end if
+
+  !   call generateRandomDirection(kx, ky, kz)
+
+  !   species(s) % prtl_tile(ti, tj, tk) % payload1(p) = xg
+  !   species(s) % prtl_tile(ti, tj, tk) % payload2(p) = yg
+  !   species(s) % prtl_tile(ti, tj, tk) % payload3(p) = 0.5
+  !   species(s) % prtl_tile(ti, tj, tk) % u(p) = energy * kx
+  !   species(s) % prtl_tile(ti, tj, tk) % v(p) = energy * ky
+  !   species(s) % prtl_tile(ti, tj, tk) % w(p) = energy * kz
+  ! end subroutine resetPhoton
 
   !--- initialization -----------------------------------------!
   subroutine userReadInput()
     implicit none
     ! guide field
-    call getInput('problem', 'b_guide', b_guide, 0.0)
+    call getInput('problem', 'bguide', bguide, 0.0)
 
     ! current sheet
-    call getInput('problem', 'cs_width', cs_width)
-    call getInput('problem', 'cs_overdensity', cs_overdensity, 0.0)
-    call getInput('problem', 'cs_lecs', cs_lecs, 5)
-    call getInput('problem', 'cs_ions', cs_ions, 6)
+    call getInput('problem', 'current_width', current_width)
+    call getInput('problem', 'nCS_nUP', nCS_over_nUP, 0.0)
+    call getInput('problem', 'cs_lecs', cs_lecs, 1)
+    call getInput('problem', 'cs_ions', cs_ions, 2)
 
     ! upstream
-    call getInput('problem', 'up_temperature', up_temperature)
-    call getInput('problem', 'top_lecs', top_lecs, 1)
-    call getInput('problem', 'top_ions', top_ions, 2)
-    call getInput('problem', 'btm_lecs', btm_lecs, 3)
-    call getInput('problem', 'btm_ions', btm_ions, 4)
+    call getInput('problem', 'upstream_T', upstream_T)
+    call getInput('problem', 'up_lecs', up_lecs, 3)
+    call getInput('problem', 'up_ions', up_ions, 4)
 
     ! replenisher
     if (boundary_x .ne. 1) then
-      call getInput('problem', 'injector_padding', injector_padding)
-      if (injector_padding .lt. nfilter + 4) then
-        print *, 'WARNING: injector_padding < nfilter + 4, setting injector_padding = nfilter + 4'
-        injector_padding = nfilter + 4
+      call getInput('problem', 'injector_sx', injector_sx)
+      if (injector_sx .lt. nfilter + 4) then
+        print *, 'WARNING: injector_sx < nfilter + 4, setting injector_sx = nfilter + 4'
+        injector_sx = nfilter + 4
       end if
     end if
 
     ! outflow boundaries
-    call getInput('problem', 'open_bc_y_step', open_bc_y_step, -1)
+    call getInput('problem', 'open_boundaries', open_boundaries, -1)
 
     ! photons
-    call getInput('problem', 'ph_index', ph_index, 7)
-    call getInput('problem', 'ph_index_esc', ph_index_esc, 8)
-    call getInput('problem', 'ph_fraction', ph_fraction)
-    call getInput('problem', 'ph_isotropic', ph_isotropic)
+    call getInput('problem', 'ph_index', ph_index, 5)
     ! temperature for the Planckian photon distribution
-    ! negative temperature means that the monoenergetic distribution is used
+    call getInput('problem', 'ph_EscInX_index', ph_EscInX_index, 6)
+    call getInput('problem', 'ph_EscInY_index', ph_EscInY_index, 7)
+    call getInput('problem', 'ph_EscInZ_index', ph_EscInZ_index, 8)
+    call getInput('problem', 'ph_fraction', ph_fraction)
+    ! negative temperature means that the monoenergetic distribution (delta function) is used
     call getInput('problem', 'ph_temperature', ph_temperature)
+    call getInput('problem', 'ph_injdistance', ph_injdistance)
     ph_planck = (ph_temperature .gt. 0.0)
     ph_temperature = ABS(ph_temperature)
-#if defined (twoD)
-    ph_Lbox = MAX(REAL(global_mesh % sx - 2 * injector_padding), &
-                  REAL(global_mesh % sy / 2.0))
-#elif defined (threeD)
-    ph_Lbox = MIN(REAL(global_mesh % sx - 2 * injector_padding), &
-                  REAL(global_mesh % sz / 2.0))
-#endif
+
+    ph_injector_x1 = REAL(global_mesh % sx) * (0.5 - ph_injdistance)
+    ph_injector_x2 = REAL(global_mesh % sx) * (0.5 + ph_injdistance)
   end subroutine userReadInput
+
+  function userSLBload(x_glob, y_glob, z_glob, &
+                       dummy1, dummy2, dummy3)
+    real :: userSLBload
+    ! global coordinates
+    real, intent(in), optional :: x_glob, y_glob, z_glob
+    ! global box dimensions
+    real, intent(in), optional :: dummy1, dummy2, dummy3
+    real :: distance, sx_glob
+    return
+  end function
 
   function userSpatialDistribution(x_glob, y_glob, z_glob, &
                                    dummy1, dummy2, dummy3)
@@ -179,53 +212,46 @@ contains
 
   subroutine userInitParticles()
     implicit none
-    ! real :: nUP_elec, nUP_pos, nCS_elec, nCS_pos
+    real :: nUP_elec, nUP_pos, nCS_elec, nCS_pos
     type(region) :: back_region
-    real :: sx_glob, sy_glob, shift_gamma, shift_beta, cs_temperature
+    real :: sx_glob, sy_glob, shift_gamma, shift_beta, current_sheet_T
     integer :: s, ti, tj, tk, p
     real :: ux, uy, uz, gamma
     integer :: n, ncells, nphotons
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
+    nUP_elec = 0.5 * ppc0
+    nCS_elec = nUP_elec * nCS_over_nUP
+
+    nUP_pos = 0.5 * ppc0
+    nCS_pos = nUP_pos * nCS_over_nUP
+
+    sx_glob = REAL(global_mesh % sx)
+    sy_glob = REAL(global_mesh % sy)
+
     back_region % x_min = 0.0
-    back_region % x_max = 0.5 * REAL(global_mesh % sx)
-
     back_region % y_min = 0.0
-    back_region % y_max = REAL(global_mesh % sy)
-#if defined (threeD)
-    back_region % z_min = 0.0
-    back_region % z_max = REAL(global_mesh % sz)
-#endif
-    call fillRegionWithThermalPlasma(back_region, (/btm_lecs, btm_ions/), 2, 0.5 * ppc0, up_temperature)
+    back_region % x_max = sx_glob
+    back_region % y_max = sy_glob
+    call fillRegionWithThermalPlasma(back_region, (/up_lecs, up_ions/), 2, nUP_pos, upstream_T)
 
-    back_region % x_min = 0.5 * REAL(global_mesh % sx)
-    back_region % x_max = REAL(global_mesh % sx)
-    call fillRegionWithThermalPlasma(back_region, (/top_lecs, top_ions/), 2, 0.5 * ppc0, up_temperature)
-
-    if (cs_overdensity .ne. 0) then
-      shift_beta = sqrt(sigma) * c_omp / (cs_width * cs_overdensity)
+    if (nCS_over_nUP .ne. 0) then
+      shift_beta = sqrt(sigma) * c_omp / (current_width * nCS_over_nUP)
       if (shift_beta .ge. 1) then
         call throwError('ERROR: `shift_beta` >= 1 in `userInitParticles()`')
       end if
       shift_gamma = 1.0 / sqrt(1.0 - shift_beta**2)
-      cs_temperature = 0.5 * sigma * (1.0 + b_guide**2) / cs_overdensity
+      current_sheet_T = 0.5 * sigma * (1.0 + bguide**2) / nCS_over_nUP
 
-      back_region % x_min = REAL(global_mesh % sx) * 0.5 - 10 * cs_width
-      back_region % x_max = REAL(global_mesh % sx) * 0.5 + 10 * cs_width
-
+      back_region % x_min = sx_glob * 0.5 - 10 * current_width
+      back_region % x_max = sx_glob * 0.5 + 10 * current_width
       back_region % y_min = 0
-      back_region % y_max = REAL(global_mesh % sy)
-#if defined (threeD)
-      back_region % z_min = 0
-      back_region % z_max = REAL(global_mesh % sz)
-#endif
-      call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, 0.5 * ppc0, cs_temperature, &
+      back_region % y_max = sy_glob
+      call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, nCS_pos, current_sheet_T, &
                                        shift_gamma=shift_gamma, shift_dir=3, &
                                        spat_distr_ptr=spat_distr_ptr, &
-                                       dummy1=0.5 * REAL(global_mesh % sx), &
-                                       dummy2=cs_width, &
-                                       dummy3=0.5 * REAL(global_mesh % sy))
+                                       dummy1=0.5 * sx_glob, dummy2=current_width, dummy3=0.5 * sy_glob)
     end if
   end subroutine userInitParticles
 
@@ -243,9 +269,9 @@ contains
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
-      by(i, :, :) = tanh(((x_glob + 0.5) - 0.5 * sx_glob) / cs_width)
+      by(i, :, :) = tanh(((x_glob + 0.5) - 0.5 * sx_glob) / current_width)
     end do
-    bz(:, :, :) = b_guide
+    bz(:, :, :) = bguide
   end subroutine userInitFields
   !............................................................!
 
@@ -260,16 +286,15 @@ contains
   subroutine userDriveParticles(step)
     implicit none
     integer, optional, intent(in) :: step
+    real :: t_inject
     real(kind=8) :: nphotons_r
-    integer :: nphotons, n
+    integer :: nphotons, n, ncells
     integer :: s, ti, tj, tk
 
     ! inject new photons
-#if defined (twoD)
-    nphotons_r = 2.0 * ph_Lbox * CC * REAL(ph_fraction, 8) * REAL(ppc0, 8)
-#elif defined (threeD)
-    nphotons_r = 2.0 * ph_Lbox**2 * CC * REAL(ph_fraction, 8) * REAL(ppc0, 8)
-#endif
+    t_inject = global_mesh % sy / CC
+    ncells = global_mesh % sx * global_mesh % sy * global_mesh % sz
+    nphotons_r = REAL(ph_fraction, 8) * REAL(ppc0, 8) * 0.5 * REAL(ncells, 8) / REAL(t_inject, 8)
     nphotons = INT(nphotons_r)
     do n = 1, nphotons
       call injectPhoton(step)
@@ -280,13 +305,17 @@ contains
 
     ! remove escaping photons after output written
 
-    species(ph_index_esc) % move_sp = .false.
-    species(ph_index_esc) % compton_sp = .false.
+    do s = ph_EscInX_index, ph_EscInZ_index
+      species(s) % move_sp = .false.
+      species(s) % compton_sp = .false.
+    end do
     if (modulo(step, tot_output_interval) .eq. 1) then
-      do ti = 1, species(ph_index_esc) % tile_nx
-        do tj = 1, species(ph_index_esc) % tile_ny
-          do tk = 1, species(ph_index_esc) % tile_nz
-            species(ph_index_esc) % prtl_tile(ti, tj, tk) % npart_sp = 0
+      do s = ph_EscInX_index, ph_EscInZ_index
+        do ti = 1, species(s) % tile_nx
+          do tj = 1, species(s) % tile_ny
+            do tk = 1, species(s) % tile_nz
+              species(s) % prtl_tile(ti, tj, tk) % npart_sp = 0
+            end do
           end do
         end do
       end do
@@ -315,22 +344,18 @@ contains
     integer :: i, j, k, p
     integer :: i_glob
     integer :: imin_inj, imax_inj, imin_inj_local, imax_inj_local
-    integer :: npart_sp, ncells
-    real :: x_glob, y_glob, z_glob, injector_sx_flds
-    real :: xg, yg, zg, dummy1, dummy2, x_min, x_max, y_min, y_max, z_min, z_max
+    integer :: npart_sp, ncells, ph_esc_index
+    real :: x_glob, y_glob, injector_sx_flds
+    real :: distance_z, energy, kx, ky, kz
+    real :: xg, yg, zg, dummy1, dummy2
     logical :: leaving_in_x, leaving_in_y, leaving_in_z
     real(kind=8) :: dens_imin, dens_imax
 
-    ! replenish upstream electrons/positrons
-    call computeNpart(top_lecs, reset=.true., ds=0)
-    call computeNpart(top_ions, reset=.false., ds=0)
-    if (top_lecs .ne. btm_lecs) then
-      call computeNpart(btm_lecs, reset=.false., ds=0)
-      call computeNpart(btm_ions, reset=.false., ds=0)
-    end if
+    call computeNpart(up_lecs, reset=.true., ds=0)
+    call computeNpart(up_ions, reset=.false., ds=0)
 
-    imin_inj = INT(injector_padding)
-    imax_inj = global_mesh % sx - INT(injector_padding)
+    imin_inj = INT(injector_sx)
+    imax_inj = global_mesh % sx - INT(injector_sx)
 
     dens_imin = 0.0
     dens_imax = 0.0
@@ -353,12 +378,7 @@ contains
         imin_inj_region % x_max = REAL(imin_inj) + 1.0
         imin_inj_region % y_min = this_meshblock % ptr % y0
         imin_inj_region % y_max = this_meshblock % ptr % y0 + this_meshblock % ptr % sy
-#if defined (threeD)
-        imin_inj_region % z_min = this_meshblock % ptr % z0
-        imin_inj_region % z_max = this_meshblock % ptr % z0 + this_meshblock % ptr % sz
-#endif
-        call fillRegionWithThermalPlasma(imin_inj_region, (/btm_lecs, btm_ions/), 2, &
-                                         0.5 * REAL(ppc0 - dens_imin), up_temperature)
+        call fillRegionWithThermalPlasma(imin_inj_region, (/up_lecs, up_ions/), 2, 0.5 * REAL(ppc0 - dens_imin), upstream_T)
       end if
     end if
 
@@ -381,17 +401,11 @@ contains
         imax_inj_region % x_max = REAL(imax_inj)
         imax_inj_region % y_min = this_meshblock % ptr % y0
         imax_inj_region % y_max = this_meshblock % ptr % y0 + this_meshblock % ptr % sy
-#if defined (threeD)
-        imax_inj_region % z_min = this_meshblock % ptr % z0
-        imax_inj_region % z_max = this_meshblock % ptr % z0 + this_meshblock % ptr % sz
-#endif
-        call fillRegionWithThermalPlasma(imax_inj_region, (/top_lecs, top_ions/), 2, &
-                                         0.5 * REAL(ppc0 - dens_imax), up_temperature)
+        call fillRegionWithThermalPlasma(imax_inj_region, (/up_lecs, up_ions/), 2, 0.5 * REAL(ppc0 - dens_imax), upstream_T)
       end if
     end if
 
-    ! remove particles
-    injector_sx_flds = REAL(injector_padding - nfilter)
+    injector_sx_flds = REAL(injector_sx - nfilter)
     do s = 1, ph_index
       do ti = 1, species(s) % tile_nx
         do tj = 1, species(s) % tile_ny
@@ -408,11 +422,11 @@ contains
                 if (boundary_x .eq. 1) then
                   cycle
                 end if
-                if ((x_glob .lt. injector_padding)) then
+                if ((x_glob .lt. injector_sx)) then
                   species(s) % prtl_tile(ti, tj, tk) % u(p) = -0.1
                   species(s) % prtl_tile(ti, tj, tk) % v(p) = 0
                   species(s) % prtl_tile(ti, tj, tk) % w(p) = 0
-                else if (x_glob .ge. global_mesh % sx - injector_padding) then
+                else if (x_glob .ge. global_mesh % sx - injector_sx) then
                   species(s) % prtl_tile(ti, tj, tk) % u(p) = 0.1
                   species(s) % prtl_tile(ti, tj, tk) % v(p) = 0
                   species(s) % prtl_tile(ti, tj, tk) % w(p) = 0
@@ -427,33 +441,37 @@ contains
                 ! . . . . . . .
                 y_glob = REAL(species(s) % prtl_tile(ti, tj, tk) % yi(p) + this_meshblock % ptr % y0) &
                          + species(s) % prtl_tile(ti, tj, tk) % dy(p)
-                z_glob = species(s) % prtl_tile(ti, tj, tk) % payload1(p)
-                leaving_in_x = (x_glob .lt. REAL(global_mesh % sx) * 0.5 - ph_Lbox * 0.5) .or. &
-                               (x_glob .ge. REAL(global_mesh % sx) * 0.5 + ph_Lbox * 0.5)
-                leaving_in_y = (boundary_y .ne. 1) .and. ((y_glob .lt. 2.0 * ds_abs) .or. &
-                                                          (y_glob .ge. REAL(global_mesh % sy) - 2.0 * ds_abs))
-                leaving_in_z = (abs(z_glob) .ge. 0.5 * ph_Lbox)
+                distance_z = abs(species(s) % prtl_tile(ti, tj, tk) % payload3(p))
+                leaving_in_x = (x_glob .lt. ph_injector_x1 - 2.0) .or. (x_glob .ge. ph_injector_x2 + 2.0)
+                leaving_in_y = (boundary_y .ne. 1) .and. ((y_glob .lt. 2.0 * ds_abs) .or. (y_glob .ge. REAL(global_mesh % sy) - 2.0 * ds_abs))
+                leaving_in_z = distance_z .gt. global_mesh % sy * 0.5
 
-                if (leaving_in_x .or. leaving_in_y .or. leaving_in_z) then
-                  ! remove photons
-                  call createParticle(ph_index_esc, &
-                                      species(s) % prtl_tile(ti, tj, tk) % xi(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % yi(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % zi(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % dx(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % dy(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % dz(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % u(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % v(p), &
-                                      species(s) % prtl_tile(ti, tj, tk) % w(p), &
-                                      ind=species(s) % prtl_tile(ti, tj, tk) % ind(p), &
-                                      proc=species(s) % prtl_tile(ti, tj, tk) % proc(p), &
-                                      weight=species(s) % prtl_tile(ti, tj, tk) % weight(p), &
-                                      payload1=species(s) % prtl_tile(ti, tj, tk) % payload1(p), &
-                                      payload2=species(s) % prtl_tile(ti, tj, tk) % payload2(p), &
-                                      payload3=species(s) % prtl_tile(ti, tj, tk) % payload3(p))
-                  species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
+                if (leaving_in_y) then
+                  ph_esc_index = ph_EscInY_index
+                else if (leaving_in_z) then
+                  ph_esc_index = ph_EscInZ_index
+                else if (leaving_in_x) then
+                  ph_esc_index = ph_EscInX_index
+                else
+                  cycle
                 end if
+
+                ! remove photons after distance in Z
+                call createParticle(ph_esc_index, &
+                                    species(s) % prtl_tile(ti, tj, tk) % xi(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % yi(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % zi(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % dx(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % dy(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % dz(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % u(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % v(p), &
+                                    species(s) % prtl_tile(ti, tj, tk) % w(p), &
+                                    weight=species(s) % prtl_tile(ti, tj, tk) % weight(p), &
+                                    payload1=species(s) % prtl_tile(ti, tj, tk) % payload1(p), &
+                                    payload2=species(s) % prtl_tile(ti, tj, tk) % payload2(p), &
+                                    payload3=species(s) % prtl_tile(ti, tj, tk) % payload3(p))
+                species(s) % prtl_tile(ti, tj, tk) % proc(p) = -1
               end if
             end do
           end do
@@ -474,7 +492,7 @@ contains
     real :: kappa, injector_sx_flds
     real :: x1min, x1max, y1min, y1max, y2min, y2max
 
-    if ((step .ge. open_bc_y_step) .and. (open_bc_y_step .ge. 0)) then
+    if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
       absorb_y = 1
       boundary_y = 0
       call reassignNeighborsForAll(meshblocks)
@@ -483,7 +501,7 @@ contains
     ! --------------------------------------------------------------------------
     !                        boundaries near the injector
     ! --------------------------------------------------------------------------
-    injector_sx_flds = REAL(injector_padding - nfilter)
+    injector_sx_flds = REAL(injector_sx - nfilter)
     x1min = injector_sx_flds
     x1max = REAL(global_mesh % sx) - injector_sx_flds
 
@@ -492,8 +510,8 @@ contains
       x_glob = REAL(i_glob)
       kappa = 10.0
 
-      by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
-      bz_target = b_guide
+      by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / current_width)
+      bz_target = bguide
 
       if ((x_glob .lt. x1min) .or. (x_glob .ge. x1max)) then
         if (x_glob .lt. x1min) then
@@ -531,15 +549,15 @@ contains
           y_glob = REAL(j_glob)
 
           ! i, j + 1/2
-          bx_target = 0.1 * tanh(((y_glob + 0.5) - 0.5 * REAL(global_mesh % sy)) / cs_width)
+          bx_target = 0.1 * tanh(((y_glob + 0.5) - 0.5 * REAL(global_mesh % sy)) / current_width)
           ! i + 1/2, j
-          by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
+          by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / current_width)
           ! i + 1/2, j + 1/2
-          bz_target = b_guide
+          bz_target = bguide
           ! i + 1/2, j
           ex_target = 0.0
           ! i, j + 1/2
-          ey_target = -0.1 * b_guide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / cs_width)
+          ey_target = -0.1 * bguide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / current_width)
           ! i, j
           ez_target = 0.1
           !
@@ -610,7 +628,7 @@ contains
     !$omp declare simd(usrSetPhPld)
     real, intent(in) :: u0, v0, w0, over_e_temp
     real, intent(out) :: incr_pld1, incr_pld2, incr_pld3
-    incr_pld1 = CC * w0 * over_e_temp; incr_pld2 = 1.0; incr_pld3 = 0.0
+    incr_pld1 = 0.0; incr_pld2 = 0.0; incr_pld3 = CC * w0 * over_e_temp
   end subroutine
 
   elemental subroutine usrSetElPld(q_over_m, u0, v0, w0, over_e_temp, &

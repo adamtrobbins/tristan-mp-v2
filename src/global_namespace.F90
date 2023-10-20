@@ -18,7 +18,7 @@ module m_globalnamespace
 
   integer, parameter :: dprec = kind(1.0d0)
   integer, parameter :: sprec = kind(1.0e0)
-  integer, parameter :: UNIT_input = 10, UNIT_output = 20, UNIT_history = 30, UNIT_diag = 40, UNIT_warn = 80
+  integer, parameter :: UNIT_input = 10, UNIT_output = 20, UNIT_diag = 40, UNIT_warn = 80
   integer, parameter :: UNIT_params = 50, UNIT_usrout = 90
   integer, parameter :: UNIT_restart = 60
 
@@ -82,4 +82,3 @@ contains
     unit_ch = CC**2 / (ppc0 * c_omp**2)
   end subroutine renormalizeUnits
 end module m_globalnamespace
-

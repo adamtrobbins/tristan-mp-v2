@@ -27,7 +27,7 @@ module m_userfile
   ! photon variables
   integer, private :: ph_index, ph_index_esc
   real, private :: ph_temperature, ph_fraction, ph_Lbox
-  logical, private :: ph_planck, ph_isotropic
+  logical, private :: ph_planck
   !...............................................................!
 
   !--- PRIVATE functions -----------------------------------------!
@@ -71,11 +71,8 @@ contains
     ! inject in the midplane
     xg = 0.5 * REAL(global_mesh % sx)
     yg = random(dseed) * REAL(global_mesh % sy)
-#if defined (twoD)
-    zg = 0.5
-#elif defined (threeD)
-    zg = random(dseed) * REAL(global_mesh % sz)
-#endif
+    zg = random(dseed) * ph_Lbox * 2.0
+
     if (ph_planck) then
       ! planck distribution
       energy = ph_temperature * planckSample()
@@ -84,26 +81,13 @@ contains
       energy = ph_temperature
     end if
 
-    if (ph_isotropic) then
-      ! isotropic
-      call generateRandomDirection(kx, ky, kz)
-    else
-      ! beam
-      ! kx = random(dseed) - 0.5
-      if (random(dseed) .lt. 0.5) then
-        kx = 1.0
-      else
-        kx = -1.0
-      end if
-      ky = 0.0
-      kz = 0.0
-    end if
-
-    call injectParticleGlobally(ph_index, xg, yg, zg, &
+    call generateRandomDirection(kx, ky, kz)
+    call injectParticleGlobally(ph_index, xg, yg, 0.5, &
                                 energy * kx, energy * ky, energy * kz, &
                                 1.0, & ! < weight
-                                0.0, 0.0, 0.0)
-    !    payload1 -- displacement in z
+                                zg, 0.0, 0.0)
+    !  payloads:
+    !    payload1 -- z position
     !    payload2 -- lifetime
     !    payload3 -- # of scatterings
   end subroutine injectPhoton
@@ -143,20 +127,24 @@ contains
     call getInput('problem', 'ph_index', ph_index, 7)
     call getInput('problem', 'ph_index_esc', ph_index_esc, 8)
     call getInput('problem', 'ph_fraction', ph_fraction)
-    call getInput('problem', 'ph_isotropic', ph_isotropic)
     ! temperature for the Planckian photon distribution
     ! negative temperature means that the monoenergetic distribution is used
     call getInput('problem', 'ph_temperature', ph_temperature)
     ph_planck = (ph_temperature .gt. 0.0)
     ph_temperature = ABS(ph_temperature)
-#if defined (twoD)
-    ph_Lbox = MAX(REAL(global_mesh % sx - 2 * injector_padding), &
-                  REAL(global_mesh % sy / 2.0))
-#elif defined (threeD)
-    ph_Lbox = MIN(REAL(global_mesh % sx - 2 * injector_padding), &
-                  REAL(global_mesh % sz / 2.0))
-#endif
+    ph_Lbox = REAL(global_mesh % sy) / 2.0
   end subroutine userReadInput
+
+  ! function userSLBload(x_glob, y_glob, z_glob, &
+  !                      dummy1, dummy2, dummy3)
+  !   real :: userSLBload
+  !   ! global coordinates
+  !   real, intent(in), optional :: x_glob, y_glob, z_glob
+  !   ! global box dimensions
+  !   real, intent(in), optional :: dummy1, dummy2, dummy3
+  !   real :: distance, sx_glob
+  !   return
+  ! end function
 
   function userSpatialDistribution(x_glob, y_glob, z_glob, &
                                    dummy1, dummy2, dummy3)
@@ -188,15 +176,19 @@ contains
     procedure(spatialDistribution), pointer :: spat_distr_ptr => null()
     spat_distr_ptr => userSpatialDistribution
 
-    back_region % x_min = 0.0
-    back_region % x_max = 0.5 * REAL(global_mesh % sx)
+    ! nUP_elec = 0.5 * ppc0
+    ! nCS_elec = nUP_elec * nCS_over_nUP
 
+    ! nUP_pos = 0.5 * ppc0
+    ! nCS_pos = nUP_pos * nCS_over_nUP
+
+    ! sx_glob = REAL(global_mesh % sx)
+    ! sy_glob = REAL(global_mesh % sy)
+
+    back_region % x_min = 0.0
     back_region % y_min = 0.0
+    back_region % x_max = 0.5 * REAL(global_mesh % sx)
     back_region % y_max = REAL(global_mesh % sy)
-#if defined (threeD)
-    back_region % z_min = 0.0
-    back_region % z_max = REAL(global_mesh % sz)
-#endif
     call fillRegionWithThermalPlasma(back_region, (/btm_lecs, btm_ions/), 2, 0.5 * ppc0, up_temperature)
 
     back_region % x_min = 0.5 * REAL(global_mesh % sx)
@@ -213,13 +205,8 @@ contains
 
       back_region % x_min = REAL(global_mesh % sx) * 0.5 - 10 * cs_width
       back_region % x_max = REAL(global_mesh % sx) * 0.5 + 10 * cs_width
-
       back_region % y_min = 0
       back_region % y_max = REAL(global_mesh % sy)
-#if defined (threeD)
-      back_region % z_min = 0
-      back_region % z_max = REAL(global_mesh % sz)
-#endif
       call fillRegionWithThermalPlasma(back_region, (/cs_lecs, cs_ions/), 2, 0.5 * ppc0, cs_temperature, &
                                        shift_gamma=shift_gamma, shift_dir=3, &
                                        spat_distr_ptr=spat_distr_ptr, &
@@ -265,11 +252,7 @@ contains
     integer :: s, ti, tj, tk
 
     ! inject new photons
-#if defined (twoD)
-    nphotons_r = 2.0 * ph_Lbox * CC * REAL(ph_fraction, 8) * REAL(ppc0, 8)
-#elif defined (threeD)
-    nphotons_r = 2.0 * ph_Lbox**2 * CC * REAL(ph_fraction, 8) * REAL(ppc0, 8)
-#endif
+    nphotons_r = 4.0 * REAL(ppc0, 8) * ph_Lbox * CC * REAL(ph_fraction, 8)
     nphotons = INT(nphotons_r)
     do n = 1, nphotons
       call injectPhoton(step)
@@ -317,11 +300,11 @@ contains
     integer :: imin_inj, imax_inj, imin_inj_local, imax_inj_local
     integer :: npart_sp, ncells
     real :: x_glob, y_glob, z_glob, injector_sx_flds
-    real :: xg, yg, zg, dummy1, dummy2, x_min, x_max, y_min, y_max, z_min, z_max
+    real :: energy, kx, ky, kz
+    real :: xg, yg, zg, dummy1, dummy2
     logical :: leaving_in_x, leaving_in_y, leaving_in_z
     real(kind=8) :: dens_imin, dens_imax
 
-    ! replenish upstream electrons/positrons
     call computeNpart(top_lecs, reset=.true., ds=0)
     call computeNpart(top_ions, reset=.false., ds=0)
     if (top_lecs .ne. btm_lecs) then
@@ -353,10 +336,6 @@ contains
         imin_inj_region % x_max = REAL(imin_inj) + 1.0
         imin_inj_region % y_min = this_meshblock % ptr % y0
         imin_inj_region % y_max = this_meshblock % ptr % y0 + this_meshblock % ptr % sy
-#if defined (threeD)
-        imin_inj_region % z_min = this_meshblock % ptr % z0
-        imin_inj_region % z_max = this_meshblock % ptr % z0 + this_meshblock % ptr % sz
-#endif
         call fillRegionWithThermalPlasma(imin_inj_region, (/btm_lecs, btm_ions/), 2, &
                                          0.5 * REAL(ppc0 - dens_imin), up_temperature)
       end if
@@ -381,10 +360,6 @@ contains
         imax_inj_region % x_max = REAL(imax_inj)
         imax_inj_region % y_min = this_meshblock % ptr % y0
         imax_inj_region % y_max = this_meshblock % ptr % y0 + this_meshblock % ptr % sy
-#if defined (threeD)
-        imax_inj_region % z_min = this_meshblock % ptr % z0
-        imax_inj_region % z_max = this_meshblock % ptr % z0 + this_meshblock % ptr % sz
-#endif
         call fillRegionWithThermalPlasma(imax_inj_region, (/top_lecs, top_ions/), 2, &
                                          0.5 * REAL(ppc0 - dens_imax), up_temperature)
       end if
@@ -432,7 +407,7 @@ contains
                                (x_glob .ge. REAL(global_mesh % sx) * 0.5 + ph_Lbox * 0.5)
                 leaving_in_y = (boundary_y .ne. 1) .and. ((y_glob .lt. 2.0 * ds_abs) .or. &
                                                           (y_glob .ge. REAL(global_mesh % sy) - 2.0 * ds_abs))
-                leaving_in_z = (abs(z_glob) .ge. 0.5 * ph_Lbox)
+                leaving_in_z = (z_glob .lt. 0.0) .or. (z_glob .ge. 2 * ph_Lbox)
 
                 if (leaving_in_x .or. leaving_in_y .or. leaving_in_z) then
                   ! remove photons

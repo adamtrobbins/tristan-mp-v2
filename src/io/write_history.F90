@@ -38,6 +38,8 @@ contains
     character(len=STR_MAX) :: FMT, dummy1, dummy2, dummy3, filename
     procedure(getFMT), pointer :: get_fmt_ptr => null()
     real :: volume
+    integer :: io, stat
+    character(len=STR_MAX) :: errmsg
 
     get_fmt_ptr => getFMTForRealScientific
 
@@ -71,48 +73,52 @@ contains
       column_width = 13
 
       if (first_step .and. (.not. rst_simulation)) then
+        print *, "WRITING HISTORY ON FIRST STEP", filename
         first_step = .false.
-        open (UNIT_history, file=filename, status="replace", form="formatted")
+        open (newunit=io, file=filename, status="new", form="formatted", action="write", iostat=stat, iomsg=errmsg)
+        if (stat .ne. 0) then
+          call throwError("writeHistory: Error opening file: "//trim(errmsg))
+        end if
 
         FMT = "(A7,A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A"//trim(STR(column_width))//")"
-        write (UNIT_history, FMT, advance='no') '[time]', '[Ex^2]', '[Ey^2]', '[Ez^2]'
+        write (io, FMT, advance='no') '[time]', '[Ex^2]', '[Ey^2]', '[Ez^2]'
         FMT = "(A"//trim(STR(column_width))//",A"//trim(STR(column_width))//",A"//trim(STR(column_width))//")"
-        write (UNIT_history, FMT, advance='no') '[Bx^2]', '[By^2]', '[Bz^2]'
+        write (io, FMT, advance='no') '[Bx^2]', '[By^2]', '[Bz^2]'
         do s = 1, nspec
           FMT = "(A"//trim(STR(column_width))//")"
-          write (UNIT_history, FMT, advance='no') '[Esp'//trim(STR(s))//']'
+          write (io, FMT, advance='no') '[Esp'//trim(STR(s))//']'
         end do
         do s = 1, nspec
           FMT = "(A"//trim(STR(column_width))//")"
-          write (UNIT_history, FMT, advance='no') '[Nsp'//trim(STR(s))//']'
+          write (io, FMT, advance='no') '[Nsp'//trim(STR(s))//']'
         end do
         FMT = "(A"//trim(STR(column_width))//")"
-        write (UNIT_history, FMT) '[Etot]'
+        write (io, FMT) '[Etot]'
 
-        close (UNIT_history)
+        close (io)
       end if  ! first_step
 
-      open (UNIT_history, file=filename, status="old", position="append", form="formatted")
+      open (newunit=io, file=filename, status="old", position="append", form="formatted", action="write")
 
       dummy1 = get_fmt_ptr(global_e_energy(1), column_width)
       dummy2 = get_fmt_ptr(global_e_energy(2), column_width)
       dummy3 = get_fmt_ptr(global_e_energy(3), column_width)
       FMT = "(I7,"//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//")"
-      write (UNIT_history, FMT, advance='no') step, global_e_energy(1), global_e_energy(2), global_e_energy(3)
+      write (io, FMT, advance='no') step, global_e_energy(1), global_e_energy(2), global_e_energy(3)
       dummy1 = get_fmt_ptr(global_b_energy(1), column_width)
       dummy2 = get_fmt_ptr(global_b_energy(2), column_width)
       dummy3 = get_fmt_ptr(global_b_energy(3), column_width)
       FMT = "("//trim(dummy1)//","//trim(dummy2)//","//trim(dummy3)//")"
-      write (UNIT_history, FMT, advance='no') global_b_energy(1), global_b_energy(2), global_b_energy(3)
+      write (io, FMT, advance='no') global_b_energy(1), global_b_energy(2), global_b_energy(3)
       do s = 1, nspec
         dummy1 = get_fmt_ptr(global_prtl_energy(s), column_width)
         FMT = "("//trim(dummy1)//")"
-        write (UNIT_history, FMT, advance='no') global_prtl_energy(s)
+        write (io, FMT, advance='no') global_prtl_energy(s)
       end do
       do s = 1, nspec
         dummy1 = get_fmt_ptr(global_prtl_num(s), column_width)
         FMT = "("//trim(dummy1)//")"
-        write (UNIT_history, FMT, advance='no') global_prtl_num(s)
+        write (io, FMT, advance='no') global_prtl_num(s)
       end do
       Etot = global_e_energy(1) + global_e_energy(2) + global_e_energy(3)
       Etot = Etot + global_b_energy(1) + global_b_energy(2) + global_b_energy(3)
@@ -121,9 +127,9 @@ contains
       end do
       dummy1 = get_fmt_ptr(Etot, column_width)
       FMT = "("//trim(dummy1)//")"
-      write (UNIT_history, FMT) Etot
+      write (io, FMT) Etot
 
-      close (UNIT_history)
+      close (io)
     end if  !  mpi_rank = 0
 
     call printDiag("writeHistory()", 2)
