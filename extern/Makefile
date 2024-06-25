@@ -3,7 +3,7 @@ ROOTDIR := ..
 
 SOURCES := $(shell find ${ROOTDIR}/src -name "*.F*") $(shell find ${ROOTDIR}/unit -name "*.F*") $(shell find ${ROOTDIR}/user -name "*.F*")
 SOURCES := $(filter-out ${ROOTDIR}/src/algorithms/gca/%,$(SOURCES))
-PUBLIC := $(subst ${ROOTDIR}/, ${PUBDIR}/, $(SOURCES))
+PUBLIC := $(subst ${ROOTDIR}/, ${PUBDIR}/, $(SOURCES)) ${PUBDIR}/CMakeLists.txt ${PUBDIR}/src/CMakeLists.txt
 
 public: $(PUBLIC)
 	@cp -r ${ROOTDIR}/tristanVis/ ${PUBDIR}/
@@ -24,6 +24,21 @@ public: $(PUBLIC)
 ${PUBDIR}/%: ${ROOTDIR}/%
 	@mkdir -p $(dir ${@})
 	@-./unifdef $< -o $@ -U QED -U BWPAIRPRODUCTION -U COMPTONSCATTERING -U PAIRANNIHILATION -U GCA -B -t
+
+${PUBDIR}/CMakeLists.txt: ${ROOTDIR}/CMakeLists.txt
+	@cp $< $@
+	@sed -i.bak '/BW pair production/d' $@
+	@sed -i.bak '/QED step/d' $@
+	@sed -i.bak '/Compton scattering/d' $@
+	@sed -i.bak '/Pair annihilation/d' $@
+	@sed -i.bak '/Enable QED/d' $@
+	@sed -i.bak '/Enable Breit-Wheeler pair production/d' $@
+	@sed -i.bak '/Enable pair annihilation/d' $@
+	@sed -i.bak '/Number of GCA/d' $@
+
+${PUBDIR}/src/CMakeLists.txt: ${ROOTDIR}/src/CMakeLists.txt
+	@cp $< $@
+	@sed -i.bak '/gca/d' $@
 
 clean:
 	@echo "Cleaning ..."
