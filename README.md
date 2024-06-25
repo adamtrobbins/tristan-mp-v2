@@ -1,4 +1,4 @@
-# Tristan v2.6
+# Tristan v2.8
 
 [![DOI](https://zenodo.org/badge/234551890.svg)](https://zenodo.org/badge/latestdoi/234551890)
 
@@ -16,7 +16,7 @@ On clusters typically all you need to do is to load the specific modules see [he
 
 If you are, however, running on a local machine make sure to install the following prerequisites (assuming non-Intel compiler and `apt` package manager):
 
-```shell
+```sh
 # gcc + openmpi
 sudo apt install build-essential libopenmpi-dev
 # hdf5
@@ -27,6 +27,8 @@ sudo apt libhdf5-openmpi-dev hdf5-tools
 
 ### Usage
 
+#### `configure.py` + GNU Make
+
 ```shell
 # to view all configuration options
 python3 configure.py --help
@@ -34,8 +36,35 @@ python3 configure.py --help
 python3 configure.py -mpi08 -hdf5 --user=user_2d_rec -2d
 # compile and link (-j compiles in parallel which is much faster)
 make all -j
-# run the code (on clusters need to do `srun`)
-mpirun -np <NCORES> ./bin/tristan-mp2d -input ../inputs/input.2d_rec
+# executable will be in the `bin/` directory
+```
+
+#### Cmake
+
+Since `v2.8` we also support `cmake` for the code configuration. 
+
+```sh
+# to configure the code (example)
+cmake -B build -D mpi08=ON -D hdf5=ON -D user=user_2d_rec -D dim=2
+# compile
+cmake --build build -j
+# executable will be in the `build/src/` directory (*.xc extension)
+```
+
+Running:
+
+```sh
+# run the code (on clusters need to do `srun`, or `irun` etc. depending on the cluster)
+mpirun -np <NCORES> ./<EXECUTABLE> -input <INPUTFILE> -output <OUTPUTDIR>
+```
+
+#### `CMake` (experimental support)
+
+```shell
+# preconfigure the code using
+cmake -B build -D user=<USERFILE> -D dim=3 ...
+# compile
+cmake --build build -j $(nproc)
 ```
 
 ### Docker
@@ -84,7 +113,8 @@ The `dev/main` branch is the most up-to-date **tested** version of the code, and
 ### Development
 
 Since `v2.4` code formatting policy is employed. To follow the proper formatting automatically we use the `fprettify` tool. To install `fprettify` in the local directory (via `pip`) one can use the `dev-requirements.txt` file, by running the following: 
-```shell
+
+```sh
 # create a local pip environment
 python3 -m virtualenv venv
 # activate it
@@ -94,7 +124,8 @@ pip install -r dev-requirements.txt
 ```
 
 After that one can either use the tool in a stand-alone manner:
-```shell
+
+```sh
 ./venv/bin/fprettify -i 2 -w 4 --whitespace-assignment true --enable-decl --whitespace-decl true --whitespace-relational true --whitespace-logical true --whitespace-plusminus true --whitespace-multdiv true --whitespace-print true --whitespace-type true --whitespace-intrinsics true --enable-replacements -l 1000 [FILENAME.F90]
 ```
 or in the VSCode environment (see the extension list in the `.vscode/settings.json` of the current repo).
@@ -103,23 +134,26 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 
 ## Contributors (alphabetical order)
 
-* Fabio Bacchini (University of Colorado Boulder)
-* Alexander Chernoglazov (University of Maryland)
-* Daniel Groselj (Columbia)
-* Hayk Hakobyan (PPPL/Columbia)
-* Jens Mahlmann (Princeton)
-* Arno Vanthieghem (Princeton)
+* Fabio Bacchini (KU Leuven)
+* Alexander Chernoglazov (Univ. of Maryland)
+* Daniel Groselj (KU Leuven)
+* Hayk Hakobyan (Columbia/PPPL)
+* Jens Mahlmann (Columbia)
+* Arno Vanthieghem (Univ. of Paris)
 
 ## Board of trustees
 
 * Prof. Anatoly Spitkovsky (Princeton)
-* Prof. Sasha Philippov (University of Maryland)
+* Prof. Sasha Philippov (Univ. of Maryland)
 
 ## Publications
 
 __@TODO__
 
 ## Latest Releases
+* `v2.8` __Apr 2024__
+  * cmake support
+  * minor reformatting + bugfixes
 * `v2.6.1` __Aug 2023__
   * Fixed a buggy ordering of synchrotron cooling term and particle coordinate update (very minor correction)
 * `v2.6` __Jan 2023__

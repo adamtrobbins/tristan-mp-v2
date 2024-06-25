@@ -15,9 +15,11 @@
 !extern/
 !CITATION
 !LICENSE
+!CMakeLists.txt
 __pycache__
 .vscode
 extern/fprettify
+extern/public
 
 *.pyc
 .DS_Store
