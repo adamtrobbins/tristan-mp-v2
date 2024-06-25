@@ -27,9 +27,9 @@ sudo apt libhdf5-openmpi-dev hdf5-tools
 
 ### Usage
 
-#### Makefile
+#### `configure.py` + GNU Make
 
-```sh
+```shell
 # to view all configuration options
 python3 configure.py --help
 # to configure the code (example)
@@ -56,6 +56,15 @@ Running:
 ```sh
 # run the code (on clusters need to do `srun`, or `irun` etc. depending on the cluster)
 mpirun -np <NCORES> ./<EXECUTABLE> -input <INPUTFILE> -output <OUTPUTDIR>
+```
+
+#### `CMake` (experimental support)
+
+```shell
+# preconfigure the code using
+cmake -B build -D user=<USERFILE> -D dim=3 ...
+# compile
+cmake --build build -j $(nproc)
 ```
 
 ### Docker
@@ -125,17 +134,17 @@ or in the VSCode environment (see the extension list in the `.vscode/settings.js
 
 ## Contributors (alphabetical order)
 
-* Fabio Bacchini (University of Colorado Boulder)
-* Alexander Chernoglazov (University of Maryland)
-* Daniel Groselj (Columbia)
-* Hayk Hakobyan (PPPL/Columbia)
-* Jens Mahlmann (Princeton)
-* Arno Vanthieghem (Princeton)
+* Fabio Bacchini (KU Leuven)
+* Alexander Chernoglazov (Univ. of Maryland)
+* Daniel Groselj (KU Leuven)
+* Hayk Hakobyan (Columbia/PPPL)
+* Jens Mahlmann (Columbia)
+* Arno Vanthieghem (Univ. of Paris)
 
 ## Board of trustees
 
 * Prof. Anatoly Spitkovsky (Princeton)
-* Prof. Sasha Philippov (University of Maryland)
+* Prof. Sasha Philippov (Univ. of Maryland)
 
 ## Publications
 
