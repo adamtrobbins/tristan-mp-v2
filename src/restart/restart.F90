@@ -254,7 +254,8 @@ contains
     call renormalizeUnits()
 
     ! loading particles
-    do s = 1, nspec
+    ! hack should be nspec, set to 4 to accomodate the shell
+    do s = 1, 4 
       read (UNIT_restart) species(s) % cntr_sp
       read (UNIT_restart) species(s) % m_sp, species(s) % ch_sp
       ! check that the tile sizes are the same
@@ -336,9 +337,14 @@ contains
             read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % u_perp(1:num)
 #endif
 #ifdef PRTLPAYLOADS
-            read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % payload1(1:num)
-            read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % payload2(1:num)
-            read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % payload3(1:num)
+            !hack
+            !read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % payload1(1:num)
+            !read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % payload2(1:num)
+            !read (UNIT_restart) species(s) % prtl_tile(ti, tj, tk) % payload3(1:num)
+
+            species(s) % prtl_tile(ti, tj, tk) % payload1(1:num) = 0
+            species(s) % prtl_tile(ti, tj, tk) % payload2(1:num) = 0
+            species(s) % prtl_tile(ti, tj, tk) % payload3(1:num) = 0
 #endif
           end do
         end do

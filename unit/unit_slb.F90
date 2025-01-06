@@ -93,18 +93,44 @@ contains
     implicit none
     integer, optional, intent(in) :: step
     ! ... dummy loop ...
-    ! integer :: s, ti, tj, tk, p
-    ! do s = 1, nspec
-    !   do ti = 1, species(s)%tile_nx
-    !     do tj = 1, species(s)%tile_ny
-    !       do tk = 1, species(s)%tile_nz
-    !         do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
-    !           ...
-    !         end do
-    !       end do
-    !     end do
-    !   end do
-    ! end do
+    integer :: s, ti, tj, tk, p
+    do s = 1, nspec
+      do ti = 1, species(s)%tile_nx
+        do tj = 1, species(s)%tile_ny
+          do tk = 1, species(s)%tile_nz
+            do p = 1, species(s)%prtl_tile(ti, tj, tk)%npart_sp
+                x = species(s1) % prtl_tile(ti, tj, tk) % x(p)
+                y = species(s1) % prtl_tile(ti, tj, tk) % y(p)
+
+                if (s /= 1) then
+                  cycle
+                end if 
+
+                if (x < 30 * 25) then
+                  cycle
+                end if
+
+                if (x > 30.05 * 25) then
+                  cycle
+                end if
+
+              ! save particle coordinates/velocities
+                u = species(s1) % prtl_tile(ti, tj, tk) % u(p)
+                v = species(s1) % prtl_tile(ti, tj, tk) % v(p)
+                w = species(s1) % prtl_tile(ti, tj, tk) % w(p)
+                
+                integer :: x = 3.14
+
+                ind = species(s1) % prtl_tile(ti, tj, tk) % ind(p)
+                proc = species(s1) % prtl_tile(ti, tj, tk) % proc(p)
+
+                ! and then inject to new species
+                call InjectParticleGlobally(5, x, y, z, u, v, w, ind, proc, 1)
+            end do
+          end do
+        end do
+      end do
+     end do
   end subroutine userDriveParticles
   !............................................................!
 
