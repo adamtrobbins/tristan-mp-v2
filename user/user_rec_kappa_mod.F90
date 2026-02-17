@@ -17,6 +17,7 @@ module m_userfile
   !--- PRIVATE variables -----------------------------------------!
   real, private :: cs_overdensity, cs_width, up_temperature
   real, private :: injector_padding, measure_x
+  real, private :: ez_target_inj, kappa_inj
   real(kind=8), private :: injector_x1_fld, injector_x2_fld
   integer, private :: injector_reset_interval, open_boundaries
   integer, private :: cs_lecs, cs_ions, cs_heavy, up_lecs, up_ions, up_heavy
@@ -47,6 +48,8 @@ contains
     ! replenisher
     if (boundary_x .ne. 1) then
       call getInput('problem', 'injector_padding', injector_padding)
+      call getInput('problem', 'ez_target_inj', ez_target_inj, 0.0)
+      call getInput('problem', 'kappa_inj', kappa_inj, 10.0)
       if (injector_padding .lt. nfilter + 4) then
         print *, 'WARNING: injector_padding < nfilter + 4, setting injector_padding = nfilter + 4'
         injector_padding = nfilter + 4
@@ -280,7 +283,7 @@ contains
     logical, optional, intent(in) :: updateE, updateB
     real :: lambdaIJ, lambdaIpJ, lambdaIJp, lambdaIpJp
     real :: bx_target, by_target, bz_target, ex_target, ey_target, ez_target
-    real :: kappa, injector_padding_flds
+    real :: injector_padding_flds, kappa
     real :: x1min, x1max, y1min, y1max, y2min, y2max
 
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
@@ -299,8 +302,8 @@ contains
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
-      kappa = 10.0 !CHANGE 0.1 from 10.0 - AR 12-1-25 [CHANGE REVERTED]
-      ez_target = 0.1 !CHANGE added 12-08-25
+      kappa = kappa_inj !CHANGE 0.1 from 10.0 - AR 12-1-25 [CHANGE REVERTED]
+      ez_target = ez_target_inj !CHANGE added 12-08-25
 
       by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
       bz_target = b_guide
