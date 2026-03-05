@@ -48,8 +48,6 @@ contains
     ! replenisher
     if (boundary_x .ne. 1) then
       call getInput('problem', 'injector_padding', injector_padding)
-      call getInput('problem', 'ez_target_inj', ez_target_inj, 0.0)
-      call getInput('problem', 'kappa_inj', kappa_inj, 10.0)
       if (injector_padding .lt. nfilter + 4) then
         print *, 'WARNING: injector_padding < nfilter + 4, setting injector_padding = nfilter + 4'
         injector_padding = nfilter + 4
@@ -300,28 +298,10 @@ contains
     x1max = REAL(global_mesh % sx) - injector_padding_flds
 
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
-      ez_target = 0.0
-      if (x_glob .lt. x1min) then
-        ! left boundary: check left third of meshblock
-        if (i .lt. this_meshblock % ptr % sx / 3) then
-          do j = 0, this_meshblock % ptr % sy - 1
-            ez_target = ez_target + ez(i, j, 0)
-          end do
-          ez_target = ez_target / REAL(this_meshblock % ptr % sy)
-        end if
-      else if (x_glob .ge. x1max) then
-        ! right boundary: check right third of meshblock
-        if (i .ge. 2 * this_meshblock % ptr % sx / 3) then
-          do j = 0, this_meshblock % ptr % sy - 1
-            ez_target = ez_target + ez(i, j, 0)
-          end do
-          ez_target = ez_target / REAL(this_meshblock % ptr % sy)
-        end if
-      end if 
-
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
-      kappa = 10.0
+      kappa = kappa_inj !CHANGE 0.1 from 10.0 - AR 12-1-25 [CHANGE REVERTED]
+      ez_target = ez_target_inj !CHANGE added 12-08-25
 
       by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
       bz_target = b_guide
@@ -343,7 +323,7 @@ contains
         bz(i, :, :) = (1.0 - exp(-lambdaIpJp)) * bz_target + exp(-lambdaIpJp) * bz(i, :, :)
         ex(i, :, :) = exp(-lambdaIpJ) * ex(i, :, :)
         ey(i, :, :) = exp(-lambdaIJp) * ey(i, :, :)
-        ez(i, :, :) = (1.0 - exp(-lambdaIJ)) * ez_target + exp(-lambdaIJ) * ez(i, :, :)
+        ez(i, :, :) = (1.0 - exp(-lambdaIJ)) * ez_target + exp(-lambdaIJ) * ez(i, :, :) !CHANGE TO INCLUDE TARGET
       end if
     end do
 
