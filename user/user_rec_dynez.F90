@@ -48,6 +48,8 @@ contains
     ! replenisher
     if (boundary_x .ne. 1) then
       call getInput('problem', 'injector_padding', injector_padding)
+      call getInput('problem', 'ez_target_inj', ez_target_inj, 0.0)
+      call getInput('problem', 'kappa_inj', kappa_inj, 10.0)
       if (injector_padding .lt. nfilter + 4) then
         print *, 'WARNING: injector_padding < nfilter + 4, setting injector_padding = nfilter + 4'
         injector_padding = nfilter + 4
@@ -284,6 +286,11 @@ contains
     real :: injector_padding_flds, kappa
     real :: x1min, x1max, y1min, y1max, y2min, y2max
 
+    integer :: ii, jj
+    integer :: sx_loc, nx_third, x_lo, x_hi
+    real(kind=8) :: ez_sum
+    integer(kind=8) :: ez_cnt
+
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
       absorb_y = 1
       boundary_y = 0
@@ -300,8 +307,38 @@ contains
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
-      kappa = kappa_inj !CHANGE 0.1 from 10.0 - AR 12-1-25 [CHANGE REVERTED]
-      ez_target = ez_target_inj !CHANGE added 12-08-25
+      kappa = 10.0
+
+      sx_loc   = this_meshblock % ptr % sx
+      nx_third = sx_loc / 3
+
+      ez_sum = 0.0
+      ez_cnt = 0
+
+      if (x_glob .lt. x1min) then
+        ! closest third to the left injector
+        x_lo = 0
+        x_hi = nx_third - 1
+      else
+        ! closest third to the right injector
+        x_lo = sx_loc - nx_third
+        x_hi = sx_loc - 1
+      end if
+
+      do ii = x_lo, x_hi
+        do jj = 0, this_meshblock % ptr % sy - 1
+          ez_sum = ez_sum + ez(ii, jj, 1)
+          ez_cnt = ez_cnt + 1
+        end do
+      end do
+
+      if (ez_cnt .gt. 0)then
+        ez_target = ez_sum / ez_cnt
+      else
+        ez_target = 0.0
+      end if
+
+
 
       by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
       bz_target = b_guide
@@ -323,7 +360,7 @@ contains
         bz(i, :, :) = (1.0 - exp(-lambdaIpJp)) * bz_target + exp(-lambdaIpJp) * bz(i, :, :)
         ex(i, :, :) = exp(-lambdaIpJ) * ex(i, :, :)
         ey(i, :, :) = exp(-lambdaIJp) * ey(i, :, :)
-        ez(i, :, :) = (1.0 - exp(-lambdaIJ)) * ez_target + exp(-lambdaIJ) * ez(i, :, :) !CHANGE TO INCLUDE TARGET
+        ez(i, :, :) = (1.0 - exp(-lambdaIJ)) * ez_target + exp(-lambdaIJ) * ez(i, :, :)
       end if
     end do
 
