@@ -286,6 +286,11 @@ contains
     real :: injector_padding_flds, kappa
     real :: x1min, x1max, y1min, y1max, y2min, y2max
 
+    integer :: ii, jj
+    integer :: sx_loc, nx_third, x_lo, x_hi
+    real(kind=8) :: ez_sum
+    integer(kind=8) :: ez_cnt
+
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
       absorb_y = 1
       boundary_y = 0
@@ -301,23 +306,35 @@ contains
 
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       ez_target = 0.0
+
+      sx_loc   = this_meshblock % ptr % sx
+      nx_third = max(1, sx_loc / 3)   ! integer division; ensure at least 1 cell
+
+      ez_sum = 0.0_8
+      ez_cnt = 0_8
+
       if (x_glob .lt. x1min) then
-        ! left boundary: check left third of meshblock
-        if (i .lt. this_meshblock % ptr % sx / 3) then
-          do j = 0, this_meshblock % ptr % sy - 1
-            ez_target = ez_target + ez(i, j, 0)
-          end do
-          ez_target = ez_target / REAL(this_meshblock % ptr % sy)
-        end if
-      else if (x_glob .ge. x1max) then
-        ! right boundary: check right third of meshblock
-        if (i .ge. 2 * this_meshblock % ptr % sx / 3) then
-          do j = 0, this_meshblock % ptr % sy - 1
-            ez_target = ez_target + ez(i, j, 0)
-          end do
-          ez_target = ez_target / REAL(this_meshblock % ptr % sy)
-        end if
-      end if 
+        ! closest third to the left injector
+        x_lo = 0
+        x_hi = nx_third - 1
+      else
+        ! closest third to the right injector
+        x_lo = sx_loc - nx_third
+        x_hi = sx_loc - 1
+      end if
+
+      do ii = x_lo, x_hi
+        do jj = 0, this_meshblock % ptr % sy - 1
+          ez_sum = ez_sum + real(ez(ii, jj, kk), kind=8)
+          ez_cnt = ez_cnt + 1_8
+        end do
+      end do
+
+      if (ez_cnt .gt. 0_8) then
+        ez_target = real(ez_sum / real(ez_cnt, kind=8))
+      else
+        ez_target = 0.0
+      end if
 
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
