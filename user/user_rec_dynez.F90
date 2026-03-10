@@ -291,6 +291,10 @@ contains
     real(kind=8) :: ez_sum
     integer(kind=8) :: ez_cnt
 
+    real(kind=8) :: ez_sum_l, ez_sum_r
+    integer(kind=8) :: ez_cnt_l, ez_cnt_r
+    real :: ez_target_left, ez_target_right
+
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
       absorb_y = 1
       boundary_y = 0
@@ -304,6 +308,29 @@ contains
     x1min = injector_padding_flds
     x1max = REAL(global_mesh % sx) - injector_padding_flds
 
+    sx_loc   = this_meshblock % ptr % sx
+    nx_third = sx_loc / 3
+
+    ! ---- left target
+    ez_sum_l = 0d0; ez_cnt_l = 0
+    do ii = 0, nx_third - 1
+      do jj = 0, this_meshblock % ptr % sy - 1
+        ez_sum_l = ez_sum_l + ez(ii, jj, 1)
+        ez_cnt_l = ez_cnt_l + 1
+      end do
+    end do
+    ez_target_left = real(ez_sum_l / ez_cnt_l, kind(ez_target_left))
+
+    ! ---- right target
+    ez_sum_r = 0d0; ez_cnt_r = 0
+    do ii = sx_loc - nx_third, sx_loc - 1
+      do jj = 0, this_meshblock % ptr % sy - 1
+        ez_sum_r = ez_sum_r + ez(ii, jj, 1)
+        ez_cnt_r = ez_cnt_r + 1
+      end do
+    end do
+    ez_target_right = real(ez_sum_r / ez_cnt_r, kind(ez_target_right))
+
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
       x_glob = REAL(i_glob)
@@ -312,33 +339,11 @@ contains
       sx_loc   = this_meshblock % ptr % sx
       nx_third = sx_loc / 3
 
-      ez_sum = 0.0
-      ez_cnt = 0
-
       if (x_glob .lt. x1min) then
-        ! closest third to the left injector
-        x_lo = 0
-        x_hi = nx_third - 1
+        ez_target = ez_target_left
       else
-        ! closest third to the right injector
-        x_lo = sx_loc - nx_third
-        x_hi = sx_loc - 1
+        ez_target = ez_target_right
       end if
-
-      do ii = x_lo, x_hi
-        do jj = 0, this_meshblock % ptr % sy - 1
-          ez_sum = ez_sum + ez(ii, jj, 1)
-          ez_cnt = ez_cnt + 1
-        end do
-      end do
-
-      if (ez_cnt .gt. 0)then
-        ez_target = ez_sum / ez_cnt
-      else
-        ez_target = 0.0
-      end if
-
-
 
       by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
       bz_target = b_guide
