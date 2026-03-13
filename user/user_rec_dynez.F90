@@ -291,9 +291,8 @@ contains
     real(kind=8) :: ez_sum
     integer(kind=8) :: ez_cnt
 
-    real(kind=8) :: ez_sum_l, ez_sum_r
-    integer(kind=8) :: ez_cnt_l, ez_cnt_r
-    real :: ez_target_left, ez_target_right
+    real(kind=8) :: ez_sum_both
+    integer(kind=8) :: ez_cnt_both
 
     if ((step .ge. open_boundaries) .and. (open_boundaries .ge. 0)) then
       absorb_y = 1
@@ -311,25 +310,23 @@ contains
     sx_loc   = this_meshblock % ptr % sx
     nx_third = sx_loc / 3
 
-    ! ---- left target
-    ez_sum_l = 0d0; ez_cnt_l = 0
+    ! ---- average target over both left and right thirds
+    ez_sum_both = 0d0; ez_cnt_both = 0
+    ! left third
     do ii = 0, nx_third - 1
       do jj = 0, this_meshblock % ptr % sy - 1
-        ez_sum_l = ez_sum_l + ez(ii, jj, 1)
-        ez_cnt_l = ez_cnt_l + 1
+        ez_sum_both = ez_sum_both + ez(ii, jj, 1)
+        ez_cnt_both = ez_cnt_both + 1
       end do
     end do
-    ez_target_left = real(ez_sum_l / ez_cnt_l, kind(ez_target_left))
-
-    ! ---- right target
-    ez_sum_r = 0d0; ez_cnt_r = 0
+    ! right third
     do ii = sx_loc - nx_third, sx_loc - 1
       do jj = 0, this_meshblock % ptr % sy - 1
-        ez_sum_r = ez_sum_r + ez(ii, jj, 1)
-        ez_cnt_r = ez_cnt_r + 1
+        ez_sum_both = ez_sum_both + ez(ii, jj, 1)
+        ez_cnt_both = ez_cnt_both + 1
       end do
     end do
-    ez_target_right = real(ez_sum_r / ez_cnt_r, kind(ez_target_right))
+    ez_target = real(ez_sum_both / ez_cnt_both, kind(ez_target))
 
     do i = -NGHOST, this_meshblock % ptr % sx - 1 + NGHOST
       i_glob = i + this_meshblock % ptr % x0
@@ -338,12 +335,6 @@ contains
 
       sx_loc   = this_meshblock % ptr % sx
       nx_third = sx_loc / 3
-
-      if (x_glob .lt. x1min) then
-        ez_target = ez_target_left
-      else
-        ez_target = ez_target_right
-      end if
 
       by_target = tanh(((x_glob + 0.5) - 0.5 * REAL(global_mesh % sx)) / cs_width)
       bz_target = b_guide
@@ -393,8 +384,6 @@ contains
           ex_target = 0.0
           ! i, j + 1/2
           ey_target = -0.1 * b_guide * tanh((x_glob - 0.5 * REAL(global_mesh % sx)) / cs_width)
-          ! i, j
-          ez_target = 0.1
           !
           ! here's how the absorbing boundaries work:
           !
