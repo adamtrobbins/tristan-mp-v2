@@ -312,15 +312,15 @@ contains
 
     ! ---- average target over both left and right thirds
     ez_sum_both = 0d0; ez_cnt_both = 0
-    ! left third
-    do ii = 0, nx_third - 1
+    ! left third (after BC region)
+    do ii = int(x1min), nx_third - 1
       do jj = 0, this_meshblock % ptr % sy - 1
         ez_sum_both = ez_sum_both + ez(ii, jj, 1)
         ez_cnt_both = ez_cnt_both + 1
       end do
     end do
-    ! right third
-    do ii = sx_loc - nx_third, sx_loc - 1
+    ! right third (before BC region)
+    do ii = sx_loc - nx_third, int(x1max) - 1
       do jj = 0, this_meshblock % ptr % sy - 1
         ez_sum_both = ez_sum_both + ez(ii, jj, 1)
         ez_cnt_both = ez_cnt_both + 1
